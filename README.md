@@ -23,4 +23,25 @@ The detailed scope and acceptance criteria are in [docs/MVP.md](docs/MVP.md).
 
 ## Status
 
-Planning and technical validation.
+The read-only workspace milestone is under active development. The current
+prototype lists SVG concepts and iterations, renders the selected file inline,
+shows its top-level layer structure, and previews favicon sizes.
+
+## Development
+
+Requirements: Node.js 22 or newer.
+
+```bash
+npm install
+npm run dev -- --workspace /absolute/path/to/logos
+```
+
+Open `http://127.0.0.1:5173`. The workspace must be supplied explicitly and is
+the only location the local server can read. If port 4173 is already in use,
+add `--port 4273` to the development command.
+
+Run the full validation suite with:
+
+```bash
+npm run check
+```

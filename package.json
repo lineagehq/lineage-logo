@@ -1,0 +1,25 @@
+{
+  "name": "lineage-logo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "check": "npm run typecheck && npm run test && npm run build",
+    "dev": "tsx scripts/dev.ts",
+    "start": "tsx src/server/index.ts",
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@svgdotjs/svg.js": "^3.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "happy-dom": "^20.11.6",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
+  }
+}
