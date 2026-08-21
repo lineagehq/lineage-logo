@@ -1,6 +1,6 @@
 import { Window } from "happy-dom";
 import { describe, expect, it } from "vitest";
-import { serializeSvg } from "../src/client/canvas/editor";
+import { getLogicalSelectionTarget, serializeSvg } from "../src/client/canvas/editor";
 
 describe("editor serialization", () => {
   it("removes selection handles and temporary editor state", () => {
@@ -48,5 +48,17 @@ describe("editor serialization", () => {
     const output = serializeSvg(root, true);
     expect(output).toContain('role="img"');
     expect(output).toContain('aria-label="Original label"');
+  });
+});
+
+describe("canvas selection", () => {
+  it("stops at the logical top-level layer instead of selecting the SVG root", () => {
+    const window = new Window();
+    window.document.body.innerHTML = '<svg><g id="icon"><path id="spark" /></g></svg>';
+    const root = window.document.querySelector("svg") as unknown as SVGSVGElement;
+    const spark = window.document.querySelector("path") as unknown as SVGGraphicsElement;
+
+    expect(getLogicalSelectionTarget(spark, root)?.id).toBe("icon");
+    expect(getLogicalSelectionTarget(root as unknown as SVGGraphicsElement, root)).toBeUndefined();
   });
 });

@@ -45,6 +45,11 @@ add `--port 4273` to the development command.
 Select a logical group by clicking the canvas. Double-click or hold Alt while
 clicking to select an element inside a group. Arrow keys nudge by one SVG unit;
 Shift+Arrow nudges by ten. Standard Undo and Redo shortcuts are supported.
+Drag the canvas background, middle-drag, or hold Space while dragging to pan.
+
+`Reset edits` restores the SVG to the state in which it was opened, while the
+`100%` control resets only the zoom level. The editor asks before switching
+files when the current SVG has unsaved corrections.
 
 Saving never overwrites the loaded SVG. It creates the next available file in
 `iterations/` and embeds a small provenance note identifying its source.

@@ -67,6 +67,19 @@ export function serializeSvg(root: SVGSVGElement | undefined, stripEditorState: 
   return clone.outerHTML;
 }
 
+export function getLogicalSelectionTarget(
+  target: SVGGraphicsElement,
+  root: SVGSVGElement,
+): SVGGraphicsElement | undefined {
+  if (target === root) return undefined;
+  let candidate = target;
+  while (candidate.parentElement && candidate.parentNode !== root) {
+    if (candidate.parentElement.localName === "svg") break;
+    candidate = candidate.parentElement as unknown as SVGGraphicsElement;
+  }
+  return candidate;
+}
+
 export class SvgEditor {
   readonly #artboard: HTMLElement;
   readonly #callbacks: EditorCallbacks;
@@ -74,6 +87,7 @@ export class SvgEditor {
   readonly #history = new History();
   #drawing?: Svg;
   #baseline = "";
+  #initialSnapshot = "";
   #interactiveMutation = false;
   #keyCounter = 0;
   #selected?: SvgElement;
@@ -95,6 +109,7 @@ export class SvgEditor {
     this.#assignKeys(svg);
     this.#bindCanvasSelection(svg);
     this.#baseline = this.serializeClean();
+    this.#initialSnapshot = this.#snapshot();
     this.#setSelectionUi(undefined);
     this.#notifyHistory();
   }
@@ -138,6 +153,15 @@ export class SvgEditor {
     this.#callbacks.onStatus("Redid the correction");
   }
 
+  reset(): void {
+    if (!this.#drawing || this.serializeClean() === this.#baseline) return;
+    this.#history.reset();
+    this.#restore(this.#initialSnapshot);
+    this.#baseline = this.serializeClean();
+    this.#callbacks.onDirtyChange(false);
+    this.#callbacks.onStatus("Reset to the originally loaded SVG");
+  }
+
   serializeClean(): string {
     return serializeSvg(this.svgNode, true);
   }
@@ -164,11 +188,13 @@ export class SvgEditor {
       if (performance.now() < this.#suppressCanvasClickUntil) return;
       const target = event.target;
       if (!(target instanceof SVGGraphicsElement) || target.closest(HANDLE_SELECTOR)) return;
-      let candidate: SVGGraphicsElement = target;
-      while (candidate.parentElement instanceof SVGGraphicsElement) {
-        candidate = candidate.parentElement;
+      const candidate = event.altKey ? target : getLogicalSelectionTarget(target, svg);
+      if (candidate) this.selectNode(candidate);
+      else {
+        this.#deselect();
+        this.#setSelectionUi(undefined);
+        this.#callbacks.onSelectionChange(undefined);
       }
-      this.selectNode(event.altKey ? target : candidate);
       event.stopPropagation();
     });
     svg.addEventListener("dblclick", (event) => {

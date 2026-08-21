@@ -31,11 +31,12 @@ app.innerHTML = `
         <div class="toolbar-group">
           <button type="button" id="undo" disabled>Undo</button>
           <button type="button" id="redo" disabled>Redo</button>
+          <button type="button" id="reset-edits" disabled>Reset edits</button>
           <span class="toolbar-divider"></span>
           <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
           <span id="zoom-label">100%</span>
           <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
-          <button type="button" id="zoom-reset">Reset</button>
+          <button type="button" id="zoom-reset" aria-label="Reset zoom">100%</button>
         </div>
         <div class="toolbar-group" aria-label="Preview background">
           <button type="button" id="save-iteration" class="primary-action" disabled>Save iteration</button>
@@ -100,6 +101,7 @@ const faviconPreview = getElement("favicon-preview");
 const stage = getElement("stage");
 const undoButton = getInput<HTMLButtonElement>("undo");
 const redoButton = getInput<HTMLButtonElement>("redo");
+const resetEditsButton = getInput<HTMLButtonElement>("reset-edits");
 const saveButton = getInput<HTMLButtonElement>("save-iteration");
 const fileButtons = new Map<string, HTMLButtonElement>();
 let currentFile: SvgFileEntry | undefined;
@@ -146,6 +148,7 @@ const editor = new SvgEditor(
     onDirtyChange: (nextDirty) => {
       dirty = nextDirty;
       saveButton.disabled = !dirty;
+      resetEditsButton.disabled = !dirty;
     },
     onHistoryChange: (canUndo, canRedo) => {
       undoButton.disabled = !canUndo;
@@ -181,7 +184,10 @@ function createFileSection(title: string, files: SvgFileEntry[]): HTMLElement {
     button.className = "file-button";
     button.dataset.path = file.path;
     button.innerHTML = `<span class="file-glyph">◇</span><span>${file.name.replace(/\.svg$/i, "")}</span>`;
-    button.addEventListener("click", () => void openSvg(file, button));
+    button.addEventListener("click", () => {
+      if (dirty && !window.confirm(`Discard unsaved changes and open ${file.name}?`)) return;
+      void openSvg(file, button);
+    });
     fileButtons.set(file.path, button);
     section.append(button);
   }
@@ -313,7 +319,64 @@ getElement("zoom-out").addEventListener("click", () => setZoom(zoom - 0.25));
 getElement("zoom-reset").addEventListener("click", () => setZoom(1));
 undoButton.addEventListener("click", () => editor.undo());
 redoButton.addEventListener("click", () => editor.redo());
+resetEditsButton.addEventListener("click", () => editor.reset());
 saveButton.addEventListener("click", () => void saveIteration());
+
+let spacePressed = false;
+let panPointerId: number | undefined;
+let panStartX = 0;
+let panStartY = 0;
+let panStartLeft = 0;
+let panStartTop = 0;
+
+document.addEventListener("keydown", (event) => {
+  if (event.code !== "Space" || event.target instanceof HTMLInputElement) return;
+  spacePressed = true;
+  stage.classList.add("pan-ready");
+  event.preventDefault();
+});
+
+document.addEventListener("keyup", (event) => {
+  if (event.code !== "Space") return;
+  spacePressed = false;
+  if (panPointerId === undefined) stage.classList.remove("pan-ready");
+});
+
+stage.addEventListener("pointerdown", (event) => {
+  const canPan = event.button === 1 || (event.button === 0 && (spacePressed || event.target === stage));
+  if (!canPan) return;
+  panPointerId = event.pointerId;
+  panStartX = event.clientX;
+  panStartY = event.clientY;
+  panStartLeft = stage.scrollLeft;
+  panStartTop = stage.scrollTop;
+  stage.setPointerCapture(event.pointerId);
+  stage.classList.add("panning");
+  event.preventDefault();
+});
+
+stage.addEventListener("pointermove", (event) => {
+  if (event.pointerId !== panPointerId) return;
+  stage.scrollLeft = panStartLeft - (event.clientX - panStartX);
+  stage.scrollTop = panStartTop - (event.clientY - panStartY);
+});
+
+function finishPan(event: PointerEvent): void {
+  if (event.pointerId !== panPointerId) return;
+  panPointerId = undefined;
+  stage.classList.remove("panning");
+  if (!spacePressed) stage.classList.remove("pan-ready");
+}
+
+stage.addEventListener("pointerup", finishPan);
+stage.addEventListener("pointercancel", finishPan);
+stage.addEventListener("lostpointercapture", finishPan);
+
+window.addEventListener("beforeunload", (event) => {
+  if (!dirty) return;
+  event.preventDefault();
+  event.returnValue = "";
+});
 
 for (const button of document.querySelectorAll<HTMLButtonElement>(".background-button")) {
   button.addEventListener("click", () => {
