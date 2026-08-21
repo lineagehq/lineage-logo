@@ -23,9 +23,11 @@ The detailed scope and acceptance criteria are in [docs/MVP.md](docs/MVP.md).
 
 ## Status
 
-The read-only workspace milestone is under active development. The current
-prototype lists SVG concepts and iterations, renders the selected file inline,
-shows its top-level layer structure, and previews favicon sizes.
+The current prototype lists SVG concepts and iterations, renders the selected
+file inline, exposes its editable layer structure, and previews favicon sizes.
+It supports direct move, resize, and rotate corrections; appearance and numeric
+controls; duplicate, hide, and delete actions; undo and redo; and safe saves to
+the next numbered SVG iteration.
 
 ## Development
 
@@ -39,6 +41,13 @@ npm run dev -- --workspace /absolute/path/to/logos
 Open `http://127.0.0.1:5173`. The workspace must be supplied explicitly and is
 the only location the local server can read. If port 4173 is already in use,
 add `--port 4273` to the development command.
+
+Select a logical group by clicking the canvas. Double-click or hold Alt while
+clicking to select an element inside a group. Arrow keys nudge by one SVG unit;
+Shift+Arrow nudges by ten. Standard Undo and Redo shortcuts are supported.
+
+Saving never overwrites the loaded SVG. It creates the next available file in
+`iterations/` and embeds a small provenance note identifying its source.
 
 Run the full validation suite with:
 

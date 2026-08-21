@@ -4,7 +4,13 @@ import { createServer, type ServerResponse } from "node:http";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { listSvgFiles, readWorkspaceSvg, resolveWorkspaceRoot } from "./workspace.js";
+import {
+  getNextIterationPath,
+  listSvgFiles,
+  readWorkspaceSvg,
+  resolveWorkspaceRoot,
+  saveNextIteration,
+} from "./workspace.js";
 
 const HOST = "127.0.0.1";
 const STATIC_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../dist/client");
@@ -34,6 +40,33 @@ function securityHeaders(response: ServerResponse): void {
   );
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setHeader("Referrer-Policy", "no-referrer");
+}
+
+async function readJsonBody(request: import("node:http").IncomingMessage): Promise<unknown> {
+  const contentType = request.headers["content-type"] ?? "";
+  if (!contentType.toLowerCase().startsWith("application/json")) {
+    throw new Error("Request body must use application/json.");
+  }
+
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of request) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    size += buffer.length;
+    if (size > 5 * 1024 * 1024 + 16 * 1024) {
+      throw new Error("Request body exceeds the document limit.");
+    }
+    chunks.push(buffer);
+  }
+  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+}
+
+function validateRequestOrigin(request: import("node:http").IncomingMessage): void {
+  const origin = request.headers.origin;
+  const allowed = new Set([`http://${HOST}:${PORT}`, "http://127.0.0.1:5173"]);
+  if (!origin || !allowed.has(origin)) {
+    throw new Error("Save request did not originate from the local editor.");
+  }
 }
 
 async function serveStatic(pathname: string, response: ServerResponse): Promise<void> {
@@ -75,6 +108,7 @@ const server = createServer(async (request, response) => {
       sendJson(response, 200, {
         rootName: path.basename(workspaceRoot),
         files: await listSvgFiles(workspaceRoot),
+        nextIterationPath: await getNextIterationPath(workspaceRoot),
       });
       return;
     }
@@ -86,6 +120,17 @@ const server = createServer(async (request, response) => {
         "Cache-Control": "no-store",
       });
       response.end(svg);
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/iterations") {
+      validateRequestOrigin(request);
+      const body = await readJsonBody(request) as { sourcePath?: unknown; svg?: unknown };
+      if (typeof body.sourcePath !== "string" || typeof body.svg !== "string") {
+        throw new Error("Save request requires sourcePath and svg strings.");
+      }
+      const file = await saveNextIteration(workspaceRoot, body.sourcePath, body.svg);
+      sendJson(response, 201, { file, nextIterationPath: await getNextIterationPath(workspaceRoot) });
       return;
     }
 

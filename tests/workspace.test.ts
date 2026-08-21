@@ -1,8 +1,14 @@
-import { mkdtemp, mkdir, realpath, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, realpath, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { listSvgFiles, readWorkspaceSvg, validateSvg } from "../src/server/workspace.js";
+import {
+  getNextIterationPath,
+  listSvgFiles,
+  readWorkspaceSvg,
+  saveNextIteration,
+  validateSvg,
+} from "../src/server/workspace.js";
 
 const fixtureRoot = path.resolve("tests/fixtures/workspace");
 
@@ -53,5 +59,48 @@ describe("logo workspace", () => {
     expect(() => validateSvg('<svg><path fill="url(https://example.com/a.svg#paint)"/></svg>')).toThrow();
     expect(() => validateSvg("<svg><foreignObject/></svg>")).toThrow();
     expect(() => validateSvg('<svg><path fill="url(#accent)"/></svg>')).not.toThrow();
+  });
+
+  it("saves complete, numbered iterations without overwriting the source", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lineage-logo-"));
+    await mkdir(path.join(root, "concepts"));
+    const source = '<svg viewBox="0 0 512 512"><path id="mark" fill="#fff"/></svg>';
+    await writeFile(path.join(root, "concepts", "concept-1.svg"), source);
+    const resolvedRoot = await realpath(root);
+
+    await expect(getNextIterationPath(resolvedRoot)).resolves.toBe("iterations/iteration-1.svg");
+    const first = await saveNextIteration(
+      resolvedRoot,
+      "concepts/concept-1.svg",
+      source.replace("#fff", "#00ff00"),
+    );
+    const second = await saveNextIteration(
+      resolvedRoot,
+      first.path,
+      source.replace("#fff", "#ff00ff"),
+    );
+
+    expect(first.path).toBe("iterations/iteration-1.svg");
+    expect(second.path).toBe("iterations/iteration-2.svg");
+    expect(await readFile(path.join(root, "concepts", "concept-1.svg"), "utf8")).toBe(source);
+    const saved = await readFile(path.join(root, first.path), "utf8");
+    expect(saved).toContain('id="lineage-logo-edit"');
+    expect(saved).toContain("source: concepts/concept-1.svg");
+    expect(saved).toContain('fill="#00ff00"');
+    await expect(getNextIterationPath(resolvedRoot)).resolves.toBe("iterations/iteration-3.svg");
+  });
+
+  it("refuses to save through an iterations-directory symlink", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lineage-logo-"));
+    const outside = await mkdtemp(path.join(tmpdir(), "lineage-logo-outside-"));
+    await mkdir(path.join(root, "concepts"));
+    const source = "<svg></svg>";
+    await writeFile(path.join(root, "concepts", "concept-1.svg"), source);
+    await symlink(outside, path.join(root, "iterations"));
+    const resolvedRoot = await realpath(root);
+
+    await expect(
+      saveNextIteration(resolvedRoot, "concepts/concept-1.svg", source),
+    ).rejects.toThrow("escapes");
   });
 });

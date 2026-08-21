@@ -1,4 +1,5 @@
-import { realpath, readdir, readFile, stat } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { link, mkdir, realpath, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const SVG_LIMIT_BYTES = 5 * 1024 * 1024;
@@ -58,6 +59,77 @@ export async function listSvgFiles(root: string): Promise<SvgFileEntry[]> {
   return files.sort((left, right) =>
     left.path.localeCompare(right.path, undefined, { numeric: true }),
   );
+}
+
+export async function getNextIterationPath(root: string): Promise<string> {
+  const files = await listSvgFiles(root);
+  const highest = files
+    .filter((file) => file.collection === "iterations")
+    .map((file) => /^iteration-(\d+)\.svg$/i.exec(file.name))
+    .filter((match): match is RegExpExecArray => match !== null)
+    .reduce((maximum, match) => Math.max(maximum, Number(match[1])), 0);
+  return `iterations/iteration-${highest + 1}.svg`;
+}
+
+export async function saveNextIteration(
+  root: string,
+  sourcePath: string,
+  svg: string,
+): Promise<SvgFileEntry> {
+  if (Buffer.byteLength(svg, "utf8") > SVG_LIMIT_BYTES) {
+    throw new Error("Edited SVG exceeds the 5 MB document limit.");
+  }
+  validateSvg(svg);
+  await readWorkspaceSvg(root, sourcePath);
+
+  const iterationsDirectory = path.join(root, "iterations");
+  await mkdir(iterationsDirectory, { recursive: true });
+  const resolvedIterations = await realpath(iterationsDirectory);
+  if (!isInside(root, resolvedIterations)) {
+    throw new Error("Iterations directory escapes the selected workspace.");
+  }
+
+  const editedSvg = addEditMetadata(svg, sourcePath);
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const relativePath = await getNextIterationPath(root);
+    const name = path.basename(relativePath);
+    const target = path.join(root, relativePath);
+    const temporary = path.join(resolvedIterations, `.lineage-logo-${randomUUID()}.tmp`);
+    await writeFile(temporary, editedSvg, { encoding: "utf8", flag: "wx" });
+
+    try {
+      await link(temporary, target);
+      return { collection: "iterations", name, path: relativePath };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    } finally {
+      await unlink(temporary).catch(() => undefined);
+    }
+  }
+
+  throw new Error("Unable to allocate the next iteration filename.");
+}
+
+function addEditMetadata(svg: string, sourcePath: string): string {
+  const withoutPreviousMetadata = svg.replace(
+    /\s*<metadata\s+id=["']lineage-logo-edit["'][^>]*>[\s\S]*?<\/metadata>/gi,
+    "",
+  );
+  const metadata = [
+    '<metadata id="lineage-logo-edit">',
+    `Edited with Lineage Logo 0.1.0; source: ${escapeXml(sourcePath)}`,
+    "</metadata>",
+  ].join("");
+  return withoutPreviousMetadata.replace(/(<svg\b[^>]*>)/i, `$1${metadata}`);
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
 }
 
 export async function readWorkspaceSvg(root: string, requestedPath: string): Promise<string> {
