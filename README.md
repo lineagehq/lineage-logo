@@ -7,6 +7,53 @@ a person makes precise visual corrections in a browser, and the corrected SVG
 returns to the AI iteration loop without being converted into a proprietary
 canvas format.
 
+## Agent transaction protocol
+
+The canvas has a strict local protocol boundary for agent-authored changes. Protocol v1
+transactions identify the producer and exact document session, source path, and base
+revision, then contain 1–100 ordered operations. Supported operations add or replace a
+layer, rename or reorder a layer, set fill or stroke, and select/focus layers. Layer
+references use either an editor session key or the result of an earlier structural
+operation in the same transaction.
+
+Transactions are limited to 5 MiB. The evaluator applies every operation to a detached
+SVG clone and exposes a candidate only after all targets, locks, SVG safety rules, IDs,
+local references, paint values, and selection intent pass. Unknown fields, versions,
+operations, forward references, stale revisions, unsafe or external SVG content,
+reference damage, and all-no-op mutations return a structured rejection without
+changing the open document.
+
+The local server now exposes that boundary at `POST /api/agent/transactions` and
+authenticated producer reads at `GET /api/agent/document` and
+`GET /api/agent/transactions/:id`. It prints a high-entropy bearer token at startup
+(or accepts `LINEAGE_LOGO_AGENT_TOKEN`) and never sends that secret to the browser.
+The browser uses exact-origin-protected manifest, SSE, and acknowledgement routes.
+Delivery is ordered, bounded, timed out after 15 seconds, replay-aware through SSE
+event IDs, and deduplicated by transaction ID plus exact payload hash. A successful
+mutating delivery is staged through the detached evaluator without reloading or
+mutating the accepted canvas; review and acceptance happen in the Agent review panel.
+The newest same-origin SSE connection replaces any older upstream stream retained
+by the development proxy, matching the MVP's single authoritative open editor and
+preventing a stale response from claiming delivery.
+
+When a mutating transaction arrives, the Agent review panel lists every impacted
+layer and identifies hidden or locked targets. Layer actions locate the impact in
+the hierarchy and canvas. `Show proposed preview` renders a separate candidate
+surface; the accepted SVG and exported serialization remain unchanged until
+`Accept all`. Accept creates one undoable edit, while Revert discards the candidate.
+The panel announces pending, accepted, reverted, failed, stale, and disconnected
+states, and all review controls expose keyboard-focusable names and pressed state.
+Accepted and reverted decisions converge back to the authenticated producer. Exact
+duplicates are idempotent, conflicting decisions are rejected, and an unacknowledged
+delivered frame is replayed without duplicating review or history. File switching
+remains disabled while review is pending.
+
+SVGs produced by the logo-designer skill can enter this same public boundary through
+the thin local adapter. See [docs/agent-canvas.md](docs/agent-canvas.md) for the artifact
+contract and authenticated invocation. The adapter extracts a stable SVG group and its
+referenced resources, then uses only the manifest and transaction endpoints; it never
+imports editor internals or bypasses review.
+
 ## MVP
 
 The first release focuses on a deliberately small editing surface:
@@ -92,7 +139,10 @@ live.
 files when the current SVG has unsaved corrections.
 
 Saving never overwrites the loaded SVG. It creates the next available file in
-`iterations/` and embeds a small provenance note identifying its source.
+`iterations/` without injecting editor provenance or review metadata. Explicit root
+`width` and `height`, unrelated metadata, IDs and references, resources, transforms,
+text, custom attributes, and safe unsupported elements remain part of the clean SVG.
+Legacy `metadata#lineage-logo-edit` is removed during clean editor serialization.
 
 Run the full validation suite with:
 

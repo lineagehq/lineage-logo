@@ -41,6 +41,7 @@ const environment = {
   ...process.env,
   LINEAGE_LOGO_CLIENT_PORT: String(clientPort),
   LINEAGE_LOGO_PORT: String(apiPort),
+  LINEAGE_LOGO_EDITOR_ORIGIN: `http://127.0.0.1:${clientPort}`,
 };
 const serverArgs = portIndex >= 0
   ? forwardedArgs.filter((_argument, index) => index !== portIndex && index !== portIndex + 1)

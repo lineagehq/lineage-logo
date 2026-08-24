@@ -1,0 +1,34 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T006",
+    "board_path": "docs/goals/agent-canvas-integration/state.yaml",
+    "changed_files": [
+      "README.md",
+      "package.json",
+      "docs/agent-canvas.md",
+      "docs/oracle/T006-logo-designer.md",
+      "scripts/logo-designer-adapter.ts",
+      "src/client/agent/transaction.ts",
+      "src/client/agent/transport.ts",
+      "src/client/canvas/editor.ts",
+      "src/server/agent-transport.ts",
+      "tests/agent-transaction.test.ts",
+      "tests/agent-transport.test.ts",
+      "tests/fixtures/agent/logo-designer-output.svg",
+      "tests/logo-designer-adapter.test.ts"
+    ],
+    "commands": [
+      { "cmd": "npm run typecheck", "status": "pass" },
+      { "cmd": "npm run check", "status": "pass" },
+      { "cmd": "npm audit --audit-level=high", "status": "pass" },
+      { "cmd": "git diff --check", "status": "pass" },
+      { "cmd": "LINEAGE_LOGO_AGENT_TOKEN=t006-oracle-secret npm run agent:submit -- --api http://127.0.0.1:4383 --mode replace --artifact tests/fixtures/agent/logo-designer-output.svg --selector '#logo' --target-name 'Logo concept' --transaction-id verify-public-adapter", "status": "pass" },
+      { "cmd": "node --input-type=module <<'NODE' (T006 real Chromium HTTP/SSE/editor oracle) NODE", "status": "pass" }
+    ],
+    "summary": "Implemented the thin public-protocol logo-designer adapter, resource-aware SVG extraction, representative fixture, documentation, and authenticated HTTP/SSE/editor E2E coverage. Repaired Vite SSE delivery using replay-aware streamed fetch without CORS allowance or weakened origin/auth/dedupe semantics. The Chromium oracle passed revert, resend/accept, undo/redo, manual and targeted edits, keyboard review, two viewports, save/reopen, structural hash comparison, clean console, and metadata-leak checks. All 111 tests, build, audit, and diff checks pass.",
+    "remaining_blockers": [],
+    "verification_attempts": 2,
+    "stopped_because": null
+  }
+}

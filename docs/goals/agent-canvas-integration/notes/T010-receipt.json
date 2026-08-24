@@ -1,0 +1,25 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T010",
+    "board_path": "docs/goals/agent-canvas-integration/state.yaml",
+    "changed_files": [
+      "src/client/main.ts",
+      "src/client/file-open.ts",
+      "tests/file-open-race.test.ts",
+      "docs/oracle/T010-file-open-race.md"
+    ],
+    "commands": [
+      { "cmd": "npm run typecheck", "status": "pass" },
+      { "cmd": "npx vitest run tests/file-open-race.test.ts tests/agent-history.test.ts", "status": "pass" },
+      { "cmd": "Real-browser Vite/public-transport walkthrough of delayed response race, both terminal decisions, successful post-terminal file switch, and clean console", "status": "pass" },
+      { "cmd": "npm run check", "status": "pass" },
+      { "cmd": "npm audit --audit-level=high", "status": "pass" },
+      { "cmd": "git diff --check", "status": "pass" }
+    ],
+    "summary": "Added an atomic file-open coordinator with one final synchronous pending-and-generation commit gate. File responses staged before a pending transaction or superseded by newer opens cannot mutate file UI, canonical DOM, editor, session, dirty/review state, or manifest. Added deterministic real-session delayed-response and out-of-order regressions. Live Vite/public-adapter/SSE browser proof preserved the pending document after releasing real delayed SVG bytes, converged keyboard revert and accept decisions, switched files successfully after both terminal paths, and produced no console warnings or errors. Full check passed with 122 tests.",
+    "remaining_blockers": [],
+    "verification_attempts": 1,
+    "stopped_because": null
+  }
+}

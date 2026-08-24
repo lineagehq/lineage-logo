@@ -1,0 +1,34 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T013",
+    "board_path": "docs/goals/agent-canvas-integration/state.yaml",
+    "decision": "complete",
+    "full_outcome_complete": true,
+    "rationale": "Complete. T012 permanently invalidates in-flight file opens when a new mutating proposal enters review, and current tests plus live evidence cover pending-at-release, accept-before-release, revert-before-release, and out-of-order responses. T009’s terminal acknowledgement, reconnect, replacement-reference, backlog, reload, and durable-export repairs remain intact. Fresh independent verification passes 124 tests, typecheck, audit, diff, and artifact assertions. The authenticated public adapter, live HTTP/Vite/SSE path, isolated accessible review, coherent history, manual refinement, targeted adjustment, save/reopen, and clean SVG export are all mapped to durable evidence. Every required Worker is done; T005 is safely resolved by T008.",
+    "evidence": [
+      { "area": "protocol_atomicity_conflicts", "finding": "Strict protocol v1 envelopes, bounded payloads/operations, detached all-or-nothing evaluation, stable targeting, stale checks, no-op rejection, and structured errors are implemented and adversarially tested." },
+      { "area": "security_and_transport", "finding": "Loopback bearer producer routes, exact-origin browser routes, no CORS allowance, bounded state, strict transitions, payload-hash dedupe, conflicting-ID rejection, timeouts, status, and real HTTP/Vite transport tests pass." },
+      { "area": "lifecycle_repairs", "finding": "Accepted/reverted decisions are producer-visible, strict, idempotent; pre-ack reconnect reuses staged evaluation without duplicate review, history, revision, or canonical effects." },
+      { "area": "replacement_and_fidelity_boundary", "finding": "Self-contained internal-resource replacement succeeds while external reference damage and unsafe/locked mutations remain rejected without silent sanitization." },
+      { "area": "review_and_accessibility", "finding": "Accurate impact, isolated preview, canvas/hierarchy location, mutation freeze, accessible/keyboard controls, both required viewports, fault states, and clean console are proven." },
+      { "area": "history_and_terminal_semantics", "finding": "Revert/failure do not mutate canonical/history; acceptance creates one checkpoint/revision increment; undo/redo restore hierarchy, scope, and selection; repeat decisions do not duplicate effects." },
+      { "area": "file_open_lifecycle", "finding": "One synchronous pending/generation commit gate plus permanent invalidation on each new pending mutating transaction rejects pending, terminal-before-response, and out-of-order races." },
+      { "area": "file_open_adversarial_proof", "finding": "Deterministic real-session tests cover pending-at-release, accept-before-release, revert-before-release, out-of-order responses, and all visible/session/history/manifest state." },
+      { "area": "file_open_live_oracle", "finding": "Real Vite/server/public-adapter/SSE held-response walkthrough preserves accepted dirty work, requires fresh discard confirmation, preserves reverted clean state, converges producer status, and keeps console clean." },
+      { "area": "public_logo_designer_workflow", "finding": "The thin adapter reads skill SVG artifacts and uses only the public manifest/transaction protocol; live replace, revert, resend/accept, manual refine, targeted adjustment, save, and reopen are proven." },
+      { "area": "clean_export_and_durable_artifact", "finding": "The durable 1,406-byte SVG reproduces SHA-256 9780ec8650c8255cac66e4579bf97388d2876dad5c186105cd34f67146463f56, expected structure/resources/deltas, and no reserved metadata." },
+      { "area": "fresh_full_gate", "finding": "Independent typecheck/test passed 11 files and 124 tests; audit found zero vulnerabilities; diff and artifact hash/structure assertions passed; production build passed in the Worker gate." },
+      { "area": "board_completion", "finding": "All required tasks are done; T005 retains historical blocked evidence but is resolved_by T008. No required Worker remains unresolved." },
+      { "area": "scope_alignment", "finding": "The complete original generate/load, live edit, review, accept/revert, undo/redo, manual refine, targeted adjustment, export/reopen outcome is satisfied; explicitly deferred hosted/CRDT/freehand features are not completion requirements." }
+    ],
+    "blocked_tasks": [],
+    "missing_evidence": [],
+    "required_board_updates": [
+      { "task_id": "T013", "updates": ["Store this receipt and mark T013 done with decision complete and full_outcome_complete: true."] },
+      { "task_id": "goal", "updates": ["Set goal.status to complete and clear the active task.", "Record that the full original owner outcome and final oracle are satisfied."] },
+      { "task_id": "checks", "updates": ["Record the fresh 124-test/typecheck, zero-vulnerability audit, diff-check, artifact hash/structure verification, and current dirty fingerprint."] },
+      { "task_id": "T005", "updates": ["Retain the historical blocked receipt and resolved_by: T008 linkage; it is not unresolved required work."] }
+    ]
+  }
+}

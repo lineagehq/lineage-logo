@@ -1,0 +1,36 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "blocked",
+    "task_id": "T005",
+    "board_path": "docs/goals/agent-canvas-integration/state.yaml",
+    "changed_files": [
+      "README.md",
+      "src/client/agent/review.ts",
+      "src/client/canvas/editor.ts",
+      "src/client/main.ts",
+      "src/client/styles.css",
+      "tests/agent-review.test.ts",
+      "tests/editor-serialization.test.ts"
+    ],
+    "commands": [
+      {
+        "cmd": "npm run check",
+        "status": "pass"
+      },
+      {
+        "cmd": "npm run test -- tests/agent-review.test.ts tests/editor-serialization.test.ts",
+        "status": "pass"
+      },
+      {
+        "cmd": "real-browser pending-review walkthrough at 1280x720 and 980x720 through npm run dev",
+        "status": "fail"
+      }
+    ],
+    "summary": "Implemented the accessible pending-review panel, isolated preview surface, impact model/list, canvas and hierarchy highlighting, keyboard-focusable locate/preview/accept/revert controls, mutation freezing, and all required outcome models. Automated tests pass: 104 total and 55 focused. Real-browser delivery is blocked before T005 UI activation because SSE events open through Vite but later transaction frames never reach the browser; transactions remain delivered and time out.",
+    "remaining_blockers": [
+      "Fixing live SSE delivery requires src/server/agent-transport.ts or vite.config.ts, neither allowed by T005. Two fresh-launch browser runs reproduced the same failure, while the browser connected cleanly and authenticated submissions returned 202."
+    ],
+    "verification_attempts": 2,
+    "stopped_because": "Need files outside allowed_files to repair the T003 SSE dev-proxy delivery path required for T005 real-browser verification."
+  }
+}

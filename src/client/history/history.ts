@@ -35,4 +35,8 @@ export class History {
   get canRedo(): boolean {
     return this.#future.length > 0;
   }
+
+  get checkpointCount(): number {
+    return this.#past.length;
+  }
 }

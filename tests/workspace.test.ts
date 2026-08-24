@@ -84,10 +84,31 @@ describe("logo workspace", () => {
     expect(second.path).toBe("iterations/iteration-2.svg");
     expect(await readFile(path.join(root, "concepts", "concept-1.svg"), "utf8")).toBe(source);
     const saved = await readFile(path.join(root, first.path), "utf8");
-    expect(saved).toContain('id="lineage-logo-edit"');
-    expect(saved).toContain("source: concepts/concept-1.svg");
+    expect(saved).not.toContain('id="lineage-logo-edit"');
     expect(saved).toContain('fill="#00ff00"');
     await expect(getNextIterationPath(resolvedRoot)).resolves.toBe("iterations/iteration-3.svg");
+  });
+
+  it("saves clean input exactly without injecting or replacing unrelated metadata", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lineage-logo-clean-"));
+    await mkdir(path.join(root, "concepts"));
+    const source = '<svg width="20" height="10"><metadata id="author">keep</metadata><path id="mark"/></svg>';
+    await writeFile(path.join(root, "concepts", "concept-1.svg"), source);
+    const resolvedRoot = await realpath(root);
+    const saved = await saveNextIteration(resolvedRoot, "concepts/concept-1.svg", source);
+    expect(await readFile(path.join(root, saved.path), "utf8")).toBe(source);
+  });
+
+  it("strips legacy reserved edit metadata while preserving unrelated metadata on save", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lineage-logo-legacy-"));
+    await mkdir(path.join(root, "concepts"));
+    const source = '<svg><metadata id="lineage-logo-edit">legacy</metadata><metadata id="author">keep</metadata><path/></svg>';
+    await writeFile(path.join(root, "concepts", "concept-1.svg"), source);
+    const resolvedRoot = await realpath(root);
+    const saved = await saveNextIteration(resolvedRoot, "concepts/concept-1.svg", source);
+    const output = await readFile(path.join(root, saved.path), "utf8");
+    expect(output).not.toContain("lineage-logo-edit");
+    expect(output).toContain('<metadata id="author">keep</metadata>');
   });
 
   it("refuses to save through an iterations-directory symlink", async () => {

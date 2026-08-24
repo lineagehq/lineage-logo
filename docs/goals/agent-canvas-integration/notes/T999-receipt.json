@@ -1,0 +1,30 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T999",
+    "board_path": "docs/goals/agent-canvas-integration/state.yaml",
+    "decision": "not_complete",
+    "full_outcome_complete": false,
+    "rationale": "Not complete. T009 credibly closes terminal decisions, pre-ack reconnect, replacement references, backlog pruning, reload handling, and durable export; the current 120-test, typecheck, audit, diff, and artifact gates pass. However openSvg checks pending only before awaiting /api/svg, then mutates selected file, currentFile, dirty state, and the artboard before AgentSession.open rechecks pending. An agent transaction arriving during that fetch can leave the old session/review pending while the visible document switches—the orphaned-review defect T009 was required to close. Tests cover synchronous session replacement, and the browser note covers clicking after pending, not this race.",
+    "evidence": [
+      { "area": "current_verification", "finding": "Independent read-only verification passed: npm run typecheck and npm run test reported 10 files and 120 tests passing; npm audit --audit-level=high reported zero vulnerabilities; git diff --check passed." },
+      { "area": "T007_terminal_and_reconnect_remediation", "finding": "src/client/agent/transport.ts and src/server/agent-transport.ts implement exact-origin accepted/reverted decisions, idempotent terminal convergence, cached staging, acknowledgement-gated event cursors, authoritative-subscriber requeue, active-event pruning, and bounded terminal records. Real HTTP/Vite regression tests cover duplicate/conflicting decisions and receive-before-ack recovery." },
+      { "area": "live_path_review_and_history", "finding": "T006, T008, and T009 receipts map the public logo-designer adapter through authenticated HTTP, Vite, SSE, detached SvgEditor staging, accessible review, accept/revert, undo/redo, manual refinement, targeted adjustment, and responsive keyboard QA without CORS or editor-internal bypass." },
+      { "area": "fidelity_and_durable_oracle", "finding": "docs/oracle/artifacts/T009-final.svg independently reproduced SHA-256 9780ec8650c8255cac66e4579bf97388d2876dad5c186105cd34f67146463f56 and 1,406 bytes. Structural assertions found all expected original and introduced resources, fill #14b8a6, and no reserved protocol/review metadata; tests/logo-designer-adapter.test.ts deterministically checks the same artifact." },
+      { "area": "blocking_pending_open_race", "severity": "high", "finding": "src/client/main.ts:659-665 checks pending and then awaits the SVG request. After the await, lines 680-708 change file selection, currentFile, dirty state, and replace the artboard. Only at lines 710-713 does AgentSession.open reject a newly pending transaction. The function returns with the old editor/session/review still authoritative but a different visible SVG and file state, so accept/revert can act against a detached old document." },
+      { "area": "missing_race_proof", "finding": "tests/agent-history.test.ts:124-142 proves only synchronous AgentSession.open rejection. docs/oracle/T009-release-remediation.md records buttons disabled once review is pending, but neither evidence delays an already-started /api/svg response, stages a transaction during that delay, and verifies that no document/UI/session mutation commits afterward." },
+      { "area": "board_health", "finding": "T005 preserves its blocked receipt and is explicitly resolved_by T008, whose completed receipt supplies the missing real-browser review verification. No earlier required Worker remains unresolved; this newly discovered T010 lifecycle package is the sole completion blocker." }
+    ],
+    "parallel_safety": { "safe": false, "reason": "The remediation changes the single document/session commit boundary in src/client/main.ts and its lifecycle evidence; parallel work against the same editor state would make the race proof unreliable." },
+    "blocked_tasks": [{ "task_id": "final_audit", "reason": "Full completion is blocked until the in-flight file-open/pending-review race is fixed and independently re-audited." }],
+    "missing_evidence": [
+      "A deterministic delayed-/api/svg regression proving that a proposal staged while a file request is in flight prevents every file, DOM, editor, session, dirty-state, and manifest commit from that request.",
+      "Real-browser confirmation that the pending review remains attached to the original visible document during the delayed response, then accept/revert and a subsequent file switch behave normally."
+    ],
+    "required_board_updates": [
+      { "task_id": "T999", "updates": ["Store this receipt and mark T999 done with decision not_complete.", "Keep the goal active and preserve this race finding as a mandatory input to the next final Judge audit."] },
+      { "task_id": "T010", "updates": ["Create and activate the exact atomic file-open remediation Worker package."] },
+      { "task_id": "T005", "updates": ["Retain resolved_by: T008 and the original blocked receipt; no further T005 work is required."] }
+    ]
+  }
+}

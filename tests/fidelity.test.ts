@@ -15,6 +15,30 @@ import {
 } from "../src/client/canvas/editor";
 
 describe("SVG.js fidelity spike", () => {
+  it("preserves explicit root sizing and representative safe structures in clean serialization", () => {
+    const window = new Window();
+    window.document.body.innerHTML = `<svg width="640" height="360" viewBox="0 0 64 36" data-custom="root">
+      <metadata id="author">Unrelated metadata</metadata><title>Logo title</title>
+      <defs><linearGradient id="paint"><stop offset="0" stop-color="#fff" /></linearGradient><symbol id="shape"><path d="M0 0h2v2z" /></symbol></defs>
+      <g id="layer" transform="translate(4 5)" style="opacity:.8" data-custom="layer"><text>Brand</text><use href="#shape" fill="url(#paint)" /></g>
+      <switch requiredFeatures="feature"><path d="M0 0" /></switch>
+    </svg>`;
+    const root = window.document.querySelector("svg") as unknown as SVGSVGElement;
+    const output = serializeSvg(root, true);
+    const reopened = new Window();
+    reopened.document.body.innerHTML = output;
+    const svg = reopened.document.querySelector("svg")!;
+    expect(svg.getAttribute("width")).toBe("640");
+    expect(svg.getAttribute("height")).toBe("360");
+    expect(svg.getAttribute("data-custom")).toBe("root");
+    expect(svg.querySelector("#layer")?.getAttribute("transform")).toBe("translate(4 5)");
+    expect(svg.querySelector("#layer")?.getAttribute("style")).toBe("opacity:.8");
+    expect(svg.querySelector("text")?.textContent).toBe("Brand");
+    expect(svg.querySelector("use")?.getAttribute("href")).toBe("#shape");
+    expect(svg.querySelector("use")?.getAttribute("fill")).toBe("url(#paint)");
+    expect(svg.querySelector("switch")).not.toBeNull();
+    expect(svg.querySelector('metadata#author')?.textContent).toBe("Unrelated metadata");
+  });
   it("preserves structural features through import and serialization", async () => {
     const source = await readFile(
       path.resolve("tests/fixtures/workspace/concepts/concept-1.svg"),
