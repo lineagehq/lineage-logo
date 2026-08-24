@@ -1,0 +1,36 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T009",
+    "board_path": "docs/goals/agent-canvas-integration/state.yaml",
+    "changed_files": [
+      "README.md",
+      "docs/agent-canvas.md",
+      "docs/oracle/T009-release-remediation.md",
+      "docs/oracle/artifacts/T009-final.svg",
+      "src/shared/agent-protocol.ts",
+      "src/server/agent-transport.ts",
+      "src/client/agent/transport.ts",
+      "src/client/agent/session.ts",
+      "src/client/agent/transaction.ts",
+      "src/client/main.ts",
+      "tests/agent-transport.test.ts",
+      "tests/agent-history.test.ts",
+      "tests/agent-transaction.test.ts",
+      "tests/logo-designer-adapter.test.ts"
+    ],
+    "commands": [
+      { "cmd": "npm run check", "status": "pass" },
+      { "cmd": "npm audit --audit-level=high", "status": "pass" },
+      { "cmd": "git diff --check", "status": "pass" },
+      { "cmd": "npx vitest run --config vitest.config.ts tests/logo-designer-adapter.test.ts tests/agent-transport.test.ts tests/agent-history.test.ts tests/agent-transaction.test.ts", "status": "pass" },
+      { "cmd": "node --input-type=module <<'NODE' (T009 real Chromium public-adapter/Vite/SSE/editor oracle) NODE", "status": "pass" },
+      { "cmd": "cmp -s docs/oracle/artifacts/T009-final.svg /tmp/lineage-logo-t009.35gOFb/iterations/iteration-1.svg && shasum -a 256 docs/oracle/artifacts/T009-final.svg && node --input-type=module -e \"(deterministic structural and reserved-metadata assertions)\"", "status": "pass" },
+      { "cmd": "curl producer statuses for reconnect-revert, oracle-accept, targeted-accept, reload-revert and assert SSE response has no Access-Control-Allow-Origin", "status": "pass" }
+    ],
+    "summary": "Implemented strict idempotent accepted/reverted decisions, producer convergence, replay-safe cached staging, authoritative subscriber handoff, pending file/reload protection, replacement-boundary reference validation, active-backlog pruning, and bounded terminal idempotency. Real HTTP and Vite tests cover terminal conflicts, pre-ack recovery, exactly-once effects, and unchanged revert history/revision. Chromium passed both viewports, keyboard review, injected pre-ack failure, undo/redo, manual/targeted edits, save/reopen, reload revert, producer statuses, and clean console. Durable 1,406-byte SVG matches reopened bytes and SHA-256; 120 tests, build, audit, and diff checks pass without CORS allowance.",
+    "remaining_blockers": [],
+    "verification_attempts": 1,
+    "stopped_because": null
+  }
+}

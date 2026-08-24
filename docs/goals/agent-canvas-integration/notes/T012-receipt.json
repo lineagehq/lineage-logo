@@ -1,0 +1,25 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T012",
+    "board_path": "docs/goals/agent-canvas-integration/state.yaml",
+    "changed_files": [
+      "src/client/file-open.ts",
+      "src/client/main.ts",
+      "tests/file-open-race.test.ts",
+      "docs/oracle/T012-terminal-file-open-race.md"
+    ],
+    "commands": [
+      { "cmd": "npm run typecheck", "status": "pass" },
+      { "cmd": "npx vitest run tests/file-open-race.test.ts", "status": "pass" },
+      { "cmd": "Real-browser Vite/public-adapter/SSE accept-before-release and revert-before-release walkthrough with real held SVG responses, producer convergence, discard confirmation, and clean console", "status": "pass" },
+      { "cmd": "npm run check", "status": "pass" },
+      { "cmd": "npm audit --audit-level=high", "status": "pass" },
+      { "cmd": "git diff --check", "status": "pass" }
+    ],
+    "summary": "Added permanent file-open generation invalidation synchronously when a new mutating transaction successfully enters pending review. Responses overlapping that pending episode remain ineligible after either terminal decision while T010 pending and out-of-order guards remain intact. Deterministic real-session tests prove accept-before-release preserves accepted canonical SVG, dirty state, history, revision, selection, file UI, session, and manifest; revert preserves the original clean state. Live Vite/public-adapter/SSE proof confirmed accepted dirty work survives release, a fresh explicit switch requires discard confirmation, both producer decisions converge, and the browser console remains clean. Full check passes with 124 tests.",
+    "remaining_blockers": [],
+    "verification_attempts": 2,
+    "stopped_because": null
+  }
+}

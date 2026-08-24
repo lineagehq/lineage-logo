@@ -1,3 +1,4 @@
 .DS_Store
+**/.goalbuddy-board/
 dist/
 node_modules/

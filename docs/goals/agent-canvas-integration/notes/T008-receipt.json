@@ -1,0 +1,24 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T008",
+    "board_path": "docs/goals/agent-canvas-integration/state.yaml",
+    "changed_files": [
+      "README.md",
+      "src/server/agent-transport.ts",
+      "tests/agent-transport.test.ts"
+    ],
+    "commands": [
+      { "cmd": "npm run check", "status": "pass" },
+      { "cmd": "npm audit --audit-level=high", "status": "pass" },
+      { "cmd": "git diff --check", "status": "pass" },
+      { "cmd": "npm run test -- tests/agent-transport.test.ts", "status": "pass" },
+      { "cmd": "real-browser review walkthrough through Vite at 1280x720 and 980x720", "status": "pass" },
+      { "cmd": "real-browser offline fault injection for disconnected outcome", "status": "pass" }
+    ],
+    "summary": "Repaired SSE-through-Vite delivery by enforcing the MVP’s single authoritative editor stream: each new exact-origin SSE connection replaces proxy-retained older subscribers, preventing stale responses from claiming delivery. Added a concurrent-subscriber regression test. Real-browser authenticated submissions now activate review through Vite; responsive, keyboard, accessible-name/state, mutation-freeze, preview-isolation, hierarchy/canvas location, accept/revert, stale, failed, disconnected, and clean-console checks pass. All 105 tests pass with zero high-severity audit findings.",
+    "remaining_blockers": [],
+    "verification_attempts": 2,
+    "stopped_because": null
+  }
+}

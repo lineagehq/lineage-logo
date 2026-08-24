@@ -1,0 +1,1097 @@
+# GoalBuddy v2 state.yaml
+version: 2
+
+goal:
+  title: "Agent-to-Canvas Integration"
+  slug: "agent-canvas-integration"
+  kind: existing_plan
+  tranche: "Complete the local agent-to-canvas MVP through successive safe verified vertical slices."
+  status: done
+  oracle:
+    signal: "A fixture-backed real-browser workflow proves live agent layer changes, accurate review, accept/revert, coherent undo/redo, and clean faithful export without reload."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Automated contract/history/fidelity/integration gates plus a recorded browser walkthrough and final Judge mapping with full_outcome_complete: true."
+  intake:
+    original_request: "Create a detailed GoalBuddy Prep plan to implement the agreed agent-to-canvas workflow."
+    interpreted_outcome: "Connect agent-generated SVG operations to the open correction canvas with live transactional application, human review, reversible history, skill integration, and clean export."
+    input_shape: existing_plan
+    audience: "Logo designers using lineage-logo with an agentic logo-generation workflow"
+    authority: requested
+    proof_type: demo
+    completion_proof: "The full generate/load → live agent edit → review → accept/revert → undo/redo → manual refine → targeted agent adjustment → export/reopen flow passes in automation and a real browser."
+    likely_misfire: "A nominal API or mocked demo that bypasses the real editor, harms SVG fidelity, trusts stale edits, fragments history, or needs reload."
+    blind_spots_considered:
+      - "Versioned command identity, idempotency, atomicity, ordering, acknowledgement, and errors"
+      - "Stale-base conflicts between manual and agent edits"
+      - "Trust, sanitization, unsupported SVG, and resource-reference integrity"
+      - "Accept/revert versus undo/redo semantics and selection restoration"
+      - "Transport disconnect/reconnect, duplicate delivery, payload limits, and accessibility"
+      - "Clean serialization without protocol or review artifacts"
+    existing_plan_facts:
+      - "Define commands for adding and replacing SVG layers, renaming, reordering, setting paint, and selecting/focusing."
+      - "Reflect logo-designer agent changes in the open canvas without reload."
+      - "Preserve undo/redo across agent-authored changes."
+      - "Show which layers the agent changed and allow accept or revert."
+      - "Prove generate → manual refine → targeted agent adjustment → clean export end to end."
+      - "Keep manual vector/path creation out of the MVP UI."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  exact_human_approval_can_terminal_wait: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/agent-canvas-integration/"
+    command: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.4.3/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/agent-canvas-integration"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the user-provided MVP plan against the merged repository and turn any discovered constraints into exact implementation contracts and safe Worker boundaries."
+    inputs:
+      - "docs/goals/agent-canvas-integration/goal.md"
+      - "README.md"
+      - "package.json"
+      - "Current main branch and merged manual-correction implementation"
+    constraints:
+      - "Read-only; do not implement."
+      - "Preserve the existing-plan facts unless evidence shows a conflict."
+      - "Identify product, protocol, security, fidelity, history, and transport risks with file-path evidence."
+      - "Resolve whether the existing server/preview path can host the local agent transport before proposing new infrastructure."
+    expected_output:
+      - "Validated architecture and integration boundary"
+      - "Command envelope and transaction semantics"
+      - "Conflict, sanitization, and trust decisions"
+      - "Exact allowed_files, verify, and stop_if refinements for T002-T006"
+      - "Deferred and out-of-scope list"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "The merged manual editor has a viable local-first integration boundary: the existing loopback API can own authenticated ingress, delivery, acknowledgements, and idempotency; a strict shared protocol can validate transactions; and the client can stage changes on a detached SVG clone before committing through SvgEditor’s snapshot/history path. Sequential T002-T006 slices are safe with the refinements below. Two fidelity conflicts must be corrected: loading currently removes root width/height, and saving injects metadata#lineage-logo-edit, both contrary to the new clean-faithful-export oracle. Agent SVG must be rejected, never silently sanitized, when active/external content or reference damage is detected."
+      evidence:
+        - area: repository_state
+          finding: "origin/main is ef24a00, merging 6581ced; HEAD is the merged feature commit and has an identical tree to origin/main. Local main is stale at d940ac5 but does not affect this read-only validation."
+        - area: integration_boundary
+          finding: "Use the existing loopback Node server, not new infrastructure. src/server/index.ts:15,100-153 already binds 127.0.0.1, owns /api routes, workspace scope, JSON parsing, CSP, and static production hosting; vite.config.ts:16-22 already proxies /api in development; scripts/dev.ts:32-58 already coordinates dynamic API/editor ports and lifecycle. Add transport within this boundary, factoring route/state logic into an importable server module."
+        - area: editor_boundary
+          finding: "Keep SvgEditor authoritative for the accepted document, selection, dirty state, and history. src/client/canvas/editor.ts:521-536 initializes the canonical SVG and session keys; 653-684 owns undo/redo/reset/clean serialization; 1023-1069 centralizes checkpoints and document notifications; 1304-1359 snapshots/restores markup, scope, primary selection, and multi-selection. Do not let transport or the adapter mutate DOM directly."
+        - area: history_capability
+          finding: "src/client/history/history.ts:1-38 stores opaque snapshots and already supports a transaction-sized checkpoint. A staged candidate can therefore remain outside history, acceptance can checkpoint once, and revert can discard without a history entry. Revision must be a separate monotonic concurrency token because restoring an older snapshot must not roll revision backward."
+        - area: stable_targeting
+          finding: "src/client/canvas/editor.ts:852-868 assigns unique session-only data-lineage-key values and serializeSvg strips data-lineage attributes at 127-158. Publish these keys in an authenticated current-document manifest and use them as transaction targets; never require persistent SVG IDs and never export keys."
+        - area: command_contract
+          finding: "Protocol v1 envelope: {protocolVersion:1, transactionId, producer:{kind,name,version?}, document:{sessionId,sourcePath,baseRevision}, operations:[...]}. Require strict fields, transaction/operation IDs of bounded length, 1-100 operations, and <=5 MiB encoded payload. LayerRef is either {sessionKey} or {operationId} referencing an earlier structural operation. Operations are addLayer(parent,placement,svg), replaceLayer(target,svg), renameLayer(target,name|null), reorderLayer(target,before|after sibling), setPaint(target,fill|stroke,value|null), and selectFocus(targets,primary?,scope?). Unknown versions, operations, fields, forward references, missing/ambiguous targets, invalid placement, and all-no-op mutating transactions are structured rejections."
+        - area: atomicity_and_results
+          finding: "Parse and apply operations sequentially to a detached clone of the current accepted SVG. Each structural operation yields a transaction-local result reference. Validate the complete candidate, IDs, local references, locks, resulting selection, and byte limit before exposing a preview. Any failure discards the clone and returns {transactionId,status:'rejected',error:{code,message,operationId?,path?}} with no document, selection, revision, dirty, or history mutation. Success returns an impact manifest keyed by operationId and affected session keys. Mutating transactions become pending_review; navigation-only selectFocus transactions may apply immediately without revision/history."
+        - area: revision_and_review_semantics
+          finding: "Each file load creates a new document sessionId at revision 0. Every canonical manual mutation, accepted agent transaction, undo, redo, or content-changing reset increments revision monotonically once; preview/revert/navigation do not. Delivery must match sessionId, sourcePath, and exact baseRevision at the client. Permit only one pending mutating transaction; freeze document-mutating controls while pending. Accept checkpoints the pre-accept editor snapshot once, commits the whole candidate, applies requested focus, marks dirty, and increments revision once. Revert discards preview, restores exact pre-preview context, creates no history entry, and leaves revision/dirty unchanged. Undo after accept restores the pre-accept SVG and selection and increments revision; redo likewise."
+        - area: idempotency_and_transport
+          finding: "Use POST /api/agent/transactions for bearer-authenticated producer submission, GET /api/agent/document for the authenticated current manifest, GET /api/agent/events as the same-origin SSE stream, browser acknowledgement/state endpoints protected by exact editor origin, and authenticated GET status for producers. Store transactionId plus payload hash and lifecycle state in a bounded in-memory registry. Exact duplicates return prior status without delivery; same ID with different bytes returns id_conflict. SSE uses monotonic event IDs, Last-Event-ID replay, heartbeat, a bounded backlog, 15-second delivery/staging timeout, and terminal states pending_review/accepted/reverted/rejected/stale/disconnected. Reconnect may resume undelivered events but must never redeliver terminal/applied transactions."
+        - area: trust_and_sanitization
+          finding: "Generate a high-entropy bearer token at local server startup or accept an explicit environment/CLI token; print it for the adapter, never place it in URLs or browser state, compare it safely, bind only loopback, require application/json, and emit no CORS allowance. Browser stream/ack routes require the dynamically configured editor origin; vite.config.ts:20 must stop hard-coding port 5173. Treat all agent SVG as untrusted. Parse as SVG XML and reject the entire transaction for parser errors, multiple fragment roots, script, foreignObject, SMIL animation, event handlers, style elements/attributes in the MVP, external href/src/url, unsupported namespaces, or over-limit content. Never strip or normalize rejected content silently."
+        - area: reference_integrity
+          finding: "For add/replace, require exactly one selectable top-level layer, while allowing safe unsupported descendants/resources to round-trip. Newly introduced IDs must not create collisions; newly introduced #references must resolve exactly once in the candidate; replacing/removing IDs referenced outside the targeted subtree is rejected unless the replacement preserves those IDs. Existing untouched duplicate IDs or unsupported constructs are preserved rather than globally rewritten. setPaint accepts null/inherited or validated SVG paint and permits url(#id) only when the local target resolves exactly once. Locked targets or descendants are rejected; hidden targets may be staged and must remain locatable in review."
+        - area: fidelity_conflict
+          finding: "src/client/main.ts:478-482 removes source width and height before editor.load, so clean saves lose explicit root attributes. T004 must preserve them and use CSS/layout-only sizing. src/server/workspace.ts:92,113-123 injects metadata#lineage-logo-edit, README.md:94-95 promises it, and tests/workspace.test.ts:86-89 requires it; the newer goal explicitly forbids editor metadata. T004 must remove this injection, strip legacy reserved lineage-logo metadata on clean save, update README/tests, and preserve all unrelated source metadata."
+        - area: T002_refinement
+          finding: "Objective: deliver the strict v1 schema and detached-clone atomic evaluator, plus a minimal SvgEditor validation/staging hook without transport or review UI. allowed_files: src/shared/agent-protocol.ts, src/client/agent/transaction.ts, src/client/canvas/editor.ts, tests/agent-protocol.test.ts, tests/agent-transaction.test.ts, tests/editor-serialization.test.ts, tests/fidelity.test.ts, README.md, package.json, package-lock.json. verify: npm run typecheck; npm run test; npm run build; git diff --check. stop_if: candidate application cannot remain detached/atomic; safe fragment validation would require silently dropping content; target/reference integrity cannot be proven; files outside this list are required. Tests must cover every operation, operation references, unknown version/op/field, malformed and oversized payloads, locked/ambiguous/missing targets, invalid SVG, active/external content, ID/reference breakage, no-op rejection, rollback after a late-operation failure, and preservation of untouched unsupported content."
+        - area: T003_refinement
+          finding: "Objective: deliver authenticated local producer ingress, current-document manifest synchronization, SSE delivery, acknowledgements/status, reconnect, dedupe, and no-reload staging through the T002 API. allowed_files: src/server/index.ts, src/server/agent-transport.ts, src/server/http.ts, src/shared/agent-protocol.ts, src/client/agent/transport.ts, src/client/main.ts, scripts/dev.ts, vite.config.ts, tests/agent-transport.test.ts, tests/workspace.test.ts, README.md, package.json, package-lock.json. verify: npm run check; npm audit --audit-level=high; git diff --check; automated real-HTTP smoke covering token/origin failures, ordering, same/different-payload duplicate IDs, Last-Event-ID reconnect, timeout/backlog/payload limits, disconnect, and browser acknowledgement; run launcher with default API and editor ports occupied and verify selected ports plus child cleanup. stop_if: deterministic ack/order or dynamic-origin enforcement cannot be achieved; secret must enter URL/browser state; delivery bypasses T002; files outside the list are required."
+        - area: T004_refinement
+          finding: "Objective: integrate pending candidate, accept/revert, monotonic revision, locks, selection/focus restoration, and transaction-sized history; repair full save/reopen fidelity. allowed_files: src/client/canvas/editor.ts, src/client/agent/transaction.ts, src/client/agent/session.ts, src/client/history/history.ts, src/client/main.ts, src/shared/agent-protocol.ts, src/server/workspace.ts, tests/agent-history.test.ts, tests/editor-serialization.test.ts, tests/fidelity.test.ts, tests/history.test.ts, tests/workspace.test.ts, tests/fixtures/**, README.md. verify: npm run check; git diff --check; focused history tests proving failed/reverted transactions create no checkpoint, accept creates exactly one, undo/redo restore SVG/hierarchy/scope/multi-selection while revision remains monotonic; structural save/reopen comparisons for root width/height, IDs/references, defs/gradients, transforms, text, style-bearing untouched source, use/symbol, custom attributes, and unsupported safe elements; assert no data-lineage, agent/review/transport attributes, or metadata#lineage-logo-edit in export. stop_if: preview touches canonical/export state before accept; revision can roll backward; any untargeted source loss/reference break occurs; clean-export conflict remains unresolved; files outside the list are required."
+        - area: T005_refinement
+          finding: "Objective: build one accessible pending-review mode over the isolated candidate, with accurate transaction/per-layer impact, preview toggle, focus navigation, Accept all, and Revert. allowed_files: src/client/main.ts, src/client/styles.css, src/client/index.html, src/client/canvas/editor.ts, src/client/agent/transaction.ts, src/client/agent/transport.ts, src/client/agent/review.ts, tests/agent-review.test.ts, tests/editor-serialization.test.ts, README.md. verify: npm run check; git diff --check; browser QA at 1280x720 and 980x720 with no clipped core actions; keyboard-only and screen-reader-name/state/live-region walkthrough; clean console; preview-versus-export assertion; nested, hidden, locked, and multi-selected fixtures; pending, accepted, reverted, failed, stale, and disconnected states. stop_if: preview cannot remain isolated; manual mutation is possible while pending; impacted layers cannot be located in both canvas and hierarchy; accept/revert semantics diverge from T004; files outside the list are required."
+        - area: T006_refinement
+          finding: "Objective: inspect the external logo-designer skill only now, implement a thin CLI adapter that reads its produced SVG/artifact and submits the exact public v1 protocol, and prove the complete oracle through the real server, stream, editor, and review UI. allowed_files: src/**, scripts/logo-designer-adapter.ts, scripts/**, tests/**, fixtures/**, docs/agent-canvas.md, docs/oracle/**, README.md, package.json, package-lock.json, vite.config.ts. verify: npm run check; npm audit --audit-level=high; git diff --check; adapter invocation against the running authenticated API; automated end-to-end test through real HTTP/SSE and editor transaction API; real-browser generate/load -> live add/replace -> review -> revert -> resend/accept -> undo/redo -> manual refine -> targeted adjustment -> accept -> save -> reopen walkthrough with clean console; structural compare and hash the exported artifact, proving explicit deltas only and no lineage/agent/review/transport metadata. stop_if: external skill cannot be adapted without modifying/publishing its repository; adapter imports editor internals or bypasses public transport; oracle uses mocked delivery/application; representative simple, nested, transformed, gradient, text, and unsupported-safe fixtures fail; files outside the list are required."
+        - area: deferred_out_of_scope
+          finding: "Defer hosted/remote transport, multi-user or multi-editor concurrency, durable transaction persistence across server restarts, CRDT/merge conflict resolution, cryptographic signing beyond the local bearer, partial/per-operation acceptance, arbitrary CSS/style/animation authoring, manual path/freehand creation, publishing or modifying the external skill, and production credentials. The MVP accepts/reverts an entire atomic transaction only."
+      parallel_safety:
+        safe: false
+        reason: "T002-T006 are dependency-ordered vertical slices and intentionally overlap src/client/canvas/editor.ts, src/client/main.ts, shared protocol types, and tests. Parallel Workers would race contracts and history/review semantics; execute sequentially."
+      missing_evidence:
+        - "No T002-T006 implementation receipts or verification exist yet."
+        - "The real logo-designer skill behavior and adapter fit are intentionally deferred to T006."
+        - "No real-browser oracle walkthrough or clean exported artifact exists yet."
+      required_board_updates:
+        - task_id: T001
+          updates: "Store this receipt and mark T001 done.,Record the architecture, protocol, revision, trust, sanitization, reference-integrity, and accept/revert decisions as binding downstream inputs."
+        - task_id: T002
+          updates: "Replace broad allowed_files/verify/stop_if with the T002 refinement in evidence.,Activate T002 as the next and only active task."
+        - task_id: T003
+          updates: "Apply the exact T003 file boundary and transport verification matrix before activation."
+        - task_id: T004
+          updates: "Expand allowed_files to src/server/workspace.ts and tests/workspace.test.ts so the clean-export metadata contradiction and root width/height loss can be fixed in the fidelity/history slice.,Apply the exact T004 verification matrix before activation."
+        - task_id: T005
+          updates: "Apply the exact isolated-preview, accessibility, responsive QA, allowed_files, and stop_if refinements before activation."
+        - task_id: T006
+          updates: "Apply the exact thin-adapter, real-path oracle, artifact evidence, allowed_files, and stop_if refinements before activation."
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Deliver the strict v1 schema and detached-clone atomic evaluator, plus a minimal SvgEditor validation/staging hook without transport or review UI."
+    inputs:
+      - "T001 receipt and approved contracts"
+      - "Existing editor model, history, server routes, and serialization tests"
+    constraints:
+      - "No transport or review UI in this slice beyond minimal integration hooks."
+      - "Commands must be typed, versioned, attributable, and reject unknown versions or operations."
+      - "A transaction is all-or-nothing and returns structured success or error details."
+      - "Duplicate transaction IDs must be idempotent or explicitly rejected without replay."
+      - "Stale document revisions must not overwrite newer manual changes."
+      - "Reject active/external SVG content and reference damage; never silently sanitize."
+      - "Tests cover every operation and reference form, strict parsing, limits, locks, missing/ambiguous targets, unsafe SVG, ID/reference damage, no-op rejection, late-failure rollback, and untouched unsupported content."
+    expected_output:
+      - "Strict documented protocol v1 envelope, operation schema, and structured result model"
+      - "Add/replace layer, rename, reorder, set paint, and select/focus operations"
+      - "Validation and structured error behavior"
+      - "Detached-clone atomic transaction evaluator and minimal SvgEditor staging hook"
+      - "Contract, fidelity, and negative-path tests"
+    allowed_files:
+      - "src/shared/agent-protocol.ts"
+      - "src/client/agent/transaction.ts"
+      - "src/client/canvas/editor.ts"
+      - "tests/agent-protocol.test.ts"
+      - "tests/agent-transaction.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/fidelity.test.ts"
+      - "README.md"
+      - "package.json"
+      - "package-lock.json"
+    verify:
+      - "npm run typecheck"
+      - "npm run test"
+      - "npm run build"
+      - "git diff --check"
+    stop_if:
+      - "Candidate application cannot remain detached and atomic."
+      - "Safe fragment validation would require silently dropping content."
+      - "Target or reference integrity cannot be proven."
+      - "Need files outside allowed_files."
+      - "Verification fails twice for the same unresolved cause."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - src/shared/agent-protocol.ts
+        - src/client/agent/transaction.ts
+        - src/client/canvas/editor.ts
+        - tests/agent-protocol.test.ts
+        - tests/agent-transaction.test.ts
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npm run test"
+          status: pass
+        - cmd: "npm run build"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      summary: "Implemented strict protocol v1 parsing, typed operations/results, payload and schema limits, detached atomic SVG evaluation, structured rejection, stale-document and lock enforcement, safe fragment validation, ID/reference integrity, operation-result references, no-op rejection, selection intent, and a minimal SvgEditor staging hook. Added comprehensive protocol and transaction tests; all 84 tests pass."
+      remaining_blockers: []
+      verification_attempts: 3
+      stopped_because: null
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Deliver authenticated local producer ingress, current-document manifest synchronization, SSE delivery, acknowledgements/status, reconnect, dedupe, and no-reload staging through the T002 API."
+    inputs:
+      - "T002 receipt and transaction API"
+      - "Existing local preview server and development launcher"
+    constraints:
+      - "Use the simplest local-first transport supported by repository evidence."
+      - "Do not require hosted services, accounts, or production credentials."
+      - "Reconnect must not duplicate already-applied transactions."
+      - "Transport failure must be visible and must not corrupt document state."
+      - "Define payload and timeout limits and return actionable errors."
+      - "Keep the bearer secret out of URLs and browser state; enforce the dynamically configured editor origin."
+      - "Test real HTTP behavior for authentication, origin, ordering, duplicate IDs, replay, timeout, backlog, payload limits, disconnect, and browser acknowledgement."
+    expected_output:
+      - "Bearer-authenticated producer submission and current-document manifest endpoints"
+      - "SSE open-canvas delivery with structured acknowledgement and status"
+      - "Revision and transaction ID synchronization"
+      - "Disconnect/reconnect and duplicate-delivery handling"
+      - "Integration tests proving live update without reload"
+    allowed_files:
+      - "src/server/index.ts"
+      - "src/server/agent-transport.ts"
+      - "src/server/http.ts"
+      - "src/shared/agent-protocol.ts"
+      - "src/client/agent/transport.ts"
+      - "src/client/main.ts"
+      - "scripts/dev.ts"
+      - "vite.config.ts"
+      - "tests/agent-transport.test.ts"
+      - "tests/workspace.test.ts"
+      - "README.md"
+      - "package.json"
+      - "package-lock.json"
+    verify:
+      - "npm run check"
+      - "npm audit --audit-level=high"
+      - "git diff --check"
+      - "Run automated real-HTTP transport smoke covering token/origin failures, ordering, duplicate IDs, Last-Event-ID reconnect, timeout/backlog/payload limits, disconnect, and browser acknowledgement"
+      - "Run the launcher with default API and editor ports occupied; verify selected ports and child cleanup"
+    stop_if:
+      - "Deterministic acknowledgement/order or dynamic-origin enforcement cannot be achieved."
+      - "The bearer secret would need to enter a URL or browser state."
+      - "Delivery would bypass the T002 transaction API."
+      - "Need files outside allowed_files."
+      - "Verification fails twice for the same unresolved cause."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - scripts/dev.ts
+        - src/client/agent/transport.ts
+        - src/client/main.ts
+        - src/server/agent-transport.ts
+        - src/server/http.ts
+        - src/server/index.ts
+        - src/shared/agent-protocol.ts
+        - tests/agent-transport.test.ts
+        - vite.config.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm audit --audit-level=high"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "npm run test -- tests/agent-transport.test.ts"
+          status: pass
+        - cmd: "occupied-port lifecycle harness: npm run dev -- --workspace \"$PWD/tests/fixtures/workspace\"; verify dynamic API/editor ports and child cleanup"
+          status: pass
+      summary: "Implemented bearer-authenticated producer submission, current-document manifests, exact-origin browser routes, ordered SSE delivery, acknowledgements/status, payload hashing and dedupe, Last-Event-ID replay, bounded registry/backlog, timeouts, disconnect handling, and dynamic editor-origin forwarding. Wired the browser to publish revision manifests and stage live deliveries through the detached T002 evaluator without reload or canonical mutation. Added five real-HTTP transport tests; all 89 tests pass and occupied-port launcher cleanup succeeds."
+      remaining_blockers: []
+      verification_attempts: 3
+      stopped_because: null
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Integrate pending candidates, accept/revert, monotonic revision, locks, selection/focus restoration, and transaction-sized history; repair full save/reopen fidelity."
+    inputs:
+      - "T002-T003 receipts"
+      - "Existing undo/redo, selection, session-key, hierarchy, and serialization behavior"
+    constraints:
+      - "One agent transaction produces one coherent history checkpoint."
+      - "Failed or rejected transactions produce no document or history mutation."
+      - "Undo/redo restores document, hierarchy, relevant selection/focus, and revision truth."
+      - "Agent/review metadata must never leak into exported SVG."
+      - "Preserve IDs, references, transforms, resources, unsupported elements, and attributes."
+      - "Preserve explicit root width/height through load and save using layout-only sizing."
+      - "Remove metadata#lineage-logo-edit injection, strip legacy reserved lineage-logo metadata on clean save, and preserve unrelated metadata."
+    expected_output:
+      - "Implemented pending/accept/revert/undo/redo semantics with monotonic revision"
+      - "Transaction-level history integration"
+      - "Selection and focus restoration behavior"
+      - "Clean serialization and save/reopen fidelity"
+      - "Expanded history and fidelity regression tests"
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "src/client/agent/transaction.ts"
+      - "src/client/agent/session.ts"
+      - "src/client/history/history.ts"
+      - "src/client/main.ts"
+      - "src/shared/agent-protocol.ts"
+      - "src/server/workspace.ts"
+      - "tests/agent-history.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/fidelity.test.ts"
+      - "tests/history.test.ts"
+      - "tests/workspace.test.ts"
+      - "tests/fixtures/**"
+      - "README.md"
+    verify:
+      - "npm run check"
+      - "git diff --check"
+      - "Focused history tests prove failed/reverted transactions create no checkpoint, accept creates exactly one, undo/redo restore SVG/hierarchy/scope/multi-selection, and revision remains monotonic"
+      - "Structural save/reopen comparisons preserve root width/height, IDs/references, defs/gradients, transforms, text, untouched style-bearing source, use/symbol, custom attributes, and safe unsupported elements"
+      - "Assert export contains no data-lineage, agent/review/transport attributes, or metadata#lineage-logo-edit"
+    stop_if:
+      - "Preview touches canonical or exported state before acceptance."
+      - "Revision can roll backward."
+      - "Any untargeted source loss or reference break occurs."
+      - "The clean-export metadata conflict remains unresolved."
+      - "Need files outside allowed_files."
+      - "Verification fails twice for the same unresolved cause."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - src/client/agent/session.ts
+        - src/client/canvas/editor.ts
+        - src/client/history/history.ts
+        - src/client/main.ts
+        - src/server/workspace.ts
+        - src/shared/agent-protocol.ts
+        - tests/agent-history.test.ts
+        - tests/editor-serialization.test.ts
+        - tests/fidelity.test.ts
+        - tests/workspace.test.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "npm run test -- tests/agent-history.test.ts tests/history.test.ts"
+          status: pass
+        - cmd: "npm run test -- tests/editor-serialization.test.ts tests/fidelity.test.ts tests/workspace.test.ts"
+          status: pass
+      summary: "Implemented isolated pending candidates, whole-transaction accept/revert, mutation freezing, navigation-only focus, one-checkpoint acceptance, monotonic session revision, and selection/scope restoration through undo/redo. Preserved root width/height via layout-only sizing, serialized manifest updates in revision order, removed provenance injection, and stripped only reserved lineage/agent/review/transport state while preserving unrelated metadata and SVG structure. All 96 tests pass, including focused history and structural save/reopen proofs."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: blocked
+    resolved_by: T008
+    reasoning_hint: medium
+    objective: "Build one accessible pending-review mode over the isolated candidate, with accurate transaction/per-layer impact, preview toggle, focus navigation, Accept all, and Revert."
+    inputs:
+      - "T002-T004 receipts"
+      - "Existing layer panel, inspector, notifications, responsive toolbar, and accessibility patterns"
+    constraints:
+      - "Review state must distinguish pending, accepted, reverted, failed, stale, and disconnected outcomes."
+      - "Affected layers must be locatable from both canvas and layer hierarchy."
+      - "Preview must never mutate the persisted/exported document before acceptance."
+      - "Keyboard and screen-reader users must receive equivalent status, navigation, and actions."
+      - "Fit within existing 980px and 1280px QA viewports without clipping core actions."
+      - "Freeze all manual document mutations while a review is pending."
+    expected_output:
+      - "Pending-review panel with transaction summary and accurate per-layer impact"
+      - "Canvas/layer highlighting and focus navigation"
+      - "Accept all and revert controls with clear consequences"
+      - "Stale/conflict and transport failure messaging"
+      - "Responsive and accessibility coverage"
+    allowed_files:
+      - "src/client/main.ts"
+      - "src/client/styles.css"
+      - "src/client/index.html"
+      - "src/client/canvas/editor.ts"
+      - "src/client/agent/transaction.ts"
+      - "src/client/agent/transport.ts"
+      - "src/client/agent/review.ts"
+      - "tests/agent-review.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "README.md"
+    verify:
+      - "npm run check"
+      - "git diff --check"
+      - "Browser QA at 1280x720 and 980x720"
+      - "Keyboard-only and accessible-name/state walkthrough"
+      - "Browser console remains clear"
+      - "Assert preview content never appears in exported SVG before acceptance"
+      - "Exercise nested, hidden, locked, and multi-selected fixtures plus pending, accepted, reverted, failed, stale, and disconnected states"
+    stop_if:
+      - "Review preview cannot be isolated from persistent document state."
+      - "Manual document mutation remains possible while pending."
+      - "Impacted layers cannot be located in both canvas and hierarchy."
+      - "Accept/revert semantics diverge from T004."
+      - "Need files outside allowed_files."
+      - "Verification fails twice for the same unresolved cause."
+    receipt:
+      result: blocked
+      changed_files:
+        - README.md
+        - src/client/agent/review.ts
+        - src/client/canvas/editor.ts
+        - src/client/main.ts
+        - src/client/styles.css
+        - tests/agent-review.test.ts
+        - tests/editor-serialization.test.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm run test -- tests/agent-review.test.ts tests/editor-serialization.test.ts"
+          status: pass
+        - cmd: "real-browser pending-review walkthrough at 1280x720 and 980x720 through npm run dev"
+          status: fail
+      summary: "Implemented the accessible pending-review panel, isolated preview surface, impact model/list, canvas and hierarchy highlighting, keyboard-focusable locate/preview/accept/revert controls, mutation freezing, and all required outcome models. Automated tests pass: 104 total and 55 focused. Real-browser delivery is blocked before T005 UI activation because SSE events open through Vite but later transaction frames never reach the browser; transactions remain delivered and time out."
+      remaining_blockers:
+        - "Fixing live SSE delivery requires src/server/agent-transport.ts or vite.config.ts, neither allowed by T005. Two fresh-launch browser runs reproduced the same failure, while the browser connected cleanly and authenticated submissions returned 202."
+      verification_attempts: 2
+      stopped_because: "Need files outside allowed_files to repair the T003 SSE dev-proxy delivery path required for T005 real-browser verification."
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Repair live SSE delivery through the development proxy, then complete the blocked T005 real-browser review verification without changing its review semantics."
+    inputs:
+      - "T003 transport implementation and tests"
+      - "T004 accepted/reverted/history semantics"
+      - "T005 blocked receipt and implemented review UI"
+    constraints:
+      - "Preserve exact-origin enforcement, bearer separation, replay, dedupe, timeout, and disconnect behavior."
+      - "Do not bypass the real server, SSE stream, transaction staging API, or review UI."
+      - "Keep preview isolated and all manual document mutations frozen while review is pending."
+      - "Limit changes to the transport/proxy defect and any tests needed to prove the repair."
+    expected_output:
+      - "Live transaction frames reach the browser through Vite after the SSE connection opens"
+      - "T005 pending-review UI activates from a real authenticated submission"
+      - "Passing responsive, keyboard, accessibility, console, preview-isolation, and outcome browser checks"
+    allowed_files:
+      - "src/server/agent-transport.ts"
+      - "src/server/http.ts"
+      - "src/client/agent/transport.ts"
+      - "vite.config.ts"
+      - "tests/agent-transport.test.ts"
+      - "tests/agent-review.test.ts"
+      - "README.md"
+    verify:
+      - "npm run check"
+      - "npm audit --audit-level=high"
+      - "git diff --check"
+      - "Browser QA at 1280x720 and 980x720 through the real development proxy"
+      - "Keyboard-only and accessible-name/state walkthrough"
+      - "Browser console remains clear"
+      - "Assert preview content never appears in exported SVG before acceptance"
+      - "Exercise pending, accepted, reverted, failed, stale, and disconnected outcomes"
+    stop_if:
+      - "Repair would weaken authentication, exact-origin enforcement, replay, dedupe, or timeout semantics."
+      - "Verification would require bypassing the development proxy or real SSE transport."
+      - "Need files outside allowed_files."
+      - "Verification fails twice for the same unresolved cause."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - src/server/agent-transport.ts
+        - tests/agent-transport.test.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm audit --audit-level=high"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "npm run test -- tests/agent-transport.test.ts"
+          status: pass
+        - cmd: "real-browser review walkthrough through Vite at 1280x720 and 980x720"
+          status: pass
+        - cmd: "real-browser offline fault injection for disconnected outcome"
+          status: pass
+      summary: "Repaired SSE-through-Vite delivery by enforcing the MVP’s single authoritative editor stream: each new exact-origin SSE connection replaces proxy-retained older subscribers, preventing stale responses from claiming delivery. Added a concurrent-subscriber regression test. Real-browser authenticated submissions now activate review through Vite; responsive, keyboard, accessible-name/state, mutation-freeze, preview-isolation, hierarchy/canvas location, accept/revert, stale, failed, disconnected, and clean-console checks pass. All 105 tests pass with zero high-severity audit findings."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Connect the logo-designer skill through a thin local adapter and prove the full generate, manual-refine, targeted-agent-adjustment, review, and clean-export workflow."
+    inputs:
+      - "T002-T005 and T008 receipts"
+      - "The logo-designer skill repository named in the project history"
+      - "Representative simple, nested, transformed, gradient, text, and unsupported-content SVG fixtures"
+    constraints:
+      - "Inspect external skill behavior only during this execution task, not during Goal Prep."
+      - "Keep repository-specific coupling in a thin documented adapter."
+      - "Do not require publishing or modifying the external skill repository to prove the local MVP."
+      - "Agent output must use the same public command contract exercised by tests."
+      - "Record any external-skill changes as a separately approved follow-up if they are required."
+    expected_output:
+      - "Local adapter and documented invocation path"
+      - "Representative agent command fixtures"
+      - "Automated end-to-end integration test"
+      - "Real-browser oracle walkthrough receipt"
+      - "Clean exported artifact that reopens with fidelity"
+    allowed_files:
+      - "src/**"
+      - "scripts/logo-designer-adapter.ts"
+      - "scripts/**"
+      - "tests/**"
+      - "fixtures/**"
+      - "docs/agent-canvas.md"
+      - "docs/oracle/**"
+      - "README.md"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+    verify:
+      - "npm run check"
+      - "npm audit --audit-level=high"
+      - "git diff --check"
+      - "Invoke the adapter against the running authenticated API"
+      - "Run automated end-to-end coverage through real HTTP/SSE and the editor transaction API"
+      - "Run the complete oracle walkthrough in a real browser with a clean console"
+      - "Save, reopen, structurally compare, and hash the exported SVG, proving explicit deltas only and no lineage/agent/review/transport metadata"
+    stop_if:
+      - "The logo-designer skill cannot emit or be adapted to the approved command contract without modifying an out-of-scope external repository."
+      - "The adapter imports editor internals or bypasses the public transport."
+      - "The oracle relies on a mock path that bypasses the real transport or editor transaction API."
+      - "Representative simple, nested, transformed, gradient, text, or unsupported-safe fixtures fail."
+      - "Need files outside allowed_files."
+      - "Verification fails twice for the same unresolved cause."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - package.json
+        - docs/agent-canvas.md
+        - docs/oracle/T006-logo-designer.md
+        - scripts/logo-designer-adapter.ts
+        - src/client/agent/transaction.ts
+        - src/client/agent/transport.ts
+        - src/client/canvas/editor.ts
+        - src/server/agent-transport.ts
+        - tests/agent-transaction.test.ts
+        - tests/agent-transport.test.ts
+        - tests/fixtures/agent/logo-designer-output.svg
+        - tests/logo-designer-adapter.test.ts
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm audit --audit-level=high"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "LINEAGE_LOGO_AGENT_TOKEN=t006-oracle-secret npm run agent:submit -- --api http://127.0.0.1:4383 --mode replace --artifact tests/fixtures/agent/logo-designer-output.svg --selector '#logo' --target-name 'Logo concept' --transaction-id verify-public-adapter"
+          status: pass
+        - cmd: "node --input-type=module <<'NODE' (T006 real Chromium HTTP/SSE/editor oracle) NODE"
+          status: pass
+      summary: "Implemented the thin public-protocol logo-designer adapter, resource-aware SVG extraction, representative fixture, documentation, and authenticated HTTP/SSE/editor E2E coverage. Repaired Vite SSE delivery using replay-aware streamed fetch without CORS allowance or weakened origin/auth/dedupe semantics. The Chromium oracle passed revert, resend/accept, undo/redo, manual and targeted edits, keyboard review, two viewports, save/reopen, structural hash comparison, clean console, and metadata-leak checks. All 111 tests, build, audit, and diff checks pass."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T007
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Run an adversarial release-candidate audit across protocol, security, fidelity, history, transport, review UX, accessibility, and the complete oracle workflow; create exact remediation work if anything is weak."
+    inputs:
+      - "T001-T006 receipts"
+      - "All current diffs and verification output"
+      - "Oracle walkthrough artifacts"
+    constraints:
+      - "Read-only; do not implement."
+      - "Attempt malformed, duplicate, stale, reordered, disconnected, unsupported-content, hidden-layer, locked-layer, and undo/redo cases."
+      - "Reject completion for mocked evidence, partial transaction behavior, serialization leaks, inaccessible review controls, or unverified reconnect semantics."
+    expected_output:
+      - "Adversarial findings ranked by severity"
+      - "Pass/fail mapping to every oracle clause"
+      - "Exact remediation Worker task(s) if needed"
+      - "Recommendation to proceed to final audit or continue implementation"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      rationale: "Not ready for final audit. The full automated gate passes, but adversarial probes exposed two high-severity transaction-lifecycle failures: browser accept/revert never reaches the producer-visible server status, and a disconnect after receiving an SSE frame but before acknowledgement can permanently strand that transaction. Pending review can also be orphaned by switching files, and valid explicit replacement of a self-contained layer with internal resources is incorrectly rejected. The recorded browser oracle is credible but lacks a durable exported artifact or replayable harness. One coherent remediation Worker package can close these gaps without changing the approved architecture; T999 must remain queued until it passes."
+      evidence:
+        - area: verification
+          severity: pass
+          finding: "Independent npm run check passed typecheck, 10 test files, 111 tests, and production build. npm audit --audit-level=high reported 0 vulnerabilities. git diff --check passed. These gates are useful but do not exercise terminal review acknowledgements, the receive-before-ack reconnect window, pending file switches, or self-contained resource replacement."
+        - area: terminal_review_ack
+          severity: high
+          finding: "Accept/revert is only local. src/client/main.ts:468-483 calls AgentSession.accept/revert and updates local review state, but AgentCanvasTransport exposes only the staging acknowledgement at src/client/agent/transport.ts:73-86. src/server/agent-transport.ts:194-210 accepts acknowledgements only while status is delivered and only understands rejected/staged/applied; it has no pending_review -> accepted/reverted transition. An independent real-HTTP probe staged terminal-audit, attempted an accepted acknowledgement, then queried producer status; staged, terminalAttempt, and producerStatus all remained pending_review. This violates structured acknowledgement and makes the agent unable to learn the human decision."
+        - area: reconnect_loss
+          severity: high
+          finding: "src/client/agent/transport.ts:58-60 advances Last-Event-ID before transaction acknowledgement succeeds. On disconnect, src/server/agent-transport.ts:159-170 resets delivered to queued, but reconnect replay at 152-157 sends only event.id > Last-Event-ID. An independent real-HTTP probe received event 1, disconnected before ack, reconnected with Last-Event-ID 1, and received only the connected comment while producer status remained queued. The unacknowledged transaction is therefore not replayed. Existing reconnect tests cover queued event 2 after Last-Event-ID 1, not this required receive-before-ack fault window."
+        - area: pending_document_switch
+          severity: medium
+          finding: "The pending mutation freeze is incomplete. src/client/main.ts:602-619 permits file buttons while a proposal is pending and checks only dirty manual edits. openSvg at 626-675 replaces the canonical document and AgentSession.open clears pending state without a review decision or server acknowledgement. This can leave the producer status pending_review, stale review UI, and a proposal detached from its document. File switching is a document mutation and must be blocked or explicitly revert the pending transaction first."
+        - area: explicit_replacement_references
+          severity: medium
+          finding: "src/client/agent/transaction.ts:135-148 treats every pre-transaction reference as a permanent obligation, even references wholly inside an explicitly replaced subtree. An independent probe replaced a self-contained logo group containing old-gradient plus its internal url(#old-gradient) with a self-contained group using new-gradient; evaluation incorrectly returned reference_damage for old-gradient. External references must remain protected, but references removed together with their explicitly replaced owner should not block a valid logo-designer replacement."
+        - area: backlog_lifecycle
+          severity: low
+          finding: "src/server/agent-transport.ts:129 counts all historical events against maxBacklog, while terminal events are never removed from #events. A long-lived local session eventually rejects every new submission even after earlier transactions finish. Remediation should retain bounded idempotency records while pruning terminal events from the active delivery backlog."
+        - area: oracle_artifact_strength
+          severity: medium
+          finding: "docs/oracle/T006-logo-designer.md records a real Chromium flow, exact hash, structural assertions, viewports, keyboard operation, and clean console, and T006 receipts a real adapter invocation. However no exported SVG bytes or replayable browser harness exists under docs/oracle, scripts, or tests; the sole durable artifact is the narrative receipt. The final clean-export claim should be backed by the actual saved/reopened SVG artifact and a deterministic structural/hash verifier rerun after remediation."
+        - area: protocol_security_probe_map
+          severity: pass
+          finding: "Strict version/field/operation parsing, 5 MiB and 100-operation bounds, malformed JSON rejection, exact operation references, detached rollback, stale revision, missing/ambiguous/locked targets, invalid reorder and paint, script/foreignObject/SMIL/event/style/external URL rejection, ID collision detection, and untouched unsupported-content preservation are covered in tests/agent-protocol.test.ts and tests/agent-transaction.test.ts and passed independently in the 111-test gate."
+        - area: duplicate_ordering_probe_map
+          severity: partial
+          finding: "Real-HTTP tests prove ordered tx-1/tx-2 delivery, exact-byte duplicate idempotency, conflicting-payload 409, newest-editor ownership, delivery timeout, disconnected status, payload/backlog limits, and ordinary Last-Event-ID replay. The receive-before-ack reconnect case fails as described, and terminal accepted/reverted duplicate semantics are absent."
+        - area: hidden_locked_review_probe_map
+          severity: pass
+          finding: "tests/agent-review.test.ts proves nested, direct-hidden, locked, and multi-selected impact labels; transaction tests reject locked ancestors/descendants and permit hidden targets. The review UI provides accessible locate labels, an aria-live summary, keyboard-operable preview/accept/revert controls, canvas/layer markers, and isolated preview serialization. T008 and T006 record real-browser responsive and keyboard checks with a clean console. These pass for the exercised states, subject to pending file-switch remediation."
+        - area: history_fidelity_probe_map
+          severity: pass
+          finding: "tests/agent-history.test.ts proves failed/reverted proposals create no checkpoint, acceptance creates one checkpoint, undo/redo restore hierarchy/scope/multi-selection, and revision remains monotonic. Fidelity/workspace tests preserve width/height, IDs, transforms, resources, text, style-bearing untouched content, use/symbol, custom attributes, and unrelated metadata while removing reserved lineage metadata. The full gate passes; only the over-restrictive explicit replacement case remains."
+        - area: oracle_clause_map
+          severity: fail
+          finding: "Versioned commands without reload: pass for ordinary delivery. Accurate isolated review: pass for exercised impacts. Accept/revert: local UI pass, producer-visible lifecycle fail. Coherent undo/redo: pass. Stale/atomic/trust protections: pass. Disconnect/reconnect without loss or duplication: fail in receive-before-ack window. Logo-designer public adapter: pass for representative fixture, but valid internal-resource replacement is over-rejected. Save/reopen clean export: automated fidelity pass and narrative browser pass, but durable final artifact missing. Overall oracle: fail until remediation."
+        - area: board_health
+          severity: medium
+          finding: "T005 remains status blocked even though T008 is done and explicitly completed its blocked real-browser verification. Board truth should preserve the original blocked receipt but record T005 as resolved_by T008 or otherwise remove it from unresolved required Worker work before T999."
+      parallel_safety:
+        safe: false
+        reason: "The remediation crosses the shared protocol, server state machine, client SSE cursor, session pending state, main review/file lifecycle, transaction reference validation, and their integration tests. Parallel writers would overlap the same contracts and could mask ordering defects; use one Worker package."
+      blocked_tasks:
+        - task_id: T999
+          reason: "Final completion audit is blocked until terminal decision acknowledgement, lossless pre-ack reconnect, pending file lifecycle, internal-resource replacement, and durable oracle evidence are remediated and verified."
+      missing_evidence:
+        - "Producer-visible accepted and reverted terminal statuses through the real authenticated API."
+        - "Lossless exactly-once recovery when SSE disconnects after frame receipt but before staging acknowledgement."
+        - "A verified pending-review file-switch policy that cannot orphan the transaction."
+        - "Successful explicit replacement of a self-contained layer whose old and new internal resource IDs differ, while external reference damage remains rejected."
+        - "Durable saved/reopened oracle SVG bytes plus a replayable structural/hash verification record."
+        - "Board resolution linking T005 completion to T008."
+      required_board_updates:
+        - task_id: T007
+          updates: "Store this receipt and mark T007 done with decision not_complete.,Preserve the ranked findings and oracle clause map as required T999 inputs."
+        - task_id: T005
+          updates: "Record T005 as resolved by T008 while preserving its original blocked receipt, so board truth no longer presents the repaired browser-verification defect as unresolved required work."
+        - task_id: T009
+          updates: "Create and activate the coherent remediation Worker package recorded by the Judge."
+        - task_id: T999
+          updates: "Keep T999 queued until T009 is done with all listed verification and durable oracle evidence.,Use this T007 receipt and the T009 receipt/artifact as mandatory final-audit inputs."
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Close the release-candidate transaction lifecycle, reconnect, pending-document, explicit replacement-reference, and oracle-evidence gaps as one coherent verified package."
+    inputs:
+      - "T007 adversarial findings and exact remediation contract"
+      - "T006 public adapter, real-browser oracle, and current transport/review implementation"
+      - "T001 protocol, security, history, and fidelity contracts"
+    constraints:
+      - "Preserve bearer separation, exact-origin enforcement, strict state transitions, duplicate-ID semantics, detached review, and clean serialization."
+      - "Terminal decisions must be producer-visible and idempotent without duplicating review, history, revision, or canonical mutation."
+      - "An unacknowledged delivered frame must be recoverable across reconnect."
+      - "Pending review must not be orphaned by file/session changes."
+      - "Reference relaxation may apply only within an explicitly replaced subtree; external reference damage remains rejected."
+      - "Store durable oracle bytes and reproducible verification evidence."
+    expected_output:
+      - "Strict exact-origin accepted/reverted terminal acknowledgement and producer status convergence"
+      - "Lossless pre-ack reconnect with cached staged result and no duplicate effects"
+      - "Safe pending-review file lifecycle"
+      - "Correct self-contained internal-resource replacement with external-reference protection"
+      - "Pruned active backlog with bounded idempotency records"
+      - "Durable saved/reopened oracle SVG and deterministic structural/hash proof"
+    allowed_files:
+      - "src/shared/agent-protocol.ts"
+      - "src/server/agent-transport.ts"
+      - "src/client/agent/transport.ts"
+      - "src/client/agent/session.ts"
+      - "src/client/agent/transaction.ts"
+      - "src/client/main.ts"
+      - "scripts/logo-designer-adapter.ts"
+      - "tests/agent-protocol.test.ts"
+      - "tests/agent-transport.test.ts"
+      - "tests/agent-history.test.ts"
+      - "tests/agent-transaction.test.ts"
+      - "tests/agent-review.test.ts"
+      - "tests/logo-designer-adapter.test.ts"
+      - "tests/fixtures/**"
+      - "docs/agent-canvas.md"
+      - "docs/oracle/T009-release-remediation.md"
+      - "docs/oracle/artifacts/**"
+      - "README.md"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.ts"
+    verify:
+      - "npm run check"
+      - "npm audit --audit-level=high"
+      - "git diff --check"
+      - "Automated real-HTTP accept test: producer status becomes accepted; exact duplicate remains accepted; conflicting terminal decision rejects"
+      - "Automated real-HTTP revert test: producer status becomes reverted with no canonical/history/revision mutation"
+      - "Automated real-Vite reconnect test: disconnect after frame before ack, recover and complete exactly once without duplicate review/history/revision mutation"
+      - "Automated and real-browser pending-file test: file switching is blocked pending and restored after terminal decision with no orphaned transaction"
+      - "Transaction tests: internal-resource replacement succeeds; external href/url damage remains reference_damage; malformed/unsafe/locked/stale/late-failure behavior remains unchanged"
+      - "Browser QA at 1280x720 and 980x720 through authenticated real HTTP/SSE/editor/review, including keyboard actions, disconnect injection, undo/redo, manual refine, targeted adapter adjustment, save/reopen, producer status, and clean console"
+      - "Save durable exported SVG, prove reopened bytes and SHA-256 match, structurally compare explicit deltas only, and assert no reserved metadata"
+    stop_if:
+      - "Terminal review acknowledgement would weaken bearer separation, exact-origin enforcement, strict state transitions, or duplicate-ID semantics."
+      - "Reconnect recovery can still drop an unacknowledged transaction or replay an accepted/reverted transaction into review."
+      - "Pending review can still be orphaned by file switch, reload/session replacement, or terminal acknowledgement failure."
+      - "Relaxing reference validation could permit a reference outside an explicitly replaced subtree to become missing or ambiguous."
+      - "The real-browser oracle must bypass the public adapter, real server, Vite proxy, SSE stream, SvgEditor transaction path, review UI, or workspace save/reopen path."
+      - "Need files outside allowed_files."
+      - "Verification fails twice for the same unresolved cause."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - docs/agent-canvas.md
+        - docs/oracle/T009-release-remediation.md
+        - docs/oracle/artifacts/T009-final.svg
+        - src/shared/agent-protocol.ts
+        - src/server/agent-transport.ts
+        - src/client/agent/transport.ts
+        - src/client/agent/session.ts
+        - src/client/agent/transaction.ts
+        - src/client/main.ts
+        - tests/agent-transport.test.ts
+        - tests/agent-history.test.ts
+        - tests/agent-transaction.test.ts
+        - tests/logo-designer-adapter.test.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm audit --audit-level=high"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "npx vitest run --config vitest.config.ts tests/logo-designer-adapter.test.ts tests/agent-transport.test.ts tests/agent-history.test.ts tests/agent-transaction.test.ts"
+          status: pass
+        - cmd: "node --input-type=module <<'NODE' (T009 real Chromium public-adapter/Vite/SSE/editor oracle) NODE"
+          status: pass
+        - cmd: "cmp -s docs/oracle/artifacts/T009-final.svg /tmp/lineage-logo-t009.35gOFb/iterations/iteration-1.svg && shasum -a 256 docs/oracle/artifacts/T009-final.svg && node --input-type=module -e \"(deterministic structural and reserved-metadata assertions)\""
+          status: pass
+        - cmd: "curl producer statuses for reconnect-revert, oracle-accept, targeted-accept, reload-revert and assert SSE response has no Access-Control-Allow-Origin"
+          status: pass
+      summary: "Implemented strict idempotent accepted/reverted decisions, producer convergence, replay-safe cached staging, authoritative subscriber handoff, pending file/reload protection, replacement-boundary reference validation, active-backlog pruning, and bounded terminal idempotency. Real HTTP and Vite tests cover terminal conflicts, pre-ack recovery, exactly-once effects, and unchanged revert history/revision. Chromium passed both viewports, keyboard review, injected pre-ack failure, undo/redo, manual/targeted edits, save/reopen, reload revert, producer statuses, and clean console. Durable 1,406-byte SVG matches reopened bytes and SHA-256; 120 tests, build, audit, and diff checks pass without CORS allowance."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Make asynchronous file opening atomic with the agent-review lifecycle so an in-flight SVG response cannot mutate file UI, currentFile, dirty state, artboard, editor, session, or manifest after a transaction becomes pending; also make stale concurrent open responses unable to overwrite a newer committed open."
+    inputs:
+      - "T999 final-audit race finding"
+      - "Current real agent review, file-open, session, and manifest paths"
+    constraints:
+      - "No file/UI/DOM/editor/session mutation may occur before the final synchronous pending-and-request-generation commit gate."
+      - "A pending proposal must remain attached to its visible canonical document and producer status."
+      - "Regression must use the actual file-open commit path and real session staging."
+    expected_output:
+      - "Atomic request-generation and pending-review commit gate for file opens"
+      - "Stale concurrent open responses cannot overwrite the latest eligible open"
+      - "Deterministic delayed-response regression and real-browser proof"
+    allowed_files:
+      - "src/client/main.ts"
+      - "src/client/agent/session.ts"
+      - "src/client/file-open.ts"
+      - "tests/file-open-race.test.ts"
+      - "tests/agent-history.test.ts"
+      - "tests/agent-transport.test.ts"
+      - "docs/oracle/T010-file-open-race.md"
+    verify:
+      - "npm run check"
+      - "npm audit --audit-level=high"
+      - "git diff --check"
+      - "Deterministic delayed-response regression: stage a real pending transaction before releasing /api/svg and assert every original file, DOM, editor, session, dirty, review, and manifest state remains unchanged"
+      - "Concurrent-open regression: resolve two file requests out of order and prove only the latest eligible response commits"
+      - "Real-browser Vite/public-transport walkthrough of delayed response race, both terminal decisions, successful post-terminal file switch, and clean console"
+    stop_if:
+      - "Any file/UI/DOM/editor/session mutation must occur before the final synchronous pending-and-request-generation commit gate."
+      - "A pending proposal can become detached from its visible canonical document or producer terminal status."
+      - "The regression bypasses authenticated public transport, real session staging, or the actual file-open commit path."
+      - "Need files outside allowed_files."
+      - "Verification fails twice for the same unresolved cause."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/main.ts
+        - src/client/file-open.ts
+        - tests/file-open-race.test.ts
+        - docs/oracle/T010-file-open-race.md
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npx vitest run tests/file-open-race.test.ts tests/agent-history.test.ts"
+          status: pass
+        - cmd: "Real-browser Vite/public-transport walkthrough of delayed response race, both terminal decisions, successful post-terminal file switch, and clean console"
+          status: pass
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm audit --audit-level=high"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      summary: "Added an atomic file-open coordinator with one final synchronous pending-and-generation commit gate. File responses staged before a pending transaction or superseded by newer opens cannot mutate file UI, canonical DOM, editor, session, dirty/review state, or manifest. Added deterministic real-session delayed-response and out-of-order regressions. Live Vite/public-adapter/SSE browser proof preserved the pending document after releasing real delayed SVG bytes, converged keyboard revert and accept decisions, switched files successfully after both terminal paths, and produced no console warnings or errors. Full check passed with 122 tests."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T011
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Re-audit the complete agent-to-canvas MVP after T010 and decide whether the full original owner outcome and goal oracle are complete."
+    inputs:
+      - "All done receipts including T007, T009, T999, and T010"
+      - "Durable browser oracle and exported SVG artifact"
+      - "Latest full verification and current dirty diff"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject if the delayed file-open race or any earlier lifecycle/security/fidelity finding remains unresolved."
+      - "Map every oracle clause to durable evidence and set full_outcome_complete true only for the entire original outcome."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Clause-by-clause evidence and exact remaining work, if any"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      rationale: "Not complete. T010 prevents commit while review is currently pending and rejects out-of-order responses, but it does not invalidate an in-flight request when a pending episode begins. FileOpenCoordinator checks only the current pending boolean and request generation; agent staging never changes that generation. If a delayed open starts, an agent proposal is accepted or reverted, and the response then arrives, pending is false and the old response commits. On accept this silently discards the newly dirty accepted edit without fresh confirmation. An independent current-code probe returned committed:true. The 122-test, audit, diff, transport, review, history, and artifact evidence otherwise passes."
+      evidence:
+        - area: current_verification
+          finding: "Independent read-only verification passed: npm run typecheck and npm run test reported 11 files and 122 tests passing; npm audit --audit-level=high reported zero vulnerabilities; git diff --check passed."
+        - area: T007_and_T009_findings
+          finding: "Current transport, session, transaction, and tests retain strict producer-visible accepted/reverted decisions, idempotent terminal conflicts, receive-before-ack recovery, authoritative subscriber handoff, bounded/pruned delivery state, self-contained replacement references, external-reference protection, reload revert, and clean serialization."
+        - area: public_path_review_history
+          finding: "T006, T008, and T009 receipts and oracle notes map the real logo-designer adapter through authenticated HTTP, Vite, SSE, detached SvgEditor staging, accessible review, accept/revert, undo/redo, manual refinement, targeted adjustment, save/reopen, responsive keyboard QA, and clean console without public-path bypass."
+        - area: fidelity_artifact
+          finding: "docs/oracle/artifacts/T009-final.svg independently reproduced SHA-256 9780ec8650c8255cac66e4579bf97388d2876dad5c186105cd34f67146463f56 and 1,406 bytes. The deterministic artifact test verifies expected SVG structure, explicit deltas, preserved resources, and absence of reserved metadata."
+        - area: T999_race_partial_closure
+          finding: "src/client/file-open.ts and tests/file-open-race.test.ts correctly reject a response when pending is true at the final commit gate and reject older request generations. src/client/main.ts now performs asynchronous loading before one synchronous commit callback, closing the exact commit-while-pending case found by T999."
+        - area: blocking_terminal_before_response_race
+          severity: high
+          finding: "FileOpenCoordinator.canCommit validates only !pending and generation equality. The coordinator has no invalidate/cancel operation, and src/client/main.ts does not change its generation when AgentSession.stage enters pending review. Therefore a request started before review remains eligible after accept/revert clears pending. The accepted path can set dirty=true and then be silently replaced by the old response, whose commit sets dirty=false without a new discard confirmation."
+        - area: independent_adversarial_probe
+          severity: high
+          finding: "A read-only probe against the current commitLatestFileOpen implementation started a delayed request, changed pending false→true→false to model a completed review, released the response, and returned committed:true."
+        - area: missing_test_and_browser_case
+          finding: "tests/file-open-race.test.ts releases the delayed response only while pending remains true. docs/oracle/T010-file-open-race.md also releases while pending, then resolves the decision afterward. Neither covers accept or revert before releasing the already-started response."
+        - area: board_health
+          finding: "T005 remains intentionally blocked with resolved_by: T008, whose done receipt supplies its missing browser verification. Earlier tasks are otherwise resolved; the new lifecycle remediation is the sole required Worker package."
+      parallel_safety:
+        safe: false
+        reason: "The remediation touches the single file-open generation gate and the real agent-staging transition in src/client/main.ts; parallel work on either lifecycle would invalidate its race proof."
+      blocked_tasks:
+        - task_id: final_audit
+          reason: "Full completion is blocked until every open request is permanently invalidated once a pending review episode begins, even if that review becomes terminal before the response returns."
+      missing_evidence:
+        - "Deterministic accept-before-release and revert-before-release regressions proving the old response never commits after any pending-review episode."
+        - "Real-browser proof that accepting a proposal while an earlier file response is held preserves the dirty accepted document, requires a fresh explicit file-open action and discard confirmation, and never silently switches files."
+      required_board_updates:
+        - task_id: T011
+          updates: "Store this receipt and mark T011 done with decision not_complete.,Keep the goal active and preserve the terminal-before-response race as mandatory final-audit input."
+        - task_id: T012
+          updates: "Create and activate the exact pending-episode invalidation Worker package."
+        - task_id: T005
+          updates: "Retain resolved_by: T008 and its original blocked receipt; no additional T005 work is required."
+  - id: T012
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Permanently invalidate every in-flight file-open generation when a mutating agent transaction enters pending review, so its response cannot commit after either accept or revert; preserve current pending-at-commit and out-of-order protections and prove the accepted dirty document cannot be silently discarded."
+    inputs:
+      - "T011 terminal-before-response race finding"
+      - "T010 atomic file-open coordinator and proof"
+    constraints:
+      - "Invalidation must be wired synchronously to the actual successful staged mutating-transaction transition."
+      - "Any response whose lifetime overlaps a pending-review episode must remain permanently ineligible."
+      - "Accepted dirty content requires a fresh user-confirmed open action before replacement."
+    expected_output:
+      - "Pending-episode generation invalidation"
+      - "Accept-before-release and revert-before-release deterministic regressions"
+      - "Real-browser preservation of accepted dirty work and normal later confirmation"
+    allowed_files:
+      - "src/client/file-open.ts"
+      - "src/client/main.ts"
+      - "tests/file-open-race.test.ts"
+      - "docs/oracle/T012-terminal-file-open-race.md"
+    verify:
+      - "npm run check"
+      - "npm audit --audit-level=high"
+      - "git diff --check"
+      - "Deterministic real-session accept-before-release regression proving no commit and unchanged accepted canonical SVG, dirty state, session, revision, selection, file UI, and manifest"
+      - "Equivalent revert-before-release regression proving no commit and unchanged original canonical/history/revision state"
+      - "Retain pending-at-release and out-of-order response regressions"
+      - "Real-browser Vite/public-adapter/SSE walkthrough holding real SVG bytes through both terminal decisions, preserving dirty accepted work, requiring normal discard confirmation for a later explicit switch, producer status convergence, and clean console"
+    stop_if:
+      - "Invalidation is not wired synchronously to the actual successful staged transaction transition."
+      - "Any response whose lifetime overlaps a pending-review episode can commit afterward."
+      - "Accepted dirty content can be replaced without a fresh user-confirmed open action."
+      - "Verification bypasses authenticated public transport, real session staging, or the actual application commit path."
+      - "Need files outside allowed_files."
+      - "Verification fails twice for the same unresolved cause."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/file-open.ts
+        - src/client/main.ts
+        - tests/file-open-race.test.ts
+        - docs/oracle/T012-terminal-file-open-race.md
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npx vitest run tests/file-open-race.test.ts"
+          status: pass
+        - cmd: "Real-browser Vite/public-adapter/SSE accept-before-release and revert-before-release walkthrough with real held SVG responses, producer convergence, discard confirmation, and clean console"
+          status: pass
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm audit --audit-level=high"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      summary: "Added permanent file-open generation invalidation synchronously when a new mutating transaction successfully enters pending review. Responses overlapping that pending episode remain ineligible after either terminal decision while T010 pending and out-of-order guards remain intact. Deterministic real-session tests prove accept-before-release preserves accepted canonical SVG, dirty state, history, revision, selection, file UI, session, and manifest; revert preserves the original clean state. Live Vite/public-adapter/SSE proof confirmed accepted dirty work survives release, a fresh explicit switch requires discard confirmation, both producer decisions converge, and the browser console remains clean. Full check passes with 124 tests."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T013
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Run the definitive completion audit after T012, covering every original oracle clause and all adversarial lifecycle findings."
+    inputs:
+      - "All task receipts through T012"
+      - "T007, T999, and T011 rejection findings"
+      - "Durable browser/export artifacts and latest full verification"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject if any in-flight file response can survive a pending-review episode or if any earlier finding regresses."
+      - "Set full_outcome_complete true only for the entire original owner outcome."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Clause-by-clause durable evidence map"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      rationale: "Complete. T012 permanently invalidates in-flight file opens when a new mutating proposal enters review, and current tests plus live evidence cover pending-at-release, accept-before-release, revert-before-release, and out-of-order responses. T009’s terminal acknowledgement, reconnect, replacement-reference, backlog, reload, and durable-export repairs remain intact. Fresh independent verification passes 124 tests, typecheck, audit, diff, and artifact assertions. The authenticated public adapter, live HTTP/Vite/SSE path, isolated accessible review, coherent history, manual refinement, targeted adjustment, save/reopen, and clean SVG export are all mapped to durable evidence. Every required Worker is done; T005 is safely resolved by T008."
+      evidence:
+        - area: protocol_atomicity_conflicts
+          finding: "Strict versioned bounded commands, detached all-or-nothing evaluation, stable targeting, stale checks, no-op rejection, structured errors, and adversarial malformed/duplicate/reordered/locked/hidden/unsafe/reference tests pass."
+        - area: security_and_transport
+          finding: "Loopback bearer producer routes, exact-origin browser routes, no CORS allowance, bounded state, strict transitions, payload-hash dedupe, conflict rejection, timeouts, producer status, and real HTTP/Vite transport tests pass."
+        - area: lifecycle_repairs
+          finding: "Terminal decisions are producer-visible and idempotent; pre-ack reconnect reuses staged evaluation without duplicate review, history, revision, or canonical effects."
+        - area: replacement_and_fidelity_boundary
+          finding: "Self-contained internal-resource replacement succeeds while external reference damage and unsafe or locked mutations remain rejected without silent sanitization."
+        - area: review_and_accessibility
+          finding: "Accurate isolated impact review, canvas and hierarchy location, mutation freeze, accessible keyboard controls, required viewports, fault states, and clean console are proven."
+        - area: history_and_terminal_semantics
+          finding: "Revert and failure do not mutate canonical history; acceptance creates one checkpoint and monotonic revision; repeat decisions do not duplicate effects; undo/redo restore structure and selection."
+        - area: file_open_lifecycle
+          finding: "The synchronous pending/generation gate and permanent invalidation on every new mutating review episode close pending-at-release, accept-before-release, revert-before-release, and out-of-order races."
+        - area: file_open_live_oracle
+          finding: "Real held-response Vite/public-adapter/SSE walkthroughs preserve dirty accepted work, require fresh discard confirmation, preserve reverted clean state, converge producer status, and keep the console clean."
+        - area: public_logo_designer_workflow
+          finding: "The thin adapter uses only the public manifest/transaction protocol; live replace, revert, resend/accept, manual refine, targeted adjustment, save, and reopen are proven."
+        - area: clean_export_and_durable_artifact
+          finding: "The durable 1,406-byte SVG reproduces SHA-256 9780ec8650c8255cac66e4579bf97388d2876dad5c186105cd34f67146463f56 with expected resources/deltas and no reserved metadata."
+        - area: fresh_full_gate
+          finding: "Independent typecheck and 124 tests, zero-vulnerability audit, diff check, artifact assertions, and production build all pass."
+        - area: board_completion
+          finding: "All required tasks are done; T005 retains historical blocked evidence but is resolved_by T008. No Worker remains unresolved."
+        - area: scope_alignment
+          finding: "The full original generate/load, live edit, review, accept/revert, undo/redo, manual refine, targeted adjustment, export/reopen outcome is satisfied."
+      blocked_tasks: []
+      missing_evidence: []
+      required_board_updates:
+        - task_id: T013
+          updates: "Store this receipt and mark T013 done with decision complete and full_outcome_complete: true."
+        - task_id: goal
+          updates: "Set goal.status to complete and clear the active task.,Record that the full original owner outcome and final oracle are satisfied."
+        - task_id: checks
+          updates: "Record the fresh 124-test/typecheck, zero-vulnerability audit, diff-check, artifact hash/structure verification, and current dirty fingerprint."
+        - task_id: T005
+          updates: "Retain the historical blocked receipt and resolved_by: T008 linkage; it is not unresolved required work."
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether the complete agent-to-canvas MVP satisfies the original owner outcome and the goal oracle."
+    inputs:
+      - "All done task receipts"
+      - "Latest full verification output"
+      - "T007 adversarial audit"
+      - "Real-browser oracle walkthrough and exported artifact"
+      - "Current dirty diff"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject completion if any required Worker work remains queued, active, blocked without a safe workaround, or insufficiently verified."
+      - "Reject completion if the real logo-designer path, live transport, editor history, review UX, or clean export is bypassed."
+      - "Map every conclusion to durable receipts and observable evidence."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Oracle clause-by-clause evidence map"
+      - "Missing evidence or exact next task if not complete"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      rationale: "Not complete. T009 credibly closes terminal decisions, pre-ack reconnect, replacement references, backlog pruning, reload handling, and durable export; the current 120-test, typecheck, audit, diff, and artifact gates pass. However openSvg checks pending only before awaiting /api/svg, then mutates selected file, currentFile, dirty state, and the artboard before AgentSession.open rechecks pending. An agent transaction arriving during that fetch can leave the old session/review pending while the visible document switches—the orphaned-review defect T009 was required to close. Tests cover synchronous session replacement, and the browser note covers clicking after pending, not this race."
+      evidence:
+        - area: current_verification
+          finding: "Independent read-only verification passed: npm run typecheck and npm run test reported 10 files and 120 tests passing; npm audit --audit-level=high reported zero vulnerabilities; git diff --check passed."
+        - area: T007_terminal_and_reconnect_remediation
+          finding: "src/client/agent/transport.ts and src/server/agent-transport.ts implement exact-origin accepted/reverted decisions, idempotent terminal convergence, cached staging, acknowledgement-gated event cursors, authoritative-subscriber requeue, active-event pruning, and bounded terminal records. Real HTTP/Vite regression tests cover duplicate/conflicting decisions and receive-before-ack recovery."
+        - area: live_path_review_and_history
+          finding: "T006, T008, and T009 receipts map the public logo-designer adapter through authenticated HTTP, Vite, SSE, detached SvgEditor staging, accessible review, accept/revert, undo/redo, manual refinement, targeted adjustment, and responsive keyboard QA without CORS or editor-internal bypass."
+        - area: fidelity_and_durable_oracle
+          finding: "docs/oracle/artifacts/T009-final.svg independently reproduced SHA-256 9780ec8650c8255cac66e4579bf97388d2876dad5c186105cd34f67146463f56 and 1,406 bytes. Structural assertions found all expected original and introduced resources, fill #14b8a6, and no reserved protocol/review metadata; tests/logo-designer-adapter.test.ts deterministically checks the same artifact."
+        - area: blocking_pending_open_race
+          severity: high
+          finding: "src/client/main.ts:659-665 checks pending and then awaits the SVG request. After the await, lines 680-708 change file selection, currentFile, dirty state, and replace the artboard. Only at lines 710-713 does AgentSession.open reject a newly pending transaction. The function returns with the old editor/session/review still authoritative but a different visible SVG and file state, so accept/revert can act against a detached old document."
+        - area: missing_race_proof
+          finding: "tests/agent-history.test.ts:124-142 proves only synchronous AgentSession.open rejection. docs/oracle/T009-release-remediation.md records buttons disabled once review is pending, but neither evidence delays an already-started /api/svg response, stages a transaction during that delay, and verifies that no document/UI/session mutation commits afterward."
+        - area: board_health
+          finding: "T005 preserves its blocked receipt and is explicitly resolved_by T008, whose completed receipt supplies the missing real-browser review verification. No earlier required Worker remains unresolved; this newly discovered T010 lifecycle package is the sole completion blocker."
+      parallel_safety:
+        safe: false
+        reason: "The remediation changes the single document/session commit boundary in src/client/main.ts and its lifecycle evidence; parallel work against the same editor state would make the race proof unreliable."
+      blocked_tasks:
+        - task_id: final_audit
+          reason: "Full completion is blocked until the in-flight file-open/pending-review race is fixed and independently re-audited."
+      missing_evidence:
+        - "A deterministic delayed-/api/svg regression proving that a proposal staged while a file request is in flight prevents every file, DOM, editor, session, dirty-state, and manifest commit from that request."
+        - "Real-browser confirmation that the pending review remains attached to the original visible document during the delayed response, then accept/revert and a subsequent file switch behave normally."
+      required_board_updates:
+        - task_id: T999
+          updates: "Store this receipt and mark T999 done with decision not_complete.,Keep the goal active and preserve this race finding as a mandatory input to the next final Judge audit."
+        - task_id: T010
+          updates: "Create and activate the exact atomic file-open remediation Worker package."
+        - task_id: T005
+          updates: "Retain resolved_by: T008 and the original blocked receipt; no further T005 work is required."
+checks:
+  dirty_fingerprint: "ff4758c18a2ef71d1c3b103d35be8b716feb517364c0ac963ad496e7cab3bceb"
+  last_verification:
+    result: pass
+    task: T013
+    commands:
+      - "npm run check"
+      - "npm audit --audit-level=high"
+      - "git diff --check"
+      - "SHA-256 and structural assertions for docs/oracle/artifacts/T009-final.svg"
+    summary: "124 tests, typecheck, production build, zero-vulnerability audit, diff check, durable artifact hash/structure, and all real-browser oracle paths passed."

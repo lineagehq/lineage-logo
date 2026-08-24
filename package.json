@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "agent:submit": "tsx scripts/logo-designer-adapter.ts",
     "check": "npm run typecheck && npm run test && npm run build",
     "dev": "tsx scripts/dev.ts",
     "start": "tsx src/server/index.ts",

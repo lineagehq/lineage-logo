@@ -89,13 +89,12 @@ export async function saveNextIteration(
     throw new Error("Iterations directory escapes the selected workspace.");
   }
 
-  const editedSvg = addEditMetadata(svg, sourcePath);
   for (let attempt = 0; attempt < 100; attempt += 1) {
     const relativePath = await getNextIterationPath(root);
     const name = path.basename(relativePath);
     const target = path.join(root, relativePath);
     const temporary = path.join(resolvedIterations, `.lineage-logo-${randomUUID()}.tmp`);
-    await writeFile(temporary, editedSvg, { encoding: "utf8", flag: "wx" });
+    await writeFile(temporary, stripReservedEditMetadata(svg), { encoding: "utf8", flag: "wx" });
 
     try {
       await link(temporary, target);
@@ -110,26 +109,8 @@ export async function saveNextIteration(
   throw new Error("Unable to allocate the next iteration filename.");
 }
 
-function addEditMetadata(svg: string, sourcePath: string): string {
-  const withoutPreviousMetadata = svg.replace(
-    /\s*<metadata\s+id=["']lineage-logo-edit["'][^>]*>[\s\S]*?<\/metadata>/gi,
-    "",
-  );
-  const metadata = [
-    '<metadata id="lineage-logo-edit">',
-    `Edited with Lineage Logo 0.1.0; source: ${escapeXml(sourcePath)}`,
-    "</metadata>",
-  ].join("");
-  return withoutPreviousMetadata.replace(/(<svg\b[^>]*>)/i, `$1${metadata}`);
-}
-
-function escapeXml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
+export function stripReservedEditMetadata(svg: string): string {
+  return svg.replace(/\s*<metadata\s+id=["']lineage-logo-edit["'][^>]*>[\s\S]*?<\/metadata>/gi, "");
 }
 
 export async function readWorkspaceSvg(root: string, requestedPath: string): Promise<string> {

@@ -1,0 +1,32 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T011",
+    "board_path": "docs/goals/agent-canvas-integration/state.yaml",
+    "decision": "not_complete",
+    "full_outcome_complete": false,
+    "rationale": "Not complete. T010 prevents commit while review is currently pending and rejects out-of-order responses, but it does not invalidate an in-flight request when a pending episode begins. FileOpenCoordinator checks only the current pending boolean and request generation; agent staging never changes that generation. If a delayed open starts, an agent proposal is accepted or reverted, and the response then arrives, pending is false and the old response commits. On accept this silently discards the newly dirty accepted edit without fresh confirmation. An independent current-code probe returned committed:true. The 122-test, audit, diff, transport, review, history, and artifact evidence otherwise passes.",
+    "evidence": [
+      { "area": "current_verification", "finding": "Independent read-only verification passed: npm run typecheck and npm run test reported 11 files and 122 tests passing; npm audit --audit-level=high reported zero vulnerabilities; git diff --check passed." },
+      { "area": "T007_and_T009_findings", "finding": "Current transport, session, transaction, and tests retain strict producer-visible accepted/reverted decisions, idempotent terminal conflicts, receive-before-ack recovery, authoritative subscriber handoff, bounded/pruned delivery state, self-contained replacement references, external-reference protection, reload revert, and clean serialization." },
+      { "area": "public_path_review_history", "finding": "T006, T008, and T009 receipts and oracle notes map the real logo-designer adapter through authenticated HTTP, Vite, SSE, detached SvgEditor staging, accessible review, accept/revert, undo/redo, manual refinement, targeted adjustment, save/reopen, responsive keyboard QA, and clean console without public-path bypass." },
+      { "area": "fidelity_artifact", "finding": "docs/oracle/artifacts/T009-final.svg independently reproduced SHA-256 9780ec8650c8255cac66e4579bf97388d2876dad5c186105cd34f67146463f56 and 1,406 bytes. The deterministic artifact test verifies expected SVG structure, explicit deltas, preserved resources, and absence of reserved metadata." },
+      { "area": "T999_race_partial_closure", "finding": "src/client/file-open.ts and tests/file-open-race.test.ts correctly reject a response when pending is true at the final commit gate and reject older request generations. src/client/main.ts now performs asynchronous loading before one synchronous commit callback, closing the exact commit-while-pending case found by T999." },
+      { "area": "blocking_terminal_before_response_race", "severity": "high", "finding": "FileOpenCoordinator.canCommit validates only !pending and generation equality. The coordinator has no invalidate/cancel operation, and src/client/main.ts does not change its generation when AgentSession.stage enters pending review. Therefore a request started before review remains eligible after accept/revert clears pending. The accepted path can set dirty=true and then be silently replaced by the old response, whose commit sets dirty=false without a new discard confirmation." },
+      { "area": "independent_adversarial_probe", "severity": "high", "finding": "A read-only probe against the current commitLatestFileOpen implementation started a delayed request, changed pending false→true→false to model a completed review, released the response, and returned committed:true." },
+      { "area": "missing_test_and_browser_case", "finding": "tests/file-open-race.test.ts releases the delayed response only while pending remains true. docs/oracle/T010-file-open-race.md also releases while pending, then resolves the decision afterward. Neither covers accept or revert before releasing the already-started response." },
+      { "area": "board_health", "finding": "T005 remains intentionally blocked with resolved_by: T008, whose done receipt supplies its missing browser verification. Earlier tasks are otherwise resolved; the new lifecycle remediation is the sole required Worker package." }
+    ],
+    "parallel_safety": { "safe": false, "reason": "The remediation touches the single file-open generation gate and the real agent-staging transition in src/client/main.ts; parallel work on either lifecycle would invalidate its race proof." },
+    "blocked_tasks": [{ "task_id": "final_audit", "reason": "Full completion is blocked until every open request is permanently invalidated once a pending review episode begins, even if that review becomes terminal before the response returns." }],
+    "missing_evidence": [
+      "Deterministic accept-before-release and revert-before-release regressions proving the old response never commits after any pending-review episode.",
+      "Real-browser proof that accepting a proposal while an earlier file response is held preserves the dirty accepted document, requires a fresh explicit file-open action and discard confirmation, and never silently switches files."
+    ],
+    "required_board_updates": [
+      { "task_id": "T011", "updates": ["Store this receipt and mark T011 done with decision not_complete.", "Keep the goal active and preserve the terminal-before-response race as mandatory final-audit input."] },
+      { "task_id": "T012", "updates": ["Create and activate the exact pending-episode invalidation Worker package."] },
+      { "task_id": "T005", "updates": ["Retain resolved_by: T008 and its original blocked receipt; no additional T005 work is required."] }
+    ]
+  }
+}

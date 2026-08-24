@@ -81,6 +81,13 @@ describe("editor serialization", () => {
     expect(serializeSvg(root, false)).not.toContain("data-lineage-secondary");
   });
 
+  it("strips agent review highlighting without changing accepted SVG content", () => {
+    const window = new Window();
+    window.document.body.innerHTML = '<svg><g id="accepted" data-lineage-review-highlight="true"><path id="mark" /></g></svg>';
+    const root = window.document.querySelector("svg") as unknown as SVGSVGElement;
+    expect(serializeSvg(root, true)).toBe('<svg><g id="accepted"><path id="mark"></path></g></svg>');
+  });
+
   it("preserves accessibility attributes that came from the source SVG", () => {
     const window = new Window();
     window.document.body.innerHTML = '<svg role="img" aria-label="Original label"></svg>';
@@ -88,6 +95,19 @@ describe("editor serialization", () => {
     const output = serializeSvg(root, true);
     expect(output).toContain('role="img"');
     expect(output).toContain('aria-label="Original label"');
+  });
+
+  it("removes only reserved legacy edit metadata from clean exports", () => {
+    const window = new Window();
+    window.document.body.innerHTML = '<svg><metadata id="lineage-logo-edit">legacy</metadata><metadata id="authoring">keep</metadata><path data-agent-review="remove" data-review-state="remove" data-transport-id="remove" data-lineage-key="element-1" /></svg>';
+    const root = window.document.querySelector("svg") as unknown as SVGSVGElement;
+    const output = serializeSvg(root, true);
+    expect(output).not.toContain("lineage-logo-edit");
+    expect(output).toContain('<metadata id="authoring">keep</metadata>');
+    expect(output).not.toContain("data-agent-review");
+    expect(output).not.toContain("data-review-state");
+    expect(output).not.toContain("data-transport-id");
+    expect(output).not.toContain("data-lineage-");
   });
 });
 

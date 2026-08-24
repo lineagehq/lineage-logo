@@ -7,6 +7,11 @@ import {
   SvgEditor,
   type SelectionContext,
 } from "./canvas/editor";
+import { AgentCanvasTransport } from "./agent/transport";
+import type { AgentDocumentManifest } from "../shared/agent-protocol";
+import { AgentSession } from "./agent/session";
+import { buildPendingReview, outcomeReview, type AgentReviewModel } from "./agent/review";
+import { commitLatestFileOpen, FileOpenCoordinator } from "./file-open";
 
 const favicon = document.createElement("link");
 favicon.rel = "icon";
@@ -73,6 +78,7 @@ app.innerHTML = `
           <span>Concepts and iterations appear in the workspace panel.</span>
         </div>
         <div id="artboard" class="artboard" hidden></div>
+        <div id="agent-preview" class="artboard agent-preview" aria-label="Isolated agent change preview" hidden></div>
       </div>
       <footer class="statusbar">
         <span id="status">Ready</span>
@@ -80,6 +86,19 @@ app.innerHTML = `
       </footer>
     </section>
     <aside class="sidebar review-sidebar">
+      <section id="agent-review" class="agent-review" aria-labelledby="agent-review-title" hidden>
+        <div class="panel-heading"><span id="agent-review-title">Agent review</span><strong id="agent-review-status">Pending</strong></div>
+        <div class="agent-review-body">
+          <p id="agent-review-summary" class="agent-review-summary" role="status" aria-live="polite"></p>
+          <button type="button" id="agent-preview-toggle" class="agent-preview-toggle" aria-pressed="false">Show proposed preview</button>
+          <ul id="agent-impact-list" class="agent-impact-list" aria-label="Layers changed by agent"></ul>
+          <div class="agent-review-actions">
+            <button type="button" id="agent-revert">Revert</button>
+            <button type="button" id="agent-accept" class="primary-action">Accept all</button>
+          </div>
+          <p id="agent-review-consequence" class="agent-review-consequence">Accept creates one undoable edit. Revert leaves the document unchanged.</p>
+        </div>
+      </section>
       <section>
         <div class="panel-heading"><span>Layers</span><span id="layer-count">0</span></div>
         <div class="layer-search">
@@ -195,6 +214,7 @@ app.innerHTML = `
 
 const fileList = getElement("file-list");
 const artboard = getElement("artboard");
+const agentPreview = getElement("agent-preview");
 const emptyState = getElement("empty-state");
 const layerList = getElement("layer-list");
 const faviconPreview = getElement("favicon-preview");
@@ -211,6 +231,14 @@ const shortcutDialog = getInput<HTMLDialogElement>("shortcut-dialog");
 const zoomSelectionButton = getInput<HTMLButtonElement>("zoom-selection");
 const layerSearch = getInput<HTMLInputElement>("layer-search");
 const clearLayerSearchButton = getInput<HTMLButtonElement>("clear-layer-search");
+const agentReviewPanel = getElement("agent-review");
+const agentReviewStatus = getElement("agent-review-status");
+const agentReviewSummary = getElement("agent-review-summary");
+const agentPreviewToggle = getInput<HTMLButtonElement>("agent-preview-toggle");
+const agentImpactList = getElement("agent-impact-list");
+const agentAcceptButton = getInput<HTMLButtonElement>("agent-accept");
+const agentRevertButton = getInput<HTMLButtonElement>("agent-revert");
+const agentReviewConsequence = getElement("agent-review-consequence");
 const fileButtons = new Map<string, HTMLButtonElement>();
 const collapsedLayerKeys = new Set<string>();
 let currentFile: SvgFileEntry | undefined;
@@ -219,6 +247,13 @@ let nextIterationPath = "iterations/iteration-1.svg";
 let zoom = 1;
 let currentObjectUrl: string | undefined;
 let layerQuery = "";
+let agentSession: AgentSession | undefined;
+let agentManifestSync: Promise<void> = Promise.resolve();
+let agentReview: AgentReviewModel | undefined;
+let agentPreviewActive = false;
+let reviewImpactKeys = new Set<string>();
+let agentDecisionInFlight = false;
+const fileOpenCoordinator = new FileOpenCoordinator();
 
 function getElement(id: string): HTMLElement {
   const element = document.getElementById(id);
@@ -274,6 +309,9 @@ const editor = new SvgEditor(
       renderLayers(svg);
       renderSelectionContext(editor.selectionContext);
       renderFavicons(editor.serializeClean());
+      if (agentSession) {
+        agentSession.documentChanged();
+      }
     },
     onDirtyChange: (nextDirty) => {
       const changed = dirty !== nextDirty;
@@ -297,10 +335,186 @@ const editor = new SvgEditor(
       }
       highlightLayers(editor.selectedNodes, element);
     },
-    onSelectionContextChange: renderSelectionContext,
+    onSelectionContextChange: (context) => {
+      renderSelectionContext(context);
+      if (agentSession && currentFile?.path === agentSession.context.sourcePath) publishAgentDocument();
+    },
     onStatus: setStatus,
   },
 );
+
+function publishAgentDocument(): void {
+  const root = editor.svgNode;
+  if (!agentSession || !root) return;
+  const manifest = agentSession.manifest(agentLayers(root));
+  agentManifestSync = agentManifestSync
+    .catch(() => undefined)
+    .then(() => agentTransport.publishDocument(manifest))
+    .catch((error) => setStatus(error instanceof Error ? error.message : "Agent synchronization failed"));
+}
+
+agentSession = new AgentSession(editor, publishAgentDocument);
+
+function agentLayers(svg: SVGSVGElement): AgentDocumentManifest["layers"] {
+  const lockedKeys = editor.selectionContext.lockedKeys;
+  return Array.from(svg.querySelectorAll<SVGGraphicsElement>("g, path, rect, circle, ellipse, polygon, polyline, line, text"))
+    .filter((node) => isSelectableNode(node, svg) && Boolean(node.dataset.lineageKey))
+    .map((node) => ({
+      sessionKey: node.dataset.lineageKey!,
+      name: getSelectionLabel(node, svg),
+      type: node.localName,
+      locked: Boolean(node.dataset.lineageKey && lockedKeys.has(node.dataset.lineageKey)),
+    }));
+}
+
+const agentTransport = new AgentCanvasTransport({
+  onTransaction: (transaction) => {
+    if (!agentSession) return undefined;
+    const pendingBeforeStage = agentSession.pending;
+    const staged = agentSession.stage(transaction);
+    if (staged?.result.status === "staged") {
+      if (!pendingBeforeStage && agentSession.pending?.transaction.transactionId === transaction.transactionId) {
+        fileOpenCoordinator.invalidate();
+      }
+      agentReview = buildPendingReview(transaction, staged, editor.selectionContext.lockedKeys);
+      reviewImpactKeys = new Set(agentReview.layers.map((layer) => layer.sessionKey));
+      editor.setAgentReviewHighlights(reviewImpactKeys);
+      setReviewPreview(false);
+      agentReviewConsequence.textContent = "Accept creates one undoable edit. Revert leaves the document unchanged.";
+      renderAgentReview();
+      setStatus(`Agent transaction ${transaction.transactionId} is staged for review`);
+    } else if (staged?.result.status === "rejected") {
+      agentReview = outcomeReview(staged.result.error.code === "stale_document" ? "stale" : "failed", transaction.transactionId, staged.result.error.message);
+      renderAgentReview();
+      setStatus(`Agent transaction rejected: ${staged.result.error.message}`);
+    } else if (staged?.result.status === "applied") {
+      agentReview = outcomeReview("accepted", transaction.transactionId, "Agent focus navigation was applied without changing the document.");
+      renderAgentReview();
+    }
+    return staged;
+  },
+  onStateChange: (state, message) => {
+    if (state === "disconnected") {
+      agentReview = agentReview && agentSession?.pending
+        ? { ...agentReview, status: "disconnected", summary: "Agent connection interrupted. You can still accept or revert the isolated proposal." }
+        : outcomeReview("disconnected", agentReview?.transactionId);
+      renderAgentReview();
+    } else if (agentReview?.status === "disconnected" && agentSession?.pending) {
+      agentReview = buildPendingReview(agentSession.pending.transaction, agentSession.pending.staged, editor.selectionContext.lockedKeys);
+      renderAgentReview();
+    }
+    setStatus(message);
+  },
+});
+
+function renderAgentReview(): void {
+  if (!agentReview) {
+    agentReviewPanel.hidden = true;
+    return;
+  }
+  agentReviewPanel.hidden = false;
+  agentReviewStatus.textContent = agentReview.status.replace("_", " ");
+  agentReviewStatus.dataset.status = agentReview.status;
+  agentReviewSummary.textContent = agentReview.summary;
+  agentImpactList.replaceChildren();
+  for (const layer of agentReview.layers) {
+    const item = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.key = layer.sessionKey;
+    button.setAttribute("aria-label", `Locate ${layer.name}, ${layer.type}${layer.hidden ? ", hidden" : ""}${layer.locked ? ", locked" : ""}`);
+    const details = [layer.type, layer.hidden ? "hidden" : "", layer.locked ? "locked" : "", layer.operationIds.join(", ")].filter(Boolean).join(" · ");
+    button.innerHTML = `<strong></strong><span></span>`;
+    button.querySelector("strong")!.textContent = layer.name;
+    button.querySelector("span")!.textContent = details;
+    button.addEventListener("click", () => focusReviewLayer(layer.sessionKey));
+    item.append(button);
+    agentImpactList.append(item);
+  }
+  const pending = Boolean(agentSession?.pending);
+  agentPreviewToggle.hidden = !pending;
+  agentAcceptButton.hidden = !pending;
+  agentRevertButton.hidden = !pending;
+  agentReviewConsequence.hidden = !pending;
+  agentAcceptButton.disabled = agentDecisionInFlight;
+  agentRevertButton.disabled = agentDecisionInFlight;
+  for (const button of fileButtons.values()) {
+    button.disabled = pending;
+    button.title = pending ? "Accept or revert the pending agent proposal before switching files." : "";
+  }
+  saveButton.disabled = pending || !dirty;
+  resetEditsButton.disabled = pending || (!dirty && editor.selectionContext.lockedKeys.size === 0);
+}
+
+function setReviewPreview(active: boolean): void {
+  const pending = agentSession?.pending;
+  agentPreviewActive = Boolean(active && pending?.staged.candidate);
+  agentPreviewToggle.setAttribute("aria-pressed", String(agentPreviewActive));
+  agentPreviewToggle.textContent = agentPreviewActive ? "Show accepted document" : "Show proposed preview";
+  agentPreview.replaceChildren();
+  agentPreview.hidden = !agentPreviewActive;
+  artboard.hidden = agentPreviewActive || !editor.svgNode;
+  if (agentPreviewActive && pending?.staged.candidate) {
+    const clone = document.importNode(pending.staged.candidate, true);
+    for (const node of Array.from(clone.querySelectorAll<SVGGraphicsElement>("[data-lineage-key]"))) {
+      if (node.dataset.lineageKey && reviewImpactKeys.has(node.dataset.lineageKey)) node.setAttribute("data-lineage-review-highlight", "true");
+    }
+    agentPreview.append(clone);
+    renderLayers(clone);
+  } else if (editor.svgNode) {
+    editor.setAgentReviewHighlights(reviewImpactKeys);
+    renderLayers(editor.svgNode);
+  }
+}
+
+function focusReviewLayer(sessionKey: string): void {
+  if (!editor.focusAgentLayer(sessionKey)) setReviewPreview(true);
+  const previewNode = Array.from(agentPreview.querySelectorAll<SVGGraphicsElement>("[data-lineage-key]"))
+    .find((node) => node.dataset.lineageKey === sessionKey);
+  if (previewNode) {
+    previewNode.setAttribute("tabindex", "-1");
+    previewNode.focus();
+    previewNode.scrollIntoView({ block: "center", inline: "center" });
+  }
+  const layerButton = Array.from(layerList.querySelectorAll<HTMLButtonElement>(".layer-button"))
+    .find((button) => button.dataset.key === sessionKey);
+  layerButton?.focus();
+  layerButton?.scrollIntoView({ block: "nearest" });
+}
+
+function finishAgentReview(status: "accepted" | "reverted"): void {
+  const transactionId = agentReview?.transactionId;
+  reviewImpactKeys.clear();
+  editor.setAgentReviewHighlights(reviewImpactKeys);
+  setReviewPreview(false);
+  agentReview = outcomeReview(status, transactionId);
+  renderAgentReview();
+}
+
+agentPreviewToggle.addEventListener("click", () => setReviewPreview(!agentPreviewActive));
+
+async function decideAgentReview(status: "accepted" | "reverted"): Promise<void> {
+  const pending = agentSession?.pending;
+  if (!pending || agentDecisionInFlight) return;
+  agentDecisionInFlight = true;
+  agentReviewConsequence.textContent = `Recording ${status} decision before changing the document…`;
+  renderAgentReview();
+  try {
+    await agentTransport.decide(pending.transaction.transactionId, status);
+    const completed = status === "accepted" ? agentSession?.accept() : agentSession?.revert();
+    if (!completed) throw new Error("The pending agent proposal changed before its decision completed.");
+    finishAgentReview(status);
+  } catch (error) {
+    agentReviewConsequence.textContent = error instanceof Error ? error.message : "Unable to record the agent decision.";
+    setStatus(agentReviewConsequence.textContent);
+  } finally {
+    agentDecisionInFlight = false;
+    renderAgentReview();
+  }
+}
+
+agentAcceptButton.addEventListener("click", () => void decideAgentReview("accepted"));
+agentRevertButton.addEventListener("click", () => void decideAgentReview("reverted"));
 
 backToGroupButton.addEventListener("click", () => editor.backToGroup());
 editInsideButton.addEventListener("click", () => editor.editInside());
@@ -434,6 +648,11 @@ function createFileSection(title: string, files: SvgFileEntry[]): HTMLElement {
     button.setAttribute("aria-current", "false");
     button.innerHTML = `<span class="file-glyph">◇</span><span>${file.name.replace(/\.svg$/i, "")}</span>`;
     button.addEventListener("click", () => {
+      if (agentSession?.pending) {
+        setStatus("Accept or revert the pending agent proposal before switching files.");
+        agentReviewPanel.focus();
+        return;
+      }
       if (dirty && !window.confirm(`Discard unsaved changes and open ${file.name}?`)) return;
       void openSvg(file, button);
     });
@@ -444,61 +663,62 @@ function createFileSection(title: string, files: SvgFileEntry[]): HTMLElement {
 }
 
 async function openSvg(file: SvgFileEntry, button: HTMLButtonElement): Promise<void> {
-  setStatus(`Opening ${file.name}…`);
-  const response = await fetch(`/api/svg?path=${encodeURIComponent(file.path)}`);
-  if (!response.ok) {
-    const payload = await response.json() as { error?: string };
-    setStatus(payload.error ?? "Unable to open SVG.");
-    return;
-  }
-
-  const source = await response.text();
-  const parsed = new DOMParser().parseFromString(source, "image/svg+xml");
-  const svg = parsed.documentElement;
-  if (svg.localName !== "svg" || parsed.querySelector("parsererror")) {
-    setStatus("The selected file is not valid SVG.");
-    return;
-  }
-
-  for (const selected of fileList.querySelectorAll<HTMLButtonElement>(".selected")) {
-    selected.classList.remove("selected");
-    selected.setAttribute("aria-current", "false");
-  }
-  button.classList.add("selected");
-  button.setAttribute("aria-current", "true");
-  currentFile = file;
-  window.scrollTo(0, 0);
-  collapsedLayerKeys.clear();
-  layerQuery = "";
-  layerSearch.value = "";
-  layerSearch.disabled = false;
-  clearLayerSearchButton.disabled = true;
-  dirty = false;
-  saveButton.disabled = true;
-  artboard.replaceChildren(document.importNode(svg, true));
-  const renderedSvg = artboard.querySelector("svg");
-  if (!renderedSvg) return;
-  renderedSvg.removeAttribute("width");
-  renderedSvg.removeAttribute("height");
-  if (!renderedSvg.hasAttribute("role")) {
-    renderedSvg.setAttribute("role", "img");
-    renderedSvg.setAttribute("data-lineage-added-role", "true");
-  }
-  if (!renderedSvg.hasAttribute("aria-label")) {
-    renderedSvg.setAttribute("aria-label", file.name);
-    renderedSvg.setAttribute("data-lineage-added-label", "true");
-  }
-
-  emptyState.hidden = true;
-  artboard.hidden = false;
-  setZoom(1);
-  editor.load(renderedSvg);
-  renderLayers(renderedSvg);
-  renderFavicons(editor.serializeClean());
-
-  const viewBox = renderedSvg.getAttribute("viewBox") ?? "No viewBox";
-  getElement("document-size").textContent = viewBox;
-  setStatus(`${file.collection} / ${file.name}`);
+  if (agentSession?.pending) return;
+  await commitLatestFileOpen({
+    coordinator: fileOpenCoordinator,
+    isPending: () => Boolean(agentSession?.pending),
+    load: async () => {
+      const response = await fetch(`/api/svg?path=${encodeURIComponent(file.path)}`);
+      if (!response.ok) {
+        const payload = await response.json() as { error?: string };
+        throw new Error(payload.error ?? "Unable to open SVG.");
+      }
+      const source = await response.text();
+      const parsed = new DOMParser().parseFromString(source, "image/svg+xml");
+      const svg = parsed.documentElement;
+      if (svg.localName !== "svg" || parsed.querySelector("parsererror")) throw new Error("The selected file is not valid SVG.");
+      return svg;
+    },
+    onEligibleError: (error) => setStatus(error instanceof Error ? error.message : "Unable to open SVG."),
+    commit: (svg) => {
+      if (agentSession && !agentSession.open(crypto.randomUUID(), file.path)) throw new Error("File-open commit gate lost pending eligibility.");
+      for (const selected of fileList.querySelectorAll<HTMLButtonElement>(".selected")) {
+        selected.classList.remove("selected");
+        selected.setAttribute("aria-current", "false");
+      }
+      button.classList.add("selected");
+      button.setAttribute("aria-current", "true");
+      currentFile = file;
+      window.scrollTo(0, 0);
+      collapsedLayerKeys.clear();
+      layerQuery = "";
+      layerSearch.value = "";
+      layerSearch.disabled = false;
+      clearLayerSearchButton.disabled = true;
+      dirty = false;
+      saveButton.disabled = true;
+      artboard.replaceChildren(document.importNode(svg, true));
+      const renderedSvg = artboard.querySelector("svg");
+      if (!renderedSvg) throw new Error("Committed SVG is missing from the artboard.");
+      if (!renderedSvg.hasAttribute("role")) {
+        renderedSvg.setAttribute("role", "img");
+        renderedSvg.setAttribute("data-lineage-added-role", "true");
+      }
+      if (!renderedSvg.hasAttribute("aria-label")) {
+        renderedSvg.setAttribute("aria-label", file.name);
+        renderedSvg.setAttribute("data-lineage-added-label", "true");
+      }
+      emptyState.hidden = true;
+      artboard.hidden = false;
+      setZoom(1);
+      editor.load(renderedSvg);
+      publishAgentDocument();
+      renderLayers(renderedSvg);
+      renderFavicons(editor.serializeClean());
+      getElement("document-size").textContent = renderedSvg.getAttribute("viewBox") ?? "No viewBox";
+      setStatus(`${file.collection} / ${file.name}`);
+    },
+  });
 }
 
 function renderLayers(svg: SVGSVGElement): void {
@@ -550,6 +770,7 @@ function appendLayer(element: SVGGraphicsElement, index: number, depth: number, 
     const collapsed = Boolean(!layerQuery && key && collapsedLayerKeys.has(key));
     const row = document.createElement("div");
     row.className = "layer-row";
+    row.classList.toggle("review-impacted", Boolean(key && reviewImpactKeys.has(key)));
     row.style.setProperty("--layer-depth", String(depth));
 
     const disclosure = document.createElement("button");
@@ -579,7 +800,10 @@ function appendLayer(element: SVGGraphicsElement, index: number, depth: number, 
     const label = document.createElement("span");
     label.textContent = getSelectionLabel(element, root);
     button.append(type, label);
-    button.addEventListener("click", (event) => editor.selectNode(element, event.shiftKey));
+    button.addEventListener("click", (event) => {
+      if (agentPreviewActive) focusReviewLayer(key);
+      else editor.selectNode(element, event.shiftKey);
+    });
     const visibility = document.createElement("button");
     const hidden = element.getAttribute("display") === "none";
     visibility.type = "button";
@@ -587,6 +811,7 @@ function appendLayer(element: SVGGraphicsElement, index: number, depth: number, 
     visibility.innerHTML = layerVisibilityIcon(hidden);
     visibility.title = hidden ? "Show layer" : "Hide layer";
     visibility.setAttribute("aria-label", `${hidden ? "Show" : "Hide"} ${getSelectionLabel(element, root)}`);
+    visibility.disabled = Boolean(agentSession?.pending) || agentPreviewActive;
     visibility.addEventListener("click", () => editor.toggleVisibility(element));
     row.classList.toggle("hidden-layer", hidden);
     row.append(disclosure, button, visibility);
@@ -779,9 +1004,14 @@ stage.addEventListener("pointercancel", finishPan);
 stage.addEventListener("lostpointercapture", finishPan);
 
 window.addEventListener("beforeunload", (event) => {
-  if (!dirty) return;
+  if (!dirty && !agentSession?.pending) return;
   event.preventDefault();
   event.returnValue = "";
+});
+window.addEventListener("pagehide", () => {
+  const transactionId = agentSession?.pending?.transaction.transactionId;
+  if (transactionId) agentTransport.decideOnUnload(transactionId);
+  agentTransport.close();
 });
 
 for (const button of document.querySelectorAll<HTMLButtonElement>(".background-button")) {

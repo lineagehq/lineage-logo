@@ -3,6 +3,8 @@ import "@svgdotjs/svg.draggable.js";
 import "@svgdotjs/svg.select.js";
 import "@svgdotjs/svg.resize.js";
 import { History } from "../history/history";
+import { evaluateAgentTransaction, type AgentDocumentContext, type AgentSelectionIntent, type StagedAgentTransaction } from "../agent/transaction";
+import type { AgentTransactionV1 } from "../../shared/agent-protocol";
 
 interface EditorControls {
   alignBottomButton: HTMLButtonElement;
@@ -73,6 +75,7 @@ const EDITABLE_SELECTOR = "g, path, rect, circle, ellipse, polygon, polyline, li
 const RESOURCE_SELECTOR = "defs, metadata, clipPath, mask, filter, linearGradient, radialGradient, pattern, marker, symbol";
 const HOVER_ATTRIBUTE = "data-lineage-hover";
 const SECONDARY_ATTRIBUTE = "data-lineage-secondary";
+const REVIEW_ATTRIBUTE = "data-lineage-review-highlight";
 
 export type SvgPaintProperty = "fill" | "stroke";
 
@@ -142,14 +145,16 @@ export function serializeSvg(root: SVGSVGElement | undefined, stripEditorState: 
   for (const element of [clone, ...Array.from(clone.querySelectorAll("*"))]) {
     element.removeAttribute(HOVER_ATTRIBUTE);
     element.removeAttribute(SECONDARY_ATTRIBUTE);
+    element.removeAttribute(REVIEW_ATTRIBUTE);
   }
 
   if (stripEditorState) {
+    for (const metadata of Array.from(clone.querySelectorAll("metadata#lineage-logo-edit"))) metadata.remove();
     if (clone.hasAttribute("data-lineage-added-role")) clone.removeAttribute("role");
     if (clone.hasAttribute("data-lineage-added-label")) clone.removeAttribute("aria-label");
     for (const element of [clone, ...Array.from(clone.querySelectorAll("*"))]) {
       for (const attribute of Array.from(element.attributes)) {
-        if (attribute.name.startsWith("data-lineage-")) {
+        if (/^data-(?:lineage|agent|review|transport)-/.test(attribute.name)) {
           element.removeAttribute(attribute.name);
         }
       }
@@ -509,6 +514,7 @@ export class SvgEditor {
   #hovered?: SVGGraphicsElement;
   #suppressCanvasClickUntil = 0;
   #syncingControls = false;
+  #agentMutationBlocked = false;
 
   constructor(artboard: HTMLElement, controls: EditorControls, callbacks: EditorCallbacks) {
     this.#artboard = artboard;
@@ -616,19 +622,32 @@ export class SvgEditor {
     const selected = SVG(nextPrimary) as SvgElement;
     this.#selected = selected;
 
-    if (node.getAttribute("display") !== "none" && !this.#isLocked(node)) {
+    const hasComplexResources = Boolean(node.querySelector(RESOURCE_SELECTOR))
+      || Array.from(node.attributes).some((attribute) => attribute.value.includes("url(#"));
+    if (!this.#agentMutationBlocked && node.getAttribute("display") !== "none" && !this.#isLocked(node) && !hasComplexResources) {
       selected
         .select()
         .resize({ preserveAspectRatio: true, aroundCenter: false, grid: 1, degree: 1 })
         .draggable();
       selected.on("dragstart.lineage", () => this.#beginInteractiveMutation());
-      selected.on("dragmove.lineage", () => {
+      selected.on("dragmove.lineage", (event) => {
+        if (this.#agentMutationBlocked) {
+          event.preventDefault();
+          return;
+        }
         this.#markInteractiveMoved();
         this.#syncSelectionUi();
       });
-      selected.on("dragend.lineage", () => this.#finishInteractiveMutation());
+      selected.on("dragend.lineage", () => {
+        this.#finishInteractiveMutation();
+        if (this.#agentMutationBlocked) queueMicrotask(() => selected.draggable(false));
+      });
       selected.on("beforeresize.lineage", () => this.#beginInteractiveMutation());
-      selected.on("resize.lineage", () => {
+      selected.on("resize.lineage", (event) => {
+        if (this.#agentMutationBlocked) {
+          event.preventDefault();
+          return;
+        }
         this.#markInteractiveMoved();
         this.#syncSelectionUi();
         this.#scheduleInteractiveFinish();
@@ -650,22 +669,26 @@ export class SvgEditor {
     }
   }
 
-  undo(): void {
+  undo(): boolean {
+    if (this.#agentMutationBlocked) return false;
     const previous = this.#history.undo(this.#snapshot());
-    if (previous === undefined) return;
+    if (previous === undefined) return false;
     this.#restore(previous);
     this.#callbacks.onStatus("Undid the last correction");
+    return true;
   }
 
-  redo(): void {
+  redo(): boolean {
+    if (this.#agentMutationBlocked) return false;
     const next = this.#history.redo(this.#snapshot());
-    if (next === undefined) return;
+    if (next === undefined) return false;
     this.#restore(next);
     this.#callbacks.onStatus("Redid the correction");
+    return true;
   }
 
   reset(): void {
-    if (!this.#drawing) return;
+    if (!this.#drawing || this.#agentMutationBlocked) return;
     this.#lockedKeys.clear();
     if (this.serializeClean() === this.#baseline) {
       this.#scope = this.svgNode;
@@ -696,6 +719,73 @@ export class SvgEditor {
     return [...this.#selectedNodes];
   }
 
+  stageAgentTransaction(transaction: AgentTransactionV1, context: AgentDocumentContext): StagedAgentTransaction | undefined {
+    const root = this.svgNode;
+    if (!root) return undefined;
+    if (this.#interactiveMutation) {
+      return {
+        result: {
+          transactionId: transaction.transactionId,
+          status: "rejected",
+          error: { code: "pending_transaction", message: "Finish the active canvas gesture before staging an agent transaction." },
+        },
+      };
+    }
+    return evaluateAgentTransaction(root, transaction, context, this.#lockedKeys);
+  }
+
+  setAgentMutationBlocked(blocked: boolean): void {
+    if (this.#agentMutationBlocked === blocked) return;
+    this.#agentMutationBlocked = blocked;
+    this.#setSelection([...this.#selectedNodes], this.selectedNode);
+    this.#callbacks.onHistoryChange(blocked ? false : this.#history.canUndo, blocked ? false : this.#history.canRedo);
+  }
+
+  applyAgentSelection(selection?: AgentSelectionIntent): void {
+    const root = this.svgNode;
+    if (!root || !selection) return;
+    const nodes = selection.targetSessionKeys
+      .map((key) => findSelectableByKeys(root, [key]))
+      .filter((node): node is SVGGraphicsElement => Boolean(node));
+    const primary = selection.primarySessionKey ? findSelectableByKeys(root, [selection.primarySessionKey]) : nodes.at(-1);
+    this.#scope = selection.scopeSessionKey ? findSelectableByKeys(root, [selection.scopeSessionKey]) ?? root : root;
+    this.#setSelection(nodes, primary);
+  }
+
+  acceptAgentCandidate(candidate: SVGSVGElement, selection?: AgentSelectionIntent): void {
+    const before = this.#snapshot();
+    const previous = JSON.parse(before) as EditorSnapshot;
+    const accepted: EditorSnapshot = {
+      ...previous,
+      markup: serializeSvg(candidate, false),
+      ...(selection ? {
+        primaryKeys: selection.primarySessionKey ? [selection.primarySessionKey] : [],
+        selectionKeys: selection.primarySessionKey ? [selection.primarySessionKey] : [],
+        selectionPaths: selection.targetSessionKeys.map((key) => [key]),
+        scopeKeys: selection.scopeSessionKey ? [selection.scopeSessionKey] : [],
+      } : {}),
+    };
+    this.#history.checkpoint(before);
+    this.#restore(JSON.stringify(accepted));
+  }
+
+  setAgentReviewHighlights(keys: ReadonlySet<string>): void {
+    const root = this.svgNode;
+    if (!root) return;
+    for (const node of Array.from(root.querySelectorAll<SVGGraphicsElement>(EDITABLE_SELECTOR))) {
+      if (node.dataset.lineageKey && keys.has(node.dataset.lineageKey)) node.setAttribute(REVIEW_ATTRIBUTE, "true");
+      else node.removeAttribute(REVIEW_ATTRIBUTE);
+    }
+  }
+
+  focusAgentLayer(sessionKey: string): boolean {
+    const root = this.svgNode;
+    const node = root ? findSelectableByKeys(root, [sessionKey]) : undefined;
+    if (!node) return false;
+    this.selectNode(node);
+    return true;
+  }
+
   renameSelection(name: string): void {
     const node = this.#singleMutableSelection("rename");
     const trimmed = name.trim();
@@ -709,6 +799,7 @@ export class SvgEditor {
   }
 
   toggleLock(): void {
+    if (this.#agentMutationBlocked) return;
     const node = this.selectedNode;
     const key = node?.dataset.lineageKey;
     if (!node || !key || this.#selectedNodes.length !== 1) return;
@@ -1041,7 +1132,7 @@ export class SvgEditor {
   }
 
   #markInteractiveMoved(): void {
-    if (this.#interactiveMoved) return;
+    if (!this.#interactiveMutation || this.#agentMutationBlocked || this.#interactiveMoved) return;
     this.#interactiveMoved = true;
     this.#history.checkpoint(this.#interactiveSnapshot);
     this.#notifyHistory();
@@ -1061,7 +1152,7 @@ export class SvgEditor {
   }
 
   #mutate(change: () => void): void {
-    if (!this.#drawing) return;
+    if (!this.#drawing || this.#agentMutationBlocked) return;
     this.#history.checkpoint(this.#snapshot());
     change();
     this.#syncSelectionUi();
@@ -1246,7 +1337,13 @@ export class SvgEditor {
   #syncSelectionUi(): void {
     if (!this.#selected || !this.#drawing) return;
     const node = this.#selected.node as SVGGraphicsElement;
-    const box = this.#selected.rbox(this.#drawing);
+    let box: { x: number; y: number };
+    try {
+      box = this.#selected.rbox(this.#drawing);
+    } catch {
+      const nativeBox = node.getBBox();
+      box = { x: nativeBox.x, y: nativeBox.y };
+    }
     this.#syncingControls = true;
     const explicitFill = node.getAttribute("fill");
     const explicitStroke = node.getAttribute("stroke");
@@ -1382,11 +1479,13 @@ export class SvgEditor {
   }
 
   #canMutatePrimary(): boolean {
+    if (this.#agentMutationBlocked) return false;
     const node = this.selectedNode;
     return Boolean(node && this.#selectedNodes.length === 1 && !this.#isLocked(node));
   }
 
   #singleMutableSelection(action: string): SVGGraphicsElement | undefined {
+    if (this.#agentMutationBlocked) return undefined;
     const node = this.selectedNode;
     if (this.#selectedNodes.length !== 1 || !node) {
       this.#callbacks.onStatus(`${action[0].toUpperCase()}${action.slice(1)} requires one selected layer`);
@@ -1401,14 +1500,21 @@ export class SvgEditor {
 
   #syncOperationUi(): void {
     const state = this.operationState();
-    for (const button of [
+    const operationButtons = [
       this.#controls.alignLeftButton,
       this.#controls.alignCenterButton,
       this.#controls.alignRightButton,
       this.#controls.alignTopButton,
       this.#controls.alignMiddleButton,
       this.#controls.alignBottomButton,
-    ]) button.disabled = !state.align.allowed;
+    ];
+    if (this.#agentMutationBlocked) {
+      for (const button of [...operationButtons, this.#controls.groupButton, this.#controls.ungroupButton, this.#controls.reorderEarlierButton, this.#controls.reorderLaterButton]) button.disabled = true;
+      this.#controls.hierarchyReason.textContent = "Review the pending agent transaction before editing layers.";
+      this.#controls.alignmentReason.textContent = "Review the pending agent transaction before aligning layers.";
+      return;
+    }
+    for (const button of operationButtons) button.disabled = !state.align.allowed;
     this.#controls.groupButton.disabled = !state.group.allowed;
     this.#controls.ungroupButton.disabled = !state.ungroup.allowed;
     this.#controls.reorderEarlierButton.disabled = !state.reorderEarlier.allowed;
