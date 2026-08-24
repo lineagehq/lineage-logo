@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 
 const apiPort = process.env.LINEAGE_LOGO_PORT ?? "4173";
+const clientPort = Number(process.env.LINEAGE_LOGO_CLIENT_PORT ?? "5173");
 
 export default defineConfig({
   root: "src/client",
@@ -10,10 +11,15 @@ export default defineConfig({
   },
   server: {
     host: "127.0.0.1",
-    port: 5173,
+    port: clientPort,
     strictPort: true,
     proxy: {
-      "/api": `http://127.0.0.1:${apiPort}`,
+      "/api": {
+        target: `http://127.0.0.1:${apiPort}`,
+        configure: (proxy) => {
+          proxy.on("proxyReq", (request) => request.setHeader("Origin", "http://127.0.0.1:5173"));
+        },
+      },
     },
   },
 });

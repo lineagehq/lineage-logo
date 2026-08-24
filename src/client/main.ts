@@ -1,5 +1,19 @@
 import "./styles.css";
-import { SvgEditor } from "./canvas/editor";
+import {
+  getSelectableParent,
+  getSelectionAncestry,
+  getSelectionLabel,
+  isSelectableNode,
+  SvgEditor,
+  type SelectionContext,
+} from "./canvas/editor";
+
+const favicon = document.createElement("link");
+favicon.rel = "icon";
+favicon.href = URL.createObjectURL(new Blob([
+  "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='#161616'/><path d='M9 7v18h14v-4H14V7z' fill='white'/></svg>",
+], { type: "image/svg+xml" }));
+document.head.append(favicon);
 
 interface SvgFileEntry {
   collection: "concepts" | "iterations";
@@ -37,15 +51,22 @@ app.innerHTML = `
           <span id="zoom-label">100%</span>
           <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
           <button type="button" id="zoom-reset" aria-label="Reset zoom">100%</button>
+          <button type="button" id="zoom-fit" title="Fit the artboard in the available space">Fit</button>
+          <button type="button" id="zoom-selection" title="Fit the selected layer in the available space" disabled>Fit selection</button>
+          <button type="button" id="shortcut-help" aria-label="Keyboard shortcuts" title="Keyboard shortcuts">?</button>
         </div>
         <div class="toolbar-group" aria-label="Preview background">
           <button type="button" id="save-iteration" class="primary-action" disabled>Save iteration</button>
-          <button type="button" class="background-button active" data-background="checker">Grid</button>
-          <button type="button" class="background-button" data-background="light">Light</button>
-          <button type="button" class="background-button" data-background="dark">Dark</button>
+          <button type="button" class="background-button active" data-background="checker" aria-pressed="true">Grid</button>
+          <button type="button" class="background-button" data-background="light" aria-pressed="false">Light</button>
+          <button type="button" class="background-button" data-background="dark" aria-pressed="false">Dark</button>
         </div>
       </div>
       <div class="stage checker" id="stage">
+        <div id="connection-banner" class="connection-banner" role="status" hidden>
+          <span>Preview disconnected. Restart the local editor, then try again.</span>
+          <button type="button" id="retry-preview">Try again</button>
+        </div>
         <div class="empty-state" id="empty-state">
           <span class="empty-icon">◇</span>
           <strong>Choose an SVG to inspect</strong>
@@ -61,15 +82,82 @@ app.innerHTML = `
     <aside class="sidebar review-sidebar">
       <section>
         <div class="panel-heading"><span>Layers</span><span id="layer-count">0</span></div>
+        <div class="layer-search">
+          <input type="search" id="layer-search" aria-label="Search layers" placeholder="Search layers" disabled />
+          <button type="button" id="clear-layer-search" aria-label="Clear layer search" disabled>×</button>
+        </div>
         <div id="layer-list" class="layer-list empty-copy">Open an SVG to inspect its structure.</div>
       </section>
       <section class="inspector-section">
         <div class="panel-heading"><span>Selection</span><strong id="selection-name">None</strong></div>
+        <nav id="selection-breadcrumb" class="selection-breadcrumb" aria-label="Selection ancestry"></nav>
+        <div class="scope-actions">
+          <button type="button" id="back-to-group" disabled>Back to group</button>
+          <button type="button" id="edit-inside" disabled>Edit inside</button>
+        </div>
         <div id="selection-empty" class="empty-copy">Select a layer or click the canvas.</div>
         <div id="selection-panel" class="selection-panel" hidden>
-          <div class="field-grid">
-            <label>Fill<input id="fill" type="text" placeholder="none or #hex" /></label>
-            <label>Stroke<input id="stroke" type="text" placeholder="none or #hex" /></label>
+          <div class="name-field">
+            <label for="layer-name">Layer name</label>
+            <div class="name-control">
+              <input id="layer-name" type="text" placeholder="Accessible layer name" />
+              <button type="button" id="clear-layer-name" title="Remove the custom layer name">Clear</button>
+            </div>
+          </div>
+          <div class="selection-actions sticky-selection-actions">
+            <button type="button" id="duplicate-selection">Duplicate</button>
+            <button type="button" id="hide-selection">Hide</button>
+            <button type="button" id="delete-selection" class="danger">Delete</button>
+          </div>
+          <details class="inspector-group" id="organization-group" open>
+            <summary>Organization</summary>
+            <div class="organization-actions" aria-label="Layer organization">
+              <button type="button" id="lock-selection">Lock</button>
+              <button type="button" id="reorder-earlier" title="Move one SVG paint-order position backward">Send backward</button>
+              <button type="button" id="reorder-later" title="Move one SVG paint-order position forward">Bring forward</button>
+              <button type="button" id="group-selection">Group</button>
+              <button type="button" id="ungroup-selection">Ungroup</button>
+            </div>
+            <p id="hierarchy-reason" class="hierarchy-reason">Select adjacent sibling layers to organize them.</p>
+          </details>
+          <details class="inspector-group" id="alignment-group">
+            <summary>Alignment</summary>
+            <div class="alignment-actions" aria-label="Align selected layers">
+              <button type="button" id="align-left" title="Align left edges">Left</button>
+              <button type="button" id="align-center" title="Align horizontal centers">Center</button>
+              <button type="button" id="align-right" title="Align right edges">Right</button>
+              <button type="button" id="align-top" title="Align top edges">Top</button>
+              <button type="button" id="align-middle" title="Align vertical centers">Middle</button>
+              <button type="button" id="align-bottom" title="Align bottom edges">Bottom</button>
+            </div>
+            <p id="alignment-reason" class="alignment-reason">Select at least two sibling layers to align.</p>
+          </details>
+          <details class="inspector-group" id="paint-group" open>
+            <summary>Paint</summary>
+            <div class="field-grid paint-grid">
+            <label class="paint-field">
+              <span>Fill</span>
+              <span class="paint-control">
+                <input id="fill" type="text" placeholder="none, color, or paint URL" aria-describedby="fill-error" />
+                <input id="fill-picker" type="color" value="#000000" aria-label="Choose a solid fill color" />
+              </span>
+              <small id="fill-state" class="paint-state"></small>
+              <small id="fill-error" class="field-error" aria-live="polite"></small>
+            </label>
+            <label class="paint-field">
+              <span>Stroke</span>
+              <span class="paint-control">
+                <input id="stroke" type="text" placeholder="none, color, or paint URL" aria-describedby="stroke-error" />
+                <input id="stroke-picker" type="color" value="#000000" aria-label="Choose a solid stroke color" />
+              </span>
+              <small id="stroke-state" class="paint-state"></small>
+              <small id="stroke-error" class="field-error" aria-live="polite"></small>
+            </label>
+            </div>
+          </details>
+          <details class="inspector-group" id="geometry-group">
+            <summary>Geometry</summary>
+            <div class="field-grid">
             <label>Stroke width<input id="stroke-width" type="number" min="0" step="0.5" /></label>
             <label>Opacity<input id="opacity" type="number" min="0" max="1" step="0.05" /></label>
             <label>X<input id="position-x" type="number" step="1" /></label>
@@ -77,12 +165,8 @@ app.innerHTML = `
             <label>Scale %<input id="scale" type="number" min="1" step="1" /></label>
             <label>Rotation °<input id="rotation" type="number" step="1" /></label>
           </div>
-          <div class="selection-actions">
-            <button type="button" id="duplicate-selection">Duplicate</button>
-            <button type="button" id="hide-selection">Hide</button>
-            <button type="button" id="delete-selection" class="danger">Delete</button>
-          </div>
-          <p class="inspector-hint">Drag to move. Use the handles to resize or rotate. Double-click to select inside a group.</p>
+          </details>
+          <p class="inspector-hint">Hover previews a normal click. Double-click or Alt-click selects the exact element. Press <button type="button" id="inline-shortcut-help">?</button> for shortcuts.</p>
         </div>
       </section>
       <section class="preview-section">
@@ -91,6 +175,22 @@ app.innerHTML = `
       </section>
     </aside>
   </main>
+  <dialog id="shortcut-dialog" class="shortcut-dialog" aria-labelledby="shortcut-title">
+    <div class="dialog-heading">
+      <h2 id="shortcut-title">Keyboard shortcuts</h2>
+      <button type="button" id="close-shortcut-help" aria-label="Close keyboard shortcuts">×</button>
+    </div>
+    <dl>
+      <div><dt>Undo / Redo</dt><dd>⌘/Ctrl+Z · ⌘/Ctrl+Shift+Z</dd></div>
+      <div><dt>Duplicate</dt><dd>⌘/Ctrl+D</dd></div>
+      <div><dt>Group / Ungroup</dt><dd>⌘/Ctrl+G · ⌘/Ctrl+Shift+G</dd></div>
+      <div><dt>Nudge</dt><dd>Arrow keys · Shift for 10 units</dd></div>
+      <div><dt>Delete</dt><dd>Delete or Backspace</dd></div>
+      <div><dt>Fit artboard / selection</dt><dd>F · Shift+F</dd></div>
+      <div><dt>Exact selection</dt><dd>Alt-click or double-click</dd></div>
+      <div><dt>Leave group / clear selection</dt><dd>Escape</dd></div>
+    </dl>
+  </dialog>
 `;
 
 const fileList = getElement("file-list");
@@ -103,12 +203,22 @@ const undoButton = getInput<HTMLButtonElement>("undo");
 const redoButton = getInput<HTMLButtonElement>("redo");
 const resetEditsButton = getInput<HTMLButtonElement>("reset-edits");
 const saveButton = getInput<HTMLButtonElement>("save-iteration");
+const backToGroupButton = getInput<HTMLButtonElement>("back-to-group");
+const editInsideButton = getInput<HTMLButtonElement>("edit-inside");
+const selectionBreadcrumb = getElement("selection-breadcrumb");
+const alignmentGroup = getInput<HTMLDetailsElement>("alignment-group");
+const shortcutDialog = getInput<HTMLDialogElement>("shortcut-dialog");
+const zoomSelectionButton = getInput<HTMLButtonElement>("zoom-selection");
+const layerSearch = getInput<HTMLInputElement>("layer-search");
+const clearLayerSearchButton = getInput<HTMLButtonElement>("clear-layer-search");
 const fileButtons = new Map<string, HTMLButtonElement>();
+const collapsedLayerKeys = new Set<string>();
 let currentFile: SvgFileEntry | undefined;
 let dirty = false;
 let nextIterationPath = "iterations/iteration-1.svg";
 let zoom = 1;
 let currentObjectUrl: string | undefined;
+let layerQuery = "";
 
 function getElement(id: string): HTMLElement {
   const element = document.getElementById(id);
@@ -123,52 +233,190 @@ function getInput<T extends HTMLElement>(id: string): T {
 const editor = new SvgEditor(
   artboard,
   {
+    alignBottomButton: getInput("align-bottom"),
+    alignCenterButton: getInput("align-center"),
+    alignLeftButton: getInput("align-left"),
+    alignmentReason: getElement("alignment-reason"),
+    alignMiddleButton: getInput("align-middle"),
+    alignRightButton: getInput("align-right"),
+    alignTopButton: getInput("align-top"),
     deleteButton: getInput("delete-selection"),
     duplicateButton: getInput("duplicate-selection"),
     fill: getInput("fill"),
+    fillError: getElement("fill-error"),
+    fillPicker: getInput("fill-picker"),
+    fillState: getElement("fill-state"),
+    groupButton: getInput("group-selection"),
+    hierarchyReason: getElement("hierarchy-reason"),
     hideButton: getInput("hide-selection"),
+    lockButton: getInput("lock-selection"),
+    name: getInput("layer-name"),
+    nameClearButton: getInput("clear-layer-name"),
     opacity: getInput("opacity"),
     positionX: getInput("position-x"),
     positionY: getInput("position-y"),
+    reorderEarlierButton: getInput("reorder-earlier"),
+    reorderLaterButton: getInput("reorder-later"),
     rotation: getInput("rotation"),
     scale: getInput("scale"),
     selectionEmpty: getElement("selection-empty"),
     selectionName: getElement("selection-name"),
     selectionPanel: getElement("selection-panel"),
     stroke: getInput("stroke"),
+    strokeError: getElement("stroke-error"),
+    strokePicker: getInput("stroke-picker"),
+    strokeState: getElement("stroke-state"),
     strokeWidth: getInput("stroke-width"),
+    ungroupButton: getInput("ungroup-selection"),
   },
   {
     onDocumentChange: (svg) => {
       renderLayers(svg);
-      highlightLayer(editor.selectedNode);
+      renderSelectionContext(editor.selectionContext);
       renderFavicons(editor.serializeClean());
-      setStatus("Unsaved manual corrections");
     },
     onDirtyChange: (nextDirty) => {
+      const changed = dirty !== nextDirty;
       dirty = nextDirty;
       saveButton.disabled = !dirty;
-      resetEditsButton.disabled = !dirty;
+      resetEditsButton.disabled = !dirty && editor.selectionContext.lockedKeys.size === 0;
+      if (nextDirty) setStatus("Unsaved manual corrections");
+      else if (changed && currentFile) setStatus(`${currentFile.collection} / ${currentFile.name} · No unsaved changes`);
     },
     onHistoryChange: (canUndo, canRedo) => {
       undoButton.disabled = !canUndo;
       redoButton.disabled = !canRedo;
     },
     onSelectionChange: (element) => {
-      highlightLayer(element);
+      const root = editor.svgNode;
+      if (element && root && layerQuery && !layerMatches(element, root, layerQuery)) {
+        layerQuery = "";
+        layerSearch.value = "";
+        clearLayerSearchButton.disabled = true;
+        renderLayers(root);
+      }
+      highlightLayers(editor.selectedNodes, element);
     },
+    onSelectionContextChange: renderSelectionContext,
     onStatus: setStatus,
   },
 );
+
+backToGroupButton.addEventListener("click", () => editor.backToGroup());
+editInsideButton.addEventListener("click", () => editor.editInside());
+
+function renderSelectionContext(context: SelectionContext): void {
+  resetEditsButton.disabled = !dirty && context.lockedKeys.size === 0;
+  backToGroupButton.disabled = !context.canDrillBack;
+  editInsideButton.disabled = !context.canEditInside;
+  const root = editor.svgNode;
+  const selectedBox = context.selected?.getBoundingClientRect();
+  const canFitSelection = Boolean(
+    context.selected
+    && context.selected.getAttribute("display") !== "none"
+    && selectedBox
+    && selectedBox.width > 0
+    && selectedBox.height > 0,
+  );
+  zoomSelectionButton.disabled = !canFitSelection;
+  zoomSelectionButton.title = canFitSelection
+    ? "Fit the selected layer in the available space"
+    : context.selected
+      ? "Show the selected layer before fitting it"
+      : "Select a visible layer to fit it";
+  if (context.selectedNodes.length > 1) alignmentGroup.open = true;
+  if (root && context.selected) {
+    let expanded = false;
+    for (const ancestor of getSelectionAncestry(context.selected, root).slice(0, -1)) {
+      const key = ancestor.dataset.lineageKey;
+      if (key && collapsedLayerKeys.delete(key)) expanded = true;
+    }
+    if (expanded) renderLayers(root);
+  }
+  selectionBreadcrumb.replaceChildren();
+  if (!root || context.breadcrumb.length === 0) {
+    selectionBreadcrumb.textContent = root && context.activeScope
+      ? `Inside ${getSelectionLabel(context.activeScope, root)}`
+      : "Top level";
+  } else {
+    context.breadcrumb.forEach((node, index) => {
+      if (index > 0) {
+        const separator = document.createElement("span");
+        separator.className = "breadcrumb-separator";
+        separator.textContent = "/";
+        selectionBreadcrumb.append(separator);
+      }
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = getSelectionLabel(node, root);
+      button.className = index === context.breadcrumb.length - 1 ? "current" : "";
+      button.addEventListener("click", () => editor.selectAncestor(node));
+      selectionBreadcrumb.append(button);
+    });
+  }
+  const hoveredKey = context.hovered?.dataset.lineageKey;
+  const selectedKeys = new Set(context.selectedNodes.map((node) => node.dataset.lineageKey));
+  const primaryKey = context.selected?.dataset.lineageKey;
+  layerList.querySelectorAll<HTMLButtonElement>(".layer-button").forEach((button) => {
+    button.classList.toggle("predicted", Boolean(hoveredKey) && button.dataset.key === hoveredKey);
+    button.classList.toggle("selected", button.dataset.key === primaryKey);
+    button.classList.toggle("secondary-selected", button.dataset.key !== primaryKey && selectedKeys.has(button.dataset.key));
+    button.classList.toggle("locked", context.lockedKeys.has(button.dataset.key ?? ""));
+    button.setAttribute("aria-pressed", String(selectedKeys.has(button.dataset.key)));
+  });
+  const selectedButton = primaryKey
+    ? layerList.querySelector<HTMLButtonElement>(`.layer-button[data-key="${CSS.escape(primaryKey)}"]`)
+    : undefined;
+  if (selectedButton) {
+    const listBox = layerList.getBoundingClientRect();
+    const buttonBox = selectedButton.getBoundingClientRect();
+    if (buttonBox.top < listBox.top) layerList.scrollTop -= listBox.top - buttonBox.top;
+    else if (buttonBox.bottom > listBox.bottom) layerList.scrollTop += buttonBox.bottom - listBox.bottom;
+  }
+}
 
 function setStatus(message: string): void {
   getElement("status").textContent = message;
 }
 
-function setZoom(nextZoom: number): void {
+function setZoom(nextZoom: number, center?: Element): void {
   zoom = Math.min(4, Math.max(0.25, nextZoom));
   artboard.style.transform = `scale(${zoom})`;
   getElement("zoom-label").textContent = `${Math.round(zoom * 100)}%`;
+  if (center) {
+    const centerTarget = () => {
+    const target = center;
+    const stageBox = stage.getBoundingClientRect();
+    const targetBox = target.getBoundingClientRect();
+    stage.scrollLeft += targetBox.left + targetBox.width / 2 - (stageBox.left + stageBox.width / 2);
+    stage.scrollTop += targetBox.top + targetBox.height / 2 - (stageBox.top + stageBox.height / 2);
+    };
+    window.requestAnimationFrame(centerTarget);
+    window.setTimeout(centerTarget, 170);
+  }
+}
+
+function fittedZoom(
+  availableWidth: number,
+  availableHeight: number,
+  contentWidth: number,
+  contentHeight: number,
+  currentZoom = 1,
+): number {
+  if (availableWidth <= 0 || availableHeight <= 0 || contentWidth <= 0 || contentHeight <= 0) return currentZoom;
+  return Math.min(4, Math.max(0.25, currentZoom * Math.min(availableWidth / contentWidth, availableHeight / contentHeight)));
+}
+
+function fitArtboard(): void {
+  if (artboard.hidden) return;
+  setZoom(fittedZoom(stage.clientWidth - 80, stage.clientHeight - 80, artboard.offsetWidth, artboard.offsetHeight), artboard);
+}
+
+function fitSelection(): void {
+  const node = editor.selectedNode;
+  if (!node) return;
+  const box = node.getBoundingClientRect();
+  setZoom(fittedZoom(stage.clientWidth - 120, stage.clientHeight - 120, box.width, box.height, zoom), node);
 }
 
 function createFileSection(title: string, files: SvgFileEntry[]): HTMLElement {
@@ -183,6 +431,7 @@ function createFileSection(title: string, files: SvgFileEntry[]): HTMLElement {
     button.type = "button";
     button.className = "file-button";
     button.dataset.path = file.path;
+    button.setAttribute("aria-current", "false");
     button.innerHTML = `<span class="file-glyph">◇</span><span>${file.name.replace(/\.svg$/i, "")}</span>`;
     button.addEventListener("click", () => {
       if (dirty && !window.confirm(`Discard unsaved changes and open ${file.name}?`)) return;
@@ -211,9 +460,19 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement): Promise<v
     return;
   }
 
-  for (const selected of fileList.querySelectorAll(".selected")) selected.classList.remove("selected");
+  for (const selected of fileList.querySelectorAll<HTMLButtonElement>(".selected")) {
+    selected.classList.remove("selected");
+    selected.setAttribute("aria-current", "false");
+  }
   button.classList.add("selected");
+  button.setAttribute("aria-current", "true");
   currentFile = file;
+  window.scrollTo(0, 0);
+  collapsedLayerKeys.clear();
+  layerQuery = "";
+  layerSearch.value = "";
+  layerSearch.disabled = false;
+  clearLayerSearchButton.disabled = true;
   dirty = false;
   saveButton.disabled = true;
   artboard.replaceChildren(document.importNode(svg, true));
@@ -243,59 +502,124 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement): Promise<v
 }
 
 function renderLayers(svg: SVGSVGElement): void {
-  const elements = Array.from(svg.children).filter(isLayerElement);
+  const allSelectable = Array.from(svg.querySelectorAll("g, path, rect, circle, ellipse, polygon, polyline, line, text"))
+    .filter((element) => isLayerElement(element, svg));
+  const elements = allSelectable.filter((element) => getSelectableParent(element, svg) === svg);
   layerList.className = "layer-list";
   layerList.replaceChildren();
-  const allLayers = elements.flatMap(collectLayerElements);
-  getElement("layer-count").textContent = String(allLayers.length);
+  const allLayers = elements.flatMap((element) => collectLayerElements(element, svg));
+  const directMatches = layerQuery
+    ? allLayers.filter((element) => layerMatches(element, svg, layerQuery)).length
+    : allLayers.length;
+  getElement("layer-count").textContent = layerQuery ? `${directMatches} / ${allLayers.length}` : String(allLayers.length);
 
-  elements.forEach((element, index) => appendLayer(element, index, 0));
+  elements.forEach((element, index) => appendLayer(element, index, 0, svg));
+  if (layerQuery && directMatches === 0) {
+    layerList.className = "layer-list empty-copy";
+    layerList.textContent = `No layers match “${layerSearch.value.trim()}”.`;
+  }
 }
 
-function highlightLayer(element?: SVGGraphicsElement): void {
-  const selectedKey = element?.dataset.lineageKey;
+function highlightLayers(elements: SVGGraphicsElement[], primary?: SVGGraphicsElement): void {
+  const selectedKeys = new Set(elements.map((element) => element.dataset.lineageKey));
+  const primaryKey = primary?.dataset.lineageKey;
   layerList.querySelectorAll<HTMLButtonElement>(".layer-button").forEach((button) => {
-    button.classList.toggle("selected", button.dataset.key === selectedKey);
+    button.classList.toggle("selected", button.dataset.key === primaryKey);
+    button.classList.toggle("secondary-selected", button.dataset.key !== primaryKey && selectedKeys.has(button.dataset.key));
+    button.setAttribute("aria-pressed", String(selectedKeys.has(button.dataset.key)));
   });
 }
 
-function collectLayerElements(element: SVGGraphicsElement): SVGGraphicsElement[] {
+function collectLayerElements(element: SVGGraphicsElement, root: SVGSVGElement): SVGGraphicsElement[] {
   return [
     element,
-    ...Array.from(element.children)
-      .filter(isLayerElement)
-      .flatMap(collectLayerElements),
+    ...Array.from(element.querySelectorAll("g, path, rect, circle, ellipse, polygon, polyline, line, text"))
+      .filter((child): child is SVGGraphicsElement => isLayerElement(child, root) && getSelectableParent(child, root) === element)
+      .flatMap((child) => collectLayerElements(child, root)),
   ];
 }
 
-function isLayerElement(element: Element): element is SVGGraphicsElement {
-  return element instanceof SVGGraphicsElement
-    && !["defs", "metadata"].includes(element.localName)
-    && !element.matches(HANDLE_SELECTOR)
-    && !element.querySelector(HANDLE_SELECTOR);
+function isLayerElement(element: Element, root: SVGSVGElement): element is SVGGraphicsElement {
+  return isSelectableNode(element, root);
 }
 
-const HANDLE_SELECTOR = ".svg_select_shape, .svg_select_shape_pointSelect, .svg_select_handle, .svg_select_handle_rot";
+function appendLayer(element: SVGGraphicsElement, index: number, depth: number, root: SVGSVGElement): void {
+    const children = directLayerChildren(element, root);
+    if (layerQuery && !layerMatchesTree(element, root, layerQuery)) return;
+    const key = element.dataset.lineageKey ?? "";
+    const collapsed = Boolean(!layerQuery && key && collapsedLayerKeys.has(key));
+    const row = document.createElement("div");
+    row.className = "layer-row";
+    row.style.setProperty("--layer-depth", String(depth));
 
-function appendLayer(element: SVGGraphicsElement, index: number, depth: number): void {
+    const disclosure = document.createElement("button");
+    disclosure.type = "button";
+    disclosure.className = "layer-disclosure";
+    disclosure.disabled = children.length === 0;
+    disclosure.textContent = children.length === 0 ? "" : collapsed ? "▸" : "▾";
+    if (children.length === 0) disclosure.setAttribute("aria-hidden", "true");
+    else disclosure.setAttribute("aria-label", `${collapsed ? "Expand" : "Collapse"} ${getSelectionLabel(element, root)}`);
+    disclosure.setAttribute("aria-expanded", String(children.length > 0 && !collapsed));
+    disclosure.addEventListener("click", () => {
+      if (!key) return;
+      if (collapsedLayerKeys.has(key)) collapsedLayerKeys.delete(key);
+      else collapsedLayerKeys.add(key);
+      renderLayers(root);
+      renderSelectionContext(editor.selectionContext);
+    });
+
     const button = document.createElement("button");
     button.type = "button";
     button.className = "layer-button";
     button.dataset.key = element.dataset.lineageKey;
-    button.style.setProperty("--layer-depth", String(depth));
-    const name = element.id || `${element.localName}-${index + 1}`;
-    button.innerHTML = `<span class="layer-type">${element.localName}</span><span>${name}</span>`;
-    button.addEventListener("click", () => editor.selectNode(element));
-    layerList.append(button);
+    button.setAttribute("aria-pressed", "false");
+    const type = document.createElement("span");
+    type.className = "layer-type";
+    type.textContent = element.localName;
+    const label = document.createElement("span");
+    label.textContent = getSelectionLabel(element, root);
+    button.append(type, label);
+    button.addEventListener("click", (event) => editor.selectNode(element, event.shiftKey));
+    const visibility = document.createElement("button");
+    const hidden = element.getAttribute("display") === "none";
+    visibility.type = "button";
+    visibility.className = "layer-visibility";
+    visibility.innerHTML = layerVisibilityIcon(hidden);
+    visibility.title = hidden ? "Show layer" : "Hide layer";
+    visibility.setAttribute("aria-label", `${hidden ? "Show" : "Hide"} ${getSelectionLabel(element, root)}`);
+    visibility.addEventListener("click", () => editor.toggleVisibility(element));
+    row.classList.toggle("hidden-layer", hidden);
+    row.append(disclosure, button, visibility);
+    layerList.append(row);
 
-    Array.from(element.children)
-      .filter(isLayerElement)
-      .forEach((child, childIndex) => appendLayer(child, childIndex, depth + 1));
+    if (!collapsed) children.forEach((child, childIndex) => appendLayer(child, childIndex, depth + 1, root));
   }
 
+function directLayerChildren(element: SVGGraphicsElement, root: SVGSVGElement): SVGGraphicsElement[] {
+  return Array.from(element.querySelectorAll("g, path, rect, circle, ellipse, polygon, polyline, line, text"))
+    .filter((child): child is SVGGraphicsElement => isLayerElement(child, root) && getSelectableParent(child, root) === element);
+}
+
+function layerMatches(element: SVGGraphicsElement, root: SVGSVGElement, query: string): boolean {
+  const searchable = `${element.localName} ${getSelectionLabel(element, root)}`.toLocaleLowerCase();
+  return searchable.includes(query);
+}
+
+function layerMatchesTree(element: SVGGraphicsElement, root: SVGSVGElement, query: string): boolean {
+  return layerMatches(element, root, query)
+    || directLayerChildren(element, root).some((child) => layerMatchesTree(child, root, query));
+}
+
+function layerVisibilityIcon(hidden: boolean): string {
+  return hidden
+    ? '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.2 10s2.8-4.5 7.8-4.5 7.8 4.5 7.8 4.5-2.8 4.5-7.8 4.5S2.2 10 2.2 10Z"/><path d="m3 3 14 14"/><circle cx="10" cy="10" r="2.2"/></svg>'
+    : '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.2 10s2.8-4.5 7.8-4.5 7.8 4.5 7.8 4.5-2.8 4.5-7.8 4.5S2.2 10 2.2 10Z"/><circle cx="10" cy="10" r="2.4"/></svg>';
+}
+
 function renderFavicons(source: string): void {
-  if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+  const previousObjectUrl = currentObjectUrl;
   currentObjectUrl = URL.createObjectURL(new Blob([source], { type: "image/svg+xml" }));
+  if (previousObjectUrl) window.setTimeout(() => URL.revokeObjectURL(previousObjectUrl), 1000);
   faviconPreview.className = "favicon-preview";
   faviconPreview.replaceChildren();
 
@@ -314,13 +638,75 @@ function renderFavicons(source: string): void {
   }
 }
 
+layerSearch.addEventListener("input", () => {
+  layerQuery = layerSearch.value.trim().toLocaleLowerCase();
+  clearLayerSearchButton.disabled = !layerQuery;
+  const root = editor.svgNode;
+  if (root) {
+    renderLayers(root);
+    renderSelectionContext(editor.selectionContext);
+  }
+});
+clearLayerSearchButton.addEventListener("click", () => {
+  layerSearch.value = "";
+  layerQuery = "";
+  clearLayerSearchButton.disabled = true;
+  const root = editor.svgNode;
+  if (root) {
+    renderLayers(root);
+    renderSelectionContext(editor.selectionContext);
+  }
+  layerSearch.focus();
+});
+
 getElement("zoom-in").addEventListener("click", () => setZoom(zoom + 0.25));
 getElement("zoom-out").addEventListener("click", () => setZoom(zoom - 0.25));
 getElement("zoom-reset").addEventListener("click", () => setZoom(1));
+getElement("zoom-fit").addEventListener("click", fitArtboard);
+zoomSelectionButton.addEventListener("click", fitSelection);
 undoButton.addEventListener("click", () => editor.undo());
 redoButton.addEventListener("click", () => editor.redo());
 resetEditsButton.addEventListener("click", () => editor.reset());
 saveButton.addEventListener("click", () => void saveIteration());
+
+function openShortcutHelp(): void {
+  if (!shortcutDialog.open) shortcutDialog.showModal();
+}
+
+getElement("shortcut-help").addEventListener("click", openShortcutHelp);
+getElement("inline-shortcut-help").addEventListener("click", openShortcutHelp);
+getElement("close-shortcut-help").addEventListener("click", () => shortcutDialog.close());
+shortcutDialog.addEventListener("click", (event) => {
+  if (event.target === shortcutDialog) shortcutDialog.close();
+});
+
+const connectionBanner = getElement("connection-banner");
+const retryPreviewButton = getInput<HTMLButtonElement>("retry-preview");
+const showDisconnectedPreview = () => {
+  connectionBanner.hidden = false;
+  setStatus("Preview disconnected");
+};
+const showConnectedPreview = () => {
+  connectionBanner.hidden = true;
+};
+const hotModule = (import.meta as ImportMeta & {
+  hot?: { on: (event: string, callback: () => void) => void };
+}).hot;
+hotModule?.on("vite:ws:disconnect", showDisconnectedPreview);
+hotModule?.on("vite:ws:connect", showConnectedPreview);
+retryPreviewButton.addEventListener("click", async () => {
+  retryPreviewButton.disabled = true;
+  retryPreviewButton.textContent = "Checking…";
+  try {
+    const response = await fetch(window.location.href, { cache: "no-store" });
+    if (!response.ok) throw new Error("Preview is not ready");
+    window.location.reload();
+  } catch {
+    setStatus("Preview is still disconnected");
+    retryPreviewButton.disabled = false;
+    retryPreviewButton.textContent = "Try again";
+  }
+});
 
 let spacePressed = false;
 let panPointerId: number | undefined;
@@ -330,7 +716,27 @@ let panStartLeft = 0;
 let panStartTop = 0;
 
 document.addEventListener("keydown", (event) => {
-  if (event.code !== "Space" || event.target instanceof HTMLInputElement) return;
+  const target = event.target;
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
+  if (shortcutDialog.open) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      shortcutDialog.close();
+    }
+    return;
+  }
+  if (event.key === "?" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+    event.preventDefault();
+    openShortcutHelp();
+    return;
+  }
+  if (event.key.toLowerCase() === "f" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+    event.preventDefault();
+    if (event.shiftKey) fitSelection();
+    else fitArtboard();
+    return;
+  }
+  if (event.code !== "Space") return;
   spacePressed = true;
   stage.classList.add("pan-ready");
   event.preventDefault();
@@ -382,8 +788,12 @@ for (const button of document.querySelectorAll<HTMLButtonElement>(".background-b
   button.addEventListener("click", () => {
     stage.classList.remove("checker", "light", "dark");
     stage.classList.add(button.dataset.background ?? "checker");
-    document.querySelectorAll(".background-button").forEach((node) => node.classList.remove("active"));
+    document.querySelectorAll<HTMLButtonElement>(".background-button").forEach((node) => {
+      node.classList.remove("active");
+      node.setAttribute("aria-pressed", "false");
+    });
     button.classList.add("active");
+    button.setAttribute("aria-pressed", "true");
   });
 }
 

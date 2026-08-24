@@ -1,0 +1,573 @@
+version: 2
+
+goal:
+  title: "Make Manual Logo Corrections Clear and Complete"
+  slug: "manual-correction-ux"
+  kind: existing_plan
+  tranche: "Complete the correction UX through successive verified vertical slices, ending with the full browser oracle."
+  status: done
+  oracle:
+    signal: "A recorded browser walkthrough proves nested selection, layer organization and grouping, multi-select alignment, validated styling, history, saving, reopening, and SVG fidelity."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "npm run check passes and the final Judge receipt maps the completed browser walkthrough and fidelity evidence to the original correction-UX outcome."
+  intake:
+    original_request: "Implement the correction UX first and use agentic connection later for adding new SVG layers."
+    interpreted_outcome: "A clear, dependable manual correction and layer-organization canvas that preserves ordinary SVG interoperability."
+    input_shape: existing_plan
+    audience: "people correcting AI-generated SVG logos"
+    authority: approved
+    proof_type: demo
+    completion_proof: "Automated checks plus a recorded end-to-end browser walkthrough of the full correction workflow."
+    likely_misfire: "Controls exist and tests pass, but selection remains confusing or hierarchy edits damage SVG fidelity."
+    blind_spots_considered:
+      - "Referenced IDs, transforms, gradients, masks, clip paths, and filters during group and ungroup operations."
+      - "Multi-selection history and selection-state restoration."
+      - "Responsive toolbar layout, invalid color input, no-op history entries, and development port handling."
+    existing_plan_facts:
+      - "Correction UX precedes the agent bridge."
+      - "Include selection breadcrumbs, drill-in and out, hover targeting, rename, lock, reorder, group and ungroup, multi-select, alignment, and validated color controls."
+      - "Exclude drawing tools and new manual layer creation."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  exact_human_approval_can_terminal_wait: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/manual-correction-ux/"
+    command: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.4.3/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/manual-correction-ux"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the existing correction-UX plan, define the durable selection and hierarchy contract, and select the largest safe first Worker slice."
+    inputs:
+      - "README.md"
+      - "docs/MVP.md"
+      - "src/client"
+      - "tests"
+      - "The intake facts in this board"
+    constraints:
+      - "Read-only."
+      - "Preserve the user-approved feature set and non-goals."
+      - "Require explicit SVG fidelity risks, allowed files, verification, and stop conditions for the first Worker."
+    expected_output:
+      - "Validated selection and hierarchy interaction contract"
+      - "Risk and dependency ordering"
+      - "Exact first Worker objective"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "The approved plan is coherent and correctly sequences selection clarity before hierarchy mutation and multi-selection. The current editor has a usable top-level-versus-direct-target distinction, session-only node keys, clean serialization, and a mirrored layer tree, but lacks an explicit scope model, breadcrumb, hover oracle, drill controls, and selection restoration across history. T002 is the largest safe first slice because it can establish these semantics without mutating SVG hierarchy or widening into drawing, grouping, or agent integration. Hierarchy mutation must remain gated by T003 because transforms, paint order, IDs, and referenced resources require a separate fidelity contract."
+      worker_package:
+        objective: "Deliver the complete selection-clarity vertical slice under this contract: the inline SVG DOM remains source of truth; the SVG root, defs, metadata, resource nodes, and editor handles are never selectable; supported editable graphics retain a session-only data-lineage-key while source IDs remain unchanged. Maintain one active scope and at most one selection. The initial scope is the SVG root. A normal click or hover resolves to the direct selectable descendant of the active scope containing the hit. Alt-click and double-click preserve the existing direct-target shortcut while synchronizing scope to the target's selectable parent. Edit inside group keeps the group selected, makes it the active scope, and causes subsequent hover/click targeting to resolve among its direct selectable descendants. Back to group selects the current scope and moves scope to its selectable parent. The breadcrumb shows selectable ancestry from the top-level layer through the selection, labels nodes by unique source ID or deterministic tag/sibling fallback, and lets a user select an ancestor without changing SVG content. Canvas, breadcrumb, and layer-panel selection must use the same session identity. Hover must exactly predict the next normal-click target and must not mutate serialized SVG, dirty state, or history. Undo/redo should restore selection and scope by session key when surviving nodes exist; otherwise fall back to the nearest surviving selectable ancestor or root scope. Reset and file load return to root scope with no selection. Selection/context changes are never document mutations. Preserve drag, resize, rotate, nudging, appearance editing, duplicate, visibility, delete, panning, dirty state, save, and clean serialization. Add focused selection-resolution, serialization, and hierarchy-sensitive fidelity coverage plus the browser smoke test."
+        allowed_files:
+          - README.md
+          - src/client/main.ts
+          - src/client/styles.css
+          - src/client/canvas/editor.ts
+          - tests/editor-serialization.test.ts
+          - tests/fidelity.test.ts
+        verify:
+          - "npm run check"
+          - "git diff --check"
+          - "Manual browser smoke test: normal-click selects the predicted top-level target; hover matches that target; Edit inside exposes direct children; Back to group returns one level; breadcrumb ancestor selection works; Alt-click and double-click still select the direct hit target; layer-panel selection stays synchronized; drag and undo preserve selection context; reset clears context; save/reopen contains no hover, handle, breadcrumb, or data-lineage artifacts; browser console remains clear."
+        stop_if:
+          - "A representative supported SVG requires selectable nested svg, use/symbol shadow content, defs/resource content, or another node category outside the documented editable set; return the fixture and ambiguity for Judge review."
+          - "Hover or breadcrumb implementation would require a class, ID, wrapper, or other editor artifact that survives clean serialization."
+          - "Selection or scope cannot be restored across DOM replacement using session keys without changing files outside allowed_files."
+          - "The proposed behavior changes SVG hierarchy, paint order, source IDs, referenced resources, or ordinary clean SVG serialization."
+          - "Click, drill, or hover event handling conflicts with direct manipulation, panning, Alt-click, double-click, save, or history and the conflict cannot be resolved within this slice."
+          - "Implementation requires files outside allowed_files."
+          - "Verification fails twice for the same unresolved cause."
+      evidence:
+        - kind: scope_validation
+          details: "The board intake and goal charter preserve the approved feature set and non-goals.,docs/MVP.md requires top-level and named-group selection, child drill-down, active selection naming, unsupported-node preservation, ordinary SVG serialization, and fidelity across IDs, gradients, masks, clip paths, filters, transforms, and references.,README.md documents current normal-click logical-group selection and direct selection through double-click or Alt-click."
+        - kind: current_selection_evidence
+          details: "getLogicalSelectionTarget resolves a hit to its top-level SVG child and excludes the SVG root.,Canvas events use normal click for logical target and Alt-click/double-click for direct target.,The Layers panel calls the same editor.selectNode entry point.,Existing tests do not cover nested scope, breadcrumb, hover, drill-out, or history restoration."
+        - kind: identity_and_fidelity_evidence
+          details: "The editor assigns data-lineage-key values to supported graphics and retains them in undo snapshots.,Clean serialization strips editor data and handles while retaining source accessibility attributes.,Undo/redo replaces the SVG DOM and currently clears selection.,Fidelity tests cover representative IDs and resources but not hierarchy mutation safety."
+        - kind: dependency_order
+          details: "Establish deterministic single-selection identity, active scope, hover prediction, breadcrumb, and drill behavior.,T003 defines safe hierarchy semantics before T004.,Multi-selection and alignment follow stable identity and hierarchy semantics.,Validated appearance and remaining QA polish finish the correction surface.,The full browser oracle and saved-SVG inspection close the tranche."
+        - kind: risk_register
+          details: "DOM replacement invalidates node references unless scope and selection restore by session identity.,Hover styling on source nodes can leak into saves or dirty state.,SVG.js handle groups can be mistaken for layers.,Fallback labels are display locators, not persistent source identity.,Nested svg and use/symbol content are not covered.,Grouping and reorder can alter paint order, transforms, and references and remain outside T002."
+      parallel_safety:
+        safe: false
+        reason: "The first slice spans shared editor state, event resolution, layer rendering, UI, styles, and overlapping regression tests. Keep one write Worker."
+      blocked_tasks: []
+      missing_evidence:
+        - "No browser evidence yet proves hover prediction or drill behavior."
+        - "No automated tests cover scope resolution, breadcrumb ancestry, direct-target shortcuts under scope, or selection restoration."
+        - "No current fixture approves group, ungroup, or reorder fidelity; that remains deferred to T003."
+      required_board_updates:
+        - "Record this receipt on T001 and mark it done."
+        - "Set T002 active and apply this worker_package."
+        - "Keep T003 through T999 queued and full_outcome_complete false."
+        - "Do not parallelize T002."
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Deliver the complete selection-clarity slice with a stable active scope, hover prediction, breadcrumb ancestry, drill controls, and selection restoration across history."
+    inputs:
+      - "T001 receipt"
+      - "Current canvas selection behavior"
+      - "Existing layer panel and inspector"
+    constraints:
+      - "Do not add multi-selection or hierarchy mutation in this slice."
+      - "Preserve click, double-click, Alt-click, direct manipulation, history, and save behavior."
+      - "Selection identity must be stable enough for later grouping and agent context."
+    expected_output:
+      - "Working selection breadcrumb and drill controls"
+      - "Hover affordance that matches the next click target"
+      - "Focused regression coverage"
+      - "Verification receipt"
+    allowed_files:
+      - "README.md"
+      - "src/client/main.ts"
+      - "src/client/styles.css"
+      - "src/client/canvas/editor.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/fidelity.test.ts"
+    verify:
+      - "npm run check"
+      - "git diff --check"
+      - "Manual browser smoke test: normal-click selects the predicted target; hover matches; Edit inside exposes direct children; Back to group returns one level; breadcrumb ancestor selection works; Alt-click and double-click still select direct hits; layer-panel selection stays synchronized; drag and undo preserve context; reset clears context; save/reopen contains no editor artifacts; console remains clear."
+    stop_if:
+      - "A representative SVG requires selectable nested svg, use/symbol shadow content, defs/resource content, or another unsupported node category."
+      - "Hover or breadcrumb implementation would require an editor artifact that survives clean serialization."
+      - "Selection or scope cannot be restored across DOM replacement with session keys inside allowed_files."
+      - "The proposed behavior changes SVG hierarchy, paint order, source IDs, referenced resources, or clean serialization."
+      - "Click, drill, or hover conflicts irreconcilably with direct manipulation, panning, Alt-click, double-click, save, or history."
+      - "Implementation requires files outside allowed_files."
+      - "Verification fails twice for the same unresolved cause."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - src/client/main.ts
+        - src/client/styles.css
+        - src/client/canvas/editor.ts
+        - tests/editor-serialization.test.ts
+        - tests/fidelity.test.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Manual browser smoke test"
+          status: pass
+      summary: "Implemented stable active scope, exact hover prediction, drill-in/back controls, ancestry breadcrumbs, unified canvas/layer/breadcrumb identity, direct-target shortcuts, and session-key history restoration with ancestor fallback. Context-only interactions do not dirty the document or create history entries. Browser smoke verified hover/click agreement, scoped child targeting, breadcrumb/back behavior, Alt-click/double-click, layer synchronization, real drag plus undo context restoration, reset, artifact cleanup, and a clear console. Added focused selection, serialization, fallback, and fidelity coverage; all 20 tests pass."
+      deviations:
+        - "The browser smoke did not create a saved iteration because that would write outside T002 allowed_files. Automated clean-serialization tests verify that hover, handles, breadcrumbs, and data-lineage attributes do not survive saves."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the selection milestone and specify safe SVG hierarchy semantics for rename, lock, reorder, group, and ungroup."
+    inputs:
+      - "T001 and T002 receipts"
+      - "Current dirty diff"
+      - "Selection browser evidence"
+      - "SVG fidelity tests"
+    constraints:
+      - "Read-only."
+      - "Reject hierarchy operations that cannot preserve referenced IDs, transforms, masks, clip paths, gradients, filters, and rendering order."
+      - "Specify the largest safe layer-organization Worker package."
+    expected_output:
+      - "Selection milestone decision"
+      - "Hierarchy mutation contract"
+      - "Exact Worker objective and allowed_files"
+      - "Fidelity fixtures and verify commands"
+      - "Stop conditions"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "T002 is approved: the diff establishes stable session identity, scoped targeting, synchronized canvas/layer/breadcrumb selection, clean serialization, and history restoration; the automated gate passes and the recorded browser smoke covers the interaction contract. T004 may proceed only with guarded hierarchy semantics. Grouping requires a coherent minimal multi-selection foundation now; deferring all multi-selection to T005 would make grouping unusable. Safe operations must leave source IDs and references untouched, use neutral groups, preserve coordinate space and unaffected paint order, and reject style-sensitive or attribute-bearing ungroup cases. T005 should build alignment on this foundation rather than recreate selection."
+      worker_package:
+        objective: "Deliver the complete layer-organization vertical slice. Extend selection to a same-parent selection set sufficient for grouping: normal click replaces the set; Shift-click in canvas or Layers toggles a direct sibling within the current scope; Alt-click and double-click remain single direct-target shortcuts; one primary node drives the inspector; secondary selection is visibly synchronized across canvas and Layers; selection keys, primary key, and scope restore through undo/redo with surviving-ancestor fallback. Rename is single-selection only and writes a trimmed standards-based aria-label used by Layers and breadcrumbs; it must never change an existing id or any URL, href, xlink:href, animation, or other reference. Build labels with DOM textContent, never source-derived innerHTML. Lock is editor-session state keyed by data-lineage-key: locked nodes remain selectable so they can be unlocked, but the node and descendants cannot be dragged, resized, rotated, nudged, styled, renamed, duplicated, deleted, reordered, grouped, or ungrouped; lock state must not dirty or serialize and clears on reset/load/reopen. Reorder one node or a contiguous selected block only among selectable siblings with the same actual DOM parent; move exactly one adjacent sibling position, preserve block order and every other node's relative order, and describe commands as earlier/later to make SVG paint-order direction explicit. Disable reorder when a style element could make sibling/ancestry selectors change beyond intended paint order. Group only two or more contiguous selectable element siblings with the same actual DOM parent, no locked node or locked ancestor, and no style element in the document. Insert one SVG-namespace g at the first selected position, append the selected nodes in existing order, assign only session editor identity, add no id/transform/style/presentation/accessibility attribute, preserve every child node and attribute verbatim, and select the new group. Ungroup only one neutral g whose only attributes are removable editor-session attributes, whose direct element children are supported selectable graphics, which is not locked, and in a document with no style element; insert its children in order at the group's exact position, remove the empty wrapper, and select the unwrapped children. Named, transformed, clipped, masked, filtered, painted, classed, styled, accessible, or otherwise attributed groups must remain intact with a clear disabled explanation. Every document mutation is one undo checkpoint, updates dirty state and layer UI, is resettable, and preserves stable selection context. A group→clean save→reload→ungroup round trip must work because safety is inferred from a neutral standards-compliant g, without persistent proprietary markers. Preserve existing direct manipulation, panning, visibility, saving, resource nodes, source accessibility attributes outside an explicit rename, and ordinary SVG serialization. Add representative positive and negative hierarchy fidelity coverage and complete the browser smoke."
+        allowed_files:
+          - README.md
+          - src/client/main.ts
+          - src/client/styles.css
+          - src/client/canvas/editor.ts
+          - tests/editor-serialization.test.ts
+          - tests/fidelity.test.ts
+          - tests/fixtures/workspace/concepts/concept-1.svg
+        verify:
+          - "npm run check"
+          - "git diff --check"
+          - "Automated fidelity fixtures: rename changes only aria-label while preserving source IDs and every URL/href reference; lock never appears in clean serialization; adjacent reorder changes only the requested sibling order; grouping contiguous same-parent siblings preserves child order, IDs, transforms, clip-path, mask, filter, gradient references, href references, resource subtrees, and accessibility attributes; clean-save/reload/ungroup of the neutral wrapper restores the original child hierarchy; undo/redo/reset restore hierarchy and selection-set context."
+          - "Automated rejection fixtures: group rejects non-contiguous or different-parent selections, locked nodes, and documents containing style; ungroup rejects any g with a non-editor attribute including id, transform, class, style, opacity, fill, stroke, clip-path, mask, filter, role, or aria-*; reorder rejects unsafe style-bearing documents; every rejection leaves markup, dirty state, history, IDs, references, and order unchanged."
+          - "Manual browser smoke test: Shift-select two adjacent sibling layers from canvas and Layers; confirm primary/secondary clarity; rename without changing the SVG id; lock and verify every mutation path is blocked while unlock remains reachable; reorder earlier/later and visually confirm only intended paint order changes; group and ungroup with unchanged appearance; verify unsafe named/effected groups explain why ungroup is disabled; undo/redo each mutation; reset; save/reopen; confirm neutral-group ungroup remains available, locks reset, layer names persist through aria-label, no editor attributes survive, favicon previews remain correct, and console is clear."
+        stop_if:
+          - "A usable Group control cannot be implemented without a coherent same-parent selection set and selection/history restoration inside the allowed files."
+          - "Any supported operation would rewrite or remove an existing source id, URL reference, href/xlink:href reference, transform, mask, clip path, gradient, filter, resource node, accessibility attribute outside explicit rename, or unsupported subtree."
+          - "Grouping requires a transform-flattening or coordinate-conversion algorithm rather than insertion of a neutral same-parent wrapper."
+          - "Ungrouping a non-neutral, named, transformed, styled, clipped, masked, filtered, painted, classed, accessible, referenced, or otherwise attributed group is required for the representative workflow."
+          - "A style-bearing document cannot be guarded from ancestry/sibling-selector changes while still presenting a truthful disabled state."
+          - "Lock or multi-selection state would require persistent proprietary metadata or an editor artifact that survives clean serialization."
+          - "The representative browser fixture changes visual geometry or appearance after group/ungroup beyond the explicit reorder operation."
+          - "Implementation requires files outside allowed_files."
+          - "Verification fails twice for the same unresolved cause."
+      evidence:
+        - kind: selection_milestone
+          details: "T002 changed only its approved files and implemented active scope, direct/scoped resolution, hover prediction, breadcrumbs, drill controls, unified layer identity, and session-key restoration. Its receipt records a successful browser smoke; the only deviation was avoiding an iteration write outside Worker scope."
+        - kind: current_verification
+          details: "Independent Judge execution of npm run check and git diff --check passed: TypeScript, 20 Vitest tests across four files, and the Vite production build are green."
+        - kind: serialization_and_identity
+          details: "Clean serialization removes data-lineage attributes and hover state while retaining source accessibility attributes. Undo snapshots retain session keys, selection/scope paths fall back to surviving ancestors, and duplicate remaps clone IDs without altering source IDs."
+        - kind: hierarchy_risk
+          details: "The current fixture includes gradient, clipPath, mask, filter, transforms, and URL references. Existing tests prove no-op preservation but do not yet exercise hierarchy mutation. Neutral same-parent grouping preserves coordinate space and contiguous paint order by construction; ungroup of attributed groups would lose semantics and is therefore rejected."
+        - kind: dependency_decision
+          details: "Grouping two or more user-chosen layers is not usable with the current single-selection contract. T004 must add the bounded same-parent selection set and history semantics required by grouping; T005 can then focus on alignment behavior over that established set."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        reason: "Selection cardinality, editor history, hierarchy mutation, layer rendering, controls, styles, and the same fidelity tests overlap. One Worker must own the vertical slice."
+      blocked_tasks: []
+      missing_evidence:
+        - "No automated test yet proves group/ungroup round-trip fidelity or guarded rejection of unsafe SVG structures."
+        - "No browser evidence yet proves rename, session lock, reorder, grouping, ungrouping, selection-set restoration, save/reopen, or disabled explanations."
+        - "The full manual-correction oracle remains incomplete until alignment, validated appearance, QA polish, and final walkthrough tasks finish."
+      required_board_updates:
+        - "Record this receipt on T003 and mark T003 done."
+        - "Activate T004 and replace its Worker contract with this worker_package."
+        - "Keep T005 queued but revise its objective to add alignment controls and complete multi-selection manipulation on the T004 selection-set foundation, rather than reimplementing selection."
+        - "Keep T006, T007, and T999 queued; full_outcome_complete remains false."
+        - "Do not parallelize T004."
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Deliver the complete layer-organization vertical slice. Extend selection to a same-parent selection set sufficient for grouping: normal click replaces the set; Shift-click in canvas or Layers toggles a direct sibling within the current scope; Alt-click and double-click remain single direct-target shortcuts; one primary node drives the inspector; secondary selection is visibly synchronized across canvas and Layers; selection keys, primary key, and scope restore through undo/redo with surviving-ancestor fallback. Rename is single-selection only and writes a trimmed standards-based aria-label used by Layers and breadcrumbs; it must never change an existing id or any URL, href, xlink:href, animation, or other reference. Build labels with DOM textContent, never source-derived innerHTML. Lock is editor-session state keyed by data-lineage-key: locked nodes remain selectable so they can be unlocked, but the node and descendants cannot be dragged, resized, rotated, nudged, styled, renamed, duplicated, deleted, reordered, grouped, or ungrouped; lock state must not dirty or serialize and clears on reset/load/reopen. Reorder one node or a contiguous selected block only among selectable siblings with the same actual DOM parent; move exactly one adjacent sibling position, preserve block order and every other node's relative order, and describe commands as earlier/later to make SVG paint-order direction explicit. Disable reorder when a style element could make sibling/ancestry selectors change beyond intended paint order. Group only two or more contiguous selectable element siblings with the same actual DOM parent, no locked node or locked ancestor, and no style element in the document. Insert one SVG-namespace g at the first selected position, append the selected nodes in existing order, assign only session editor identity, add no id/transform/style/presentation/accessibility attribute, preserve every child node and attribute verbatim, and select the new group. Ungroup only one neutral g whose only attributes are removable editor-session attributes, whose direct element children are supported selectable graphics, which is not locked, and in a document with no style element; insert its children in order at the group's exact position, remove the empty wrapper, and select the unwrapped children. Named, transformed, clipped, masked, filtered, painted, classed, styled, accessible, or otherwise attributed groups must remain intact with a clear disabled explanation. Every document mutation is one undo checkpoint, updates dirty state and layer UI, is resettable, and preserves stable selection context. A group→clean save→reload→ungroup round trip must work because safety is inferred from a neutral standards-compliant g, without persistent proprietary markers. Preserve existing direct manipulation, panning, visibility, saving, resource nodes, source accessibility attributes outside an explicit rename, and ordinary SVG serialization. Add representative positive and negative hierarchy fidelity coverage and complete the browser smoke."
+    inputs:
+      - "T003 receipt"
+      - "Current layer panel"
+      - "Representative fidelity fixtures"
+    constraints:
+      - "Do not create new drawn shapes or text."
+      - "Preserve rendering order, IDs, references, transforms, accessibility attributes, and clean serialization."
+      - "Every hierarchy mutation must be undoable and resettable."
+    expected_output:
+      - "Working layer organization controls"
+      - "Safe group and ungroup behavior"
+      - "Hierarchy fidelity tests"
+      - "Verification receipt"
+    allowed_files:
+      - "README.md"
+      - "src/client/main.ts"
+      - "src/client/styles.css"
+      - "src/client/canvas/editor.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/fidelity.test.ts"
+      - "tests/fixtures/workspace/concepts/concept-1.svg"
+    verify:
+      - "npm run check"
+      - "git diff --check"
+      - "Automated fidelity fixtures: rename changes only aria-label while preserving source IDs and every URL/href reference; lock never appears in clean serialization; adjacent reorder changes only the requested sibling order; grouping contiguous same-parent siblings preserves child order, IDs, transforms, clip-path, mask, filter, gradient references, href references, resource subtrees, and accessibility attributes; clean-save/reload/ungroup of the neutral wrapper restores the original child hierarchy; undo/redo/reset restore hierarchy and selection-set context."
+      - "Automated rejection fixtures: group rejects non-contiguous or different-parent selections, locked nodes, and documents containing style; ungroup rejects any g with a non-editor attribute including id, transform, class, style, opacity, fill, stroke, clip-path, mask, filter, role, or aria-*; reorder rejects unsafe style-bearing documents; every rejection leaves markup, dirty state, history, IDs, references, and order unchanged."
+      - "Manual browser smoke test: Shift-select two adjacent sibling layers from canvas and Layers; confirm primary/secondary clarity; rename without changing the SVG id; lock and verify every mutation path is blocked while unlock remains reachable; reorder earlier/later and visually confirm only intended paint order changes; group and ungroup with unchanged appearance; verify unsafe named/effected groups explain why ungroup is disabled; undo/redo each mutation; reset; save/reopen; confirm neutral-group ungroup remains available, locks reset, layer names persist through aria-label, no editor attributes survive, favicon previews remain correct, and console is clear."
+    stop_if:
+      - "A usable Group control cannot be implemented without a coherent same-parent selection set and selection/history restoration inside the allowed files."
+      - "Any supported operation would rewrite or remove an existing source id, URL reference, href/xlink:href reference, transform, mask, clip path, gradient, filter, resource node, accessibility attribute outside explicit rename, or unsupported subtree."
+      - "Grouping requires a transform-flattening or coordinate-conversion algorithm rather than insertion of a neutral same-parent wrapper."
+      - "Ungrouping a non-neutral, named, transformed, styled, clipped, masked, filtered, painted, classed, accessible, referenced, or otherwise attributed group is required for the representative workflow."
+      - "A style-bearing document cannot be guarded from ancestry/sibling-selector changes while still presenting a truthful disabled state."
+      - "Lock or multi-selection state would require persistent proprietary metadata or an editor artifact that survives clean serialization."
+      - "The representative browser fixture changes visual geometry or appearance after group/ungroup beyond the explicit reorder operation."
+      - "Implementation requires files outside allowed_files."
+      - "Verification fails twice for the same unresolved cause."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - src/client/main.ts
+        - src/client/styles.css
+        - src/client/canvas/editor.ts
+        - tests/editor-serialization.test.ts
+        - tests/fidelity.test.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Automated fidelity fixtures"
+          status: pass
+        - cmd: "Automated rejection fixtures"
+          status: pass
+        - cmd: "Manual browser smoke test"
+          status: pass
+      summary: "Delivered same-parent multi-selection with primary/secondary clarity, accessible renaming, session locks, guarded adjacent reordering, neutral grouping/ungrouping, selection-set history restoration, safe serialization, and explicit unsafe-operation explanations. Added positive and rejection fidelity coverage; 38 tests pass. Browser smoke used an isolated temporary workspace and proved canvas/Layers Shift-selection, direct shortcuts, lock enforcement/reset, reorder/group/ungroup undo/redo, real save/reopen, preserved labels/references/rendering, clean saved SVG, favicon previews, and a clear console."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Add alignment controls and complete multi-selection manipulation on the T004 same-parent selection-set foundation."
+    inputs:
+      - "Completed selection and hierarchy contracts"
+      - "Current drag, transform, and history behavior"
+    constraints:
+      - "Shift-click must have consistent semantics in both canvas and layer panel."
+      - "Alignment must preserve each object's unsupported attributes and remain undoable."
+      - "Do not add distribution or drawing tools unless the PM explicitly updates the approved scope."
+    expected_output:
+      - "Working multi-selection"
+      - "Align left, center, right, top, middle, and bottom"
+      - "Selection and history regression tests"
+      - "Verification receipt"
+    allowed_files:
+      - "README.md"
+      - "src/client/main.ts"
+      - "src/client/styles.css"
+      - "src/client/canvas/editor.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/fidelity.test.ts"
+    verify:
+      - "npm run check"
+      - "Manual browser smoke test of Shift-click, alignment, undo, reset, save, and reopen"
+    stop_if:
+      - "Selection identity or hierarchy behavior is still ambiguous."
+      - "Implementation requires files outside allowed_files."
+      - "Verification fails twice for the same unresolved cause."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - src/client/main.ts
+        - src/client/styles.css
+        - src/client/canvas/editor.ts
+        - tests/editor-serialization.test.ts
+        - tests/fidelity.test.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "Manual browser smoke test of Shift-click, alignment, undo, reset, save, and reopen"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      summary: "Delivered left, center, right, top, middle, and bottom alignment over T004 same-parent multi-selection. Alignment composes parent-coordinate translations into existing transforms, preserves unsupported attributes, references, paint hierarchy, selection context, and clean serialization, and creates one undoable/resettable checkpoint per effective operation. Added lock and same-parent guards, controls, guidance, and focused offset/fidelity tests. Browser smoke proved consistent canvas/Layers Shift-selection, all six alignments, undo, reset, clean save/reopen, favicon previews, and a clear console. All 46 tests pass."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Finish the correction UX with validated color controls and the known responsive, history, and development-launcher QA fixes."
+    inputs:
+      - "Existing fill and stroke inspector"
+      - "Prior manual QA findings"
+      - "Completed correction workflows"
+    constraints:
+      - "Keep standards-compliant SVG values and ordinary SVG serialization."
+      - "Do not introduce external color or design-system dependencies without PM approval."
+      - "Do not widen scope into drawing, export, or agent integration."
+    expected_output:
+      - "Accessible validated fill and stroke color controls"
+      - "No-op inspector focus no longer pollutes history"
+      - "Usable compact-width toolbar"
+      - "Reliable development port startup and shutdown"
+      - "Verification receipt"
+    allowed_files:
+      - "README.md"
+      - "scripts/dev.ts"
+      - "src/client/main.ts"
+      - "src/client/styles.css"
+      - "src/client/canvas/editor.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/history.test.ts"
+      - "vite.config.ts"
+    verify:
+      - "npm run check"
+      - "npm audit --audit-level=high"
+      - "Manual browser check at 1280px, 1024px, and 980px widths"
+      - "Development startup check with the default API port occupied"
+    stop_if:
+      - "The color validation behavior is ambiguous for inherited, gradient, or currentColor values."
+      - "Implementation requires files outside allowed_files."
+      - "Verification fails twice for the same unresolved cause."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - scripts/dev.ts
+        - src/client/main.ts
+        - src/client/styles.css
+        - src/client/canvas/editor.ts
+        - tests/editor-serialization.test.ts
+        - tests/history.test.ts
+        - vite.config.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm audit --audit-level=high"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Manual browser check at 1280px, 1024px, and 980px widths"
+          status: pass
+        - cmd: "Development startup check with the default API port occupied"
+          status: pass
+      summary: "Delivered accessible fill/stroke text fields with native color pickers, standards-based SVG paint validation, clear inline errors, inheritance via empty attributes, and preservation of none, currentColor, CSS colors, and paint URLs. Invalid or unchanged inspector interactions no longer mutate SVG or create history checkpoints. Compact toolbar layouts remain contained and usable at all required widths. The development launcher now selects available API/editor ports, preserves proxy save-origin validation, terminates sibling processes, and releases fallback ports on shutdown. All 57 tests, typecheck, build, audit, diff validation, browser-width checks, and occupied-port startup/shutdown checks pass."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T007
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Run and record the complete correction-UX browser oracle on representative SVG fixtures."
+    inputs:
+      - "All completed Worker receipts"
+      - "npm run check"
+      - "Representative simple and hierarchy-sensitive SVG fixtures"
+    constraints:
+      - "Do not treat screenshots alone as interaction proof."
+      - "Exercise selection, drill controls, organization, grouping, multi-select alignment, appearance, history, reset, saving, reopening, and compact layout."
+      - "Create a follow-up Worker task for any material regression rather than overlooking it."
+    expected_output:
+      - "Recorded walkthrough checklist and outcomes"
+      - "Console-error check"
+      - "Saved-SVG structure and artifact check"
+      - "Remaining known limitations"
+    receipt:
+      result: done
+      summary: "The complete correction-UX browser oracle passed on a fresh temporary workspace and current source build. Real interactions proved nested and multi-selection, alignment, guarded organization, validated paint editing, lock behavior, history, reset, save/reopen, neutral-group round trip, clean serialization, responsive containment, preview rendering, preserved SVG resources, and a clear console. Worker evidence additionally covers 1024px and 980px layouts, accessible rename persistence, all six alignment modes, and occupied-port startup/shutdown."
+      evidence:
+        - "Fresh server selected fallback API/editor ports 4174/5174 because defaults were occupied; the current build loaded from /tmp/lineage-logo-final-qa.MOGzzn."
+        - "PM browser walkthrough: selected icon, entered group scope, selected rect-1, and observed ancestry icon/rect-1 with Back to group enabled."
+        - "PM browser walkthrough: Shift-selected rect-1 and spark as 2 layers; Group and all alignment controls became available."
+        - "PM browser walkthrough: Right alignment changed only composed transform state, Undo restored the original rotate transform, and the 2-layer selection survived."
+        - "PM browser walkthrough: grouped the two contiguous siblings into a g with only data-lineage-key in-session; child order remained rect then spark and Ungroup became available."
+        - "PM browser walkthrough: invalid paint produced an inline validation error and left url(#accent) unchanged; valid #123456 applied while mask url(#cutout) remained."
+        - "PM browser walkthrough: Lock disabled fill, rename, delete, and hierarchy mutation while adding no source lock attribute; Unlock restored controls."
+        - "PM browser walkthrough: Later changed sibling order rect/spark to spark/rect and Undo restored the exact original order."
+        - "PM browser walkthrough: Save iteration-1 created and reopened a clean SVG; neutral group remained safely ungroupable, lock reset, three preview sizes rendered, and source clip/filter/mask/transform references remained intact."
+        - "PM browser walkthrough: Ungroup produced rect/spark selection, Undo restored g-1, Redo restored children, and Reset returned to saved neutral-group structure with no selection and no dirty actions."
+        - "Saved-SVG inspection found the neutral <g>, #123456 edit, preserved IDs/resources/references, and no data-lineage, selection-handle, hover, or breadcrumb artifacts."
+        - "At 1280px, body and toolbar scroll widths equaled client widths and no button was clipped. T006 receipt records the same live check at 1024px and 980px."
+        - "Browser diagnostics contained only Vite connection debug entries and no warnings or errors."
+      facts:
+        - "npm run check passes 57 tests, typecheck, and production build."
+        - "npm audit --audit-level=high reports 0 vulnerabilities."
+        - "T004 browser receipt proves accessible rename persists as aria-label without changing IDs and locks clear after reopen."
+        - "T005 browser receipt proves left, center, right, top, middle, and bottom alignment with save/reopen fidelity."
+        - "T006 browser receipt proves toolbar containment at 1280px, 1024px, and 980px and reliable fallback port startup/shutdown."
+      contradictions: []
+      ambiguity_requiring_judge: []
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm audit --audit-level=high"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Complete PM browser oracle on http://127.0.0.1:5174/"
+          status: pass
+        - cmd: "Saved SVG structural and artifact inspection"
+          status: pass
+      note_needed: false
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether the full manual correction and organization outcome satisfies the browser oracle and approved scope."
+    inputs:
+      - "All completed task receipts"
+      - "T007 browser oracle receipt"
+      - "Latest npm run check result"
+      - "Current dirty diff"
+    constraints:
+      - "Read-only."
+      - "Reject completion if any required Worker task remains queued, active, or materially incomplete."
+      - "Reject completion if grouping or selection can damage SVG fidelity or remain confusing in the browser walkthrough."
+      - "Do not require agent integration or manual drawing tools."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Oracle-to-receipt mapping"
+      - "Missing evidence"
+      - "Next task if not complete"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      rationale: "All required Workers T002, T004, T005, and T006 are done, with no blockers or contradictions. T007 records a fresh end-to-end browser walkthrough proving nested selection, synchronized layer context, guarded grouping and hierarchy edits, six-way alignment, validated paint editing, locks, history, reset, clean save/reopen, responsive containment, preserved SVG resources, previews, and a clear console. Independent final verification passes 57 tests, typecheck, production build, diff validation, and the high-severity audit. The implementation remains within the approved correction-first scope and guards unsafe grouping, ungrouping, and reorder cases rather than risking fidelity."
+      evidence:
+        - kind: selection_oracle
+          details: "T002 established scoped hover/click targeting, breadcrumbs, drill controls, direct-target shortcuts, unified canvas/Layers identity, and history restoration; T007 reproduced nested selection and drill behavior in the browser."
+        - kind: organization_oracle
+          details: "T004 delivered accessible rename, session locks, guarded adjacent reorder, neutral group/ungroup, and selection-set restoration. T007 verified lock enforcement, sibling reorder with undo, group/save/reopen/ungroup, and explicit preservation of source structure."
+        - kind: alignment_oracle
+          details: "T005 delivered all six alignment modes with same-parent and lock guards. T007 verified browser alignment and undo while T005 records left, center, right, top, middle, bottom, reset, and save/reopen coverage."
+        - kind: appearance_and_qa_oracle
+          details: "T006 delivered SVG paint validation, no-op history protection, responsive toolbar behavior, and fallback development ports. T007 verified invalid and valid paint behavior, compact containment, and clean diagnostics."
+        - kind: fidelity_oracle
+          details: "T004-T006 tests and T007 saved-SVG inspection map preservation of IDs, transforms, gradients, masks, clip paths, filters, references, accessibility attributes, child order, previews, and removal of all data-lineage and selection artifacts."
+        - kind: final_verification
+          details: "Independent Judge execution passed npm run check with 57 tests, TypeScript, and Vite build; git diff --check passed; npm audit --audit-level=high reported zero vulnerabilities; GoalBuddy state validation passed without warnings."
+        - kind: scope_audit
+          details: "All product changes are within the union of approved Worker allowed_files. Drawing tools, new manual layers, proprietary formats, and agent integration remain correctly excluded."
+      worker_package: null
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence: []
+      required_board_updates:
+        - "Record this receipt on T999 and mark T999 done."
+        - "Set goal.status to complete and active_task to null."
+        - "Run the GoalBuddy state checker and check-can-stop gate after applying the receipt."
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []

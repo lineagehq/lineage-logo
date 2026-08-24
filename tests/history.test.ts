@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { History } from "../src/client/history/history";
+import { InspectorEditSession } from "../src/client/canvas/editor";
 
 describe("editor history", () => {
   it("moves snapshots through undo and redo", () => {
@@ -25,6 +26,15 @@ describe("editor history", () => {
 
     history.checkpoint("fresh");
     expect(history.canRedo).toBe(false);
+  });
+
+  it("does not create an inspector checkpoint for focus or a no-op value", () => {
+    const session = new InspectorEditSession();
+    session.begin("focused document");
+
+    expect(session.checkpointForChange("same value", "same value")).toBeUndefined();
+    expect(session.checkpointForChange("#111111", "#222222")).toBe("focused document");
+    expect(session.checkpointForChange("#222222", "#333333")).toBeUndefined();
   });
 
   it("resets both stacks", () => {
