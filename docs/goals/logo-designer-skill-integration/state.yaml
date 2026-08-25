@@ -1,0 +1,1983 @@
+version: 2
+
+goal:
+  title: "Direct Logo-Designer Skill Integration"
+  slug: "logo-designer-skill-integration"
+  kind: existing_plan
+  tranche: "Complete and prove the real local two-repository propose, review, decide, save, and continue loop."
+  status: done
+  oracle:
+    signal: "A real logo-designer skill run submits a genuine SVG proposal to the active authenticated canvas, observes Accept and Revert, and continues from an accepted clean saved revision."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Receipt-backed automated checks in both repositories plus a recorded real browser/producer walkthrough and inspected clean SVG artifact."
+  intake:
+    original_request: "excellent - plan this out"
+    interpreted_outcome: "Integrate the actual logo-designer skill with Lineage Logo's public protocol for a secure human-reviewed iteration loop."
+    input_shape: existing_plan
+    audience: "logo-designer skill users and maintainers of both repositories"
+    authority: requested
+    proof_type: demo
+    completion_proof: "The documented real skill flow proves isolated proposal, terminal Accept/Revert, accepted-artifact continuation, security, fidelity, recovery, and green checks in both repositories."
+    likely_misfire: "Delivering another wrapper or mock-only demo that does not connect the actual skill lifecycle to review and continued iteration."
+    blind_spots_considered:
+      - "Cross-repository ownership, instructions, branches, and verification commands."
+      - "Token and active-session bootstrap without secret leakage."
+      - "Authoritative artifact/revision ownership and producer waiting behavior."
+      - "Crash, reconnect, stale, duplicate, unavailable-canvas, and terminal-decision recovery."
+      - "Compatibility, versioning, install, and release boundaries."
+      - "Per-operation approval and remote collaboration remain out of scope."
+    existing_plan_facts:
+      - "Package the current adapter logic as a reusable producer client."
+      - "Securely target the active local canvas session."
+      - "Submit proposals and wait for Accept or Revert."
+      - "Return accepted SVG revisions to the skill iteration loop."
+      - "Prove the flow across both repositories with a genuine generated logo."
+      - "Document generate, review, correct, and continue."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  exact_human_approval_can_terminal_wait: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/logo-designer-skill-integration/"
+    command: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.4.3/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/logo-designer-skill-integration"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map the current Lineage Logo public producer boundary and locate the real logo-designer-skill work surface without changing either repository."
+    inputs:
+      - "Lineage Logo goal charter and current repository"
+      - "User-named logo-designer-skill repository"
+    constraints:
+      - "Read-only."
+      - "Respect both repositories' instruction files and dirty worktrees."
+      - "Record exact repository roots, branches, ownership boundaries, public contracts, verify commands, and release/install conventions."
+      - "Do not design from assumptions when primary repository evidence is available."
+    expected_output:
+      - "Two-repository evidence map"
+      - "Current protocol and adapter boundary"
+      - "Skill lifecycle and artifact flow"
+      - "Verification and instruction inventory"
+      - "Risks, unknowns, and candidate integration seams"
+    receipt:
+      result: done
+      summary: "Mapped the local Lineage Logo public protocol and remote logo-designer-skill lifecycle. Lineage already submits detached SVG proposals through an authenticated v1 adapter, but the adapter neither waits for terminal status nor returns accepted SVG. The skill currently writes concepts/iterations and exports a chosen SVG, with no canvas integration. The upstream repo is not locally cloned, so its dirty state and local instruction overlays remain unknown. Candidate seam: extend the producer-side adapter/client around manifest, submit, and status while preserving the skill's SVG file lifecycle and keeping editor internals isolated."
+      evidence:
+        - path: /Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts
+          fact: "Defines protocol v1, document session/source/revision binding, supported operations, status vocabulary, limits, and structured errors."
+        - path: /Users/neonwatty/Desktop/lineage-logo/src/server/agent-transport.ts
+          fact: "Public producer routes are authenticated GET /api/agent/document, POST /api/agent/transactions, and GET /api/agent/transactions/:id; browser-only routes use exact-origin checks."
+        - path: /Users/neonwatty/Desktop/lineage-logo/scripts/logo-designer-adapter.ts
+          fact: "Current adapter extracts a selected SVG layer and resources, fetches the manifest, submits one transaction, and exits after the submission response."
+        - path: /Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md
+          fact: "Documents environment-token bootstrap, explicit API URL, artifact/selector invocation, detached review, and editor-internal isolation."
+        - path: /Users/neonwatty/Desktop/lineage-logo/package.json
+          fact: "Verification is npm run check, expanding to typecheck, Vitest, and Vite build; repository is private and has no publish script."
+        - path: "https://github.com/neonwatty/logo-designer-skill/blob/main/skills/logo-designer/SKILL.md"
+          fact: "Skill owns interview, concept generation, numbered SVG iterations, preview, export, and optional repo integration; stable meaningful group IDs are already prescribed."
+        - path: "https://github.com/neonwatty/logo-designer-skill/blob/main/package.json"
+          fact: "Upstream verification is npm run validate; plugin schema validation is separately available as npm run validate:plugin."
+        - path: "https://github.com/neonwatty/logo-designer-skill/blob/main/.github/workflows/validate.yml"
+          fact: "PR/main CI runs Claude plugin schema validation, JSON syntax validation, markdown lint, skill-structure validation, and non-blocking link checks."
+        - path: "https://github.com/neonwatty/logo-designer-skill/blob/main/README.md"
+          fact: "Installation convention is claude plugin add neonwatty/logo-designer-skill; current release/tag is v1.0.0."
+        - path: /Users/neonwatty/Desktop/lineage-logo
+          fact: "Current branch is main at 95aec5b46ae2a8c52e3dbd2b1fef17db2b599dd3, synced to origin/main; only the new goal directory is untracked."
+      facts:
+        - fact: "Lineage Logo root is /Users/neonwatty/Desktop/lineage-logo; origin is https://github.com/lineagehq/lineage-logo.git; default branch main; repository private."
+        - fact: "Upstream is neonwatty/logo-designer-skill, default branch main at 8f9a4b04009c15b05eeb47b4608d5502abafa609; repository public; no local checkout was found at expected Desktop or Documents/Codex paths."
+        - fact: "The bearer token is server-generated or supplied through LINEAGE_LOGO_AGENT_TOKEN; current docs also accept a manual API URL because dev ports can shift."
+        - fact: "Transaction terminal statuses include accepted, reverted, rejected, stale, and disconnected; review timeout defaults to 30 minutes and delivery timeout to 15 seconds."
+        - fact: "The status response contains status and optional transaction evaluation result, not an accepted serialized SVG artifact or resulting document revision."
+        - fact: "The existing adapter imports only shared protocol types and uses HTTP plus filesystem parsing, making it the current producer-side integration seam."
+        - fact: "The skill's authoritative artifacts are complete SVG files under logos/concepts, logos/iterations, and logos/export/logo.svg; it currently uses preview.html for human review."
+      contradictions:
+        - claim: "The desired skill loop can continue directly from the accepted clean saved SVG revision using the existing producer contract."
+          evidence: "GET transaction status exposes terminal state but no accepted SVG, saved path, or post-accept revision; the adapter exits immediately after submission."
+        - claim: "The current setup securely discovers the active canvas session without operator coordination."
+          evidence: "The manifest discovers the open document only after the caller already knows the API origin and token; current invocation supplies --api and an environment token manually."
+      ambiguity_requiring_judge:
+        - question: "Which repository should own the reusable producer client and how should the skill consume it without creating an unpublished cross-repository package dependency?"
+        - question: "Should continuation retrieve the authoritative accepted SVG through a new public read endpoint, a documented workspace file handoff, or another bounded artifact receipt?"
+        - question: "What secure bootstrap mechanism identifies the dynamically selected local API port and token without URLs, arguments, committed files, logs, or fragile terminal scraping?"
+        - question: "Must preview.html remain the standalone default while Lineage becomes an optional integration path, and what exact user signal enables it?"
+        - question: "A local upstream checkout is absent; Worker file scopes and dirty-worktree safety cannot be finalized until the execution checkout location and branch are established."
+      commands:
+        - "git rev-parse --show-toplevel; inspect T001, goal.md, and repository instruction-file inventory"
+        - "git status --short --branch; rg --files; inspect package.json"
+        - "inspect docs/agent-canvas.md and targeted protocol/adapter symbols"
+        - "check expected local paths for logo-designer-skill"
+        - "gh repo view and gh api inspection of upstream metadata, tree, primary files, commit, tags, and CI"
+        - "inspect Lineage routes, bootstrap, adapter, protocol, and verification conventions"
+      note_needed: false
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the existing integration plan against T001 evidence and choose the secure two-repository architecture and exact first Worker package."
+    inputs:
+      - "T001 receipt"
+      - "Goal oracle and non-negotiable constraints"
+      - "Existing plan facts"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject any design that imports editor internals into the skill, leaks credentials, treats a staged candidate as accepted, or cannot resume the skill loop."
+      - "Decide where the reusable producer client lives and how the skill obtains endpoint/token/session context using repository evidence rather than convenience."
+      - "Preserve compatibility with the current protocol unless a versioned migration is explicitly justified."
+      - "Specify the largest safe useful vertical slice, not a collection of helper-only tasks."
+    expected_output:
+      - "Architecture decision and trust-boundary diagram in the receipt"
+      - "Producer client ownership and API"
+      - "Session/token bootstrap decision"
+      - "Terminal wait, timeout, retry, and artifact-continuation semantics"
+      - "Exact T003 objective, allowed_files across verified roots, verify commands, and stop_if"
+      - "Deferred and out-of-scope decisions"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "Approve one Lineage-owned vertical slice. The protocol owner should also own the reusable producer client because the upstream skill is instruction-only and has no runtime package surface. A private runtime capability descriptor can securely discover the active loopback server without logging or passing its token. Acceptance must become durable only after the browser applies the candidate and supplies the exact clean revision; the skill must later persist that artifact before continuing. T003 is independently useful and avoids the absent upstream checkout, which must be established before T005."
+      worker_package:
+        objective: "In Lineage Logo only, implement a reusable public producer client plus protected active-context discovery and an exact post-apply accepted-artifact receipt, then migrate the existing logo-designer adapter to submit and wait through that client without importing editor internals or exposing credentials."
+        allowed_files:
+          - /Users/neonwatty/Desktop/lineage-logo/src/producer/agent-client.ts
+          - /Users/neonwatty/Desktop/lineage-logo/src/producer/connection-context.ts
+          - /Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts
+          - /Users/neonwatty/Desktop/lineage-logo/src/server/agent-transport.ts
+          - /Users/neonwatty/Desktop/lineage-logo/src/server/index.ts
+          - /Users/neonwatty/Desktop/lineage-logo/src/client/agent/transport.ts
+          - /Users/neonwatty/Desktop/lineage-logo/src/client/agent/session.ts
+          - /Users/neonwatty/Desktop/lineage-logo/src/client/main.ts
+          - /Users/neonwatty/Desktop/lineage-logo/scripts/logo-designer-adapter.ts
+          - /Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts
+          - /Users/neonwatty/Desktop/lineage-logo/tests/agent-connection-context.test.ts
+          - /Users/neonwatty/Desktop/lineage-logo/tests/agent-protocol.test.ts
+          - /Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts
+          - /Users/neonwatty/Desktop/lineage-logo/tests/file-open-race.test.ts
+          - /Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts
+          - /Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md
+        verify:
+          - "cd /Users/neonwatty/Desktop/lineage-logo && npm run typecheck"
+          - "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/agent-protocol.test.ts tests/agent-transport.test.ts tests/file-open-race.test.ts tests/agent-connection-context.test.ts tests/agent-producer-client.test.ts tests/logo-designer-adapter.test.ts"
+          - "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+        stop_if:
+          - "Any allowed existing file has overlapping user changes beyond the untracked GoalBuddy directory."
+          - "The runtime descriptor cannot be created and validated as an owner-only regular file without following symlinks."
+          - "A token would appear in argv, URL, stdout/stderr, documentation examples, fixtures, screenshots, or committed content."
+          - "Accepted status can become observable before the candidate is synchronously applied and its exact clean revision is captured."
+          - "A mutating accepted result can be returned without a matching transaction-bound artifact receipt."
+          - "The implementation requires importing client canvas/history/workspace internals into src/producer or the skill."
+          - "The change requires a breaking protocolVersion migration rather than an additive v1 extension."
+          - "The slice requires modifying or cloning the absent upstream repository."
+          - "Focused verification fails twice without a bounded diagnosis."
+      evidence:
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts:89"
+          finding: "Protocol v1 currently models terminal decisions as status-only and transaction status has no accepted artifact receipt."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/server/agent-transport.ts:73"
+          finding: "The authenticated producer boundary is manifest, submit, and status routes; browser delivery and acknowledgements remain exact-origin."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/client/main.ts:496"
+          finding: "Current Accept ordering records server acceptance before applying the detached candidate, so status alone cannot prove an authoritative accepted revision."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/scripts/logo-designer-adapter.ts:113"
+          finding: "The adapter exits after submission, accepts a token argument, and does not wait for terminal state."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/server/index.ts:72"
+          finding: "The server knows the loopback port and token and is the correct owner for protected runtime-context publication and token-log removal."
+        - source: "https://github.com/neonwatty/logo-designer-skill/blob/main/skills/logo-designer/SKILL.md"
+          finding: "The skill is an instruction workflow producing SVG files and should invoke the Lineage-owned client as an explicit optional path."
+        - architecture: "logo-designer skill -> Lineage producer client -> authenticated loopback v1 routes -> registry -> exact-origin review -> post-apply artifact receipt -> client result -> skill atomically saves next iteration"
+          trust_boundary: "Only the server and protected local runtime descriptor hold the token; the client reads it into memory. Tokens never enter URLs, argv, logs, committed files, fixtures, screenshots, examples, or returned errors. The skill imports no editor modules."
+        - compatibility_decision: "Keep protocolVersion 1 and existing producer routes. Add an optional accepted-artifact receipt; fail closed for accepted mutating transactions without it."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "Protocol, registry, browser ordering, descriptor, client, CLI, and tests form one coupled security/lifecycle boundary."
+      blocked_tasks:
+        - T005
+      missing_evidence:
+        - "A local logo-designer-skill checkout and its local instructions, branch, dirty state, and exact file scope are absent; establish these before T005."
+      required_board_updates:
+        - task_id: T003
+          status: "activate with the exact Worker package in this receipt"
+        - task_id: T005
+          prerequisite: "Establish and inspect a dedicated local upstream checkout; preserve preview.html as default and make Lineage integration explicit opt-in."
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "In Lineage Logo only, implement a reusable public producer client plus protected active-context discovery and an exact post-apply accepted-artifact receipt, then migrate the existing logo-designer adapter to submit and wait through that client without importing editor internals or exposing credentials."
+    allowed_files:
+      - "/Users/neonwatty/Desktop/lineage-logo/src/producer/agent-client.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/producer/connection-context.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/server/agent-transport.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/server/index.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/client/agent/transport.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/client/agent/session.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/client/main.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/scripts/logo-designer-adapter.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-connection-context.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-protocol.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/file-open-race.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md"
+    verify:
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run typecheck"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/agent-protocol.test.ts tests/agent-transport.test.ts tests/file-open-race.test.ts tests/agent-connection-context.test.ts tests/agent-producer-client.test.ts tests/logo-designer-adapter.test.ts"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+    stop_if:
+      - "Any allowed existing file has overlapping user changes beyond the untracked GoalBuddy directory."
+      - "The runtime descriptor cannot be created and validated as an owner-only regular file without following symlinks."
+      - "A token would appear in argv, URL, stdout/stderr, documentation examples, fixtures, screenshots, or committed content."
+      - "Accepted status can become observable before the candidate is synchronously applied and its exact clean revision is captured."
+      - "A mutating accepted result can be returned without a matching transaction-bound artifact receipt."
+      - "The implementation requires importing client canvas/history/workspace internals into src/producer or the skill."
+      - "The change requires a breaking protocolVersion migration rather than an additive v1 extension."
+      - "The slice requires modifying or cloning the absent upstream repository."
+      - "Focused verification fails twice without a bounded diagnosis."
+    expected_output:
+      - "Usable producer client at the approved ownership boundary"
+      - "Manifest/session targeting and submission"
+      - "Bounded terminal status wait with typed accepted, reverted, rejected, stale, unavailable, timeout, and conflict outcomes"
+      - "No-secret-leak and runtime boundary tests"
+      - "Receipt with exact changed files and verification"
+    receipt:
+      result: done
+      changed_files:
+        - /Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md
+        - /Users/neonwatty/Desktop/lineage-logo/scripts/logo-designer-adapter.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/client/agent/transport.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/client/main.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/producer/agent-client.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/producer/connection-context.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/server/agent-transport.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/server/index.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/agent-connection-context.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts
+      commands:
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run typecheck"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/agent-protocol.test.ts tests/agent-transport.test.ts tests/file-open-race.test.ts tests/agent-connection-context.test.ts tests/agent-producer-client.test.ts tests/logo-designer-adapter.test.ts"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+          status: pass
+      summary: "Implemented the Lineage-owned producer client, owner-only active-context discovery, bounded typed terminal waiting, and post-apply accepted-artifact receipts. Mutating transactions cannot become accepted without the exact clean SVG, source path, and next revision. Migrated the logo-designer adapter away from argv/API credentials and added context security, lifecycle, conflict, timeout, and end-to-end tests. Focused tests passed 43/43; the full check passed 135/135 plus production build."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the producer-client slice at the security and compatibility boundary, then define the actual logo-designer skill integration package."
+    inputs:
+      - "T001-T003 receipts"
+      - "T003 diff and focused verification"
+      - "Both repositories' instruction and release conventions"
+    constraints:
+      - "Read-only; do not implement."
+      - "Test the client contract against malformed responses, unavailable canvas, duplicate IDs, stale revisions, terminal conflicts, reconnect, and bounded waiting."
+      - "Reject continuation if the client can confuse submitted, delivered, staged, accepted, saved, or consumed states."
+      - "Define one coherent skill lifecycle slice rather than per-command microtasks."
+    expected_output:
+      - "accept | remediate decision for T003"
+      - "Security and compatibility evidence"
+      - "Exact T005 objective, allowed_files, verify commands, and stop_if"
+      - "Skill invocation, proposal, waiting, terminal decision, accepted-artifact discovery, and next-iteration contract"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "T003 passes its 43 focused tests and protects the runtime descriptor, but the acceptance boundary is not lifecycle-safe. The browser clears pending state, unblocks mutation, applies the candidate, and advances revision before the acknowledgement succeeds; an acknowledgement failure leaves locally mutated artwork while the producer remains pending or later reverted. The producer also trusts malformed status/artifact JSON and can misclassify an unknown state as timeout. T005 cannot safely activate, and its exact file package remains unsupported because no local upstream checkout or instruction inventory exists."
+      evidence:
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/client/main.ts:507"
+          finding: "Acceptance calls AgentSession.accept before awaiting the terminal server acknowledgement; the catch path only displays an error."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/client/agent/session.ts:73"
+          finding: "accept clears pending state and mutation blocking before applying the candidate and incrementing revision, with no provisional, retry, or rollback state."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/producer/agent-client.ts:62"
+          finding: "Status JSON is cast without runtime validation; accepted artifact sourcePath/revision/SVG and status vocabulary are not validated against the transaction."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts:14"
+          finding: "Coverage omits malformed receipts/statuses and post-apply acknowledgement loss."
+        - source: "fresh focused verification"
+          finding: "Six focused test files passed 43/43, but they do not exercise the rejected lifecycle boundary."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/tests/agent-connection-context.test.ts:17"
+          finding: "Owner-only descriptor, symlink refusal, and loopback-origin validation have direct passing coverage."
+        - source: "local checkout probe"
+          finding: "No local logo-designer-skill Git checkout exists at the expected Desktop or Documents/Codex paths."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "Browser acceptance state, server terminal acknowledgement, producer response validation, and recovery tests are one coupled lifecycle boundary; upstream work must wait."
+      blocked_tasks:
+        - T005
+      missing_evidence:
+        - "A convergence test for apply-then-ack failure, lost response, retry, timeout-driven revert, and conflicting terminal decisions."
+        - "Runtime validation proving malformed identity, status, artifact sourcePath, revision, SVG, and unexpected fields fail closed."
+        - "A dedicated local logo-designer-skill checkout with root, branch, dirty state, instructions, exact editable files, and verification commands."
+      required_board_updates:
+        - action: insert_remediation_worker_before_T005
+          task_id: T009
+          objective: "Make browser acceptance recoverable and producer responses fail-closed, with adversarial lifecycle tests."
+        - action: repeat_judge_gate
+          task_id: T010
+          require: "Fresh acknowledgement-loss, retry, rollback, malformed-response, terminal-state, and full-suite evidence."
+        - action: establish_upstream_prerequisite
+          before: T005
+          require: "Clone only into a confirmed absent path, inspect instructions and dirty state, and do not overwrite or reset anything."
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement the real explicit-opt-in logo-designer-to-Lineage lifecycle: version the Lineage adapter stdout receipt; add an upstream stdin-only handoff that strictly consumes it; atomically persist only accepted clean SVG as the next collision-safe numbered iteration; emit metadata-only persistence receipts and fixed terminal guidance; update the skill and README so continuation uses the verified persisted SVG while standalone preview remains the default."
+    allowed_files:
+      - "/Users/neonwatty/Desktop/lineage-logo/scripts/logo-designer-adapter.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/SKILL.md"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/scripts/lineage-handoff.mjs"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/tests/lineage-handoff.test.mjs"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/package.json"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/README.md"
+    verify:
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm ci --ignore-scripts"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run test:lineage"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:skills"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:md"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:plugin"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && git status --short"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/logo-designer-adapter.test.ts tests/agent-producer-client.test.ts tests/agent-connection-context.test.ts tests/agent-transport.test.ts"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && git status --short"
+    stop_if:
+      - "The upstream checkout is no longer clean at the recorded base before Worker-owned edits, or Lineage contains changes outside the recorded goal diff."
+      - "Lineage can activate merely because a descriptor exists; explicit user opt-in and preview.html default are mandatory."
+      - "The handoff needs to spawn or locate Lineage, read connection context, accept tokens/API origins, import cross-repository code, or use editor internals."
+      - "The adapter cannot emit exactly one versioned JSON receipt on stdout without logging or exposing credentials."
+      - "Accepted transaction, sourcePath, revision, artifact, and receipt identities cannot be validated consistently before persistence."
+      - "Any non-accepted or malformed input creates, overwrites, truncates, renames, or reserves an iteration file."
+      - "Persistence can expose a partial final file, overwrite an iteration, follow a symlink, escape the explicit logos directory, or silently reuse a collision."
+      - "Concurrent accepted handoffs cannot deterministically produce distinct complete iteration files without clobbering."
+      - "The handoff emits raw SVG, writes a sidecar, injects SVG metadata, or continues from bytes not reread and compared after publication."
+      - "A timeout or conflict automatically resubmits."
+      - "package-lock.json, plugin version, release metadata, dependencies, publication config, or files outside allowed_files need modification."
+      - "Any action would install/publish the plugin, create a release, commit, push, modify external artwork, or invoke editor internals."
+      - "Focused verification fails twice without a bounded diagnosis."
+    expected_output:
+      - "Real skill invocation path using only the public producer boundary"
+      - "Clear user-visible pending, accepted, reverted, failed, stale, unavailable, and timeout outcomes"
+      - "Accepted clean SVG discovery and next-iteration consumption"
+      - "Preserved standalone logo-designer behavior when no canvas integration is requested"
+      - "Focused skill and integration tests"
+      - "Receipt with exact changed files and verification"
+    receipt:
+      result: done
+      changed_files:
+        - /Users/neonwatty/Desktop/lineage-logo/scripts/logo-designer-adapter.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md
+        - /Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/SKILL.md
+        - /Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/scripts/lineage-handoff.mjs
+        - /Users/neonwatty/Desktop/logo-designer-skill/tests/lineage-handoff.test.mjs
+        - /Users/neonwatty/Desktop/logo-designer-skill/package.json
+        - /Users/neonwatty/Desktop/logo-designer-skill/README.md
+      commands:
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm ci --ignore-scripts"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run test:lineage"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:skills"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:md"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:plugin"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && git status --short"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/logo-designer-adapter.test.ts tests/agent-producer-client.test.ts tests/agent-connection-context.test.ts tests/agent-transport.test.ts"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && git status --short"
+          status: pass
+      summary: "Implemented a versioned, identity-bound Lineage adapter receipt and an upstream stdin-only handoff with strict receipt validation. Accepted SVG is published atomically through collision-safe numbered iterations, reread by inode, byte-compared, and SHA-256 hashed before metadata-only continuation. Malformed and non-accepted outcomes create no files and return fixed exits and guidance; timeout and conflict never resubmit. Added concurrency, collision, symlink, malformed-input, identity, terminal-state, CLI, and hash tests. Skill, README, and Lineage documentation preserve standalone preview as the default and require explicit user opt-in for canvas review. Focused tests passed 36/36 and 8/8; full Lineage check passed 146/146 plus build."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Make browser acceptance recoverable and producer responses fail-closed: preserve a locked transaction-bound provisional state until acknowledgement convergence; make retry idempotent; safely finalize or restore the pre-accept document and revision on definitive revert/conflict; validate every manifest/status/artifact response before exposing an outcome; add adversarial lifecycle tests and correct documentation."
+    allowed_files:
+      - "/Users/neonwatty/Desktop/lineage-logo/src/client/agent/session.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/client/agent/transport.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/client/main.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/client/canvas/editor.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/producer/agent-client.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/server/agent-transport.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-history.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/file-open-race.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md"
+    verify:
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run typecheck"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/agent-history.test.ts tests/agent-producer-client.test.ts tests/agent-transport.test.ts tests/file-open-race.test.ts tests/agent-protocol.test.ts"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+    stop_if:
+      - "Recovery requires exposing the bearer token to browser code or importing editor internals into src/producer."
+      - "Accepted can become producer-observable before local application, or local edits can become enabled before terminal convergence."
+      - "Definitive revert/conflict cannot restore the exact pre-accept document, revision, history, and pending lock without destructive ambiguity."
+      - "The fix requires a breaking protocolVersion migration instead of an additive v1 change."
+      - "Any allowed file has overlapping user changes outside the recorded T003 diff."
+      - "Focused verification fails twice without a bounded diagnosis."
+    expected_output:
+      - "Recoverable, transaction-bound provisional acceptance state"
+      - "Idempotent acknowledgement retry and exact rollback/finalization semantics"
+      - "Runtime validation for manifest, status, terminal identity, and accepted artifact receipts"
+      - "Adversarial tests for acknowledgement loss, conflict, rollback, malformed responses, and terminal convergence"
+      - "Receipt with exact changed files and verification"
+    receipt:
+      result: done
+      changed_files:
+        - /Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md
+        - /Users/neonwatty/Desktop/lineage-logo/src/client/agent/session.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/client/agent/transport.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/client/canvas/editor.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/client/main.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/producer/agent-client.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/server/agent-transport.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/agent-history.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/file-open-race.test.ts
+      commands:
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run typecheck"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/agent-history.test.ts tests/agent-producer-client.test.ts tests/agent-transport.test.ts tests/file-open-race.test.ts tests/agent-protocol.test.ts"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+          status: pass
+      summary: "Implemented recoverable provisional acceptance with mutation/file/history locks retained through acknowledgement convergence. Lost responses retry the identical receipt; matching acceptance finalizes one history checkpoint, while definitive revert, stale, rejection, or conflicting acceptance restores the exact prior document, selection, revision, and history. Producer manifest, status, result, identity, vocabulary, and artifact responses now fail closed through runtime validation. Adversarial focused tests passed 42/42; full verification passed 139/139 plus production build."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T010
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Repeat the producer boundary gate after T009 and require fresh adversarial evidence for acknowledgement loss, retry/idempotency, definitive rollback, malformed responses, all terminal states, and full verification before T005 activation."
+    inputs:
+      - "T003, T004, and T009 receipts"
+      - "Current Lineage Logo diff and full verification"
+      - "T004 rejected lifecycle cases"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject continuation if local artwork, revision, history, pending locks, or producer terminal state can diverge."
+      - "Reject continuation if malformed or mismatched response data can reach the skill as a valid outcome."
+      - "Do not define T005 without a verified local upstream checkout and instruction inventory."
+    expected_output:
+      - "accept | remediate decision"
+      - "Fresh adversarial lifecycle and response-validation evidence"
+      - "Exact next Worker package or prerequisite task"
+      - "Decision on whether T005 may activate"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "T009 fixes the original acknowledgement-loss boundary: provisional artwork remains transaction-bound and locked, identical receipts retry idempotently, matching acceptance finalizes once, and definitive terminal conflicts roll back document, revision, selection, and history. Fresh focused and full verification pass. However, malformed accepted SVG still reaches the skill as a valid accepted artifact: the validator only checks an <svg prefix, and a direct reproduction accepted the incomplete string <svg. Rejected-result error codes are also not checked against the protocol vocabulary. The explicit fail-closed gate is therefore unmet, and T005 remains blocked without an upstream checkout."
+      evidence:
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/client/agent/session.ts:76"
+          finding: "Provisional acceptance is idempotent, retains pending/mutation lock, increments once, and has transaction-bound finalize and rollback paths."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/client/main.ts:505"
+          finding: "The browser sends the post-apply artifact, finalizes only after convergence, and rolls back on definitive reverted, rejected, stale, or mismatched accepted states."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts:111"
+          finding: "A test proves a lost accepted response retries with a byte-identical body and exposes definitive reverted conflict state."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/tests/agent-history.test.ts:90"
+          finding: "Tests prove one final checkpoint, monotonic revision, provisional locking, idempotent begin, and exact rollback."
+        - source: "fresh T010 verification"
+          finding: "Typecheck passed; five focused files passed 42/42; full check passed 139/139 and production build succeeded."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/producer/agent-client.ts:77"
+          finding: "Accepted SVG validation only checks an <svg prefix and size bound."
+        - source: "direct read-only reproduction"
+          finding: "A status response with artifact.svg equal to the incomplete string <svg returned accepted instead of conflict."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/producer/agent-client.ts:53"
+          finding: "Rejected results accept any nonempty error.code although the protocol union is closed."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/client/canvas/editor.ts:768"
+          finding: "Provisional snapshot restoration can visually re-enable history controls even while methods remain mutation-blocked."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "Strict producer validation, browser decision validation, and visible lock fidelity share the same protocol boundary."
+      blocked_tasks:
+        - T005
+      missing_evidence:
+        - "Well-formed standalone SVG validation rejecting parser errors, trailing roots, and editor/protocol metadata."
+        - "Closed-vocabulary error and state/result/impact validation."
+        - "Visible history controls disabled throughout provisional transitions."
+        - "A verified local upstream checkout and instruction inventory."
+      required_board_updates:
+        - action: insert_remediation_worker_before_T005
+          task_id: T011
+        - action: repeat_judge_gate
+          task_id: T012
+          after: T011
+        - action: keep_T005_queued
+          until: "T012 approves Lineage boundary,upstream checkout Scout supplies exact T005 scope"
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Execute and record the decisive genuine two-repository oracle in a fresh temporary logos workspace: follow the real upstream logo-designer skill to create a structured SVG proposal; keep preview.html as the default until explicit Lineage opt-in; use the protected public adapter and stdin handoff against the live Vite/browser editor; prove detached review, Revert/no-write, Accept/exact atomic continuation, undo/redo, save/reopen, and a subsequent skill refinement based on the accepted iteration; exercise or deterministically corroborate stale, duplicate, unavailable, reconnect, timeout, and conflict recovery; preserve clean inspectable artifacts and correct operator documentation; fix only directly reproduced adapter/handoff gaps within the allowed boundary."
+    allowed_files:
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/oracle/T006-logo-designer-skill-integration.md"
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/oracle/artifacts/T006-skill-proposal.svg"
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/oracle/artifacts/T006-skill-accepted.svg"
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/oracle/artifacts/T006-skill-continued.svg"
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md"
+      - "/Users/neonwatty/Desktop/lineage-logo/scripts/logo-designer-adapter.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/producer/agent-client.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/SKILL.md"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/scripts/lineage-handoff.mjs"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/tests/lineage-handoff.test.mjs"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/README.md"
+    verify:
+      - "REAL ORACLE: generate a fresh genuine skill proposal and preview in a temporary logos workspace; record its pre-Lineage hash and structure."
+      - "REAL ORACLE: start Lineage against the verified temporary logos directory; verify owner-only protected context and no credential leakage."
+      - "REAL ORACLE: pipe documented agent:submit output into lineage-handoff; use the real browser to Revert once and Accept once; record IDs, revisions, exits, counts, receipts, errors, and detached/canonical state."
+      - "REAL ORACLE: prove Revert creates no iteration; Accept creates exactly one exact hash-matched iteration; continue the real skill from iterationPath into a meaningful next iteration."
+      - "REAL ORACLE: exercise undo/redo and save/reopen; prove reopened bytes and clean metadata-free SVG."
+      - "REAL ORACLE: exercise unavailable, bounded timeout, duplicate conflict, and reconnect; corroborate stale and unsafe recovery paths with current HTTP/session tests."
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run test:lineage"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:plugin"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm audit --omit=dev"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/logo-designer-adapter.test.ts tests/agent-producer-client.test.ts tests/agent-connection-context.test.ts tests/agent-transport.test.ts tests/file-open-race.test.ts tests/agent-history.test.ts"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm audit --omit=dev"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && git diff --check && git status --short"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && git diff --check && git status --short"
+    stop_if:
+      - "The proposal is copied from a fixture or handwritten as a synthetic transaction instead of being produced by the real local skill lifecycle."
+      - "The oracle cannot use a fresh temporary workspace without touching existing user artwork, examples, exports, or unrelated files."
+      - "Any token or protected context value would enter argv, URLs, logs, screenshots, receipts, docs, fixtures, or committed artifacts."
+      - "The real browser/public adapter path cannot distinguish detached preview, Revert, accepted state, persisted iteration, save/reopen, and next-skill consumption."
+      - "Any non-accepted recovery creates/reserves an iteration or automatically resubmits."
+      - "Accepted adapter bytes, handoff bytes, persisted file, reopened artifact, revision, path, byte count, or hash diverge."
+      - "The next iteration is not demonstrably based on the exact accepted persisted iteration or loses stable IDs/resources/clean structure."
+      - "Browser errors occur, locks/history fail, reconnect strands a transaction, or live evidence contradicts lifecycle tests."
+      - "A reproduced defect requires editor, server transport, protocol, workspace, dependency, lockfile, release, or files outside allowed_files."
+      - "Any publication, install, release, commit, push, PR, external message, or non-temporary artwork modification is required."
+      - "Focused or full verification fails twice without a bounded diagnosis."
+    expected_output:
+      - "Automated cross-repository contract/E2E coverage where feasible"
+      - "Recorded real producer and browser walkthrough for isolated preview, Accept, undo/redo, save/reopen, next skill iteration, and Revert"
+      - "Recovery coverage for stale, duplicate, unavailable canvas, reconnect, timeout, and conflicting decisions"
+      - "Inspected clean SVG artifact proving fidelity and absence of editor/protocol metadata"
+      - "Documented generate → review → correct → continue setup with secret-safe commands"
+      - "Both repositories' full required checks"
+    receipt:
+      result: done
+      changed_files:
+        - /Users/neonwatty/Desktop/lineage-logo/docs/oracle/T006-logo-designer-skill-integration.md
+        - /Users/neonwatty/Desktop/lineage-logo/docs/oracle/artifacts/T006-skill-proposal.svg
+        - /Users/neonwatty/Desktop/lineage-logo/docs/oracle/artifacts/T006-skill-accepted.svg
+        - /Users/neonwatty/Desktop/lineage-logo/docs/oracle/artifacts/T006-skill-continued.svg
+        - /Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md
+        - /Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/SKILL.md
+        - /Users/neonwatty/Desktop/logo-designer-skill/README.md
+      commands:
+        - cmd: "REAL ORACLE: generate a fresh genuine skill proposal and preview in a temporary logos workspace; record its pre-Lineage hash and structure."
+          status: pass
+        - cmd: "REAL ORACLE: start Lineage against the verified temporary logos directory; verify owner-only protected context and no credential leakage."
+          status: pass
+        - cmd: "REAL ORACLE: pipe documented agent:submit output into lineage-handoff; use the real browser to Revert once and Accept once; record IDs, revisions, exits, counts, receipts, errors, and detached/canonical state."
+          status: pass
+        - cmd: "REAL ORACLE: prove Revert creates no iteration; Accept creates exactly one exact hash-matched iteration; continue the real skill from iterationPath into a meaningful next iteration."
+          status: pass
+        - cmd: "REAL ORACLE: exercise undo/redo and save/reopen; prove reopened bytes and clean metadata-free SVG."
+          status: pass
+        - cmd: "REAL ORACLE: exercise unavailable, bounded timeout, duplicate conflict, and reconnect; corroborate stale and unsafe recovery paths with current HTTP/session tests."
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run test:lineage"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:plugin"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm audit --omit=dev"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/logo-designer-adapter.test.ts tests/agent-producer-client.test.ts tests/agent-connection-context.test.ts tests/agent-transport.test.ts tests/file-open-race.test.ts tests/agent-history.test.ts"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm audit --omit=dev"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && git diff --check && git status --short"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && git diff --check && git status --short"
+          status: pass
+      summary: "Completed the genuine two-repository Chrome oracle in a fresh temporary workspace. Generated and previewed three skill concepts plus a refined proposal; verified protected 0700/0600 context without reading credentials. Live Revert wrote nothing; live Accept persisted exactly one 588-byte iteration with matching receipt/hash. Undo/redo, collision-safe save, byte-identical reopen, and meaningful stable-ID continuation passed. Timeout, duplicate conflict, unavailable, disconnect, reconnect, and recovered delivery produced correct no-write exits; stale/unsafe paths passed focused tests. Recorded three clean SVG artifacts and a secret-free transcript. Upstream passed 10/10; Lineage focused passed 49/49 and full check 150/150; both production audits were clean."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T011
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Close the remaining fail-closed boundary: validate accepted artifacts as well-formed clean standalone SVG rather than by prefix; validate error codes and status/result/impact semantics against protocol v1 and the submitted transaction; strictly validate browser decision responses before using them for finalize or rollback; keep history controls visibly disabled through provisional snapshot restoration; add adversarial tests and align documentation."
+    allowed_files:
+      - "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/producer/agent-client.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/client/agent/transport.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/client/canvas/editor.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/server/agent-transport.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-protocol.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/editor-serialization.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md"
+    verify:
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run typecheck"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/agent-protocol.test.ts tests/agent-producer-client.test.ts tests/agent-transport.test.ts tests/editor-serialization.test.ts tests/agent-history.test.ts"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+    stop_if:
+      - "Validation repairs, normalizes, or silently accepts malformed SVG instead of failing closed."
+      - "The producer must import canvas, history, workspace, or browser-only editor internals."
+      - "A new secret-bearing channel or breaking protocolVersion migration is required."
+      - "Decision-response validation can finalize or roll back from an unvalidated or mismatched terminal payload."
+      - "History or document mutation becomes enabled before provisional terminal convergence."
+      - "Any allowed file has overlapping unowned changes beyond the recorded T003/T009 work."
+      - "Focused verification fails twice without a bounded diagnosis."
+    expected_output:
+      - "Strict clean standalone SVG artifact validation"
+      - "Closed-vocabulary error and state/result/impact validation"
+      - "Strict browser decision-response validation"
+      - "Visibly and functionally disabled history through provisional convergence"
+      - "Adversarial regression coverage and corrected documentation"
+    receipt:
+      result: done
+      changed_files:
+        - /Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md
+        - /Users/neonwatty/Desktop/lineage-logo/src/client/agent/transport.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/client/canvas/editor.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/producer/agent-client.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/server/agent-transport.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/agent-protocol.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/editor-serialization.test.ts
+      commands:
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run typecheck"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/agent-protocol.test.ts tests/agent-producer-client.test.ts tests/agent-transport.test.ts tests/editor-serialization.test.ts tests/agent-history.test.ts"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+          status: pass
+      summary: "Implemented strict standalone SVG parsing without repair, rejecting incomplete/multi-root XML, mismatched tags, active or external content, editor handles, and reserved metadata. Closed error-code vocabulary and validated state/result/impact semantics against submitted operations. Browser decision responses now require strict identity, fields, terminal semantics, results, and clean artifacts before finalize or rollback. History remains visibly and functionally disabled through provisional restoration. Focused tests passed 90/90; full verification passed 143/143 plus production build."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T012
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Repeat the Lineage boundary gate after T011, requiring incomplete, multi-root, parser-error, metadata-bearing, unknown-error-code, mismatched-impact, and malformed decision responses to fail closed while lifecycle recovery and full verification remain green."
+    inputs:
+      - "T003, T004, T009, T010, and T011 receipts"
+      - "Current Lineage Logo diff and full verification"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reproduce the T010 malformed artifact case and adjacent parser/semantic cases."
+      - "Reject continuation if any malformed or mismatched payload can finalize, roll back, or reach the skill as accepted."
+      - "Do not activate T005 without a separate verified upstream-checkout Scout receipt."
+    expected_output:
+      - "accept | remediate decision for the Lineage boundary"
+      - "Fresh malformed-input and lifecycle evidence"
+      - "Exact next Scout or Worker package"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "T011 closes every specifically recorded T010 example: incomplete and multi-root SVG, mismatched tags, undeclared entities, reserved metadata, unknown error codes, mismatched impacts, malformed decisions, and provisional history visibility now fail closed; lifecycle and fresh verification remain green. The broader clean-SVG boundary is still false. Direct reproduction shows an XML-invalid null character reference and an active style element importing an external stylesheet both pass validation and reach the producer as accepted artifacts. T005 also lacks the required upstream checkout Scout receipt."
+      evidence:
+        - source: "fresh T012 malformed-artifact reproduction"
+          finding: "Incomplete, multiple-root, mismatched-tag, reserved-metadata, and undeclared-entity cases now fail closed."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts:76"
+          finding: "Producer tests reject identity, state, field, source/revision, SVG, metadata, error-code, and impact mismatches."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts:115"
+          finding: "Browser tests preserve acknowledgement retry and reject malformed terminal responses."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/client/canvas/editor.ts:1474"
+          finding: "History availability now respects provisional mutation lock."
+        - source: "fresh T012 verification"
+          finding: "Typecheck, 90 focused tests, 143 full tests, and production build pass."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts:84"
+          finding: "Numeric references are recognized without XML character-range validation."
+        - source: "direct read-only producer reproduction"
+          finding: "<svg><path d=\"&#0;\" /></svg> returned accepted although XML 1.0 forbids null."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts:175"
+          finding: "The active-content policy omits style and animation; URL checks inspect attributes, not style text."
+        - source: "direct read-only producer reproduction"
+          finding: "A style element containing an external CSS import returned accepted."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "SVG well-formedness and active-content policy must remain identical across shared, server, browser, and producer boundaries."
+      blocked_tasks:
+        - T005
+      missing_evidence:
+        - "Legal XML character-range enforcement."
+        - "Fail-closed active SVG/CSS/external-reference policy."
+        - "One shared adversarial corpus across all boundaries."
+        - "Verified local upstream checkout Scout receipt."
+      required_board_updates:
+        - action: insert_security_boundary_worker_before_T005
+          task_id: T013
+        - action: repeat_judge_gate
+          task_id: T014
+          after: T013
+        - action: keep_T005_queued
+          until: "T014 approval,verified upstream Scout receipt"
+  - id: T007
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Adversarially audit the completed integration for security, lifecycle correctness, compatibility, UX truthfulness, and oracle strength."
+    inputs:
+      - "T001-T006 receipts"
+      - "Both repository diffs and full verification"
+      - "Real demo transcript and saved SVG artifact"
+      - "User-facing integration documentation"
+    constraints:
+      - "Read-only; do not implement."
+      - "Start skeptical and reproduce high-impact races or contract mismatches where safe."
+      - "Reject mock-only, wrapper-only, one-repository-only, or submit-without-continuation outcomes."
+      - "Require proof that secrets are absent from code, args, logs, docs examples, fixtures, and artifacts."
+      - "Require proof that Accept, Revert, stale, duplicate, unavailable, reconnect, timeout, and conflicting terminal decisions converge."
+    expected_output:
+      - "accept | remediate"
+      - "Validated findings with confidence and primary evidence"
+      - "Oracle coverage matrix"
+      - "Exact T008 remediation package if any issue remains"
+      - "Release/readiness risks requiring owner decisions"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "The genuine two-repository Accept/Revert/continue oracle, artifacts, security boundary, audits, and fresh checks are credible, but terminal convergence is incomplete. Direct reproduction shows the server automatically reaches reverted after review timeout while the connected browser receives no terminal event and remains pending/mutation-locked. A server restart also loses the in-memory transaction; later browser decisions receive 404 retries with no authoritative state, leaving the proposal pending and mutation blocked. CI also omits the new handoff tests, and oracle artifacts lack permanent assertions. These are bounded T008 remediation work before T999."
+      evidence:
+        - area: genuine_two_repository_flow
+          status: met
+          finding: "T006 proves fresh skill proposal, preview, explicit opt-in, live Revert/Accept, exact persisted iteration, save/reopen, and continuation."
+        - area: artifact_fidelity
+          status: met_but_not_permanently_gated
+          finding: "Hashes, sizes, stable IDs, clean validation, and metadata absence reproduce but lack automated assertions."
+        - area: secret_boundary
+          status: met
+          finding: "No credential value or secret-bearing channel appears in commands, docs, receipts, or artifacts."
+        - area: server_review_timeout
+          status: gap
+          finding: "Server reaches reverted but emits no terminal browser event; pending mutation lock remains."
+        - area: server_restart_recovery
+          status: gap
+          finding: "New empty registry yields decision 404 retries and leaves browser pending/mutation-locked."
+        - area: security_and_verification
+          status: met
+          finding: "Strict SVG boundary, lifecycle tests, audits, upstream validations, and 150 Lineage tests are green."
+        - area: ci_release_readiness
+          status: gap
+          finding: "Upstream CI does not run test:lineage; direct Node 20 execution passes."
+        - area: publication
+          status: owner_deferred
+          finding: "No commit, push, PR, version, release, install, or publication authorized."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "Server events, browser pending state, recovery, tests, oracle replay, and CI gate are one coupled milestone."
+      blocked_tasks:
+        - T999
+      missing_evidence:
+        - "Automatic browser timeout convergence and unlock."
+        - "Safe server-instance replacement recovery."
+        - "Permanent T006 artifact assertions."
+        - "Upstream CI test:lineage gate."
+        - "Fresh affected browser and full verification."
+      required_board_updates:
+        - action: activate_T008_with_exact_worker_package
+          task_id: T008
+        - action: keep_T999_queued
+          until: "T008 done with fresh timeout/restart/artifact/CI/browser/audit/check evidence"
+        - action: release_readiness_note
+          decision_required_after_T999: "Choose branches/commits and potential upstream version/release; do not publish during T008."
+  - id: T008
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Close the final terminal-convergence and proof gaps as one bounded slice: add a strict secret-free server-instance SSE control event and strict automatic terminal-state events; make the browser distinguish same-server reconnect from server replacement, reconcile matching pending reviews on server-driven revert/reject/stale outcomes, and expose a safe explicit restore path when a provisional decision loses authoritative server identity; keep transaction/history/file mutation locked until that recovery resolves; add deterministic timeout/restart races and permanent T006 artifact assertions; run test:lineage in upstream CI; update lifecycle docs/transcript and rerun every affected automated and real-browser oracle without changing protocol credentials, dependencies, or release metadata."
+    allowed_files:
+      - "/Users/neonwatty/Desktop/lineage-logo/src/server/agent-transport.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/client/agent/transport.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/client/agent/session.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/client/main.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-history.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md"
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/oracle/T006-logo-designer-skill-integration.md"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/.github/workflows/validate.yml"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/README.md"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/SKILL.md"
+    verify:
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/agent-transport.test.ts tests/agent-history.test.ts tests/logo-designer-adapter.test.ts tests/agent-producer-client.test.ts tests/file-open-race.test.ts"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm audit --omit=dev"
+      - "DIRECT REAL-HTTP RACE: short server review timeout converges producer and exact browser pending state to reverted, preserves canonical state/history/revision, and clears locks without click."
+      - "DIRECT RESTART RACE: replace server instance while pending; browser distinguishes replacement, clears detached state, and keeps provisional uncertainty behind explicit safe restore guidance."
+      - "REAL BROWSER RECOVERY: rerun normal Revert/Accept and pending restart; prove canonical state, visible recovery, no iteration, subsequent transaction success, and zero console/page errors."
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run test:lineage"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:plugin"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm audit"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && mise exec node@20.20.2 -- npm run test:lineage"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && mise exec node@20.20.2 -- npm run validate"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && git diff --check && git status --short"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && git diff --check && git status --short"
+    stop_if:
+      - "A control event contains a token, accepted SVG, transaction payload, excessive path data, or lacks exact schema/identity validation."
+      - "The implementation weakens exact-origin routes, bearer producer routes, owner-only context, Last-Event-ID replay, or one-editor semantics."
+      - "An automatic event can reconcile a different transaction, double-apply history, alter a clean document, or unlock before exact matching state."
+      - "An ordinary reconnect is mistaken for server replacement, or replacement can leave detached review permanently locked."
+      - "Lost provisional acceptance is silently classified; it must remain explicit conservative restore/inspect recovery absent evidence."
+      - "Safe recovery requires durable transaction/artifact persistence, a breaking migration, remote semantics, or two-phase publication beyond scope."
+      - "Artifact assertions cannot reproduce hashes, sizes, stable IDs, accepted-to-continued deltas, clean parsing, and metadata absence."
+      - "Node 20 CI cannot run test:lineage without dependency, lockfile, version, or release changes."
+      - "Any write falls outside allowed_files or requires publish/install/release/commit/push/PR/external message."
+      - "Focused verification or either real recovery oracle fails twice without a bounded diagnosis."
+    expected_output:
+      - "All validated T007 findings resolved or explicitly owner-blocked"
+      - "Fresh focused and full verification"
+      - "Fresh real acceptance evidence for behavior-affecting fixes"
+      - "Receipt mapping each finding to its resolution"
+    receipt:
+      result: done
+      changed_files:
+        - /Users/neonwatty/Desktop/lineage-logo/src/server/agent-transport.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/client/agent/transport.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/client/agent/session.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/client/main.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/agent-history.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md
+        - /Users/neonwatty/Desktop/lineage-logo/docs/oracle/T006-logo-designer-skill-integration.md
+        - /Users/neonwatty/Desktop/logo-designer-skill/.github/workflows/validate.yml
+        - /Users/neonwatty/Desktop/logo-designer-skill/README.md
+        - /Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/SKILL.md
+      commands:
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/agent-transport.test.ts tests/agent-history.test.ts tests/logo-designer-adapter.test.ts tests/agent-producer-client.test.ts tests/file-open-race.test.ts"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm audit --omit=dev"
+          status: pass
+        - cmd: "DIRECT REAL-HTTP RACE: short server timeout converges exact browser pending state to reverted, preserves canonical state/history/revision, and clears locks without click."
+          status: pass
+        - cmd: "DIRECT RESTART RACE: replace server instance while pending; browser distinguishes replacement, clears detached state, and preserves provisional uncertainty behind explicit restore guidance."
+          status: pass
+        - cmd: "REAL BROWSER RECOVERY: normal Revert/Accept and pending restart preserve canonical state, visible recovery, no iteration, subsequent success, and zero console/page errors."
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run test:lineage"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:plugin"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm audit"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && mise exec node@20.20.2 -- npm run test:lineage"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && mise exec node@20.20.2 -- npm run validate"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && git diff --check && git status --short"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && git diff --check && git status --short"
+          status: pass
+      summary: "Implemented strict secret-free server-instance and exact terminal SSE events, replay-safe cursors, heartbeat watchdog recovery, exact pending reconciliation, conservative provisional restore UI, timeout/restart tests, permanent T006 artifact assertions, lifecycle documentation, and upstream Node 20 CI coverage. Connected Chrome proved normal Revert/Accept, persistence/reopen, detached restart clearing, visible provisional uncertainty, explicit exact restore, post-recovery acceptance, and zero console warnings/errors. Temporary oracle workspace and processes were cleaned up."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T013
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Complete the clean accepted-artifact trust boundary as one coherent security slice: enforce XML-valid character references and legal characters; define and enforce a conservative active-content/external-reference policy covering style text, CSS imports/URLs, animation/set/discard and equivalent SVG activation paths; run one shared adversarial corpus through shared validation, server acknowledgement, browser decision, and producer outcome; preserve legitimate clean logo artifacts and update documentation."
+    allowed_files:
+      - "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/producer/agent-client.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/client/agent/transport.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/server/agent-transport.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-protocol.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md"
+    verify:
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run typecheck"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/agent-protocol.test.ts tests/agent-producer-client.test.ts tests/agent-transport.test.ts tests/logo-designer-adapter.test.ts tests/agent-history.test.ts tests/editor-serialization.test.ts"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+    stop_if:
+      - "The implementation normalizes or repairs invalid XML instead of rejecting it."
+      - "Any accepted active element, attribute, text, CSS construct, or URL-bearing construct can initiate external loading or post-parse mutation."
+      - "Boundary-specific validators diverge instead of consuming one authoritative shared policy and corpus."
+      - "Legitimate current logo-designer fixtures or the clean saved oracle artifact are rejected without a documented security reason and bounded compatibility decision."
+      - "The producer imports canvas/history/workspace internals, a secret-bearing channel is introduced, or protocolVersion must break."
+      - "A new parser dependency is required without an explicit dependency/security review package."
+      - "Any allowed file has overlapping unowned changes beyond the recorded goal work."
+      - "Focused verification fails twice without a bounded diagnosis."
+    expected_output:
+      - "Authoritative shared clean-SVG security policy"
+      - "XML-valid character and character-reference enforcement"
+      - "Conservative active SVG/CSS/external-loading denial"
+      - "Shared adversarial corpus enforced at all four trust boundaries"
+      - "Compatibility evidence for legitimate logo artifacts"
+    receipt:
+      result: done
+      changed_files:
+        - /Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md
+        - /Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/agent-protocol.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts
+      commands:
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run typecheck"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/agent-protocol.test.ts tests/agent-producer-client.test.ts tests/agent-transport.test.ts tests/logo-designer-adapter.test.ts tests/agent-history.test.ts tests/editor-serialization.test.ts"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+          status: pass
+      summary: "Completed the authoritative shared clean-SVG policy with XML 1.0 literal/reference validation, namespace constraints, and conservative denial of CSS/style, links, scripts, foreign content, handlers, animation, set/discard, and external URLs. One exported adversarial corpus now runs unchanged through shared validation, server acknowledgement, browser decisions, and producer outcomes. Legitimate logo-designer and saved oracle artifacts remain accepted. Focused tests passed 97/97; full verification passed 144/144 plus production build."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T014
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Repeat the complete Lineage security boundary gate after T013 with invalid numeric references, forbidden controls, style/CSS external loads, animation/set/discard activation, all prior malformed cases, lifecycle recovery, fixture compatibility, and full verification."
+    inputs:
+      - "T003 through T013 relevant receipts"
+      - "Shared adversarial corpus and current diff"
+      - "Fresh focused and full verification"
+    constraints:
+      - "Read-only; do not implement."
+      - "Use direct reproductions, not only test names."
+      - "Reject continuation if any accepted construct can load externally, mutate post-parse, or violate XML validity."
+      - "Do not activate T005 without a separate verified upstream-checkout Scout receipt."
+    expected_output:
+      - "accept | remediate Lineage boundary decision"
+      - "Direct security reproductions and compatibility evidence"
+      - "Exact upstream Scout prerequisite if approved"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "T013 now rejects every requested numeric/control, style/CSS, animation/set/discard, metadata, and prior malformed case; one corpus covers shared, server, browser, and producer boundaries, lifecycle tests remain green, and legitimate fixtures pass. The hand-written XML recognizer still accepts XML-invalid documents. Direct reproductions show a malformed XML declaration and an unbound xlink prefix both reach the producer as accepted artifacts. Because T014 rejects any XML-validity escape, the Lineage gate is not approved. Repeated grammar micro-patches must stop: choose a standards-compliant parser architecture before another Worker."
+      evidence:
+        - source: "fresh direct T014 reproduction"
+          finding: "All explicitly requested numeric/control, metadata, active SVG/CSS, URL, animation, and prior malformed cases now fail closed."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts:122"
+          finding: "The exported rejection corpus covers XML characters, metadata, active SVG/CSS, URL, namespace, and external-loading cases."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/tests/agent-protocol.test.ts:22"
+          finding: "Shared validation runs the authoritative corpus without repair."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts:101"
+          finding: "The same corpus is rejected at the producer boundary."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts:138"
+          finding: "Browser decision handling rejects the same corpus; lost acknowledgement retry remains byte-identical."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts:16"
+          finding: "Representative logo-designer and saved oracle artifacts pass."
+        - source: "fresh T014 verification"
+          finding: "Typecheck, 97 focused tests, 144 full tests, and production build pass."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts:183"
+          finding: "Pre-root processing instructions beginning with <?xml are accepted without declaration grammar validation."
+        - source: "direct read-only producer reproduction"
+          finding: "<?xml nope?><svg></svg> returned accepted."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts:248"
+          finding: "xlink:href is allowlisted without namespace binding tracking."
+        - source: "direct read-only producer reproduction"
+          finding: "An unbound xlink prefix returned accepted."
+        - source: /Users/neonwatty/Desktop/lineage-logo/package.json
+          finding: "No standards-compliant production XML parser is installed."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "Parser selection affects browser bundles, Node runtime, dependency security, and every trust-boundary validator."
+      blocked_tasks:
+        - T005
+      missing_evidence:
+        - "A standards-compliant parser strategy for malformed declarations, unbound prefixes, namespaces, and the existing corpus."
+        - "Node/browser/Vite compatibility, license, maintenance, vulnerability, size, transitive dependency, and lockfile evidence."
+        - "A verified local upstream checkout Scout receipt."
+      required_board_updates:
+        - action: pm_reorientation
+          reason: "Stop token-level grammar patches and establish a parser-backed architecture."
+        - action: insert_read_only_parser_strategy_scout
+          task_id: T015
+        - action: insert_parser_architecture_judge
+          task_id: T016
+          after: T015
+        - action: keep_T005_queued
+          until: "parser-backed boundary Judge approval,verified upstream Scout receipt"
+  - id: T015
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Determine the safest standards-compliant XML parsing strategy for the shared accepted-artifact boundary across Node producer/server and Vite browser execution, without changing files."
+    inputs:
+      - "/Users/neonwatty/Desktop/lineage-logo/package.json"
+      - "/Users/neonwatty/Desktop/lineage-logo/package-lock.json"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/producer/agent-client.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/client/agent/transport.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/server/agent-transport.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/vite.config.ts"
+      - "T010-T014 receipts and rejection corpus"
+    constraints:
+      - "Read-only; do not install, edit, or update the lockfile."
+      - "Compare a platform-adapter design using native DOMParser plus an existing Node parser against adding a small standards-compliant cross-platform XML parser."
+      - "Require fatal-error behavior without repair, namespace awareness, no network/entity resolution, browser bundle compatibility, Node ESM compatibility, and continued shared semantic policy ownership."
+      - "Record exact package versions, licenses, transitive dependency count, unpacked/bundled size, maintenance provenance, known vulnerability evidence, and release/lockfile impact for any new dependency."
+      - "Reject happy-dom as a production/shared dependency unless measured evidence proves its browser and runtime cost acceptable."
+      - "Run read-only proof snippets only where dependencies already exist; do not fetch or install candidates."
+    expected_output:
+      - "Architecture comparison and recommendation"
+      - "Primary evidence for XML declaration and namespace-prefix rejection behavior"
+      - "Dependency/security/license/bundle assessment"
+      - "Exact candidate files and verification commands for one parser-integration Worker"
+      - "Stop conditions and compatibility risks"
+    receipt:
+      result: done
+      summary: "Recommend one shared strict SAX gate using saxes 6.0.0, followed by the existing shared clean-SVG semantic policy. Reject a native-DOMParser/happy-dom adapter: it creates runtime divergence, happy-dom accepts unbound xlink prefixes, and its installed footprint is about 17 MB with seven direct dependencies. Saxes is ISC, 163,774 bytes unpacked, has one MIT dependency, and fits Node ESM through CJS interop plus Vite bundling. Its 2022 maintenance age and unavailable local advisory proof require explicit stop gates and fresh post-install audit/bundle evidence."
+      evidence:
+        - path: "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts:61"
+          finding: "validateCleanAgentSvg is the single semantic-policy owner; the handwritten XML recognizer is the remaining grammar weakness."
+        - path: /Users/neonwatty/Desktop/lineage-logo/node_modules/happy-dom/package.json
+          finding: "happy-dom 20.11.6 is dev-only, MIT, ESM, Node >=20, and has seven direct dependencies."
+        - source: "read-only happy-dom reproduction"
+          finding: "It rejects the malformed declaration but accepts an unbound xlink prefix, so it fails the observed escape."
+        - source: "installed-size measurement"
+          finding: "happy-dom occupies about 17,192 KiB across 3,003 files, disproportionate for this gate."
+        - source: "offline npm cache for saxes@6.0.0"
+          finding: "ISC, 163,774 bytes unpacked, Node >=12.22.7, one dependency xmlchars ^2.2.0, last modified 2022-05-17."
+        - source: "offline npm cache for xmlchars@2.2.0"
+          finding: "MIT, 58,957 bytes unpacked, zero dependencies."
+        - source: "offline npm cache for @xmldom/xmldom@0.9.11"
+          finding: "MIT, 416,804 bytes unpacked, zero dependencies, maintained but DOM-building repair/fatal semantics require more proof."
+        - path: /Users/neonwatty/Desktop/lineage-logo/vite.config.ts
+          finding: "Vite has no special parser alias; production build and measured bundle delta are required."
+        - source: "npm audit --offline --json"
+          finding: "Current lock is clean but does not evaluate unlocked candidates."
+      facts:
+        - fact: "Use one cross-platform strict SAX parser so browser, server, and producer share XML grammar behavior."
+        - fact: "Preferred candidate is saxes 6.0.0 in namespace-aware strict mode; any parse error must throw and no partial output may reach semantic validation."
+        - fact: "Existing shared code retains ownership of SVG namespace, forbidden content, URLs, metadata, size, identity, and no-repair semantics."
+        - fact: "Candidate Worker files are package.json, package-lock.json, shared protocol, four boundary/fixture test files, and docs; a shared parser file is optional only to reduce policy coupling."
+        - fact: "Verification must include focused tests, build/bundle delta, production audit, and npm run check."
+      contradictions:
+        - claim: "happy-dom is an acceptable Node counterpart."
+          evidence: "It accepts the exact unbound-prefix escape."
+        - claim: "Current zero-vulnerability audit proves a new parser safe."
+          evidence: "No candidate is yet in the lockfile."
+      ambiguity_requiring_judge:
+        - question: "Accept saxes 6.0.0 despite release age with fresh audit and bundle stop gates, or require more network evidence?"
+        - question: "If maintenance recency outweighs strict scope, should xmldom receive a separate fatal/no-repair proof tranche?"
+      commands:
+        - "read-only repository, parser, npm-cache, footprint, audit, and happy-dom proof inspection"
+      note_needed: false
+  - id: T016
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Select the parser architecture and exact largest safe Worker package from T015 evidence; reject any option that repairs XML, resolves external entities, duplicates boundary validators, or imposes unreviewed dependency risk."
+    inputs:
+      - "T014 and T015 receipts"
+      - "Current shared validator architecture and build/runtime constraints"
+    constraints:
+      - "Read-only; do not install or implement."
+      - "Choose one standards-backed architecture with explicit trust-boundary semantics."
+      - "Require exact allowed_files, verify commands, dependency review, and stop_if for the next Worker."
+      - "Keep T005 queued until the parser-backed boundary passes a fresh Judge gate."
+    expected_output:
+      - "Architecture decision"
+      - "Dependency and security rationale"
+      - "Exact parser-integration Worker package"
+      - "Required post-implementation adversarial gate"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "Approve a single shared strict SAX grammar gate using exactly saxes 6.0.0, followed by the existing shared semantic policy. This avoids Node/browser parser divergence and DOM repair while preserving one trust-boundary implementation. Saxes is small, namespace-aware, ISC-licensed, and has one MIT dependency; its 2022 age is acceptable only with exact pinning, lock-integrity review, fresh production audit, direct fatal-error proofs, and bounded bundle growth. Happy-dom is rejected for size and the known namespace escape; xmldom lacks equivalent no-repair evidence. T005 remains queued until a post-implementation Judge approves and an upstream checkout Scout supplies scope."
+      worker_package:
+        objective: "Replace the handwritten XML grammar recognizer with one shared strict, namespace-aware saxes 6.0.0 gate while retaining the existing conservative clean-SVG semantic policy; prove fatal no-repair behavior, no DTD/external entity path, identical enforcement at all trust boundaries, legitimate artifact compatibility, exact dependency integrity, and bounded browser impact."
+        allowed_files:
+          - /Users/neonwatty/Desktop/lineage-logo/package.json
+          - /Users/neonwatty/Desktop/lineage-logo/package-lock.json
+          - /Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts
+          - /Users/neonwatty/Desktop/lineage-logo/src/shared/agent-svg-validator.ts
+          - /Users/neonwatty/Desktop/lineage-logo/tests/agent-protocol.test.ts
+          - /Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts
+          - /Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts
+          - /Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts
+          - /Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md
+        verify:
+          - "cd /Users/neonwatty/Desktop/lineage-logo && npm ls saxes xmlchars --all"
+          - "cd /Users/neonwatty/Desktop/lineage-logo && npm audit --omit=dev --audit-level=low"
+          - "cd /Users/neonwatty/Desktop/lineage-logo && npm run typecheck"
+          - "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/agent-protocol.test.ts tests/agent-producer-client.test.ts tests/agent-transport.test.ts tests/logo-designer-adapter.test.ts tests/agent-history.test.ts tests/editor-serialization.test.ts"
+          - "cd /Users/neonwatty/Desktop/lineage-logo && npm run build"
+          - "cd /Users/neonwatty/Desktop/lineage-logo && measure single JS bundle <=260000 raw and <=78000 gzip"
+          - "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+        stop_if:
+          - "saxes is not pinned exactly to 6.0.0 or the lock adds anything beyond saxes 6.0.0 and xmlchars 2.2.0 with expected integrity/licenses."
+          - "Production audit fails or reports any vulnerability."
+          - "Strict parser proofs or existing corpus fail, any DTD/entity/recovery path reaches acceptance, or validators diverge."
+          - "Vite needs polyfills/aliases/runtime branches, duplicates saxes, exceeds bundle ceiling, or legitimate artifacts fail without explicit compatibility review."
+          - "Any allowed file has overlapping unowned changes or focused verification fails twice."
+      evidence:
+        - source: T015
+          finding: "saxes 6.0.0 is ISC, small, namespace-aware, cross-platform, and has one MIT xmlchars dependency."
+        - source: "T015 happy-dom reproduction"
+          finding: "happy-dom accepts the exact unbound-prefix escape and is disproportionately large."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts:154"
+          finding: "One shared validator already serves server, browser, and producer consumers."
+        - source: "T014 baseline"
+          finding: "Current bundle is about 185.43 kB raw/56.59 kB gzip; 97 focused and 144 full tests pass."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "Dependency, lockfile, shared parser, semantic policy, bundles, and all boundary tests are one coupled security package."
+      blocked_tasks:
+        - T005
+      missing_evidence:
+        - "Installed parser direct proofs, exact lock/audit/license evidence, bundle measurement, and upstream checkout Scout receipt."
+      required_board_updates:
+        - action: activate_parser_integration_worker
+          task_id: T017
+        - action: add_post_implementation_security_judge
+          task_id: T018
+          after: T017
+        - action: keep_T005_queued
+          until: "T018 approval,upstream Scout receipt"
+  - id: T017
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Replace the handwritten XML grammar recognizer with one shared strict, namespace-aware saxes 6.0.0 gate while retaining the existing conservative clean-SVG semantic policy; prove fatal no-repair behavior, no DTD/external entity path, identical enforcement at all trust boundaries, legitimate artifact compatibility, exact dependency integrity, and bounded browser impact."
+    allowed_files:
+      - "/Users/neonwatty/Desktop/lineage-logo/package.json"
+      - "/Users/neonwatty/Desktop/lineage-logo/package-lock.json"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-svg-validator.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-protocol.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md"
+    verify:
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm ls saxes xmlchars --all"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm audit --omit=dev --audit-level=low"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run typecheck"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/agent-protocol.test.ts tests/agent-producer-client.test.ts tests/agent-transport.test.ts tests/logo-designer-adapter.test.ts tests/agent-history.test.ts tests/editor-serialization.test.ts"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run build"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && node --input-type=module -e \"import fs from 'node:fs'; import zlib from 'node:zlib'; const files=fs.readdirSync('dist/client/assets').filter((name)=>name.endsWith('.js')); if(files.length!==1) throw new Error('Expected one client JS bundle'); const body=fs.readFileSync('dist/client/assets/'+files[0]); const gzip=zlib.gzipSync(body); console.log(JSON.stringify({raw:body.length,gzip:gzip.length})); if(body.length>260000||gzip.length>78000) throw new Error('Parser bundle exceeds approved bound');\""
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+    stop_if:
+      - "package.json does not pin saxes exactly to 6.0.0."
+      - "The lockfile adds packages other than saxes 6.0.0 and xmlchars 2.2.0, lacks registry integrity, or records licenses other than ISC and MIT for those additions."
+      - "A fresh npm production audit cannot complete or reports any vulnerability."
+      - "Saxes fails direct strict-mode proofs for malformed declarations, unbound prefixes, namespace violations, illegal references/controls, multiple roots, partial documents, or the full existing corpus."
+      - "Any DTD, internal/external entity declaration, external resolution callback, parser recovery, normalization, or partial-event output can reach semantic acceptance."
+      - "The implementation duplicates parser or semantic policy across producer, server, and browser instead of keeping one shared validator."
+      - "Vite requires a Node polyfill, parser alias, or special runtime branch, includes duplicate saxes copies, exceeds 260000 raw bytes or 78000 gzip bytes, or fails production execution."
+      - "Legitimate representative and saved oracle artifacts fail without a separate explicit security/compatibility decision; do not weaken the policy ad hoc."
+      - "Any allowed file has overlapping unowned changes beyond the recorded goal work."
+      - "Focused verification fails twice without a bounded diagnosis."
+    expected_output:
+      - "One shared strict saxes-backed grammar gate"
+      - "Exact dependency, integrity, license, audit, and single-copy evidence"
+      - "Direct malformed-input and no-repair proofs"
+      - "Legitimate artifact compatibility"
+      - "Measured bundle evidence and full verification"
+    receipt:
+      result: done
+      changed_files:
+        - /Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md
+        - /Users/neonwatty/Desktop/lineage-logo/package-lock.json
+        - /Users/neonwatty/Desktop/lineage-logo/package.json
+        - /Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/shared/agent-svg-validator.ts
+      commands:
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm ls saxes xmlchars --all"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm audit --omit=dev --audit-level=low"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run typecheck"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/agent-protocol.test.ts tests/agent-producer-client.test.ts tests/agent-transport.test.ts tests/logo-designer-adapter.test.ts tests/agent-history.test.ts tests/editor-serialization.test.ts"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run build"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && measure single client JS bundle against 260000 raw / 78000 gzip ceiling"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+          status: pass
+      summary: "Replaced the handwritten XML recognizer with one shared strict, namespace-aware saxes 6.0.0 grammar gate while retaining the shared semantic policy and corpus. DTDs, entities, processing instructions, malformed declarations, unbound prefixes, recovery, and partial documents fail closed. Lock review confirms only saxes 6.0.0 (ISC) and xmlchars 2.2.0 (MIT) with registry integrity; audit found zero vulnerabilities. Focused tests passed 97/97, full tests 144/144, and the single bundle measured 209953 raw/63088 gzip."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T018
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Adversarially approve or reject the parser-backed Lineage boundary using direct Node and browser-path reproductions, lock/audit/license/bundle evidence, lifecycle regression evidence, and legitimate artifact compatibility."
+    inputs:
+      - "T014-T017 receipts"
+      - "Current dependency/lock diff and built client"
+      - "Shared adversarial corpus and full verification"
+    constraints:
+      - "Read-only; do not implement."
+      - "Directly reproduce malformed declarations, namespaces, DTD/entities, illegal characters, partial/multi-root documents, active SVG/CSS/URLs, reserved metadata, and terminal decision mismatches."
+      - "Require lifecycle retry/rollback/finalize and lock/history/revision fidelity to remain green."
+      - "Require exact dependency, audit, license, single-copy, and bundle evidence."
+      - "Keep T005 queued without a verified upstream checkout Scout receipt."
+    expected_output:
+      - "accept | remediate parser-backed Lineage boundary"
+      - "Direct security and lifecycle evidence"
+      - "Dependency and bundle evidence"
+      - "Exact next Scout prerequisite if approved"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "Approve the parser-backed Lineage boundary. Direct shared and browser-path reproductions reject all 36 adversarial cases, including malformed declarations, namespaces, DTD/entities, illegal characters, partial documents, active SVG/CSS/URLs, and reserved metadata; legitimate SVG and XLink cases pass. Saxes is exactly pinned once at 6.0.0 with only xmlchars 2.2.0, expected licenses and integrity, zero production audit findings, and a 209,953-byte raw/63,088-byte gzip bundle below limits. Lifecycle retry, rollback/finalize, history, revision, and locks remain green with 97 focused and 144 full tests. T005 remains queued because no verified upstream checkout Scout receipt exists."
+      evidence:
+        - source: "direct shared-validator reproduction"
+          finding: "All 36 rejection-corpus entries failed closed; three legitimate documents passed."
+        - source: "direct browser-path reproduction"
+          finding: "AgentCanvasTransport rejected decision responses containing all 36 corpus artifacts."
+        - source: /Users/neonwatty/Desktop/lineage-logo/src/shared/agent-svg-validator.ts
+          finding: "One strict namespace-aware SaxesParser rejects parser errors, DTDs, and processing instructions with no recovery or entity resolver."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts:118"
+          finding: "Lost accepted responses retry byte-identically and terminal conflicts remain available for convergence."
+        - source: "/Users/neonwatty/Desktop/lineage-logo/tests/agent-history.test.ts:90"
+          finding: "Provisional acceptance remains locked; finalize and rollback preserve exact document, selection, revision, pending state, and history."
+        - source: "fresh legitimate-artifact reproduction"
+          finding: "Representative logo-designer and saved oracle artifacts pass unchanged."
+        - source: /Users/neonwatty/Desktop/lineage-logo/package-lock.json
+          finding: "Only saxes 6.0.0 ISC and xmlchars 2.2.0 MIT were added with registry integrity."
+        - source: "fresh audit and bundle evidence"
+          finding: "Zero production vulnerabilities; one bundle is 209953 raw/63088 gzip, below limits."
+        - source: "fresh T018 verification"
+          finding: "Typecheck, 97 focused tests, 144 full tests, and production build pass."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "The next scope depends on one authoritative local upstream checkout and instruction inventory."
+      blocked_tasks:
+        - T005
+      missing_evidence:
+        - "Verified local upstream root, branch, commit, remote, dirty state, and instructions."
+        - "Primary local skill lifecycle, file, verification, and release evidence."
+        - "Judge-defined T005 Worker package."
+      required_board_updates:
+        - action: pm_establish_upstream_checkout
+          task_id: T021
+        - action: activate_verified_upstream_scout
+          task_id: T019
+          after: T021
+        - action: add_upstream_integration_judge
+          task_id: T020
+          after: T019
+        - action: keep_T005_queued
+          until: "T019 receipt,T020 exact package"
+  - id: T021
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Establish a dedicated local checkout of neonwatty/logo-designer-skill at /Users/neonwatty/Desktop/logo-designer-skill without overwriting, resetting, cleaning, switching, or deleting any existing path or changes."
+    inputs:
+      - "T018 approved Lineage boundary receipt"
+      - "GitHub repository neonwatty/logo-designer-skill"
+    constraints:
+      - "Confirm the exact target path is absent before creating anything."
+      - "If the path exists, do not clone over it; verify identity and preserve every existing change."
+      - "Stop on authentication or network failure rather than creating a partial or different checkout."
+      - "After checkout, record root, remote, branch, commit, and dirty state before activating Scout."
+    expected_output:
+      - "Verified intact local checkout"
+      - "Exact repository identity and clean-state receipt"
+      - "T019 activation"
+    receipt:
+      result: done
+      summary: "Confirmed the dedicated target path was absent, cloned neonwatty/logo-designer-skill without overwriting anything, and verified an intact clean checkout. The repository root is /Users/neonwatty/Desktop/logo-designer-skill, origin uses the intended GitHub SSH URL, branch main is synced to origin/main at commit 8f9a4b04009c15b05eeb47b4608d5502abafa609, and the worktree is clean. A repository-bounded instruction-file inventory found no AGENTS.md or AGENTS.override.md files."
+      evidence:
+        - source: "pre-clone target check"
+          finding: "/Users/neonwatty/Desktop/logo-designer-skill was absent."
+        - source: "git rev-parse --show-toplevel"
+          finding: /Users/neonwatty/Desktop/logo-designer-skill
+        - source: "git remote -v"
+          finding: "origin is git@github.com:neonwatty/logo-designer-skill.git for fetch and push."
+        - source: "git branch --show-current and git rev-parse HEAD"
+          finding: "main at 8f9a4b04009c15b05eeb47b4608d5502abafa609."
+        - source: "git status --short --branch"
+          finding: "main tracks origin/main with no local changes."
+        - source: "repository-bounded rg instruction inventory"
+          finding: "No AGENTS.md or AGENTS.override.md files exist in the checkout."
+      facts:
+        - fact: "The checkout is intact, clean, and ready for read-only T019 inspection."
+      contradictions: []
+      ambiguity_requiring_judge: []
+      commands:
+        - "confirm target path absent"
+        - "gh repo clone neonwatty/logo-designer-skill /Users/neonwatty/Desktop/logo-designer-skill"
+        - "verify root, remote, branch, commit, clean status, and instruction inventory"
+      note_needed: false
+  - id: T019
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map the real local logo-designer-skill integration surface and produce primary evidence for the exact skill lifecycle package without modifying either repository."
+    inputs:
+      - "/Users/neonwatty/Desktop/logo-designer-skill"
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/goals/logo-designer-skill-integration/goal.md"
+      - "T001-T018 receipts"
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md"
+      - "/Users/neonwatty/Desktop/lineage-logo/scripts/logo-designer-adapter.ts"
+    constraints:
+      - "Read-only; do not edit, install, stage, commit, publish, or release."
+      - "Resolve the upstream Git root and search only within it; read every applicable AGENTS.md and AGENTS.override.md before implementation files."
+      - "Record exact branch, commit, remote, dirty state, validation commands, release/install conventions, and existing unowned changes."
+      - "Map SKILL.md workflow, concept/iteration/export paths, preview default, command capabilities, templates, scripts, tests, and plugin schema."
+      - "Preserve standalone preview as default; Lineage is explicit opt-in and uses only the public producer boundary."
+      - "Acceptance is not persistence: identify the exact atomic handoff that saves the accepted SVG as the next numbered iteration before consumption."
+      - "Map accepted, reverted, rejected, stale, disconnected, unavailable, conflict, and timeout to explicit user-visible behavior."
+      - "Do not infer package publication or release."
+    expected_output:
+      - "Verified upstream repository and instruction inventory"
+      - "Skill invocation and artifact lifecycle map"
+      - "Standalone and Lineage opt-in compatibility contract"
+      - "Exact candidate T005 allowed_files in both roots"
+      - "Exact focused and full verify commands"
+      - "Stop conditions, release boundaries, risks, and unresolved questions"
+    receipt:
+      result: done
+      summary: "Verified the clean local upstream checkout and mapped the real skill lifecycle. Standalone preview remains the default; Lineage must be explicit opt-in. The existing Lineage CLI already discovers the protected canvas context, submits, waits, validates all terminal states, and returns an accepted artifact. The missing T005 slice is an upstream-owned, tested atomic handoff: consume the CLI's typed JSON, persist accepted SVG as the next collision-safe numbered iteration, and only then continue refinement. No file is created for other outcomes. No package publication, version bump, release, or editor-internal import is needed."
+      evidence:
+        - path: /Users/neonwatty/Desktop/logo-designer-skill
+          finding: "Clean main checkout at 8f9a4b04009c15b05eeb47b4608d5502abafa609 tracking the intended origin."
+        - path: "/Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/SKILL.md:105"
+          finding: "Explore generates concept SVGs and preview.html as the default review path."
+        - path: "/Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/SKILL.md:269"
+          finding: "Refine writes incrementing iteration-N.svg files and consumes the selected/latest iteration as the next base."
+        - path: "/Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/SKILL.md:321"
+          finding: "Export copies the confirmed final iteration to logos/export/logo.svg and generates PNG sizes."
+        - path: /Users/neonwatty/Desktop/logo-designer-skill/package.json
+          finding: "Validation commands are npm run validate and npm run validate:plugin; no runtime client surface exists."
+        - path: "/Users/neonwatty/Desktop/lineage-logo/scripts/logo-designer-adapter.ts:115"
+          finding: "The public adapter discovers context, submits, waits, and emits typed JSON without credentials."
+        - path: "/Users/neonwatty/Desktop/lineage-logo/src/producer/agent-client.ts:8"
+          finding: "Typed outcomes cover accepted, reverted, rejected, stale, disconnected, unavailable, conflict, and timeout."
+        - path: "/Users/neonwatty/Desktop/lineage-logo/src/server/workspace.ts:64"
+          finding: "Existing collision-safe numbering and atomic no-clobber persistence provide a local precedent."
+      facts:
+        - fact: "Standalone preview remains the default; Lineage must be explicit opt-in."
+        - fact: "Acceptance is not persistence: accepted bytes must be atomically written to the next collision-safe iteration, reread, and compared before becoming the next input."
+        - fact: "All non-accepted outcomes create no iteration and remain explicit user-visible stops or retry guidance."
+        - fact: "Lineage owns protocol/context/client/CLI; upstream owns iteration naming, persistence, user guidance, and continuation."
+        - fact: "Candidate upstream files are SKILL.md, new scripts/lineage-handoff.mjs, new tests/lineage-handoff.test.mjs, package.json, and README.md; candidate Lineage files are adapter, adapter test, and agent-canvas docs."
+        - fact: "Upstream focused checks are node --test, validate:skills, validate:md, validate:plugin; full checks are npm run validate and validate:plugin. Lineage checks are focused adapter/client/context tests and npm run check."
+        - fact: "No publication, version change, plugin install, release, push, or editor-internal import is authorized."
+      contradictions:
+        - claim: "Accepted output can immediately become the next skill input."
+          evidence: "The skill lacks an atomic persistence handoff."
+        - claim: "Canvas save alone completes the skill handoff."
+          evidence: "The skill still needs an explicit verified local iteration path."
+        - claim: "Discovering an active descriptor is sufficient opt-in."
+          evidence: "That would unexpectedly divert the existing preview-first workflow."
+      ambiguity_requiring_judge:
+        - question: "Should the handoff accept adapter JSON on stdin or orchestrate the Lineage CLI as a child process?"
+        - question: "Should sourcePath/revision live only in the typed result or in a separate non-SVG receipt?"
+        - question: "Is the existing typed stdout contract sufficient without a new Lineage direct-handoff option?"
+      commands:
+        - "bounded local inventory of both repositories, workflow, validation, atomic persistence precedent, and release boundaries"
+      note_needed: false
+  - id: T020
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Select the exact largest-safe T005 skill-integration Worker package from verified local evidence, including allowed_files, verification, terminal semantics, accepted-artifact persistence, standalone compatibility, and release stop gates."
+    inputs:
+      - "T018 approval receipt"
+      - "T019 verified local upstream receipt"
+      - "Current diffs and instructions in both repositories"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject remote-only assumptions or any scope that bypasses repository-local instructions."
+      - "Preserve standalone preview as default and make Lineage integration explicit opt-in."
+      - "Require atomic persistence before next-iteration consumption and explicit terminal outcomes."
+      - "Do not authorize publication, release, or editor-internal imports."
+    expected_output:
+      - "Architecture confirmation"
+      - "Exact T005 objective, allowed_files, verify, and stop_if"
+      - "Cross-repository ownership and lifecycle contract"
+      - "Required acceptance evidence"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "Approve one upstream-owned T005 vertical slice. The skill explicitly orchestrates the existing Lineage CLI only after the user opts in; the handoff consumes a versioned adapter receipt on stdin and never spawns or discovers Lineage itself. Accepted SVG is published atomically as the next collision-safe iteration, reread, byte-compared, and hashed before continuation. Source path and revision remain in typed stdout receipts; no sidecar or SVG metadata is created. Every non-accepted outcome writes nothing and produces fixed stop/retry guidance. Standalone preview remains default. No publication, release, push, or editor-internal scope is allowed."
+      worker_package:
+        objective: "Implement the real explicit-opt-in logo-designer-to-Lineage lifecycle: version the Lineage adapter stdout receipt; add an upstream stdin-only handoff that strictly consumes it; atomically persist only accepted clean SVG as the next collision-safe numbered iteration; emit metadata-only persistence receipts and fixed terminal guidance; update the skill and README so continuation uses the verified persisted SVG while standalone preview remains the default."
+        allowed_files:
+          - /Users/neonwatty/Desktop/lineage-logo/scripts/logo-designer-adapter.ts
+          - /Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts
+          - /Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md
+          - /Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/SKILL.md
+          - /Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/scripts/lineage-handoff.mjs
+          - /Users/neonwatty/Desktop/logo-designer-skill/tests/lineage-handoff.test.mjs
+          - /Users/neonwatty/Desktop/logo-designer-skill/package.json
+          - /Users/neonwatty/Desktop/logo-designer-skill/README.md
+        verify:
+          - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm ci --ignore-scripts"
+          - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run test:lineage"
+          - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:skills"
+          - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:md"
+          - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate"
+          - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:plugin"
+          - "cd /Users/neonwatty/Desktop/logo-designer-skill && git status --short"
+          - "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/logo-designer-adapter.test.ts tests/agent-producer-client.test.ts tests/agent-connection-context.test.ts tests/agent-transport.test.ts"
+          - "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+          - "cd /Users/neonwatty/Desktop/lineage-logo && git status --short"
+        stop_if:
+          - "Explicit opt-in or preview default is lost; the handoff touches connection context, tokens, Lineage discovery, editor internals, or cross-repository imports."
+          - "Adapter stdout is not exactly one versioned secret-free JSON receipt or identity validation cannot be consistent."
+          - "Any non-accepted input creates a file, or accepted persistence can be partial, clobber, follow symlinks, escape roots, mishandle concurrency, emit raw SVG/metadata, or continue without reread/compare/hash."
+          - "Timeout/conflict auto-resubmits, package/release metadata or lockfile changes are needed, or any publish/commit/push/external-artwork action is required."
+          - "Any write falls outside allowed_files or verification fails twice."
+      evidence:
+        - source: "verified upstream checkout"
+          finding: "Clean main at recorded commit with no instruction overlays."
+        - source: "upstream SKILL.md"
+          finding: "preview.html is default; numbered iterations are authoritative refinement inputs."
+        - source: "Lineage adapter and producer client"
+          finding: "Lineage already owns protected discovery, submission, bounded waiting, typed outcomes, and accepted clean artifact validation."
+        - source: "Lineage workspace precedent"
+          finding: "Collision-safe no-clobber atomic iteration persistence is locally established."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "Adapter envelope, handoff, persistence, instructions, outcomes, and cross-repo tests are one lifecycle contract."
+      blocked_tasks:
+        - T006
+      missing_evidence:
+        - "Implemented explicit opt-in, atomic persistence, terminal mappings, no-secret behavior, and fresh checks in both repositories."
+      required_board_updates:
+        - action: activate_T005_with_exact_worker_package
+          task_id: T005
+        - action: add_post_T005_milestone_judge
+          task_id: T022
+          after: T005
+        - action: keep_T006_queued
+          until: "T005 done,T022 approval"
+  - id: T022
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Adversarially review the real skill handoff before T006: inspect both diffs; reproduce explicit opt-in/default preview, versioned stdin parsing, accepted atomic publication, concurrency/collision behavior, reread/hash fidelity, no-sidecar/no-metadata guarantees, all terminal exit/action mappings, malformed/oversize/symlink/path cases, no-secret output, and fresh checks in both repositories."
+    inputs:
+      - "T005 receipt and both repository diffs"
+      - "T018 approved producer boundary"
+      - "T020 lifecycle contract"
+    constraints:
+      - "Read-only; do not implement."
+      - "Require standalone preview as default and Lineage only by explicit instruction."
+      - "Require exactly one complete iteration only for accepted; all other inputs leave files unchanged."
+      - "Require concurrency-safe no-clobber persistence and exact receipt/byte/hash identity."
+      - "Reject any secret, raw SVG output, sidecar, embedded metadata, auto-retry, package dependency, release, commit, push, or editor-internal import."
+      - "Require fresh focused and full checks in both repositories."
+    expected_output:
+      - "accept | remediate handoff milestone"
+      - "Direct filesystem, terminal, security, and compatibility evidence"
+      - "Exact T006 acceptance-oracle package if approved"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "The atomic handoff core works and both suites are green, but T005 does not satisfy its complete versioned lifecycle contract. Pre-transaction failures such as no active canvas throw instead of producing a typed adapter receipt, so the pipeline reports invalid/64 rather than unavailable/24. Valid Lineage receipts can also be rejected because the handoff limits sourcePath to 256 characters while protocol v1 allows 4096, and caps the whole JSON envelope at the raw 6 MiB SVG limit. Finally, the containing directory is never fsynced after publication. These are bounded cross-repository fixes, but T006 should remain queued until they pass a repeated milestone gate."
+      evidence:
+        - source: "fresh upstream verification"
+          finding: "test:lineage 8/8 and all skill/plugin validations pass."
+        - source: "fresh Lineage verification"
+          finding: "Focused integration 36/36 and full check 146/146 plus build pass."
+        - source: "direct filesystem and CLI reproductions"
+          finding: "Accepted bytes/hash, terminal no-file exits, concurrency, collisions, paths, symlinks, malformed/trailing/oversized input all behave safely."
+        - source: "SKILL.md and README"
+          finding: "Preview remains default and Lineage requires explicit opt-in with stdin-only handoff."
+        - source: "adapter preflight reproduction"
+          finding: "No active canvas throws to stderr/exit 1 rather than emitting typed unavailable receipt."
+        - source: "cross-repository limit reproduction"
+          finding: "Consumer rejects producer-valid diagnostics/source paths and worst-case encoded maximum SVG receipt."
+        - source: "handoff persistence"
+          finding: "File is fsynced but containing iterations directory is not fsynced before continuation."
+        - source: "upstream audit"
+          finding: "Nine existing dev-only findings; production audit is clean and T005 added no dependency."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "Adapter envelope, limits, durability, instructions, and tests are one lifecycle contract."
+      blocked_tasks:
+        - T006
+      missing_evidence:
+        - "Typed preflight unavailable/invalid receipts."
+        - "Protocol-aligned field and encoded-envelope bounds."
+        - "Containing-directory durability before continuation."
+        - "Fresh repeated milestone evidence."
+      required_board_updates:
+        - action: insert_remediation_worker_before_T006
+          task_id: T023
+        - action: add_repeat_milestone_judge
+          task_id: T025
+          after: T023
+        - action: add_scoped_dependency_hygiene_followup
+          task_id: T024
+          blocks: "publication or merge, not T006 oracle"
+        - action: keep_T006_queued
+          until: "T023 done and T025 approval"
+  - id: T023
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Close the adapter-to-handoff contract as one bounded slice: make every CLI invocation emit exactly one versioned, secret-free stdout receipt, including strict pre-transaction unavailable/invalid variants; align handoff field and encoded-envelope bounds with protocol v1; normalize terminal diagnostics so every adapter receipt is consumable; fsync accepted publication metadata where supported before continuation; and add cross-repository regressions without changing dependencies or standalone behavior."
+    allowed_files:
+      - "/Users/neonwatty/Desktop/lineage-logo/src/producer/agent-client.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/scripts/logo-designer-adapter.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/SKILL.md"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/scripts/lineage-handoff.mjs"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/tests/lineage-handoff.test.mjs"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/README.md"
+    verify:
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run test:lineage"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:plugin"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/logo-designer-adapter.test.ts tests/agent-producer-client.test.ts tests/agent-connection-context.test.ts tests/agent-transport.test.ts"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+    stop_if:
+      - "Any adapter path can emit zero/multiple stdout values, dynamic secret-bearing diagnostics, or an uncaught stack trace."
+      - "Pre-transaction unavailable and invalid states cannot be represented without fabricating transaction/document identity."
+      - "A protocol-valid source path or maximum-size valid SVG cannot fit the bounded encoded receipt."
+      - "Accepted continuation can occur before file data and supported directory metadata synchronization, reread, comparison, and hashing."
+      - "Any non-accepted/malformed input creates or reserves an iteration, or concurrency can clobber an existing file."
+      - "The fix requires dependencies, package-lock changes, publication, release, push, editor internals, or files outside allowed_files."
+      - "Focused verification fails twice without a bounded diagnosis."
+    expected_output:
+      - "Typed secret-free receipt for every CLI path"
+      - "Protocol-aligned field and encoded-envelope bounds"
+      - "Directory metadata durability before continuation"
+      - "Cross-repository regressions and fresh full checks"
+    receipt:
+      result: done
+      changed_files:
+        - /Users/neonwatty/Desktop/lineage-logo/src/producer/agent-client.ts
+        - /Users/neonwatty/Desktop/lineage-logo/scripts/logo-designer-adapter.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md
+        - /Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/SKILL.md
+        - /Users/neonwatty/Desktop/logo-designer-skill/skills/logo-designer/scripts/lineage-handoff.mjs
+        - /Users/neonwatty/Desktop/logo-designer-skill/tests/lineage-handoff.test.mjs
+        - /Users/neonwatty/Desktop/logo-designer-skill/README.md
+      commands:
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run test:lineage"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:plugin"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/logo-designer-adapter.test.ts tests/agent-producer-client.test.ts tests/agent-connection-context.test.ts tests/agent-transport.test.ts"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+          status: pass
+      summary: "Added strict versioned preflight invalid/unavailable adapter envelopes without fabricated identity, one secret-free stdout value on every CLI path, normalized producer diagnostics, and protocol-v1 transaction validation. The handoff now accepts 4096-character source paths and worst-case encoded maximum-size clean SVG receipts while retaining strict identity and terminal parsing. Accepted publication synchronizes file data and supported parent/iterations directory metadata, rereads by inode, byte-compares, and hashes before continuation. Added preflight, CLI, diagnostic, maximum-envelope, durability-path, no-write, concurrency, collision, and filesystem regressions. Upstream passed 10/10 plus validation; Lineage focused passed 40/40 and full check passed 150/150 plus build."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T025
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Repeat the real handoff milestone gate after T023, including preflight unavailable/invalid envelopes, every terminal exit, maximum source paths and artifacts, directory durability, concurrency/collisions, no-file failure paths, metadata-only output, explicit opt-in/default preview, and both full checks."
+    inputs:
+      - "T022 rejection and T023 receipt"
+      - "Both current repository diffs and verification"
+    constraints:
+      - "Read-only; do not implement."
+      - "Directly reproduce each rejected T022 case and the prior accepted filesystem/security cases."
+      - "Reject any fabricated identity, untyped stdout path, secret-bearing output, partial durability, or protocol-valid input rejection."
+      - "Supply exact T006 oracle package only if the full milestone is accepted."
+    expected_output:
+      - "accept | remediate milestone decision"
+      - "Direct contract, durability, filesystem, security, and compatibility evidence"
+      - "Exact T006 Worker package if approved"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "T023 closes every T022 defect without widening dependencies or trust boundaries. Direct CLI reproduction proved typed identity-free invalid/64 and unavailable/24 preflight envelopes, fixed exits 20-26, one secret-free stdout value, and no writes outside acceptance. A protocol-valid 4096-character path and maximum 5 MiB clean SVG parsed and persisted with exact bytes/hash. Cross-process concurrency, collisions, malformed input, oversized input, and symlink cases remained fail-closed. File and containing-directory synchronization completed before metadata-only continuation. Standalone preview remains default, Lineage remains explicit opt-in, and fresh upstream and Lineage full checks pass. T006 can now execute the genuine live oracle."
+      evidence:
+        - source: "direct adapter/handoff CLI"
+          finding: "Typed invalid and unavailable preflight receipts have no fabricated identity, empty stderr, correct exits, no secret markers, and no writes."
+        - source: "direct terminal reproduction"
+          finding: "Statuses produce exits 20-26, one metadata receipt, and no iteration files."
+        - source: "maximum-bound reproduction"
+          finding: "Protocol-max path and 5 MiB SVG persist exactly with matching SHA-256 and no raw SVG output."
+        - source: "filesystem reproduction"
+          finding: "Existing files remain intact; four concurrent processes publish four distinct complete iterations; symlink paths fail closed."
+        - source: "directory durability path"
+          finding: "File and containing directory metadata synchronize before continuation receipt."
+        - source: "fresh verification"
+          finding: "Upstream 10/10 plus validation; Lineage 40/40 focused and 150/150 full plus build."
+        - source: "contract inspection"
+          finding: "Preview remains default, Lineage is explicit opt-in, continuation uses iterationPath only, and timeout/conflict never auto-resubmit."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "The live oracle uses one temporary workspace, descriptor, browser session, and producer processes."
+      blocked_tasks: []
+      missing_evidence:
+        - "Genuine live browser Accept/Revert convergence."
+        - "Accepted iteration used as the next real skill base."
+        - "Live save/reopen/history/recovery and clean artifact evidence."
+        - "T024 dependency hygiene and later audits."
+      required_board_updates:
+        - action: activate_T006_with_exact_worker_package
+          task_id: T006
+        - action: sequence_existing_T024
+          after: T006
+          before: T007
+        - action: keep_T007_queued
+          until: "T006 and T024 done"
+  - id: T024
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Update only the upstream validation-tool dependency graph to remove the existing npm audit findings while preserving every validation command and plugin behavior."
+    allowed_files:
+      - "/Users/neonwatty/Desktop/logo-designer-skill/package.json"
+      - "/Users/neonwatty/Desktop/logo-designer-skill/package-lock.json"
+    verify:
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm ci --ignore-scripts"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm audit --omit=dev"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm audit"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run test:lineage"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:plugin"
+    stop_if:
+      - "A runtime dependency is introduced or handoff code must change."
+      - "Resolving the findings requires publication, plugin/release version changes, broad source edits, or disabling validation."
+      - "The resulting audit still contains high or critical findings, or validation fails twice."
+    expected_output:
+      - "Audit-clean or no-high/critical dev-tool dependency graph"
+      - "Unchanged validation and plugin behavior"
+      - "No runtime dependency or source-scope expansion"
+    receipt:
+      result: done
+      changed_files:
+        - /Users/neonwatty/Desktop/logo-designer-skill/package.json
+        - /Users/neonwatty/Desktop/logo-designer-skill/package-lock.json
+      commands:
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm ci --ignore-scripts"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm audit --omit=dev"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm audit"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run test:lineage"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run validate:plugin"
+          status: pass
+      summary: "Updated only the upstream development validation graph: markdown-link-check 3.15.0, markdownlint-cli2 0.18.1, and safe js-yaml 4.3.1/markdown-it 15.0.0 overrides. This removes all nine prior findings while retaining the existing validation scripts, configured rule behavior, plugin validation, and link checking. No runtime dependency, handoff/source edit, package version, release, or publication metadata was introduced. Clean install audited 151 packages with zero vulnerabilities for both production-only and complete graphs. Handoff tests passed 10/10; Markdown, skill, link, and plugin validations all passed."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T026
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Align the browser accepted-decision envelope with protocol v1's declared clean-SVG limit as one bounded compatibility slice: define a bounded worst-case encoded acknowledgement limit, use it only for decision acknowledgements, preserve the 5 MiB raw SVG validator and all authentication/lifecycle ordering, and prove valid >1 MiB plus maximum-size accept/save/continue while oversized or malformed envelopes fail closed."
+    allowed_files:
+      - "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/shared/agent-svg-validator.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/src/server/agent-transport.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/agent-producer-client.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/tests/logo-designer-adapter.test.ts"
+      - "/Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md"
+    verify:
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/agent-transport.test.ts tests/agent-producer-client.test.ts tests/logo-designer-adapter.test.ts tests/agent-history.test.ts"
+      - "DIRECT REAL HTTP: accept a valid 1.1 MiB clean SVG and a quote-heavy exact 5 MiB raw SVG; prove accepted state and exact producer artifact identity."
+      - "DIRECT BROWSER PATH: send a >1 MiB accepted decision through AgentCanvasTransport; prove exact finalize/unlock and producer convergence."
+      - "DIRECT NEGATIVE BOUNDARY: reject raw SVG above 5 MiB and encoded envelopes above the bounded maximum without changing terminal state, revision, history, or locks."
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && npm audit --omit=dev --audit-level=low"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run test:lineage && npm run validate && npm run validate:plugin && npm audit --audit-level=low"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && mise exec node@20.20.2 -- npm run test:lineage && mise exec node@20.20.2 -- npm run validate"
+      - "cd /Users/neonwatty/Desktop/lineage-logo && git diff --check && git status --short"
+      - "cd /Users/neonwatty/Desktop/logo-designer-skill && git diff --check && git status --short"
+    stop_if:
+      - "The fix requires an unbounded request body, weakens the 5 MiB raw clean-SVG limit, or accepts before complete validation."
+      - "The encoded maximum cannot be derived conservatively with a fixed ceiling covering JSON escaping plus bounded envelope fields."
+      - "Oversized or malformed decisions can alter authoritative status, provisional document state, revision, history, or locks."
+      - "Exact-origin, bearer, context, receipt identity, strict SVG, retry, rollback, or server-replacement behavior must be weakened."
+      - "A breaking protocol version, dependency/lockfile change, upstream source edit, publication, release, commit, push, or PR is required."
+      - "Any write falls outside allowed_files or focused verification fails twice without a bounded diagnosis."
+    expected_output:
+      - "Bounded acknowledgement-envelope constant derived from protocol limits"
+      - "Successful 1.1 MiB and worst-case exact 5 MiB acceptance"
+      - "Fail-closed oversized/malformed boundary with unchanged state"
+      - "Fresh full two-repository verification"
+    receipt:
+      result: done
+      changed_files:
+        - /Users/neonwatty/Desktop/lineage-logo/src/shared/agent-protocol.ts
+        - /Users/neonwatty/Desktop/lineage-logo/src/server/agent-transport.ts
+        - /Users/neonwatty/Desktop/lineage-logo/tests/agent-transport.test.ts
+        - /Users/neonwatty/Desktop/lineage-logo/docs/agent-canvas.md
+      commands:
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run test -- tests/agent-transport.test.ts tests/agent-producer-client.test.ts tests/logo-designer-adapter.test.ts tests/agent-history.test.ts"
+          status: pass
+        - cmd: "DIRECT REAL HTTP: accept a valid 1.1 MiB clean SVG and a quote-heavy exact 5 MiB raw SVG; prove accepted state and exact producer artifact identity."
+          status: pass
+        - cmd: "DIRECT BROWSER PATH: send a >1 MiB accepted decision through AgentCanvasTransport; prove exact finalize/unlock and producer convergence."
+          status: pass
+        - cmd: "DIRECT NEGATIVE BOUNDARY: reject raw SVG above 5 MiB and encoded envelopes above the bounded maximum without changing terminal state, revision, history, or locks."
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm run check"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && npm audit --omit=dev --audit-level=low"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && npm run test:lineage && npm run validate && npm run validate:plugin && npm audit --audit-level=low"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && mise exec node@20.20.2 -- npm run test:lineage && mise exec node@20.20.2 -- npm run validate"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/lineage-logo && git diff --check && git status --short"
+          status: pass
+        - cmd: "cd /Users/neonwatty/Desktop/logo-designer-skill && git diff --check && git status --short"
+          status: pass
+      summary: "Added a fixed 2 x 5 MiB + 128 KiB acknowledgement-envelope ceiling derived from strict XML JSON escaping and bounded protocol fields, applied only to the acknowledgement route. The raw clean-SVG limit remains 5 MiB and other route limits are unchanged. Real HTTP tests now accept exact 1.1 MiB and quote-heavy 5 MiB artifacts, prove producer identity and browser finalize/unlock, and reject malformed, raw-overflow, and encoded-overflow decisions while preserving pending status, provisional revision, history, and locks. Both repositories, audits, and Node 20 validation are green."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T027
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Repeat the final completion audit after T026, mapping every original oracle clause with direct maximum-envelope acceptance evidence and fresh checks in both repositories."
+    inputs:
+      - "All done receipts including T026"
+      - "T999 not-complete receipt and reproduced maximum-envelope defect"
+      - "Both final diffs, live transcripts, artifacts, audits, Node 20 checks, and current queue state"
+    constraints:
+      - "Read-only; do not implement."
+      - "Start skeptical and directly verify the repaired >1 MiB and worst-case 5 MiB accept path."
+      - "Reject completion if any queued/active required Worker remains or any original oracle clause is weakly proven."
+      - "Separate implementation completion from deferred branch/commit/PR/version/release owner choices."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Full original-oracle evidence matrix"
+      - "Only genuine deferred owner decisions"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      rationale: "Complete. T026 closes the final protocol-limit defect: direct fresh verification accepted a 1,100,059-byte artifact through the browser decision path and an exact quote-heavy 5 MiB artifact through HTTP, producer polling, and identity validation; raw overflow returned 400, encoded overflow returned 413, and authoritative state remained pending_review. The genuine skill/browser Accept-Revert-save-continue oracle, permanent artifact assertions, strict SVG/security boundary, secret-safe bootstrap, terminal/restart recovery, standalone compatibility, CI gate, Node 20 checks, audits, and both full suites remain green. No required Worker remains; branch, commit, PR, version, and release choices are owner publication decisions outside this tranche."
+      evidence:
+        - area: goal_oracle_real_skill_signal
+          status: met
+          finding: "Genuine skill proposal/preview, explicit authenticated canvas opt-in, live Revert/Accept, and continuation from exact persisted iteration are recorded."
+        - area: standalone_and_review
+          status: met
+          finding: "Preview remains default; detached review preserves canonical artwork and locks mutation, history, save, and switch until exact convergence."
+        - area: revert_accept_persistence
+          status: met
+          finding: "Revert writes nothing; Accept applies one undoable edit and atomically persists one exact collision-safe, fsynced, reread, byte-compared, hashed iteration with metadata-only output."
+        - area: continuation_and_fidelity
+          status: met
+          finding: "The skill continues from iterationPath; permanent tests pin artifact hashes and sizes, stable IDs, clean SVG, metadata absence, and meaningful deltas."
+        - area: protocol_maximum
+          status: met
+          finding: "A 1.1 MiB browser artifact and exact 5 MiB HTTP/producer artifact are accepted; raw and encoded overflow fail without state change."
+        - area: terminal_recovery
+          status: met
+          finding: "All terminal outcomes, duplicates, retries, timeout, reconnect, server replacement, explicit restore, and subsequent success converge."
+        - area: security_and_filesystem
+          status: met
+          finding: "Auth, origin, context, secret, strict SVG, no-clobber concurrency, symlink/root containment, and no-write failure paths are proven."
+        - area: verification
+          status: met
+          finding: "Lineage passes 156 tests plus build and audit; upstream passes 10 tests plus current/Node 20 validation and full audits; CI and diff checks pass."
+        - area: queue_and_misfire
+          status: met
+          finding: "No required Worker remains; the result is real-skill, public-boundary, live-browser, durable-continuation work rather than a wrapper, mock, or submit-only flow."
+      missing_evidence: []
+      remaining_blockers: []
+      deferred_owner_decisions:
+        - "Choose branches, commits, and coordinated pull requests."
+        - "Decide the upstream version, tag, and release."
+        - "Do not publish, push, or install until authorized."
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether the complete real logo-designer skill integration satisfies the original owner outcome and the live goal oracle."
+    inputs:
+      - "All done task receipts"
+      - "Both repositories' final diffs and clean status"
+      - "Fresh full verification and CI where available"
+      - "Real browser/producer walkthrough"
+      - "Clean accepted SVG artifact and next-iteration proof"
+      - "Final documentation"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject completion if required Worker work remains queued, active, blocked without safe alternatives, or unverifiable."
+      - "Reject completion if only the client, only the skill, only submission, or only mock tests work."
+      - "Reject completion if a secret can leak, a proposal can overwrite manual work, terminal waiting can strand, fidelity is unproven, or the skill cannot consume the accepted saved revision."
+      - "Map evidence to every clause of the goal oracle and likely-misfire defense."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Oracle evidence matrix"
+      - "Missing evidence or next task if not complete"
+      - "Owner decisions or release steps that remain outside this tranche"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      rationale: "Not complete. The genuine live small-artifact loop and most security/lifecycle proofs are strong, and fresh suites/audits pass. However protocol-v1 accepted-artifact compatibility is broken at the real browser/server boundary: the server permits up to 5 MiB clean SVG in an accepted receipt but reads decision bodies with a 1 MiB cap. A direct real-HTTP reproduction with a valid 1,100,059-byte clean SVG staged successfully, then Accept returned 413 and left the transaction pending_review; the browser therefore remains provisional/locked until timeout and the skill cannot consume acceptance. This requires Worker remediation, not an owner release decision."
+      evidence:
+        - area: genuine_two_repository_oracle
+          status: met_for_recorded_artifact
+          finding: "T006 proves real skill proposal, preview, authenticated Revert/Accept, exact atomic persistence, save/reopen, and continuation."
+        - area: durable_artifact_fidelity
+          status: met
+          finding: "Permanent tests pin all three artifact hashes, sizes, stable IDs, metadata absence, and continuation deltas."
+        - area: security_and_recovery
+          status: met_for_tested_sizes
+          finding: "Strict SVG/auth/context boundaries, timeout/restart recovery, audits, CI gate, and full checks pass."
+        - area: protocol_max_acceptance
+          status: failed
+          finding: "Decision body parsing is fixed at 1 MiB while accepted clean SVG permits 5 MiB."
+        - area: direct_real_http_reproduction
+          status: failed
+          finding: "Valid 1,100,059-byte SVG stages, Accept returns 413, and status remains pending_review."
+        - area: likely_misfire_defense
+          status: mostly_met_but_not_complete
+          finding: "Not wrapper/mock/submit-only, but declared protocol-valid range cannot complete accept/save/continue."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "Acknowledgement limits, protocol constants, server parsing, browser decisions, producer visibility, and tests are one package."
+      blocked_tasks:
+        - T999
+      missing_evidence:
+        - "Real accepted acknowledgement above 1 MiB and at exact 5 MiB converges end-to-end."
+        - "Worst-case encoded envelope fits a fixed bounded ceiling."
+        - "Oversized/malformed envelopes fail without state/history/lock mutation."
+        - "Fresh repeated final audit."
+      required_board_updates:
+        - action: insert_remediation_worker_before_final_completion
+          task_id: T026
+        - action: repeat_final_completion_judge
+          task_id: T027
+          after: T026
+        - action: defer_owner_release_decisions
+          until: "T027 complete"
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []

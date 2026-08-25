@@ -22,9 +22,14 @@ import {
   svgPaintState,
   ungroupAvailability,
   ungroupSelection,
+  visibleHistoryAvailability,
 } from "../src/client/canvas/editor";
 
 describe("editor serialization", () => {
+  it("keeps history visibly disabled while provisional agent state restores snapshots", () => {
+    expect(visibleHistoryAvailability(true, true, true)).toEqual({ canUndo: false, canRedo: false });
+    expect(visibleHistoryAvailability(false, true, false)).toEqual({ canUndo: true, canRedo: false });
+  });
   it("removes selection handles and temporary editor state", () => {
     const window = new Window();
     window.document.body.innerHTML = `

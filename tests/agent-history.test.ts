@@ -19,10 +19,17 @@ class FakeEditor implements AgentSessionEditor {
   stageAgentTransaction(): StagedAgentTransaction | undefined { return this.next; }
   setAgentMutationBlocked(blocked: boolean): void { this.blocked = blocked; }
   applyAgentSelection(selection?: AgentSelectionIntent): void { this.appliedSelection = selection; }
-  acceptAgentCandidate(candidate: SVGSVGElement, selection?: AgentSelectionIntent): void {
-    this.history.checkpoint(JSON.stringify(this.state));
+  beginAgentAcceptance(candidate: SVGSVGElement, selection?: AgentSelectionIntent): unknown {
+    const checkpoint = JSON.stringify(this.state);
     this.acceptCalls += 1;
     this.state = { markup: candidate.outerHTML, selection };
+    return checkpoint;
+  }
+  finalizeAgentAcceptance(checkpoint: unknown): void {
+    this.history.checkpoint(String(checkpoint));
+  }
+  rollbackAgentAcceptance(checkpoint: unknown): void {
+    this.state = JSON.parse(String(checkpoint)) as FakeSnapshot;
   }
   undo(): boolean {
     const previous = this.history.undo(JSON.stringify(this.state));
@@ -83,7 +90,10 @@ describe("agent transaction history and revision", () => {
     session.open("session", "concept.svg");
     editor.next = { candidate: candidate(), selection: acceptedSelection, result: { transactionId: "tx", status: "staged", impact: [] } };
     session.stage(transaction());
-    expect(session.accept()).toBe(true);
+    expect(session.beginAccept()).toBe(true);
+    expect(editor.blocked).toBe(true);
+    expect(editor.history.checkpointCount).toBe(0);
+    expect(session.finalizeAccept("tx")).toBe(true);
     expect(editor.acceptCalls).toBe(1);
     expect(editor.history.checkpointCount).toBe(1);
     expect(editor.state.markup).toContain('aria-label="Changed"');
@@ -132,12 +142,97 @@ describe("agent transaction history and revision", () => {
     expect(session.open("new-session", "other.svg")).toBe(false);
     expect(session.context).toEqual({ sessionId: "session", sourcePath: "concept.svg", revision: 0 });
     expect(editor.acceptCalls).toBe(0);
-    expect(session.accept()).toBe(true);
+    expect(session.beginAccept()).toBe(true);
+    expect(session.beginAccept()).toBe(true);
     expect(editor.acceptCalls).toBe(1);
-    expect(session.accept()).toBe(false);
+    expect(session.finalizeAccept("replay")).toBe(true);
+    expect(session.beginAccept()).toBe(false);
     expect(editor.history.checkpointCount).toBe(1);
     expect(session.revision).toBe(1);
     expect(session.open("new-session", "other.svg")).toBe(true);
     expect(session.context.sourcePath).toBe("other.svg");
+  });
+
+  it("keeps provisional acceptance locked and restores exact state, revision, and history after acknowledgement conflict", () => {
+    const editor = new FakeEditor(initialMarkup, initialSelection);
+    const session = new AgentSession(editor);
+    session.open("session", "concept.svg");
+    editor.next = { candidate: candidate(), selection: acceptedSelection, result: { transactionId: "rollback", status: "staged", impact: [] } };
+    session.stage(transaction("rollback"));
+    expect(session.beginAccept()).toBe(true);
+    expect(editor.blocked).toBe(true);
+    expect(editor.state.markup).toContain("Changed");
+    expect(session.revision).toBe(1);
+    expect(editor.history.checkpointCount).toBe(0);
+    expect(session.open("other", "other.svg")).toBe(false);
+
+    expect(session.rollbackAccept("rollback")).toBe(true);
+    expect(editor.state).toEqual({ markup: initialMarkup, selection: initialSelection });
+    expect(editor.blocked).toBe(false);
+    expect(editor.history.checkpointCount).toBe(0);
+    expect(session.revision).toBe(0);
+    expect(session.pending).toBeUndefined();
+  });
+
+  it("converges a conflicting authoritative acceptance as one checkpoint without reverting", () => {
+    const editor = new FakeEditor(initialMarkup, initialSelection);
+    const session = new AgentSession(editor);
+    session.open("session", "concept.svg");
+    editor.next = { candidate: candidate(), selection: acceptedSelection, result: { transactionId: "authoritative", status: "staged", impact: [] } };
+    session.stage(transaction("authoritative"));
+    expect(session.beginAccept()).toBe(true);
+    const authoritative = candidate();
+    authoritative.querySelector("#b")?.setAttribute("aria-label", "Authoritative");
+
+    expect(session.convergeAcceptedArtifact("authoritative", authoritative)).toBe(true);
+    expect(editor.state.markup).toContain('aria-label="Authoritative"');
+    expect(editor.blocked).toBe(false);
+    expect(editor.history.checkpointCount).toBe(1);
+    expect(session.revision).toBe(1);
+    expect(session.pending).toBeUndefined();
+    expect(editor.undo()).toBe(true);
+    expect(editor.state).toEqual({ markup: initialMarkup, selection: initialSelection });
+  });
+
+  it("reconciles only an exact automatic terminal event and leaves canonical history unchanged", () => {
+    const editor = new FakeEditor(initialMarkup, initialSelection);
+    const session = new AgentSession(editor);
+    session.open("session", "concept.svg");
+    editor.next = { candidate: candidate(), selection: acceptedSelection, result: { transactionId: "timeout", status: "staged", impact: [] } };
+    session.stage(transaction("timeout"));
+    expect(session.reconcileTerminal("other", "reverted")).toBe(false);
+    expect(session.pending?.transaction.transactionId).toBe("timeout");
+    expect(editor.blocked).toBe(true);
+    expect(session.reconcileTerminal("timeout", "reverted")).toBe(true);
+    expect(session.pending).toBeUndefined();
+    expect(editor.blocked).toBe(false);
+    expect(editor.state).toEqual({ markup: initialMarkup, selection: initialSelection });
+    expect(editor.history.checkpointCount).toBe(0);
+    expect(session.revision).toBe(0);
+  });
+
+  it("clears detached state on server replacement but requires explicit exact restore for provisional uncertainty", () => {
+    const editor = new FakeEditor(initialMarkup, initialSelection);
+    const session = new AgentSession(editor);
+    session.open("session", "concept.svg");
+    editor.next = { candidate: candidate(), selection: acceptedSelection, result: { transactionId: "detached", status: "staged", impact: [] } };
+    session.stage(transaction("detached"));
+    expect(session.serverReplaced()).toBe("detached-cleared");
+    expect(session.pending).toBeUndefined();
+    expect(editor.blocked).toBe(false);
+
+    editor.next = { candidate: candidate(), selection: acceptedSelection, result: { transactionId: "uncertain", status: "staged", impact: [] } };
+    session.stage(transaction("uncertain"));
+    session.beginAccept();
+    expect(session.serverReplaced()).toBe("provisional-uncertain");
+    expect(session.recoveryRequired).toBe(true);
+    expect(editor.blocked).toBe(true);
+    expect(editor.state.markup).toContain("Changed");
+    expect(session.restoreAfterServerReplacement("other")).toBe(false);
+    expect(editor.blocked).toBe(true);
+    expect(session.restoreAfterServerReplacement("uncertain")).toBe(true);
+    expect(editor.state).toEqual({ markup: initialMarkup, selection: initialSelection });
+    expect(editor.history.checkpointCount).toBe(0);
+    expect(session.revision).toBe(0);
   });
 });

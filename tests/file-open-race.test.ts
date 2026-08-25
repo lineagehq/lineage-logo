@@ -29,7 +29,9 @@ describe("atomic file-open commit lifecycle", () => {
     const canonical = window.document.querySelector("svg") as unknown as SVGSVGElement;
     const editor: AgentSessionEditor = {
       stageAgentTransaction: (value, context) => evaluateAgentTransaction(canonical, value, context),
-      acceptAgentCandidate: () => { throw new Error("Delayed open test must not accept"); },
+      beginAgentAcceptance: () => { throw new Error("Delayed open test must not accept"); },
+      finalizeAgentAcceptance: () => undefined,
+      rollbackAgentAcceptance: () => undefined,
       applyAgentSelection: () => undefined,
       setAgentMutationBlocked: () => undefined,
     };
@@ -99,13 +101,16 @@ describe("atomic file-open commit lifecycle", () => {
       let selection: AgentSelectionIntent | undefined = { targetSessionKeys: ["logo"], primarySessionKey: "logo" };
       const editor: AgentSessionEditor = {
         stageAgentTransaction: (value, context) => evaluateAgentTransaction(canonical, value, context),
-        acceptAgentCandidate: (candidate, nextSelection) => {
-          history.checkpoint(canonical.outerHTML);
+        beginAgentAcceptance: (candidate, nextSelection) => {
+          const checkpoint = canonical.outerHTML;
           canonical.replaceWith(candidate);
           canonical = candidate;
           dirty = true;
           selection = nextSelection;
+          return checkpoint;
         },
+        finalizeAgentAcceptance: (checkpoint) => { history.checkpoint(String(checkpoint)); },
+        rollbackAgentAcceptance: () => undefined,
         applyAgentSelection: (nextSelection) => { selection = nextSelection; },
         setAgentMutationBlocked: () => undefined,
       };
@@ -137,7 +142,10 @@ describe("atomic file-open commit lifecycle", () => {
       expect(staged?.result.status).toBe("staged");
       if (staged?.result.status === "staged") coordinator.invalidate();
       review = "pending-race";
-      if (decision === "accept") expect(session.accept()).toBe(true);
+      if (decision === "accept") {
+        expect(session.beginAccept()).toBe(true);
+        expect(session.finalizeAccept("pending-race")).toBe(true);
+      }
       else expect(session.revert()).toBe(true);
       review = decision === "accept" ? "accepted" : "reverted";
       manifest = session.manifest([{ sessionKey: "logo", name: decision === "accept" ? "Pending name" : "logo", type: "path", locked: false }]);

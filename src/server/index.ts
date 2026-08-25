@@ -13,6 +13,7 @@ import {
   saveNextIteration,
 } from "./workspace.js";
 import { AgentTransport } from "./agent-transport.js";
+import { publishAgentConnectionContext } from "../producer/connection-context.js";
 import { HttpError, readJsonBody, requireOrigin, sendJson } from "./http.js";
 
 const HOST = "127.0.0.1";
@@ -123,9 +124,17 @@ const server = createServer(async (request, response) => {
   }
 });
 
-server.listen(PORT, HOST, () => {
+server.listen(PORT, HOST, async () => {
   console.log(`Lineage Logo server: http://${HOST}:${PORT}`);
   console.log(`Workspace: ${workspaceRoot}`);
-  console.log(`Agent bearer token: ${agentToken}`);
+  try {
+    const removeContext = await publishAgentConnectionContext({
+      protocolVersion: 1, apiOrigin: `http://${HOST}:${PORT}`, token: agentToken, pid: process.pid,
+    });
+    server.once("close", () => { void removeContext(); });
+  } catch (error) {
+    server.close();
+    throw error;
+  }
 });
 server.on("close", () => agentTransport.close());

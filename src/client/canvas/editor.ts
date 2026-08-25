@@ -164,6 +164,10 @@ export function serializeSvg(root: SVGSVGElement | undefined, stripEditorState: 
   return clone.outerHTML;
 }
 
+export function visibleHistoryAvailability(blocked: boolean, canUndo: boolean, canRedo: boolean): { canUndo: boolean; canRedo: boolean } {
+  return blocked ? { canUndo: false, canRedo: false } : { canUndo, canRedo };
+}
+
 export function getLogicalSelectionTarget(
   target: SVGGraphicsElement,
   root: SVGSVGElement,
@@ -738,7 +742,8 @@ export class SvgEditor {
     if (this.#agentMutationBlocked === blocked) return;
     this.#agentMutationBlocked = blocked;
     this.#setSelection([...this.#selectedNodes], this.selectedNode);
-    this.#callbacks.onHistoryChange(blocked ? false : this.#history.canUndo, blocked ? false : this.#history.canRedo);
+    const availability = visibleHistoryAvailability(blocked, this.#history.canUndo, this.#history.canRedo);
+    this.#callbacks.onHistoryChange(availability.canUndo, availability.canRedo);
   }
 
   applyAgentSelection(selection?: AgentSelectionIntent): void {
@@ -752,7 +757,7 @@ export class SvgEditor {
     this.#setSelection(nodes, primary);
   }
 
-  acceptAgentCandidate(candidate: SVGSVGElement, selection?: AgentSelectionIntent): void {
+  beginAgentAcceptance(candidate: SVGSVGElement, selection?: AgentSelectionIntent): string {
     const before = this.#snapshot();
     const previous = JSON.parse(before) as EditorSnapshot;
     const accepted: EditorSnapshot = {
@@ -765,8 +770,19 @@ export class SvgEditor {
         scopeKeys: selection.scopeSessionKey ? [selection.scopeSessionKey] : [],
       } : {}),
     };
-    this.#history.checkpoint(before);
     this.#restore(JSON.stringify(accepted));
+    return before;
+  }
+
+  finalizeAgentAcceptance(checkpoint: unknown): void {
+    if (typeof checkpoint !== "string") throw new Error("Agent acceptance checkpoint is invalid.");
+    this.#history.checkpoint(checkpoint);
+    this.#notifyHistory();
+  }
+
+  rollbackAgentAcceptance(checkpoint: unknown): void {
+    if (typeof checkpoint !== "string") throw new Error("Agent acceptance checkpoint is invalid.");
+    this.#restore(checkpoint);
   }
 
   setAgentReviewHighlights(keys: ReadonlySet<string>): void {
@@ -1458,7 +1474,8 @@ export class SvgEditor {
   }
 
   #notifyHistory(): void {
-    this.#callbacks.onHistoryChange(this.#history.canUndo, this.#history.canRedo);
+    const availability = visibleHistoryAvailability(this.#agentMutationBlocked, this.#history.canUndo, this.#history.canRedo);
+    this.#callbacks.onHistoryChange(availability.canUndo, availability.canRedo);
   }
 
   #label(node: SVGGraphicsElement): string {

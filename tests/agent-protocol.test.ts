@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  AGENT_MAX_PAYLOAD_BYTES, AgentProtocolError, parseAgentTransaction,
+  AGENT_MAX_PAYLOAD_BYTES, AgentProtocolError, CLEAN_AGENT_SVG_REJECTION_CORPUS, isAgentErrorCode, parseAgentTransaction, validateCleanAgentSvg,
 } from "../src/shared/agent-protocol";
 
 function envelope(operations: unknown[] = [{ type: "renameLayer", operationId: "rename", target: { sessionKey: "element-1" }, name: "Mark" }]) {
@@ -19,6 +19,19 @@ function codeFor(value: unknown): string | undefined {
 }
 
 describe("agent protocol v1", () => {
+  it("validates clean standalone SVG without repairing malformed or metadata-bearing artifacts", () => {
+    expect(() => validateCleanAgentSvg('<svg xmlns="http://www.w3.org/2000/svg"><g id="logo"><path d="M0 0h1" /></g></svg>')).not.toThrow();
+    for (const entry of CLEAN_AGENT_SVG_REJECTION_CORPUS) expect(() => validateCleanAgentSvg(entry.svg), entry.name).toThrow();
+    for (const malformed of ["<!DOCTYPE svg><svg></svg>", '<svg><path data-agent-review="accepted" /></svg>']) {
+      expect(() => validateCleanAgentSvg(malformed)).toThrow();
+    }
+  });
+
+  it("keeps the protocol error-code vocabulary closed", () => {
+    expect(isAgentErrorCode("stale_document")).toBe(true);
+    expect(isAgentErrorCode("invented_error")).toBe(false);
+  });
+
   it("parses all operation forms and earlier operation-result references", () => {
     const parsed = parseAgentTransaction(envelope([
       { type: "addLayer", operationId: "add", parent: null, placement: "last", svg: '<g id="new"><path /></g>' },

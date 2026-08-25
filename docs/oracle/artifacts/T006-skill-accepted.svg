@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" version="1.1">
+  <title>Linked orbit concept</title>
+  <g id="logo">
+    <path id="shield" fill="#172554" d="M256 48 432 132v120c0 104-70 174-176 212C150 426 80 356 80 252V132Z"></path>
+    <path id="prism" fill="#f8fafc" d="m256 112 112 206H144Z"></path>
+    <path id="signal" fill="#fb7185" d="m256 184 58 106H198Z"></path>
+    <circle id="focus" cx="256" cy="272" r="28" fill="#14b8a6"></circle>
+    <path id="horizon" fill="#38bdf8" d="M184 338h144v28H184Z"></path>
+  </g>
+</svg>
