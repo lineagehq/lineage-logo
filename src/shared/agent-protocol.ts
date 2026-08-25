@@ -1,6 +1,16 @@
 export const AGENT_PROTOCOL_VERSION = 1 as const;
-export const AGENT_MAX_PAYLOAD_BYTES = 5 * 1024 * 1024;
+export { AGENT_MAX_PAYLOAD_BYTES, CLEAN_AGENT_SVG_REJECTION_CORPUS, validateCleanAgentSvg } from "./agent-svg-validator.js";
+import { AGENT_MAX_PAYLOAD_BYTES } from "./agent-svg-validator.js";
 export const AGENT_MAX_OPERATIONS = 100;
+export const AGENT_MAX_SOURCE_PATH_CHARACTERS = 4096;
+/**
+ * Fixed upper bound for an accepted-decision JSON body. Strict XML permits no
+ * literal characters whose JSON escaping expands beyond two bytes per raw SVG
+ * byte. The additional 128 KiB conservatively covers the 4096-character path
+ * at worst-case JSON escaping, the identifier, revision, keys, and punctuation.
+ * The SVG validator separately retains its raw 5 MiB UTF-8 ceiling.
+ */
+export const AGENT_MAX_ACKNOWLEDGEMENT_BYTES = AGENT_MAX_PAYLOAD_BYTES * 2 + 128 * 1024;
 
 export interface AgentProducer {
   kind: string;
@@ -69,6 +79,16 @@ export type AgentErrorCode = "invalid_payload" | "payload_too_large" | "unsuppor
   | "missing_target" | "ambiguous_target" | "locked_target" | "invalid_svg"
   | "unsafe_svg" | "id_conflict" | "reference_damage" | "invalid_paint" | "no_op" | "pending_transaction";
 
+export const AGENT_ERROR_CODES: ReadonlySet<AgentErrorCode> = new Set([
+  "invalid_payload", "payload_too_large", "unsupported_version", "unknown_operation", "unknown_field",
+  "invalid_reference", "stale_document", "missing_target", "ambiguous_target", "locked_target", "invalid_svg",
+  "unsafe_svg", "id_conflict", "reference_damage", "invalid_paint", "no_op", "pending_transaction",
+]);
+
+export function isAgentErrorCode(value: unknown): value is AgentErrorCode {
+  return typeof value === "string" && AGENT_ERROR_CODES.has(value as AgentErrorCode);
+}
+
 export interface AgentTransactionError {
   code: AgentErrorCode;
   message: string;
@@ -86,10 +106,20 @@ export type AgentTransactionResult = {
   impact: Array<{ operationId: string; affectedSessionKeys: string[]; resultSessionKey?: string }>;
 };
 
-export interface AgentTerminalDecision {
-  transactionId: string;
-  status: "accepted" | "reverted";
+export interface AgentAcceptedArtifact {
+  sourcePath: string;
+  revision: number;
+  svg: string;
 }
+
+export type AgentTerminalDecision = {
+  transactionId: string;
+  status: "accepted";
+  artifact: AgentAcceptedArtifact;
+} | {
+  transactionId: string;
+  status: "reverted";
+};
 
 export type AgentAcknowledgement = AgentTransactionResult | AgentTerminalDecision;
 
@@ -107,6 +137,7 @@ export interface AgentTransactionStatus {
   transactionId: string;
   status: AgentTransportStatus;
   result?: AgentTransactionResult;
+  artifact?: AgentAcceptedArtifact;
 }
 
 export class AgentProtocolError extends Error {
@@ -249,7 +280,7 @@ export function parseAgentTransaction(payload: unknown): AgentTransactionV1 {
     },
     document: {
       sessionId: identifier(document.sessionId, "transaction.document.sessionId"),
-      sourcePath: boundedText(document.sourcePath, "transaction.document.sourcePath", 4096),
+      sourcePath: boundedText(document.sourcePath, "transaction.document.sourcePath", AGENT_MAX_SOURCE_PATH_CHARACTERS),
       baseRevision: Number(document.baseRevision),
     },
     operations: input.operations.map((operation, index) => parseOperation(operation, index, earlierIds)),

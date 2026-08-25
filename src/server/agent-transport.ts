@@ -1,8 +1,8 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
-  AGENT_MAX_PAYLOAD_BYTES, AgentProtocolError, parseAgentTransaction,
-  type AgentAcknowledgement, type AgentDocumentManifest, type AgentErrorCode, type AgentTerminalDecision, type AgentTransactionResult, type AgentTransactionStatus,
+  AGENT_ERROR_CODES, AGENT_MAX_ACKNOWLEDGEMENT_BYTES, AGENT_MAX_PAYLOAD_BYTES, AgentProtocolError, parseAgentTransaction, validateCleanAgentSvg,
+  type AgentAcceptedArtifact, type AgentAcknowledgement, type AgentDocumentManifest, type AgentErrorCode, type AgentTerminalDecision, type AgentTransactionResult, type AgentTransactionStatus,
   type AgentTransactionV1,
 } from "../shared/agent-protocol.js";
 import { HttpError, readBody, readJsonBody, requireOrigin, sendJson } from "./http.js";
@@ -14,13 +14,9 @@ interface RegistryEntry {
   eventId?: number;
   timer?: ReturnType<typeof setTimeout>;
 }
-interface EventRecord { id: number; transactionId: string; data: string }
-
-const AGENT_ERROR_CODES = new Set<AgentErrorCode>([
-  "invalid_payload", "payload_too_large", "unsupported_version", "unknown_operation", "unknown_field",
-  "invalid_reference", "stale_document", "missing_target", "ambiguous_target", "locked_target", "invalid_svg",
-  "unsafe_svg", "id_conflict", "reference_damage", "invalid_paint", "no_op", "pending_transaction",
-]);
+type EventRecord =
+  | { id: number; kind: "transaction"; transactionId: string; data: string }
+  | { id: number; kind: "terminal"; transactionId: string; data: string };
 
 function exactObject(value: unknown, allowed: string[], required: string[], label: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new HttpError(400, `${label} is invalid.`);
@@ -52,6 +48,7 @@ export class AgentTransport {
   readonly #registry = new Map<string, RegistryEntry>();
   readonly #events: EventRecord[] = [];
   readonly #clients = new Set<ServerResponse>();
+  readonly #serverInstanceId = randomUUID();
   #document?: AgentDocumentManifest;
   #nextEventId = 1;
 
@@ -145,10 +142,12 @@ export class AgentTransport {
       return;
     }
     this.#pruneRegistry();
-    if (this.#registry.size >= this.#maxRegistry || this.#events.length >= this.#maxBacklog) throw new HttpError(503, "Agent transaction backlog is full.");
+    if (this.#registry.size >= this.#maxRegistry || this.#events.filter((event) => event.kind === "transaction").length >= this.#maxBacklog) {
+      throw new HttpError(503, "Agent transaction backlog is full.");
+    }
     const entry: RegistryEntry = { hash, transaction, state: { transactionId: transaction.transactionId, status: "queued" } };
     this.#registry.set(transaction.transactionId, entry);
-    const event: EventRecord = { id: this.#nextEventId++, transactionId: transaction.transactionId, data: JSON.stringify(transaction) };
+    const event: EventRecord = { id: this.#nextEventId++, kind: "transaction", transactionId: transaction.transactionId, data: JSON.stringify(transaction) };
     entry.eventId = event.id;
     this.#events.push(event);
     for (const client of this.#clients) this.#deliver(client, event, entry);
@@ -175,6 +174,7 @@ export class AgentTransport {
     });
     response.flushHeaders();
     response.write(": connected\nretry: 50\n\n");
+    response.write(`event: server-instance\ndata: ${JSON.stringify({ serverInstanceId: this.#serverInstanceId })}\n\n`);
     this.#clients.add(response);
     const lastIdHeader = request.headers["last-event-id"];
     const lastId = typeof lastIdHeader === "string" && /^\d+$/.test(lastIdHeader) ? Number(lastIdHeader) : 0;
@@ -183,7 +183,9 @@ export class AgentTransport {
     }
     for (const event of this.#events) {
       const entry = this.#registry.get(event.transactionId);
-      if (event.id > lastId && entry?.state.status === "queued") this.#deliver(response, event, entry);
+      if (event.id <= lastId || !entry) continue;
+      if (event.kind === "transaction" && entry.state.status === "queued") this.#deliver(response, event, entry);
+      else if (event.kind === "terminal" && entry.state.status === JSON.parse(event.data).status) this.#writeEvent(response, event);
     }
     const heartbeat = setInterval(() => response.write(": heartbeat\n\n"), this.#heartbeatMs);
     const disconnect = () => {
@@ -207,23 +209,45 @@ export class AgentTransport {
     response.once("close", disconnect);
   }
 
-  #deliver(response: ServerResponse, event: EventRecord, entry: RegistryEntry): void {
+  #writeEvent(response: ServerResponse, event: EventRecord): void {
+    response.write(`id: ${event.id}\nevent: ${event.kind === "transaction" ? "transaction" : "transaction-terminal"}\ndata: ${event.data}\n\n`);
+  }
+
+  #deliver(response: ServerResponse, event: Extract<EventRecord, { kind: "transaction" }>, entry: RegistryEntry): void {
     if (entry.state.status !== "queued") return;
     if (entry.timer) clearTimeout(entry.timer);
-    response.write(`id: ${event.id}\nevent: transaction\ndata: ${event.data}\n\n`);
+    this.#writeEvent(response, event);
     entry.state = { transactionId: event.transactionId, status: "delivered" };
     entry.timer = setTimeout(() => {
-      if (entry.state.status === "delivered") entry.state = {
-        transactionId: event.transactionId,
-        status: "rejected",
-        result: { transactionId: event.transactionId, status: "rejected", error: { code: "stale_document", message: "Editor did not acknowledge delivery before the timeout." } },
-      };
+      if (entry.state.status === "delivered") {
+        entry.state = {
+          transactionId: event.transactionId,
+          status: "rejected",
+          result: { transactionId: event.transactionId, status: "rejected", error: { code: "stale_document", message: "Editor did not acknowledge delivery before the timeout." } },
+        };
+        this.#pruneEvent(entry);
+        this.#emitTerminal(event.transactionId, "rejected");
+      }
     }, this.#deliveryTimeoutMs);
+  }
+
+  #emitTerminal(transactionId: string, status: "reverted" | "rejected" | "stale"): void {
+    const event: EventRecord = {
+      id: this.#nextEventId++, kind: "terminal", transactionId,
+      data: JSON.stringify({ transactionId, status }),
+    };
+    this.#events.push(event);
+    while (this.#events.filter((item) => item.kind === "terminal").length > this.#maxBacklog) {
+      const terminalIndex = this.#events.findIndex((item) => item.kind === "terminal");
+      if (terminalIndex < 0) break;
+      this.#events.splice(terminalIndex, 1);
+    }
+    for (const client of this.#clients) this.#writeEvent(client, event);
   }
 
   #pruneEvent(entry: RegistryEntry): void {
     if (entry.eventId === undefined) return;
-    const index = this.#events.findIndex((event) => event.id === entry.eventId);
+    const index = this.#events.findIndex((event) => event.kind === "transaction" && event.id === entry.eventId);
     if (index >= 0) this.#events.splice(index, 1);
   }
 
@@ -239,12 +263,26 @@ export class AgentTransport {
     }
   }
 
-  #parseAcknowledgement(value: unknown, transactionId: string): AgentAcknowledgement {
-    const input = exactObject(value, ["transactionId", "status", "error", "impact"], ["transactionId", "status"], "Acknowledgement");
+  #parseAcknowledgement(value: unknown, transaction: AgentTransactionV1): AgentAcknowledgement {
+    const transactionId = transaction.transactionId;
+    const operationIds = new Set(transaction.operations.map((operation) => operation.operationId));
+    const input = exactObject(value, ["transactionId", "status", "error", "impact", "artifact"], ["transactionId", "status"], "Acknowledgement");
     if (input.transactionId !== transactionId || typeof input.status !== "string") throw new HttpError(400, "Acknowledgement is invalid.");
-    if (input.status === "accepted" || input.status === "reverted") {
-      if (Object.keys(input).length !== 2) throw new HttpError(400, "Terminal decision contains unknown fields.");
-      return { transactionId, status: input.status };
+    if (input.status === "accepted") {
+      if (Object.keys(input).length !== 3) throw new HttpError(400, "Accepted decision requires an artifact receipt.");
+      const artifact = exactObject(input.artifact, ["sourcePath", "revision", "svg"], ["sourcePath", "revision", "svg"], "Accepted artifact");
+      if (typeof artifact.sourcePath !== "string" || !Number.isSafeInteger(artifact.revision)
+        || typeof artifact.svg !== "string" || artifact.svg.length === 0
+        || new TextEncoder().encode(artifact.svg).byteLength > AGENT_MAX_PAYLOAD_BYTES) {
+        throw new HttpError(400, "Accepted artifact is invalid.");
+      }
+      try { validateCleanAgentSvg(artifact.svg); }
+      catch { throw new HttpError(400, "Accepted artifact SVG is not a clean standalone document."); }
+      return { transactionId, status: "accepted", artifact: artifact as unknown as AgentAcceptedArtifact };
+    }
+    if (input.status === "reverted") {
+      if (Object.keys(input).length !== 2) throw new HttpError(400, "Reverted decision contains unknown fields.");
+      return { transactionId, status: "reverted" };
     }
     if (input.status === "rejected") {
       if (Object.keys(input).length !== 3) throw new HttpError(400, "Rejected acknowledgement has invalid fields.");
@@ -252,7 +290,7 @@ export class AgentTransport {
       if (typeof error.code !== "string" || !AGENT_ERROR_CODES.has(error.code as AgentErrorCode) || typeof error.message !== "string" || error.message.length === 0) {
         throw new HttpError(400, "Acknowledgement error is invalid.");
       }
-      if ((error.operationId !== undefined && typeof error.operationId !== "string") || (error.path !== undefined && typeof error.path !== "string")) {
+      if ((error.operationId !== undefined && (typeof error.operationId !== "string" || !operationIds.has(error.operationId))) || (error.path !== undefined && typeof error.path !== "string")) {
         throw new HttpError(400, "Acknowledgement error is invalid.");
       }
       return input as unknown as AgentTransactionResult;
@@ -267,6 +305,11 @@ export class AgentTransport {
           throw new HttpError(400, "Acknowledgement impact is invalid.");
         }
       }
+      if (input.impact.length !== transaction.operations.length
+        || input.impact.some((value, index) => (value as { operationId?: unknown }).operationId !== transaction.operations[index]?.operationId)
+        || input.status !== (transaction.operations.some((operation) => operation.type !== "selectFocus") ? "staged" : "applied")) {
+        throw new HttpError(400, "Acknowledgement impact does not match the submitted transaction.");
+      }
       return input as unknown as AgentTransactionResult;
     }
     throw new HttpError(400, "Acknowledgement status is invalid.");
@@ -275,19 +318,36 @@ export class AgentTransport {
   async #acknowledge(transactionId: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
     const entry = this.#registry.get(transactionId);
     if (!entry) throw new HttpError(404, "Unknown transaction ID.");
-    const acknowledgement = this.#parseAcknowledgement(await readJsonBody(request, 1024 * 1024), transactionId);
+    const acknowledgement = this.#parseAcknowledgement(await readJsonBody(request, AGENT_MAX_ACKNOWLEDGEMENT_BYTES), entry.transaction);
     if (acknowledgement.status === "accepted" || acknowledgement.status === "reverted") {
       const decision = acknowledgement as AgentTerminalDecision;
       if (entry.state.status === decision.status) {
+        if (decision.status === "accepted" && JSON.stringify(entry.state.artifact) !== JSON.stringify(decision.artifact)) {
+          sendJson(response, 409, { ...entry.state, error: "Accepted artifact conflicts with the recorded receipt." });
+          return;
+        }
         sendJson(response, 200, entry.state);
         return;
       }
       if (entry.state.status === "accepted" || entry.state.status === "reverted") {
-        throw new HttpError(409, `Transaction is already ${entry.state.status}.`);
+        sendJson(response, 409, { ...entry.state, error: `Transaction is already ${entry.state.status}.` });
+        return;
       }
-      if (entry.state.status !== "pending_review") throw new HttpError(409, `Cannot ${decision.status === "accepted" ? "accept" : "revert"} transaction from ${entry.state.status}.`);
+      if (entry.state.status !== "pending_review") {
+        sendJson(response, 409, { ...entry.state, error: `Cannot ${decision.status === "accepted" ? "accept" : "revert"} transaction from ${entry.state.status}.` });
+        return;
+      }
+      if (decision.status === "accepted"
+        && (decision.artifact.sourcePath !== entry.transaction.document.sourcePath
+          || decision.artifact.revision !== entry.transaction.document.baseRevision + 1)) {
+        throw new HttpError(409, "Accepted artifact does not match the transaction document revision.");
+      }
       if (entry.timer) clearTimeout(entry.timer);
-      entry.state = { ...entry.state, status: decision.status };
+      entry.state = {
+        ...entry.state,
+        status: decision.status,
+        ...(decision.status === "accepted" ? { artifact: decision.artifact } : {}),
+      };
       this.#pruneEvent(entry);
       sendJson(response, 200, entry.state);
       return;
@@ -303,15 +363,25 @@ export class AgentTransport {
     if (entry.timer) clearTimeout(entry.timer);
     let status: AgentTransactionStatus["status"];
     if (result.status === "staged") status = "pending_review";
-    else if (result.status === "applied") status = "accepted";
+    else if (result.status === "applied") {
+      if (entry.transaction.operations.some((operation) => operation.type !== "selectFocus")) {
+        throw new HttpError(400, "A mutating transaction cannot be accepted without an artifact receipt.");
+      }
+      status = "accepted";
+    }
     else if ("error" in result) status = result.error.code === "stale_document" ? "stale" : "rejected";
     else throw new HttpError(400, "Acknowledgement status is invalid.");
     entry.state = { transactionId, status, result };
     this.#pruneEvent(entry);
     if (status === "pending_review") {
       entry.timer = setTimeout(() => {
-        if (entry.state.status === "pending_review") entry.state = { ...entry.state, status: "reverted" };
+        if (entry.state.status === "pending_review") {
+          entry.state = { ...entry.state, status: "reverted" };
+          this.#emitTerminal(transactionId, "reverted");
+        }
       }, this.#reviewTimeoutMs);
+    } else if (status === "rejected" || status === "stale") {
+      this.#emitTerminal(transactionId, status);
     }
     sendJson(response, 200, entry.state);
   }

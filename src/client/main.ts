@@ -7,7 +7,7 @@ import {
   SvgEditor,
   type SelectionContext,
 } from "./canvas/editor";
-import { AgentCanvasTransport } from "./agent/transport";
+import { AgentCanvasTransport, AgentDecisionError } from "./agent/transport";
 import type { AgentDocumentManifest } from "../shared/agent-protocol";
 import { AgentSession } from "./agent/session";
 import { buildPendingReview, outcomeReview, type AgentReviewModel } from "./agent/review";
@@ -316,8 +316,8 @@ const editor = new SvgEditor(
     onDirtyChange: (nextDirty) => {
       const changed = dirty !== nextDirty;
       dirty = nextDirty;
-      saveButton.disabled = !dirty;
-      resetEditsButton.disabled = !dirty && editor.selectionContext.lockedKeys.size === 0;
+      saveButton.disabled = Boolean(agentSession?.pending) || !dirty;
+      resetEditsButton.disabled = Boolean(agentSession?.pending) || (!dirty && editor.selectionContext.lockedKeys.size === 0);
       if (nextDirty) setStatus("Unsaved manual corrections");
       else if (changed && currentFile) setStatus(`${currentFile.collection} / ${currentFile.name} · No unsaved changes`);
     },
@@ -393,13 +393,38 @@ const agentTransport = new AgentCanvasTransport({
     }
     return staged;
   },
+  onTerminalState: ({ transactionId, status }) => {
+    if (!agentSession?.reconcileTerminal(transactionId, status)) return;
+    finishAgentReview("reverted");
+    agentReview = outcomeReview(status === "stale" ? "stale" : status === "rejected" ? "failed" : "reverted", transactionId,
+      status === "reverted"
+        ? "The server review timeout reverted this exact proposal without changing the document."
+        : "The server rejected this exact proposal; its isolated changes were not kept.");
+    renderAgentReview();
+    setStatus(`Agent transaction ${transactionId}: ${status}`);
+  },
+  onServerReplacement: () => {
+    const transactionId = agentSession?.pending?.transaction.transactionId;
+    const outcome = agentSession?.serverReplaced() ?? "none";
+    if (outcome === "detached-cleared") {
+      finishAgentReview("reverted");
+      agentReview = outcomeReview("reverted", transactionId, "The local agent server restarted. Its detached proposal was cleared without changing the document.");
+    } else if (outcome === "provisional-uncertain" && agentReview) {
+      agentReview = { ...agentReview, status: "disconnected", summary: "The local agent server restarted before the provisional acceptance was confirmed. Inspect the canvas, then restore the previous document explicitly." };
+      agentReviewConsequence.textContent = "Restore previous document rolls back only this exact provisional transaction. Editing, file switching, and saving remain locked until recovery.";
+    }
+    renderAgentReview();
+    setStatus("Agent server restarted; review recovery is required");
+  },
   onStateChange: (state, message) => {
     if (state === "disconnected") {
       agentReview = agentReview && agentSession?.pending
-        ? { ...agentReview, status: "disconnected", summary: "Agent connection interrupted. You can still accept or revert the isolated proposal." }
+        ? agentSession.recoveryRequired
+          ? { ...agentReview, status: "disconnected", summary: "The provisional acceptance has no authoritative server identity. Inspect the canvas, then restore the previous document explicitly." }
+          : { ...agentReview, status: "disconnected", summary: "Agent connection interrupted. You can still accept or revert the isolated proposal." }
         : outcomeReview("disconnected", agentReview?.transactionId);
       renderAgentReview();
-    } else if (agentReview?.status === "disconnected" && agentSession?.pending) {
+    } else if (agentReview?.status === "disconnected" && agentSession?.pending && !agentSession.recoveryRequired) {
       agentReview = buildPendingReview(agentSession.pending.transaction, agentSession.pending.staged, editor.selectionContext.lockedKeys);
       renderAgentReview();
     }
@@ -432,12 +457,14 @@ function renderAgentReview(): void {
     agentImpactList.append(item);
   }
   const pending = Boolean(agentSession?.pending);
+  const recoveryRequired = agentSession?.recoveryRequired === true;
   agentPreviewToggle.hidden = !pending;
-  agentAcceptButton.hidden = !pending;
+  agentAcceptButton.hidden = !pending || recoveryRequired;
   agentRevertButton.hidden = !pending;
   agentReviewConsequence.hidden = !pending;
   agentAcceptButton.disabled = agentDecisionInFlight;
   agentRevertButton.disabled = agentDecisionInFlight;
+  agentRevertButton.textContent = recoveryRequired ? "Restore previous document" : "Revert";
   for (const button of fileButtons.values()) {
     button.disabled = pending;
     button.title = pending ? "Accept or revert the pending agent proposal before switching files." : "";
@@ -497,14 +524,67 @@ async function decideAgentReview(status: "accepted" | "reverted"): Promise<void>
   const pending = agentSession?.pending;
   if (!pending || agentDecisionInFlight) return;
   agentDecisionInFlight = true;
-  agentReviewConsequence.textContent = `Recording ${status} decision before changing the document…`;
+  agentReviewConsequence.textContent = status === "accepted"
+    ? "Applying the proposal and capturing its clean accepted revision…"
+    : "Recording reverted decision…";
   renderAgentReview();
   try {
-    await agentTransport.decide(pending.transaction.transactionId, status);
-    const completed = status === "accepted" ? agentSession?.accept() : agentSession?.revert();
-    if (!completed) throw new Error("The pending agent proposal changed before its decision completed.");
-    finishAgentReview(status);
+    if (agentSession?.recoveryRequired) {
+      if (status !== "reverted" || !agentSession.restoreAfterServerReplacement(pending.transaction.transactionId)) {
+        throw new Error("This recovery action no longer matches the provisional transaction.");
+      }
+      finishAgentReview("reverted");
+      setStatus("Previous document restored after agent server restart");
+      return;
+    }
+    if (status === "accepted") {
+      if (!agentSession?.beginAccept()) throw new Error("The pending agent proposal changed before it could be applied.");
+      const artifact = {
+        sourcePath: agentSession.context.sourcePath,
+        revision: agentSession.revision,
+        svg: editor.serializeClean(),
+      };
+      await agentTransport.decide(pending.transaction.transactionId, status, artifact);
+      if (!agentSession.finalizeAccept(pending.transaction.transactionId)) throw new Error("The provisional acceptance could not be finalized.");
+      finishAgentReview("accepted");
+    } else {
+      await agentTransport.decide(pending.transaction.transactionId, status);
+      const completed = pending.provisional
+        ? agentSession?.rollbackAccept(pending.transaction.transactionId)
+        : agentSession?.revert();
+      if (!completed) throw new Error("The pending agent proposal changed before its decision completed.");
+      finishAgentReview("reverted");
+    }
   } catch (error) {
+    if (error instanceof AgentDecisionError && agentSession?.pending?.transaction.transactionId === pending.transaction.transactionId) {
+      if (["reverted", "rejected", "stale"].includes(error.state?.status ?? "") && pending.provisional) {
+        agentSession.rollbackAccept(pending.transaction.transactionId);
+        finishAgentReview("reverted");
+        return;
+      } else if (error.state?.status === "accepted" && pending.provisional
+        && JSON.stringify(error.state.artifact) === JSON.stringify({
+          sourcePath: agentSession.context.sourcePath, revision: agentSession.revision, svg: editor.serializeClean(),
+        })) {
+        agentSession.finalizeAccept(pending.transaction.transactionId);
+        finishAgentReview("accepted");
+        return;
+      } else if (error.state?.status === "accepted" && pending.provisional) {
+        const svg = error.state.artifact?.svg;
+        if (svg) {
+          const parsed = new DOMParser().parseFromString(svg, "image/svg+xml");
+          const accepted = parsed.documentElement;
+          if (accepted instanceof SVGSVGElement && !parsed.querySelector("parsererror")
+            && agentSession.convergeAcceptedArtifact(pending.transaction.transactionId, accepted)) {
+            finishAgentReview("accepted");
+            setStatus("Applied the authoritative accepted artifact returned by the canvas server");
+            return;
+          }
+        }
+        agentReviewConsequence.textContent = "The server accepted a different artifact, but the canvas could not apply it. Editing and saving remain locked.";
+        setStatus(agentReviewConsequence.textContent);
+        return;
+      }
+    }
     agentReviewConsequence.textContent = error instanceof Error ? error.message : "Unable to record the agent decision.";
     setStatus(agentReviewConsequence.textContent);
   } finally {
@@ -1010,7 +1090,7 @@ window.addEventListener("beforeunload", (event) => {
 });
 window.addEventListener("pagehide", () => {
   const transactionId = agentSession?.pending?.transaction.transactionId;
-  if (transactionId) agentTransport.decideOnUnload(transactionId);
+  if (transactionId && !agentSession?.recoveryRequired) agentTransport.decideOnUnload(transactionId);
   agentTransport.close();
 });
 
@@ -1028,7 +1108,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>(".background-b
 }
 
 async function saveIteration(): Promise<void> {
-  if (!currentFile || !dirty) return;
+  if (!currentFile || !dirty || agentSession?.pending) {
+    if (agentSession?.pending) setStatus("Accept or revert the pending agent proposal before saving.");
+    return;
+  }
   setStatus(`Saving ${nextIterationPath}…`);
   try {
     const response = await fetch("/api/iterations", {

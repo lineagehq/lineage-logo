@@ -4,14 +4,13 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { Window, type Element as HappyElement } from "happy-dom";
-import type { AgentDocumentManifest, AgentOperation, AgentTransactionV1 } from "../src/shared/agent-protocol";
+import { parseAgentTransaction, type AgentDocumentManifest, type AgentOperation, type AgentTransactionV1 } from "../src/shared/agent-protocol";
+import { AgentProducerClient, type AgentProducerOutcome } from "../src/producer/agent-client";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const SELECTABLE = new Set(["g", "path", "rect", "circle", "ellipse", "line", "polyline", "polygon", "text"]);
 
 export interface AdapterOptions {
-  api: string;
-  token: string;
   mode: "replace" | "add" | "set-paint";
   artifact?: string;
   selector?: string;
@@ -22,7 +21,38 @@ export interface AdapterOptions {
   property?: "fill" | "stroke";
   value?: string;
   transactionId?: string;
+  contextPath?: string;
+  timeoutMs?: number;
+  client?: AgentProducerClient;
 }
+
+export const LOGO_DESIGNER_RECEIPT_VERSION = 1 as const;
+export const LOGO_DESIGNER_RECEIPT_KIND = "lineage.logo-designer.adapter-receipt" as const;
+
+export interface LogoDesignerAdapterReceiptV1 {
+  receiptVersion: typeof LOGO_DESIGNER_RECEIPT_VERSION;
+  kind: typeof LOGO_DESIGNER_RECEIPT_KIND;
+  transaction: {
+    transactionId: string;
+    sessionId: string;
+    sourcePath: string;
+    baseRevision: number;
+  };
+  outcome: AgentProducerOutcome;
+}
+
+export type LogoDesignerPreflightDiagnostic = "invalid_arguments" | "invalid_artifact" | "canvas_unavailable";
+
+export interface LogoDesignerPreflightReceiptV1 {
+  receiptVersion: typeof LOGO_DESIGNER_RECEIPT_VERSION;
+  kind: typeof LOGO_DESIGNER_RECEIPT_KIND;
+  outcome: {
+    status: "invalid" | "unavailable";
+    diagnostic: LogoDesignerPreflightDiagnostic;
+  };
+}
+
+export type LogoDesignerCliReceiptV1 = LogoDesignerAdapterReceiptV1 | LogoDesignerPreflightReceiptV1;
 
 function localReferences(element: HappyElement): Set<string> {
   const references = new Set<string>();
@@ -101,57 +131,112 @@ export async function buildLogoDesignerTransaction(options: AdapterOptions, mani
       ? { type: "replaceLayer", operationId: "logo-artifact", target: { sessionKey: resolveLayer(manifest, options.targetKey, options.targetName, "target") }, svg: fragment }
       : { type: "addLayer", operationId: "logo-artifact", parent: options.parentKey || options.parentName ? { sessionKey: resolveLayer(manifest, options.parentKey, options.parentName, "parent") } : null, placement: "last", svg: fragment };
   }
-  return {
+  return parseAgentTransaction({
     protocolVersion: 1,
     transactionId: options.transactionId ?? randomUUID(),
     producer: { kind: "logo-designer-skill", name: "lineage-logo-adapter", version: "1" },
     document: { sessionId: manifest.sessionId, sourcePath: manifest.sourcePath, baseRevision: manifest.revision },
     operations: [operation],
+  });
+}
+
+export async function submitLogoDesignerTransaction(options: AdapterOptions): Promise<{ transaction: AgentTransactionV1; outcome: AgentProducerOutcome }> {
+  const client = options.client ?? new AgentProducerClient({ contextPath: options.contextPath, timeoutMs: options.timeoutMs });
+  const manifest = await client.manifest();
+  const transaction = await buildLogoDesignerTransaction(options, manifest);
+  return { transaction, outcome: await client.submitAndWait(transaction) };
+}
+
+/** Builds the only stdout representation exposed by the CLI. */
+export function buildLogoDesignerReceipt(transaction: AgentTransactionV1, outcome: AgentProducerOutcome): LogoDesignerAdapterReceiptV1 {
+  if (outcome.transactionId !== transaction.transactionId) throw new Error("Producer outcome transaction identity does not match the submission.");
+  if (outcome.status === "accepted") {
+    if (!outcome.artifact) throw new Error("Accepted mutation has no artifact receipt.");
+    if (outcome.artifact.sourcePath !== transaction.document.sourcePath
+      || outcome.artifact.revision !== transaction.document.baseRevision + 1) {
+      throw new Error("Accepted artifact identity does not match the submitted document revision.");
+    }
+  }
+  return {
+    receiptVersion: LOGO_DESIGNER_RECEIPT_VERSION,
+    kind: LOGO_DESIGNER_RECEIPT_KIND,
+    transaction: {
+      transactionId: transaction.transactionId,
+      sessionId: transaction.document.sessionId,
+      sourcePath: transaction.document.sourcePath,
+      baseRevision: transaction.document.baseRevision,
+    },
+    outcome,
   };
 }
 
-export async function submitLogoDesignerTransaction(options: AdapterOptions): Promise<{ transaction: AgentTransactionV1; response: unknown }> {
-  const headers = { Authorization: `Bearer ${options.token}` };
-  const documentResponse = await fetch(`${options.api.replace(/\/$/, "")}/api/agent/document`, { headers });
-  if (!documentResponse.ok) throw new Error(`Manifest request failed (${documentResponse.status}): ${await documentResponse.text()}`);
-  const manifest = await documentResponse.json() as AgentDocumentManifest;
-  const transaction = await buildLogoDesignerTransaction(options, manifest);
-  const response = await fetch(`${options.api.replace(/\/$/, "")}/api/agent/transactions`, {
-    method: "POST",
-    headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify(transaction),
-  });
-  const body = await response.json().catch(() => ({ error: response.statusText }));
-  if (!response.ok) throw new Error(`Transaction submission failed (${response.status}): ${JSON.stringify(body)}`);
-  return { transaction, response: body };
+function buildPreflightReceipt(status: "invalid" | "unavailable", diagnostic: LogoDesignerPreflightDiagnostic): LogoDesignerPreflightReceiptV1 {
+  return { receiptVersion: LOGO_DESIGNER_RECEIPT_VERSION, kind: LOGO_DESIGNER_RECEIPT_KIND, outcome: { status, diagnostic } };
 }
 
 function parseArguments(argv: string[]): AdapterOptions {
   const args = new Map<string, string>();
+  const allowed = new Set([
+    "mode", "artifact", "selector", "target-key", "target-name", "parent-key", "parent-name",
+    "property", "value", "transaction-id", "context", "timeout-ms",
+  ]);
   for (let index = 0; index < argv.length; index += 2) {
     if (!argv[index]?.startsWith("--") || argv[index + 1] === undefined) throw new Error(`Expected --name value arguments; received ${argv[index] ?? "end of input"}`);
-    args.set(argv[index].slice(2), argv[index + 1]);
+    const name = argv[index].slice(2);
+    if (!allowed.has(name) || args.has(name)) throw new Error(`Unsupported or duplicate argument: --${name}`);
+    args.set(name, argv[index + 1]);
   }
-  const token = args.get("token") ?? process.env.LINEAGE_LOGO_AGENT_TOKEN;
-  if (!token) throw new Error("Set LINEAGE_LOGO_AGENT_TOKEN or pass --token");
   const mode = args.get("mode") ?? "replace";
   if (mode !== "replace" && mode !== "add" && mode !== "set-paint") throw new Error(`Unsupported --mode: ${mode}`);
   const property = args.get("property");
   if (property !== undefined && property !== "fill" && property !== "stroke") throw new Error(`Unsupported --property: ${property}`);
+  const timeoutMs = args.has("timeout-ms") ? Number(args.get("timeout-ms")) : undefined;
+  if (timeoutMs !== undefined && (!Number.isFinite(timeoutMs) || timeoutMs <= 0)) throw new Error("--timeout-ms must be a positive number");
   return {
-    api: args.get("api") ?? "http://127.0.0.1:4173",
-    token,
     mode,
     artifact: args.get("artifact"), selector: args.get("selector"),
     targetKey: args.get("target-key"), targetName: args.get("target-name"),
     parentKey: args.get("parent-key"), parentName: args.get("parent-name"),
     property, value: args.get("value"), transactionId: args.get("transaction-id"),
+    contextPath: args.get("context"),
+    timeoutMs,
   };
+}
+
+export async function runLogoDesignerAdapter(
+  argv: string[],
+  injectedClient?: AgentProducerClient,
+): Promise<{ receipt: LogoDesignerCliReceiptV1; exitCode: number }> {
+  let options: AdapterOptions;
+  try { options = parseArguments(argv); }
+  catch { return { receipt: buildPreflightReceipt("invalid", "invalid_arguments"), exitCode: 64 }; }
+
+  const client = injectedClient ?? new AgentProducerClient({ contextPath: options.contextPath, timeoutMs: options.timeoutMs });
+  let manifest: AgentDocumentManifest;
+  try { manifest = await client.manifest(); }
+  catch { return { receipt: buildPreflightReceipt("unavailable", "canvas_unavailable"), exitCode: 24 }; }
+
+  let transaction: AgentTransactionV1;
+  try { transaction = await buildLogoDesignerTransaction(options, manifest); }
+  catch { return { receipt: buildPreflightReceipt("invalid", "invalid_artifact"), exitCode: 64 }; }
+
+  let outcome: AgentProducerOutcome;
+  try { outcome = await client.submitAndWait(transaction); }
+  catch { outcome = { status: "unavailable", transactionId: transaction.transactionId, message: "Canvas is unavailable." }; }
+  try { return { receipt: buildLogoDesignerReceipt(transaction, outcome), exitCode: 0 }; }
+  catch {
+    return {
+      receipt: buildLogoDesignerReceipt(transaction, {
+        status: "conflict", transactionId: transaction.transactionId, message: "Transaction outcome identity is malformed.",
+      }),
+      exitCode: 0,
+    };
+  }
 }
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
-  submitLogoDesignerTransaction(parseArguments(process.argv.slice(2)))
-    .then((result) => process.stdout.write(`${JSON.stringify(result)}\n`))
-    .catch((error: unknown) => { process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`); process.exitCode = 1; });
+  const result = await runLogoDesignerAdapter(process.argv.slice(2));
+  process.stdout.write(`${JSON.stringify(result.receipt)}\n`);
+  process.exitCode = result.exitCode;
 }
