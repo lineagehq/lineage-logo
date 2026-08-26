@@ -22,6 +22,7 @@ import { CanvasLayoutController, isLayoutShortcutTarget, safeLayoutStorage } fro
 import { UnsavedDialogController } from "./ui/unsaved-dialog";
 import { createSvgPreview, eligiblePreviewTargetIds } from "./preview";
 import { renderInspectorSummaries } from "./ui/inspector";
+import { waitForWorkspaceAdvance } from "./workspace-refresh";
 
 const favicon = document.createElement("link");
 favicon.rel = "icon";
@@ -370,6 +371,7 @@ let agentReviewReturnFocus: HTMLElement | undefined;
 let agentTransportStarted = false;
 let agentTransportClosed = false;
 let agentManifestRetry: number | undefined;
+let workspaceRefreshGeneration = 0;
 const agentTerminalReconciliationInFlight = new Set<string>();
 const fileOpenCoordinator = new FileOpenCoordinator();
 const fileSwitchCoordinator = new FileOpenCoordinator();
@@ -723,6 +725,7 @@ function finishAgentReview(status: "accepted" | "reverted"): void {
   const returnFocus = agentReviewReturnFocus?.isConnected ? agentReviewReturnFocus : layerSearch;
   agentReviewReturnFocus = undefined;
   queueMicrotask(() => returnFocus.focus());
+  if (status === "accepted") refreshWorkspaceAfterAgentAccept();
 }
 
 agentPreviewToggle.addEventListener("click", () => setReviewPreview(!agentPreviewActive));
@@ -949,6 +952,7 @@ async function requestFileSwitch(file: SvgFileEntry, button: HTMLButtonElement):
     agentReviewPanel.focus();
     return;
   }
+  workspaceRefreshGeneration += 1;
   const request = fileSwitchCoordinator.begin();
   if (!dirty) {
     if (!fileSwitchCoordinator.canCommit(request, Boolean(agentSession?.pending))) return;
@@ -1021,6 +1025,7 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement): Promise<v
     },
     onEligibleError: (error) => setStatus(error instanceof Error ? error.message : "Unable to open SVG."),
     commit: (svg) => {
+      workspaceRefreshGeneration += 1;
       const storedRecovery = readPendingReviewRecovery();
       if (recovery && JSON.stringify(storedRecovery) !== JSON.stringify(recovery)) {
         throw new Error("Agent review recovery changed while the SVG was loading. Reload to reconcile the authoritative state.");
@@ -1449,6 +1454,7 @@ window.addEventListener("beforeunload", (event) => {
 });
 window.addEventListener("pagehide", () => {
   agentTransportClosed = true;
+  workspaceRefreshGeneration += 1;
   if (agentManifestRetry !== undefined) window.clearTimeout(agentManifestRetry);
   agentTransport.close();
 });
@@ -1498,27 +1504,52 @@ async function saveIteration(openSaved = true): Promise<boolean> {
   }
 }
 
+async function fetchWorkspace(): Promise<WorkspaceResponse> {
+  const response = await fetch("/api/workspace", { cache: "no-store" });
+  const workspace = await response.json() as WorkspaceResponse & { error?: string };
+  if (!response.ok) throw new Error(workspace.error ?? "Unable to load workspace.");
+  return workspace;
+}
+
+function commitWorkspaceSnapshot(workspace: WorkspaceResponse, selectedPath = currentFile?.path): void {
+  getElement("workspace-name").textContent = workspace.rootName;
+  getElement("file-count").textContent = String(workspace.files.length);
+  nextIterationPath = workspace.nextIterationPath;
+  saveButton.textContent = `Save ${nextIterationPath.split("/").at(-1)?.replace(/\.svg$/i, "")}`;
+  saveButton.title = `Create ${nextIterationPath}`;
+  const concepts = workspace.files.filter((candidate) => candidate.collection === "concepts");
+  const iterations = workspace.files.filter((candidate) => candidate.collection === "iterations");
+  fileButtons.clear();
+  fileList.replaceChildren(
+    createFileSection("Concepts", concepts),
+    createFileSection("Iterations", iterations),
+  );
+  const selected = selectedPath ? fileButtons.get(selectedPath) : undefined;
+  selected?.classList.add("selected");
+  selected?.setAttribute("aria-current", "true");
+}
+
+function refreshWorkspaceAfterAgentAccept(): void {
+  const baselineNextIterationPath = nextIterationPath;
+  const sourcePath = currentFile?.path;
+  const generation = ++workspaceRefreshGeneration;
+  void waitForWorkspaceAdvance(
+    baselineNextIterationPath,
+    () => fetchWorkspace().catch(() => undefined),
+  ).then((workspace) => {
+    if (!workspace || generation !== workspaceRefreshGeneration || currentFile?.path !== sourcePath) return;
+    commitWorkspaceSnapshot(workspace);
+  });
+}
+
 async function loadWorkspace(openPath?: string, authority?: FileSwitchAuthority): Promise<void> {
   try {
-    const response = await fetch("/api/workspace");
-    const workspace = await response.json() as WorkspaceResponse & { error?: string };
-    if (!response.ok) throw new Error(workspace.error ?? "Unable to load workspace.");
+    const workspace = await fetchWorkspace();
 
     let file: SvgFileEntry | undefined;
     let button: HTMLButtonElement | undefined;
     const commitWorkspace = () => {
-      getElement("workspace-name").textContent = workspace.rootName;
-      getElement("file-count").textContent = String(workspace.files.length);
-      nextIterationPath = workspace.nextIterationPath;
-      saveButton.textContent = `Save ${nextIterationPath.split("/").at(-1)?.replace(/\.svg$/i, "")}`;
-      saveButton.title = `Create ${nextIterationPath}`;
-      const concepts = workspace.files.filter((candidate) => candidate.collection === "concepts");
-      const iterations = workspace.files.filter((candidate) => candidate.collection === "iterations");
-      fileButtons.clear();
-      fileList.replaceChildren(
-        createFileSection("Concepts", concepts),
-        createFileSection("Iterations", iterations),
-      );
+      commitWorkspaceSnapshot(workspace, openPath ?? currentFile?.path);
       if (openPath) {
         file = workspace.files.find((candidate) => candidate.path === openPath);
         button = fileButtons.get(openPath);
