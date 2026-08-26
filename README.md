@@ -32,9 +32,11 @@ Delivery is ordered, bounded, timed out after 15 seconds, replay-aware through S
 event IDs, and deduplicated by transaction ID plus exact payload hash. A successful
 mutating delivery is staged through the detached evaluator without reloading or
 mutating the accepted canvas; review and acceptance happen in the Agent review panel.
-The newest same-origin SSE connection replaces any older upstream stream retained
-by the development proxy, matching the MVP's single authoritative open editor and
-preventing a stale response from claiming delivery.
+The first canvas tab to publish its manifest owns a short-lived editor lease. Its
+same-tab reconnect replaces any older upstream stream retained by the development
+proxy, but another tab receives an explicit conflict instead of silently taking over
+the manifest or proposal stream. Closing the owner releases the lease after the proxy
+stream settles, allowing another open tab to reconnect as the sole authoritative editor.
 
 When a mutating transaction arrives, the Agent review panel lists every impacted
 layer and identifies hidden or locked targets. Layer actions locate the impact in

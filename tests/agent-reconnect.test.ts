@@ -13,7 +13,8 @@ import type { AgentDocumentManifest, AgentTransactionV1 } from "../src/shared/ag
 
 const token = "reconnect-test-secret";
 const origin = "http://127.0.0.1:5173";
-const browserHeaders = { Origin: origin, "Content-Type": "application/json" };
+const editorId = "22222222-2222-4222-8222-222222222222";
+const browserHeaders = { Origin: origin, "Content-Type": "application/json", "X-Lineage-Editor-ID": editorId };
 const producerHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 const running: Array<{ server: Server; transport: AgentTransport }> = [];
 
@@ -39,6 +40,7 @@ function browserFetch(base: string): typeof fetch {
   return (async (input: RequestInfo | URL, init?: RequestInit) => {
     const headers = new Headers(init?.headers);
     headers.set("Origin", origin);
+    headers.set("X-Lineage-Editor-ID", editorId);
     return await fetch(new URL(String(input), base), { ...init, headers });
   }) as typeof fetch;
 }
@@ -84,7 +86,7 @@ async function submit(base: string, value: AgentTransactionV1) {
 
 async function openEvents(base: string) {
   const controller = new AbortController();
-  const response = await fetch(`${base}/api/agent/events`, { headers: { Origin: origin }, signal: controller.signal });
+  const response = await fetch(`${base}/api/agent/events`, { headers: { Origin: origin, "X-Lineage-Editor-ID": editorId }, signal: controller.signal });
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
   let buffered = "";

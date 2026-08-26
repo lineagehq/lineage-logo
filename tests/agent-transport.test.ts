@@ -72,7 +72,8 @@ function payload(id: string, name = "Name") {
 }
 
 const producerHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-const browserHeaders = { Origin: origin, "Content-Type": "application/json" };
+const editorId = "11111111-1111-4111-8111-111111111111";
+const browserHeaders = { Origin: origin, "Content-Type": "application/json", "X-Lineage-Editor-ID": editorId };
 
 async function submit(base: string, body: string, headers: HeadersInit = producerHeaders) {
   return await fetch(`${base}/api/agent/transactions`, { method: "POST", headers, body });
@@ -105,6 +106,7 @@ function browserFetch(base: string): typeof fetch {
   return (async (input: RequestInfo | URL, init?: RequestInit) => {
     const headers = new Headers(init?.headers);
     headers.set("Origin", origin);
+    headers.set("X-Lineage-Editor-ID", editorId);
     return await fetch(new URL(String(input), base), { ...init, headers });
   }) as typeof fetch;
 }
@@ -112,7 +114,7 @@ function browserFetch(base: string): typeof fetch {
 async function openEvents(base: string, lastEventId?: number) {
   const controller = new AbortController();
   const response = await fetch(`${base}/api/agent/events`, {
-    headers: { Origin: origin, ...(lastEventId === undefined ? {} : { "Last-Event-ID": String(lastEventId) }) },
+    headers: { Origin: origin, "X-Lineage-Editor-ID": editorId, ...(lastEventId === undefined ? {} : { "Last-Event-ID": String(lastEventId) }) },
     signal: controller.signal,
   });
   const reader = response.body!.getReader();
@@ -208,6 +210,36 @@ describe("real HTTP agent transport", () => {
     });
     expect(longRecovery.status).toBe(200);
     expect(await longRecovery.json()).toMatchObject({ transactionId: "unknown-long", status: "unknown" });
+  });
+
+  it("leases agent ownership to one editor tab until its stream disconnects", async () => {
+    const base = await harness({ editorReleaseMs: 10 });
+    const first = { sessionId: "first", sourcePath: "first.svg", revision: 0, layers: [] };
+    const second = { sessionId: "second", sourcePath: "second.svg", revision: 0, layers: [] };
+    expect((await fetch(`${base}/api/agent/document`, {
+      method: "POST", headers: browserHeaders, body: JSON.stringify(first),
+    })).status).toBe(200);
+    const secondHeaders = {
+      Origin: origin,
+      "Content-Type": "application/json",
+      "X-Lineage-Editor-ID": "33333333-3333-4333-8333-333333333333",
+    };
+    const conflict = await fetch(`${base}/api/agent/document`, {
+      method: "POST", headers: secondHeaders, body: JSON.stringify(second),
+    });
+    expect(conflict.status).toBe(409);
+    await expect(conflict.json()).resolves.toEqual({
+      error: "Another Lineage tab owns the agent connection. Close that tab before retrying here.",
+    });
+
+    const events = await openEvents(base);
+    events.controller.abort();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect((await fetch(`${base}/api/agent/document`, {
+      method: "POST", headers: secondHeaders, body: JSON.stringify(second),
+    })).status).toBe(200);
+    const documentResponse = await fetch(`${base}/api/agent/document`, { headers: { Authorization: `Bearer ${token}` } });
+    await expect(documentResponse.json()).resolves.toEqual(second);
   });
 
   it("delivers in order, acknowledges browser staging, deduplicates exact bytes, and rejects ID conflicts", async () => {
@@ -566,10 +598,10 @@ describe("real HTTP agent transport", () => {
     expect((await recovered.next()).data.transactionId).toBe("vite-pre-ack");
     const result = staged("vite-pre-ack");
     const acknowledged = await fetch(`${viteOrigin}/api/agent/transactions/vite-pre-ack/ack`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(result),
+      method: "POST", headers: { "Content-Type": "application/json", "X-Lineage-Editor-ID": editorId }, body: JSON.stringify(result),
     });
     expect((await acknowledged.json() as { status: string }).status).toBe("pending_review");
-    expect((await acknowledge(base, "vite-pre-ack", result, { Origin: viteOrigin, "Content-Type": "application/json" })).status).toBe(200);
+    expect((await acknowledge(base, "vite-pre-ack", result, { Origin: viteOrigin, "Content-Type": "application/json", "X-Lineage-Editor-ID": editorId })).status).toBe(200);
     recovered.controller.abort();
   });
 
