@@ -32,12 +32,13 @@ export class AgentSession {
     this.#onRevisionChange = onRevisionChange;
   }
 
-  open(sessionId: string, sourcePath: string): boolean {
+  open(sessionId: string, sourcePath: string, revision = 0): boolean {
     if (this.#pending) return false;
+    if (!sessionId || !sourcePath || !Number.isSafeInteger(revision) || revision < 0) return false;
     this.#editor.setAgentMutationBlocked(false);
     this.#sessionId = sessionId;
     this.#sourcePath = sourcePath;
-    this.#revision = 0;
+    this.#revision = revision;
     this.#pending = undefined;
     return true;
   }
@@ -108,6 +109,25 @@ export class AgentSession {
       const checkpoint = this.#editor.beginAgentAcceptance(candidate, pending.staged.selection);
       this.#editor.finalizeAgentAcceptance(checkpoint);
     } finally { this.#suppressDocumentChange = false; }
+    this.#pending = undefined;
+    this.#editor.setAgentMutationBlocked(false);
+    this.#onRevisionChange?.();
+    return true;
+  }
+
+  recoverAcceptedArtifact(transaction: AgentTransactionV1, candidate: SVGSVGElement): boolean {
+    if (transaction.document.sessionId !== this.#sessionId
+      || transaction.document.sourcePath !== this.#sourcePath
+      || transaction.document.baseRevision !== this.#revision) return false;
+    const staged = this.stage(transaction);
+    const pending = this.#pending;
+    if (staged?.result.status !== "staged" || !pending || pending.transaction.transactionId !== transaction.transactionId) return false;
+    this.#suppressDocumentChange = true;
+    try {
+      const checkpoint = this.#editor.beginAgentAcceptance(candidate, pending.staged.selection);
+      this.#editor.finalizeAgentAcceptance(checkpoint);
+    } finally { this.#suppressDocumentChange = false; }
+    this.#revision += 1;
     this.#pending = undefined;
     this.#editor.setAgentMutationBlocked(false);
     this.#onRevisionChange?.();
