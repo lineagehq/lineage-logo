@@ -12,6 +12,7 @@ export interface AgentCanvasTransportOptions {
   fetch?: typeof fetch;
   connect?: boolean;
   streamTimeoutMs?: number;
+  editorId?: string;
 }
 
 export interface AgentTerminalState {
@@ -32,6 +33,10 @@ export type AgentRecoveryState =
 
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const SERVER_INSTANCE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const EDITOR_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+// Module evaluation is scoped to one browser tab. Multiple transport helpers
+// in that tab therefore share one lease, while a second tab receives a fresh ID.
+const DEFAULT_EDITOR_ID = crypto.randomUUID();
 
 function exactJson(data: string): Record<string, unknown> | undefined {
   try {
@@ -126,6 +131,7 @@ function decisionState(value: unknown, transactionId: string): (AgentTransaction
 
 export class AgentCanvasTransport {
   readonly #options: AgentCanvasTransportOptions;
+  readonly #editorId: string;
   #closed = false;
   #connectionAbort?: AbortController;
   #lastEventId = 0;
@@ -134,6 +140,8 @@ export class AgentCanvasTransport {
 
   constructor(options: AgentCanvasTransportOptions) {
     this.#options = options;
+    this.#editorId = options.editorId ?? DEFAULT_EDITOR_ID;
+    if (!EDITOR_ID.test(this.#editorId)) throw new Error("Agent editor ID is invalid.");
     if (options.connect !== false) void this.#connect();
   }
 
@@ -145,10 +153,13 @@ export class AgentCanvasTransport {
   async publishDocument(manifest: AgentDocumentManifest): Promise<void> {
     const response = await (this.#options.fetch ?? fetch)("/api/agent/document", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.#headers({ "Content-Type": "application/json" }),
       body: JSON.stringify(manifest),
     });
-    if (!response.ok) throw new Error(`Document synchronization failed (${response.status}).`);
+    if (!response.ok) {
+      const value = await response.json().catch(() => undefined) as { error?: unknown } | undefined;
+      throw new Error(typeof value?.error === "string" ? value.error : `Document synchronization failed (${response.status}).`);
+    }
   }
 
   async recover(identity: AgentRecoveryIdentity): Promise<AgentRecoveryState> {
@@ -160,7 +171,7 @@ export class AgentCanvasTransport {
     };
     const response = await (this.#options.fetch ?? fetch)("/api/agent/recovery", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.#headers({ "Content-Type": "application/json" }),
       body: JSON.stringify(requestIdentity),
     });
     const value = await response.json().catch(() => undefined) as unknown;
@@ -233,7 +244,7 @@ export class AgentCanvasTransport {
       try {
         const response = await (this.#options.fetch ?? fetch)(`/api/agent/transactions/${encodeURIComponent(transactionId)}/ack`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: this.#headers({ "Content-Type": "application/json" }),
           body: JSON.stringify(decision),
         });
         const value = await response.json().catch(() => undefined) as unknown;
@@ -262,7 +273,7 @@ export class AgentCanvasTransport {
         const connectionAbort = new AbortController();
         this.#connectionAbort = connectionAbort;
         const response = await (this.#options.fetch ?? fetch)("/api/agent/events", {
-          headers: this.#lastEventId ? { "Last-Event-ID": String(this.#lastEventId) } : undefined,
+          headers: this.#headers(this.#lastEventId ? { "Last-Event-ID": String(this.#lastEventId) } : undefined),
           signal: connectionAbort.signal,
         });
         if (!response.ok || !response.body) throw new Error(`Agent event stream failed (${response.status}).`);
@@ -346,7 +357,7 @@ export class AgentCanvasTransport {
     this.#received.set(transaction.transactionId, staged);
     const response = await (this.#options.fetch ?? fetch)(`/api/agent/transactions/${encodeURIComponent(transaction.transactionId)}/ack`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.#headers({ "Content-Type": "application/json" }),
       body: JSON.stringify(staged.result),
     });
     if (!response.ok) throw new Error(`Agent acknowledgement failed (${response.status}).`);
@@ -357,5 +368,9 @@ export class AgentCanvasTransport {
     this.#lastEventId = Math.max(this.#lastEventId, eventId);
     this.#received.delete(transaction.transactionId);
     this.#options.onStateChange?.("connected", `Agent transaction ${state.transactionId}: ${state.status}`);
+  }
+
+  #headers(extra: Record<string, string> = {}): Record<string, string> {
+    return { "X-Lineage-Editor-ID": this.#editorId, ...extra };
   }
 }

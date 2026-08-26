@@ -35,7 +35,11 @@ export interface AgentTransportOptions {
   heartbeatMs?: number;
   maxRegistry?: number;
   maxBacklog?: number;
+  editorReleaseMs?: number;
 }
+
+const EDITOR_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const EDITOR_ID_HEADER = "x-lineage-editor-id";
 
 export class AgentTransport {
   readonly #token: Buffer;
@@ -45,11 +49,14 @@ export class AgentTransport {
   readonly #heartbeatMs: number;
   readonly #maxRegistry: number;
   readonly #maxBacklog: number;
+  readonly #editorReleaseMs: number;
   readonly #registry = new Map<string, RegistryEntry>();
   readonly #events: EventRecord[] = [];
   readonly #clients = new Set<ServerResponse>();
   readonly #serverInstanceId = randomUUID();
   #document?: AgentDocumentManifest;
+  #editorId?: string;
+  #editorReleaseTimer?: ReturnType<typeof setTimeout>;
   #nextEventId = 1;
 
   constructor(options: AgentTransportOptions) {
@@ -63,6 +70,7 @@ export class AgentTransport {
     this.#heartbeatMs = options.heartbeatMs ?? 2_000;
     this.#maxRegistry = options.maxRegistry ?? 500;
     this.#maxBacklog = options.maxBacklog ?? 200;
+    this.#editorReleaseMs = options.editorReleaseMs ?? 500;
   }
 
   get size(): number { return this.#registry.size; }
@@ -82,6 +90,7 @@ export class AgentTransport {
     }
     if (request.method === "POST" && url.pathname === "/api/agent/document") {
       requireOrigin(request, this.#editorOrigin);
+      this.#claimEditor(request);
       const value = await readJsonBody(request, 1024 * 1024) as AgentDocumentManifest;
       if (!value || typeof value.sessionId !== "string" || typeof value.sourcePath !== "string" || !Number.isSafeInteger(value.revision) || !Array.isArray(value.layers)) {
         throw new HttpError(400, "Document manifest is invalid.");
@@ -92,12 +101,14 @@ export class AgentTransport {
     }
     if (request.method === "POST" && url.pathname === "/api/agent/recovery") {
       requireOrigin(request, this.#editorOrigin);
+      this.#claimEditor(request);
       await this.#recover(request, response);
       return true;
     }
     if (request.method === "GET" && url.pathname === "/api/agent/events") {
       requireOrigin(request, this.#editorOrigin);
-      this.#connect(request, response);
+      const editorId = this.#claimEditor(request);
+      this.#connect(request, response, editorId);
       return true;
     }
     const match = /^\/api\/agent\/transactions\/([^/]+)(?:\/ack)?$/.exec(url.pathname);
@@ -110,6 +121,7 @@ export class AgentTransport {
     }
     if (match && request.method === "POST" && url.pathname.endsWith("/ack")) {
       requireOrigin(request, this.#editorOrigin);
+      this.#claimEditor(request);
       await this.#acknowledge(decodeURIComponent(match[1]), request, response);
       return true;
     }
@@ -117,9 +129,24 @@ export class AgentTransport {
   }
 
   close(): void {
+    if (this.#editorReleaseTimer) clearTimeout(this.#editorReleaseTimer);
     for (const entry of this.#registry.values()) if (entry.timer) clearTimeout(entry.timer);
     for (const client of this.#clients) client.end();
     this.#clients.clear();
+  }
+
+  #claimEditor(request: IncomingMessage): string {
+    const editorId = request.headers[EDITOR_ID_HEADER];
+    if (typeof editorId !== "string" || !EDITOR_ID.test(editorId)) throw new HttpError(400, "Editor tab identity is invalid.");
+    if (this.#editorId && this.#editorId !== editorId) {
+      throw new HttpError(409, "Another Lineage tab owns the agent connection. Close that tab before retrying here.");
+    }
+    this.#editorId = editorId;
+    if (this.#editorReleaseTimer) {
+      clearTimeout(this.#editorReleaseTimer);
+      this.#editorReleaseTimer = undefined;
+    }
+    return editorId;
   }
 
   #authenticate(request: IncomingMessage): void {
@@ -187,12 +214,12 @@ export class AgentTransport {
     sendJson(response, 202, entry.state);
   }
 
-  #connect(request: IncomingMessage, response: ServerResponse): void {
+  #connect(request: IncomingMessage, response: ServerResponse, editorId: string): void {
     // The local MVP has one authoritative open editor. Development proxies can
     // retain an upstream SSE response briefly after its browser closes, so a
-    // newer stream must replace older subscribers instead of letting a stale
-    // response claim the one permitted transaction delivery.
-    // A newer authoritative editor connection owns every frame that the old
+    // newer same-tab stream must replace older subscribers instead of letting a
+    // stale response claim the one permitted transaction delivery.
+    // A newer same-tab connection owns every frame that the old
     // response had not acknowledged. Requeue before ending old responses;
     // their asynchronous close events may run after this client is installed.
     for (const entry of this.#registry.values()) {
@@ -241,6 +268,16 @@ export class AgentTransport {
             }
           }, 250);
         }
+      }
+      if (this.#clients.size === 0 && this.#editorId === editorId) {
+        if (this.#editorReleaseTimer) clearTimeout(this.#editorReleaseTimer);
+        this.#editorReleaseTimer = setTimeout(() => {
+          if (this.#clients.size === 0 && this.#editorId === editorId) {
+            this.#editorId = undefined;
+            this.#document = undefined;
+          }
+          this.#editorReleaseTimer = undefined;
+        }, this.#editorReleaseMs);
       }
     };
     // A proxy may finish its upstream request object as soon as the GET headers

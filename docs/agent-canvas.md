@@ -113,6 +113,12 @@ review blocks document switching. Each stream begins with a strict, secret-free 
 server-instance event. Ordinary reconnects retain that identity and replay cursor;
 an inactivity watchdog crosses proxy-held dead streams before reconnecting. Server
 replacement resets the cursor and clears only a detached matching review. Strict
+browser requests also carry a tab-scoped editor identity. The first published manifest
+leases the local agent boundary to that tab; same-tab reloads and stream reconnects keep
+the lease, while a second tab receives an explicit conflict and cannot replace the
+authoritative manifest. Once the owner's last stream disconnects, the lease and manifest
+are released after a brief proxy-settling delay so another tab can connect cleanly.
+Strict
 terminal events contain only transaction ID plus `accepted`, `reverted`, `rejected`, or `stale`,
 and reconcile only that exact pending transaction. If replacement loses the authority
 for a provisional acceptance, the canvas stays locked and labels an explicit “Restore
