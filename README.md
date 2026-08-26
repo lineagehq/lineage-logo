@@ -79,6 +79,9 @@ the thin local adapter. See [docs/agent-canvas.md](docs/agent-canvas.md) for the
 contract and authenticated invocation. The adapter extracts a stable SVG group and its
 referenced resources, then uses only the manifest and transaction endpoints; it never
 imports editor internals or bypasses review.
+After an accepted producer handoff persists its numbered continuation, the open
+canvas refreshes the workspace list and next-save target without reopening or
+changing the current document, history, selection, or dirty state.
 
 ## MVP
 
