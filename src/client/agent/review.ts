@@ -61,7 +61,7 @@ export function buildPendingReview(
     status: "pending",
     transactionId: transaction.transactionId,
     producer: transaction.producer.name,
-    summary: `${transaction.producer.name} proposed ${mutationCount} change${mutationCount === 1 ? "" : "s"} affecting ${layers.length} layer${layers.length === 1 ? "" : "s"}.`,
+    summary: `${transaction.producer.name} proposed ${mutationCount} change${mutationCount === 1 ? "" : "s"} affecting ${layers.length} layer${layers.length === 1 ? "" : "s"}. Accept or revert before editing.`,
     layers,
   };
 }

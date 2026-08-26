@@ -1,6 +1,8 @@
+import { registerWindow } from "@svgdotjs/svg.js";
 import { Window } from "happy-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  applySvgTextEdit,
   alignmentAvailability,
   alignmentOffsets,
   findSelectableByKeys,
@@ -19,9 +21,11 @@ import {
   reorderSelection,
   serializeSvg,
   setLayerHidden,
+  SvgEditor,
   svgPaintState,
   ungroupAvailability,
   ungroupSelection,
+  validateSvgTextEdit,
   visibleHistoryAvailability,
 } from "../src/client/canvas/editor";
 
@@ -150,6 +154,393 @@ describe("validated SVG paint", () => {
     expect(svgPaintState("url(#paint)")).toBe("Paint server / gradient");
     expect(svgPaintState("#aabbcc")).toBe("Solid color");
     expect(svgPaintState("rebeccapurple")).toBe("CSS paint value");
+  });
+});
+
+describe("bounded SVG text editing", () => {
+  function textNode(): { root: SVGSVGElement; text: SVGTextElement } {
+    const window = new Window();
+    window.document.body.innerHTML = '<svg><text id="wordmark" font-size="24" font-weight="600" font-family="Inter, sans-serif" text-anchor="start" letter-spacing="1">BleepThat</text></svg>';
+    return {
+      root: window.document.querySelector("svg") as unknown as SVGSVGElement,
+      text: window.document.querySelector("text") as unknown as SVGTextElement,
+    };
+  }
+
+  it("applies every supported property as plain text or one bounded presentation attribute", () => {
+    const { root, text } = textNode();
+    const edits = [
+      { property: "content", value: "Bleep That" },
+      { property: "font-size", value: "32" },
+      { property: "font-weight", value: "bold" },
+      { property: "font-family", value: "Avenir Next, sans-serif" },
+      { property: "text-anchor", value: "middle" },
+      { property: "letter-spacing", value: "-0.75" },
+    ] as const;
+    edits.forEach((edit) => expect(applySvgTextEdit(text, edit)).toEqual({ changed: true }));
+    expect(text.textContent).toBe("Bleep That");
+    expect(text.getAttribute("font-size")).toBe("32");
+    expect(text.getAttribute("font-weight")).toBe("bold");
+    expect(text.getAttribute("font-family")).toBe("Avenir Next, sans-serif");
+    expect(text.getAttribute("text-anchor")).toBe("middle");
+    expect(text.getAttribute("letter-spacing")).toBe("-0.75");
+    const clean = serializeSvg(root, true);
+    expect(clean).not.toContain("data-lineage-");
+    expect(clean).toContain("Bleep That");
+  });
+
+  it("writes through inline and important stylesheet typography instead of adding ineffective attributes", () => {
+    const window = new Window();
+    const root = window.document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const style = window.document.createElementNS("http://www.w3.org/2000/svg", "style");
+    style.textContent = "#styled { font-weight: 700 !important }";
+    const inlineNode = window.document.createElementNS("http://www.w3.org/2000/svg", "text");
+    inlineNode.id = "inline";
+    inlineNode.setAttribute("style", "font-size:40px");
+    const styledNode = window.document.createElementNS("http://www.w3.org/2000/svg", "text");
+    styledNode.id = "styled";
+    root.append(style, inlineNode, styledNode);
+    window.document.body.append(root);
+    const inline = inlineNode as unknown as SVGTextElement;
+    const styled = styledNode as unknown as SVGTextElement;
+    expect(applySvgTextEdit(inline, { property: "font-size", value: "20" })).toEqual({ changed: true });
+    expect(inline.getAttribute("font-size")).toBeNull();
+    expect(inline.style.getPropertyValue("font-size")).toBe("20px");
+    expect(applySvgTextEdit(styled, { property: "font-weight", value: "400" })).toEqual({ changed: true });
+    expect(styled.getAttribute("font-weight")).toBeNull();
+    expect(styled.style.getPropertyValue("font-weight")).toBe("400");
+    expect(styled.style.getPropertyPriority("font-weight")).toBe("important");
+  });
+
+  it.each([
+    ["content", "<tspan onclick=alert(1)>bad</tspan>"],
+    ["font-size", "1001"],
+    ["font-weight", "calc(1)"],
+    ["font-family", "url(https://example.com/font.woff)"],
+    ["font-family", "Inter; fill:red"],
+    ["text-anchor", "url(#mark)"],
+    ["letter-spacing", "calc(2px)"],
+  ] as const)("rejects unsafe or unbounded %s input without changing bytes", (property, value) => {
+    const { root, text } = textNode();
+    const before = root.outerHTML;
+    expect(applySvgTextEdit(text, { property, value }).error).toBeTruthy();
+    expect(root.outerHTML).toBe(before);
+  });
+
+  it("treats normalized no-ops as unchanged and round-trips edited text byte-equivalently", () => {
+    const { root, text } = textNode();
+    const before = serializeSvg(root, true);
+    expect(applySvgTextEdit(text, { property: "content", value: "BleepThat" })).toEqual({ changed: false });
+    expect(applySvgTextEdit(text, { property: "font-size", value: "24.0000" })).toEqual({ changed: false });
+    expect(serializeSvg(root, true)).toBe(before);
+    expect(applySvgTextEdit(text, { property: "content", value: "Bleep That" })).toEqual({ changed: true });
+    const saved = serializeSvg(root, true);
+    const reopened = new Window();
+    reopened.document.body.innerHTML = saved;
+    expect((reopened.document.querySelector("svg") as unknown as SVGSVGElement).outerHTML).toBe(saved);
+    expect(reopened.document.querySelector("text")?.textContent).toBe("Bleep That");
+  });
+
+  it("rejects content changes for structured text without touching any child while allowing typography", () => {
+    const window = new Window();
+    window.document.body.innerHTML = `<svg><text id="structured"><title>Accessible</title>Lead<!--keep--><tspan dx="2">Middle</tspan><textPath href="#curve">Tail</textPath></text></svg>`;
+    const text = window.document.querySelector("text") as unknown as SVGTextElement;
+    const before = text.outerHTML;
+    const childrenBefore = text.innerHTML;
+    expect(applySvgTextEdit(text, { property: "content", value: "Replacement" })).toMatchObject({ changed: false, error: expect.any(String) });
+    expect(text.outerHTML).toBe(before);
+    expect(applySvgTextEdit(text, { property: "font-size", value: "32" })).toEqual({ changed: true });
+    expect(text.innerHTML).toBe(childrenBefore);
+  });
+
+  it("preserves raw bytes for every normalized-equivalent typography edit", () => {
+    const window = new Window();
+    window.document.body.innerHTML = '<svg><text font-size="024.0000" font-weight="0600" font-family="\'Avenir Next\' , sans-serif" text-anchor="middle" letter-spacing="01.5000">Text</text></svg>';
+    const root = window.document.querySelector("svg") as unknown as SVGSVGElement;
+    const text = window.document.querySelector("text") as unknown as SVGTextElement;
+    const before = root.outerHTML;
+    for (const edit of [
+      { property: "font-size", value: "24" },
+      { property: "font-weight", value: "600" },
+      { property: "font-family", value: "Avenir Next,sans-serif" },
+      { property: "text-anchor", value: " middle " },
+      { property: "letter-spacing", value: "1.5" },
+    ] as const) expect(applySvgTextEdit(text, edit)).toEqual({ changed: false });
+    expect(root.outerHTML).toBe(before);
+  });
+
+  it("treats case-insensitive CSS keywords as exact-byte no-ops", () => {
+    const window = new Window();
+    window.document.body.innerHTML = '<svg><text font-weight="BOLD" text-anchor="MIDDLE" letter-spacing="NORMAL">Text</text></svg>';
+    const root = window.document.querySelector("svg") as unknown as SVGSVGElement;
+    const text = window.document.querySelector("text") as unknown as SVGTextElement;
+    const before = root.outerHTML;
+    for (const edit of [
+      { property: "font-weight", value: "bold" },
+      { property: "text-anchor", value: "middle" },
+      { property: "letter-spacing", value: "normal" },
+    ] as const) expect(applySvgTextEdit(text, edit)).toEqual({ changed: false });
+    expect(root.outerHTML).toBe(before);
+  });
+
+  it.each([
+    ["A\\76 enir/**/ Next, sans-serif", "Avenir Next,sans-serif"],
+    ["Avenir Next, sans-serif", "A\\76 enir/**/ Next,sans-serif"],
+    ["'Avenir Next'/**/, SYSTEM-UI", "\"Avenir Next\",system-ui"],
+  ])("treats browser-equivalent escaped/commented family %s to %s as an exact-byte no-op", (current, next) => {
+    const window = new Window();
+    const root = window.document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const text = window.document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.setAttribute("font-family", current);
+    text.textContent = "Text";
+    root.append(text);
+    const before = root.outerHTML;
+    expect(applySvgTextEdit(text as unknown as SVGTextElement, { property: "font-family", value: next })).toEqual({ changed: false });
+    expect(root.outerHTML).toBe(before);
+  });
+
+  it("treats every signed and exponent numeric spelling as an exact-byte no-op", () => {
+    const window = new Window();
+    window.document.body.innerHTML = '<svg><text font-size="+9.6e1" font-weight="+6e2" letter-spacing="-3e0">Text</text></svg>';
+    const root = window.document.querySelector("svg") as unknown as SVGSVGElement;
+    const text = window.document.querySelector("text") as unknown as SVGTextElement;
+    const before = root.outerHTML;
+    for (const edit of [
+      { property: "font-size", value: "96.000" },
+      { property: "font-weight", value: "600" },
+      { property: "letter-spacing", value: "-03.000" },
+    ] as const) expect(applySvgTextEdit(text, edit)).toEqual({ changed: false });
+    expect(root.outerHTML).toBe(before);
+  });
+
+  it.each([
+    ["bold", "700"],
+    ["BOLD", "+7e2"],
+    ["700", "bold"],
+    ["+7e2", "BOLD"],
+    ["normal", "400"],
+    ["NORMAL", "+4e2"],
+    ["400", "normal"],
+    ["+4e2", "NORMAL"],
+  ])("treats font-weight alias %s to %s as an exact-byte no-op", (current, next) => {
+    const window = new Window();
+    window.document.body.innerHTML = `<svg><text font-weight="${current}">Text</text></svg>`;
+    const root = window.document.querySelector("svg") as unknown as SVGSVGElement;
+    const text = window.document.querySelector("text") as unknown as SVGTextElement;
+    const before = root.outerHTML;
+    expect(applySvgTextEdit(text, { property: "font-weight", value: next })).toEqual({ changed: false });
+    expect(root.outerHTML).toBe(before);
+  });
+
+  it("preserves bytes, history, dirty state, selection, and drill scope through real no-op control commits", () => {
+    const window = new Window({ url: "http://localhost/" });
+    for (const name of [
+      "window", "document", "DOMParser", "Event", "CustomEvent", "KeyboardEvent", "HTMLElement", "HTMLInputElement",
+      "HTMLTextAreaElement", "HTMLSelectElement", "SVGElement", "SVGGraphicsElement", "SVGSVGElement", "Node", "Element", "CSS",
+    ] as const) vi.stubGlobal(name, window[name as keyof Window]);
+    registerWindow(window as never, window.document as never);
+    try {
+      const artboard = window.document.createElement("div");
+      artboard.innerHTML = '<svg><g id="wordmark"><text id="primary" font-size="+9.6e1" font-weight="+6e2" font-family="A\\72 ial/**/, sans-serif" text-anchor="MIDDLE" letter-spacing="-3e0">BLEEPED</text><text id="bold-alias" font-weight="BOLD">Bold</text><text id="normal-alias" font-weight="normal">Normal</text></g></svg>';
+      window.document.body.append(artboard);
+      const names = [
+        "alignBottomButton", "alignCenterButton", "alignLeftButton", "alignmentReason", "alignMiddleButton", "alignRightButton",
+        "alignTopButton", "deleteButton", "duplicateButton", "fill", "fillError", "fillPicker", "fillState", "groupButton",
+        "hierarchyReason", "hideButton", "lockButton", "name", "nameClearButton", "opacity", "positionX", "positionY",
+        "reorderEarlierButton", "reorderLaterButton", "rotation", "scale", "selectionEmpty", "selectionName", "selectionPanel",
+        "stroke", "strokeError", "strokePicker", "strokeState", "strokeWidth", "ungroupButton",
+      ];
+      const controls = Object.fromEntries(names.map((name) => [name, window.document.createElement("button")])) as unknown as Record<string, unknown>;
+      for (const name of ["textContent", "textFamily", "textLetterSpacing", "textSize", "textWeight"]) controls[name] = window.document.createElement("input");
+      controls.textAnchor = window.document.createElement("select");
+      for (const value of ["start", "middle", "end"]) {
+        const option = window.document.createElement("option"); option.value = value;
+        (controls.textAnchor as unknown as HTMLSelectElement).append(option as unknown as Node);
+      }
+      controls.textError = window.document.createElement("small");
+      let documentChanges = 0;
+      let dirtyChanges = 0;
+      const dirtyStates: boolean[] = [];
+      let historyChanges = 0;
+      const editor = new SvgEditor(artboard as unknown as HTMLElement, controls as never, {
+        onDocumentChange: () => { documentChanges += 1; },
+        onDirtyChange: (value) => { dirtyChanges += 1; dirtyStates.push(value); },
+        onHistoryChange: () => { historyChanges += 1; },
+        onSelectionChange: () => undefined,
+        onSelectionContextChange: () => undefined,
+        onStatus: () => undefined,
+      });
+      const root = artboard.querySelector("svg") as unknown as SVGSVGElement;
+      const text = artboard.querySelector("text") as unknown as SVGGraphicsElement;
+      editor.load(root);
+      editor.selectNode(text);
+      const before = editor.serializeClean();
+      const scope = editor.selectionContext.activeScope;
+      const historyBaseline = historyChanges;
+      for (const [name, value] of [
+        ["textContent", "BLEEPED"], ["textSize", "96"], ["textWeight", "600"],
+        ["textFamily", "Arial,sans-serif"], ["textAnchor", "middle"], ["textLetterSpacing", "-03.000"],
+      ] as const) {
+        const control = controls[name] as HTMLInputElement | HTMLSelectElement;
+        control.value = value;
+        control.dispatchEvent(new window.Event("change") as unknown as Event);
+      }
+      for (const [id, value] of [["bold-alias", "700"], ["normal-alias", "+4e2"]] as const) {
+        const aliasNode = artboard.querySelector(`#${id}`) as unknown as SVGGraphicsElement;
+        editor.selectNode(aliasNode);
+        const aliasScope = editor.selectionContext.activeScope;
+        (controls.textWeight as HTMLInputElement).value = value;
+        (controls.textWeight as HTMLInputElement).dispatchEvent(new window.Event("change") as unknown as Event);
+        expect(editor.selectedNode).toBe(aliasNode);
+        expect(editor.selectionContext.activeScope).toBe(aliasScope);
+      }
+      editor.selectNode(text);
+      expect(editor.serializeClean()).toBe(before);
+      expect({ documentChanges, dirtyChanges, historyChanges }).toEqual({ documentChanges: 0, dirtyChanges: 0, historyChanges: historyBaseline });
+      expect(editor.selectedNode).toBe(text);
+      expect(editor.selectionContext.activeScope).toBe(scope);
+      expect(editor.selectionContext.canDrillBack).toBe(true);
+
+      text.textContent = "Unsaved manual edit";
+      editor.load(root, before);
+      expect(dirtyChanges).toBe(1);
+      expect(editor.serializeClean()).not.toBe(before);
+      editor.reset();
+      expect(editor.serializeClean()).toBe(before);
+      expect(dirtyChanges).toBe(3);
+      expect(dirtyStates.at(-1)).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it.each([
+    '<text><title>Accessible</title>Text</text>',
+    '<text>Lead<tspan dx="2">Middle</tspan></text>',
+    '<text><textPath href="#curve">Path text</textPath></text>',
+    '<text>Lead<!--keep-->Tail</text>',
+    '<text>Lead<tspan>Middle</tspan>Tail</text>',
+  ])("rejects structured content without mutating markup: %s", (markup) => {
+    const window = new Window();
+    window.document.body.innerHTML = `<svg>${markup}</svg>`;
+    const text = window.document.querySelector("text") as unknown as SVGTextElement;
+    const before = text.outerHTML;
+    const childrenBefore = text.innerHTML;
+    expect(applySvgTextEdit(text, { property: "content", value: "Replacement" })).toMatchObject({ changed: false, error: expect.any(String) });
+    expect(text.outerHTML).toBe(before);
+    expect(applySvgTextEdit(text, { property: "font-size", value: "32" })).toEqual({ changed: true });
+    expect(text.innerHTML).toBe(childrenBefore);
+  });
+
+  it("does not let a family edit activate imported or URL-backed fonts", () => {
+    for (const css of [
+      '@font-face { font-family: "Remote Face"; src: local("Fallback"), url(https://example.test/font.woff2) }',
+      '@/**/font-face /* formatting */ { font-family /* name */ : "Remote Face"; src /* source */ : local("Fallback"), url /* gap */ (https://example.test/font.woff2) }',
+      '@import url("https://example.test/fonts.css");',
+      '@/**/import url("https://example.test/fonts.css");',
+    ]) {
+      const window = new Window();
+      const svgElement = window.document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const style = window.document.createElementNS("http://www.w3.org/2000/svg", "style");
+      style.textContent = css;
+      const textElement = window.document.createElementNS("http://www.w3.org/2000/svg", "text");
+      textElement.setAttribute("font-family", "sans-serif");
+      textElement.textContent = "Text";
+      svgElement.append(style, textElement);
+      window.document.body.append(svgElement);
+      const root = svgElement as unknown as SVGSVGElement;
+      const text = textElement as unknown as SVGTextElement;
+      const before = root.outerHTML;
+      expect(applySvgTextEdit(text, { property: "font-family", value: "Remote Face, sans-serif" })).toMatchObject({ changed: false, error: expect.any(String) });
+      expect(root.outerHTML).toBe(before);
+    }
+    const { text } = textNode();
+    expect(applySvgTextEdit(text, { property: "font-family", value: "Avenir Next, system-ui" })).toEqual({ changed: true });
+  });
+
+  it("decodes CSS escapes before checking external font family, source, and import activation", () => {
+    for (const css of [
+      '@\\66 ont-face { font-\\66 amily: "R\\65 mote Face"; s\\72 c: local("Fallback"), u\\72l(https://example.test/font.woff2) }',
+      '@\\69 mport u\\72l("https://example.test/fonts.css");',
+    ]) {
+      const window = new Window();
+      const root = window.document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const style = window.document.createElementNS("http://www.w3.org/2000/svg", "style");
+      style.textContent = css;
+      const text = window.document.createElementNS("http://www.w3.org/2000/svg", "text");
+      text.setAttribute("font-family", "sans-serif");
+      text.textContent = "Text";
+      root.append(style, text);
+      window.document.body.append(root);
+      const before = root.outerHTML;
+      expect(applySvgTextEdit(text as unknown as SVGTextElement, { property: "font-family", value: "Remote Face, sans-serif" }))
+        .toMatchObject({ changed: false, error: expect.any(String) });
+      expect(root.outerHTML).toBe(before);
+    }
+  });
+
+  it("rejects URL-backed font faces whose valid strings contain escaped braces", () => {
+    const window = new Window();
+    const root = window.document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const style = window.document.createElementNS("http://www.w3.org/2000/svg", "style");
+    style.textContent = '@font-face { font-family: "Remote Face"; src: local("\\7d "), url("https://example.test/font.woff2") }';
+    const text = window.document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.setAttribute("font-family", "sans-serif");
+    root.append(style, text);
+    window.document.body.append(root);
+    const before = root.outerHTML;
+    expect(applySvgTextEdit(text as unknown as SVGTextElement, { property: "font-family", value: "Remote Face, sans-serif" }))
+      .toMatchObject({ changed: false, error: expect.any(String) });
+    expect(root.outerHTML).toBe(before);
+  });
+
+  it("allows local-only font-face declarations and safe local family lists", () => {
+    const window = new Window();
+    const root = window.document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const style = window.document.createElementNS("http://www.w3.org/2000/svg", "style");
+    style.textContent = '@font-face { font-family: "Local Face"; src: local("Local Face") }';
+    const text = window.document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.setAttribute("font-family", "sans-serif");
+    text.textContent = "Text";
+    root.append(style, text);
+    window.document.body.append(root);
+    expect(applySvgTextEdit(text as unknown as SVGTextElement, { property: "font-family", value: "Local Face, system-ui" })).toEqual({ changed: true });
+  });
+
+  it("does not confuse unrelated local paint references with a local-only font face", () => {
+    const window = new Window();
+    const root = window.document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const style = window.document.createElementNS("http://www.w3.org/2000/svg", "style");
+    style.textContent = '@font-face { font-family: "Local Face"; src: local("Local Face") } #shape { fill:url(#gradient) }';
+    const text = window.document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.setAttribute("font-family", "sans-serif");
+    root.append(style, text);
+    window.document.body.append(root);
+    expect(applySvgTextEdit(text as unknown as SVGTextElement, { property: "font-family", value: "Local Face, system-ui" }))
+      .toEqual({ changed: true });
+  });
+
+  it("rejects URL-backed font faces nested in grouping rules", () => {
+    const window = new Window();
+    const root = window.document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const style = window.document.createElementNS("http://www.w3.org/2000/svg", "style");
+    style.textContent = '@media all { @font-face { font-family: "Remote Face"; src: url("https://example.test/font.woff2") } }';
+    const text = window.document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.setAttribute("font-family", "sans-serif");
+    root.append(style, text);
+    window.document.body.append(root);
+    const before = root.outerHTML;
+    expect(applySvgTextEdit(text as unknown as SVGTextElement, { property: "font-family", value: "Remote Face, sans-serif" }))
+      .toMatchObject({ changed: false, error: expect.any(String) });
+    expect(root.outerHTML).toBe(before);
+  });
+
+  it("validates bounded numeric and local-family forms without accepting CSS or external resources", () => {
+    expect(validateSvgTextEdit({ property: "font-size", value: "0.25" })).toMatchObject({ valid: true, normalized: "0.25" });
+    expect(validateSvgTextEdit({ property: "font-weight", value: "1000" })).toMatchObject({ valid: true });
+    expect(validateSvgTextEdit({ property: "letter-spacing", value: "normal" })).toMatchObject({ valid: true });
+    expect(validateSvgTextEdit({ property: "font-family", value: "Inter, system-ui" })).toMatchObject({ valid: true });
+    expect(validateSvgTextEdit({ property: "font-size", value: "0.00001" })).toMatchObject({ valid: false });
   });
 });
 

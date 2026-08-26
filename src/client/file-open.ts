@@ -18,6 +18,22 @@ export class FileOpenCoordinator {
   }
 }
 
+export interface FileSwitchAuthority {
+  coordinator: FileOpenCoordinator;
+  request: FileOpenRequest;
+  isPending: () => boolean;
+}
+
+/** Commits one synchronous file-switch response only while its request is authoritative. */
+export function commitAuthorizedFileSwitch(
+  authority: FileSwitchAuthority,
+  commit: () => void,
+): boolean {
+  if (!authority.coordinator.canCommit(authority.request, authority.isPending())) return false;
+  commit();
+  return true;
+}
+
 export interface AtomicFileOpenOptions<T> {
   coordinator: FileOpenCoordinator;
   load: () => Promise<T>;

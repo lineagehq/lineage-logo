@@ -194,6 +194,20 @@ describe("real HTTP agent transport", () => {
     expect((await fetch(`${base}/api/agent/document`, { method: "POST", headers: browserHeaders, body: JSON.stringify(manifest) })).status).toBe(200);
     const documentResponse = await fetch(`${base}/api/agent/document`, { headers: { Authorization: `Bearer ${token}` } });
     expect(await documentResponse.json()).toEqual(manifest);
+    const recoveryBody = JSON.stringify({ transactionId: "unknown", sessionId: "session", sourcePath: "concept.svg", revision: 0 });
+    expect((await fetch(`${base}/api/agent/recovery`, { method: "POST", headers: { Origin: "http://127.0.0.1:9999", "Content-Type": "application/json" }, body: recoveryBody })).status).toBe(403);
+    const recovery = await fetch(`${base}/api/agent/recovery`, { method: "POST", headers: browserHeaders, body: recoveryBody });
+    expect(await recovery.json()).toEqual({
+      serverInstanceId: expect.stringMatching(/^[0-9a-f-]{36}$/), transactionId: "unknown", status: "unknown",
+    });
+    const longPath = "a".repeat(4096);
+    const longRecovery = await fetch(`${base}/api/agent/recovery`, {
+      method: "POST",
+      headers: browserHeaders,
+      body: JSON.stringify({ transactionId: "unknown-long", sessionId: "session", sourcePath: longPath, revision: 0 }),
+    });
+    expect(longRecovery.status).toBe(200);
+    expect(await longRecovery.json()).toMatchObject({ transactionId: "unknown-long", status: "unknown" });
   });
 
   it("delivers in order, acknowledges browser staging, deduplicates exact bytes, and rejects ID conflicts", async () => {

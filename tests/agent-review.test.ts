@@ -35,6 +35,7 @@ describe("agent pending review", () => {
     const review = buildPendingReview(transaction, staged, new Set(["nested"]));
     expect(review.status).toBe("pending");
     expect(review.summary).toContain("2 changes affecting 2 layers");
+    expect(review.summary).toContain("Accept or revert before editing.");
     expect(review.layers).toEqual([
       expect.objectContaining({ sessionKey: "nested", name: "Nested mark", type: "path", hidden: true, locked: true, operationIds: ["rename", "focus"] }),
       expect.objectContaining({ sessionKey: "hidden", name: "hidden-mark", hidden: true, locked: false, operationIds: ["paint", "focus"] }),

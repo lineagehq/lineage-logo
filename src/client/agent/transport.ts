@@ -1,7 +1,7 @@
 import type {
   AgentAcceptedArtifact, AgentDocumentManifest, AgentTerminalDecision, AgentTransactionResult, AgentTransactionStatus, AgentTransactionV1,
 } from "../../shared/agent-protocol";
-import { isAgentErrorCode, validateCleanAgentSvg } from "../../shared/agent-protocol";
+import { isAgentErrorCode, parseAgentTransaction, validateCleanAgentSvg } from "../../shared/agent-protocol";
 import type { StagedAgentTransaction } from "./transaction";
 
 export interface AgentCanvasTransportOptions {
@@ -16,8 +16,19 @@ export interface AgentCanvasTransportOptions {
 
 export interface AgentTerminalState {
   transactionId: string;
-  status: "reverted" | "rejected" | "stale";
+  status: "accepted" | "reverted" | "rejected" | "stale";
 }
+
+export interface AgentRecoveryIdentity {
+  transactionId: string;
+  sessionId: string;
+  sourcePath: string;
+  revision: number;
+}
+
+export type AgentRecoveryState =
+  | { serverInstanceId: string; transactionId: string; status: "unknown" }
+  | { serverInstanceId: string; transaction: AgentTransactionV1; state: AgentTransactionStatus & { status: "pending_review" | "accepted" | "reverted" | "rejected" | "stale" } };
 
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const SERVER_INSTANCE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -38,7 +49,7 @@ function serverInstance(data: string): string | undefined {
 function terminalState(data: string): AgentTerminalState | undefined {
   const value = exactJson(data);
   if (!value || Object.keys(value).length !== 2 || typeof value.transactionId !== "string" || !IDENTIFIER.test(value.transactionId)
-    || (value.status !== "reverted" && value.status !== "rejected" && value.status !== "stale")) return undefined;
+    || (value.status !== "accepted" && value.status !== "reverted" && value.status !== "rejected" && value.status !== "stale")) return undefined;
   return value as unknown as AgentTerminalState;
 }
 
@@ -50,6 +61,15 @@ export class AgentDecisionError extends Error {
     this.name = "AgentDecisionError";
     this.retryable = retryable;
     this.state = state;
+  }
+}
+
+export class AgentRecoveryError extends Error {
+  readonly terminal: boolean;
+  constructor(message: string, terminal: boolean) {
+    super(message);
+    this.name = "AgentRecoveryError";
+    this.terminal = terminal;
   }
 }
 
@@ -117,6 +137,11 @@ export class AgentCanvasTransport {
     if (options.connect !== false) void this.#connect();
   }
 
+  start(): void {
+    if (this.#closed || this.#connectionAbort) return;
+    void this.#connect();
+  }
+
   async publishDocument(manifest: AgentDocumentManifest): Promise<void> {
     const response = await (this.#options.fetch ?? fetch)("/api/agent/document", {
       method: "POST",
@@ -126,7 +151,78 @@ export class AgentCanvasTransport {
     if (!response.ok) throw new Error(`Document synchronization failed (${response.status}).`);
   }
 
+  async recover(identity: AgentRecoveryIdentity): Promise<AgentRecoveryState> {
+    const requestIdentity: AgentRecoveryIdentity = {
+      transactionId: identity.transactionId,
+      sessionId: identity.sessionId,
+      sourcePath: identity.sourcePath,
+      revision: identity.revision,
+    };
+    const response = await (this.#options.fetch ?? fetch)("/api/agent/recovery", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestIdentity),
+    });
+    const value = await response.json().catch(() => undefined) as unknown;
+    if (!response.ok) {
+      const error = value && typeof value === "object" && !Array.isArray(value) && typeof (value as { error?: unknown }).error === "string"
+        ? (value as { error: string }).error : undefined;
+      const terminal = response.status === 409 && error === "Recovery identity does not match the recorded transaction.";
+      throw new AgentRecoveryError(error ?? `Agent recovery failed (${response.status}).`, terminal);
+    }
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new AgentRecoveryError("Agent recovery response is malformed.", false);
+    const input = value as Record<string, unknown>;
+    if (typeof input.serverInstanceId !== "string" || !SERVER_INSTANCE_ID.test(input.serverInstanceId)) {
+      throw new AgentRecoveryError("Agent recovery server identity is malformed.", false);
+    }
+    if (input.status === "unknown") {
+      if (Object.keys(input).length !== 3 || input.transactionId !== identity.transactionId) throw new AgentRecoveryError("Unknown recovery response is malformed.", false);
+      this.#adoptServerInstance(input.serverInstanceId);
+      return input as unknown as AgentRecoveryState;
+    }
+    if (Object.keys(input).length !== 3 || !input.transaction || !input.state) throw new AgentRecoveryError("Agent recovery response is malformed.", false);
+    let transaction: AgentTransactionV1;
+    try { transaction = parseAgentTransaction(JSON.stringify(input.transaction)); }
+    catch { throw new AgentRecoveryError("Recovered transaction is malformed.", false); }
+    if (transaction.transactionId !== identity.transactionId
+      || transaction.document.sessionId !== identity.sessionId
+      || transaction.document.sourcePath !== identity.sourcePath
+      || transaction.document.baseRevision !== identity.revision) {
+      throw new AgentRecoveryError("Recovered transaction identity does not match the stored review.", false);
+    }
+    const state = decisionState(input.state, identity.transactionId);
+    if (!state || !["pending_review", "accepted", "reverted", "rejected", "stale"].includes(state.status)) {
+      throw new AgentRecoveryError("Recovered transaction state is malformed.", false);
+    }
+    if ((state.status === "pending_review" || state.status === "accepted" || state.status === "reverted")
+      && (state.result?.status !== "staged"
+        || state.result.impact.length !== transaction.operations.length
+        || state.result.impact.some((impact, index) => impact.operationId !== transaction.operations[index]?.operationId))) {
+      throw new AgentRecoveryError("Recovered transaction result does not match its operation sequence.", false);
+    }
+    if (state.status === "accepted"
+      && (state.artifact?.sourcePath !== identity.sourcePath || state.artifact.revision !== identity.revision + 1)) {
+      throw new AgentRecoveryError("Recovered accepted artifact does not match the stored document revision.", false);
+    }
+    this.#adoptServerInstance(input.serverInstanceId);
+    return {
+      serverInstanceId: input.serverInstanceId,
+      transaction,
+      state: state as AgentTransactionStatus & { status: "pending_review" | "accepted" | "reverted" | "rejected" | "stale" },
+    };
+  }
+
   close(): void { this.#closed = true; this.#connectionAbort?.abort(); }
+
+  #adoptServerInstance(serverInstanceId: string): void {
+    if (this.#serverInstanceId && this.#serverInstanceId !== serverInstanceId) {
+      const previous = this.#serverInstanceId;
+      this.#lastEventId = 0;
+      this.#received.clear();
+      this.#options.onServerReplacement?.(previous, serverInstanceId);
+    }
+    this.#serverInstanceId = serverInstanceId;
+  }
 
   async decide(transactionId: string, status: AgentTerminalDecision["status"], artifact?: AgentAcceptedArtifact): Promise<AgentTransactionStatus> {
     const decision: AgentTerminalDecision = status === "accepted"
@@ -158,21 +254,6 @@ export class AgentCanvasTransport {
       }
     }
     throw new AgentDecisionError(lastError instanceof Error ? lastError.message : "Agent decision acknowledgement was lost.", true);
-  }
-
-  decideOnUnload(transactionId: string): boolean {
-    const url = `/api/agent/transactions/${encodeURIComponent(transactionId)}/ack`;
-    const body = JSON.stringify({ transactionId, status: "reverted" } satisfies AgentTerminalDecision);
-    const queued = navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
-    if (!queued) {
-      void fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body,
-        keepalive: true,
-      }).catch(() => undefined);
-    }
-    return queued;
   }
 
   async #connect(): Promise<void> {

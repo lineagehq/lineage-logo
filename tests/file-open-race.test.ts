@@ -2,7 +2,11 @@ import { Window } from "happy-dom";
 import { describe, expect, it } from "vitest";
 import { AgentSession, type AgentSessionEditor } from "../src/client/agent/session";
 import { evaluateAgentTransaction, type AgentSelectionIntent } from "../src/client/agent/transaction";
-import { commitLatestFileOpen, FileOpenCoordinator } from "../src/client/file-open";
+import {
+  commitAuthorizedFileSwitch,
+  commitLatestFileOpen,
+  FileOpenCoordinator,
+} from "../src/client/file-open";
 import { History } from "../src/client/history/history";
 import { parseAgentTransaction } from "../src/shared/agent-protocol";
 
@@ -189,4 +193,147 @@ describe("atomic file-open commit lifecycle", () => {
       }
     });
   }
+});
+
+describe("unsaved file-switch authority", () => {
+  for (const decision of ["accept", "revert"] as const) {
+    it(`rejects a deferred post-Save workspace response through ${decision} without any partial commit`, async () => {
+      const coordinator = new FileOpenCoordinator();
+      const request = coordinator.begin();
+      const workspace = deferred<{ rootName: string; files: string[]; nextIterationPath: string }>();
+      let pending = false;
+      const state = {
+        workspaceName: "BleepThat",
+        fileCount: 2,
+        nextIterationPath: "iterations/iteration-3.svg",
+        fileControls: ["concepts/original.svg", "iterations/iteration-2.svg"],
+        currentFile: "concepts/original.svg",
+        svg: '<svg viewBox="0 0 10 10"><path id="logo" /></svg>',
+        dirty: true,
+        history: ["rename"],
+        selection: ["logo"],
+        drillScope: "mark",
+        zoom: 1.75,
+        recovery: "pending-race",
+        fileControlsEnabled: true,
+        inspectorRevealed: false,
+        reviewFocus: "none",
+        targetOpens: 0,
+        fileListRebuilds: 0,
+      };
+      const before = structuredClone(state);
+      const refresh = (async () => {
+        const response = await workspace.promise;
+        return commitAuthorizedFileSwitch({
+          coordinator,
+          request,
+          isPending: () => pending,
+        }, () => {
+          state.workspaceName = response.rootName;
+          state.fileCount = response.files.length;
+          state.nextIterationPath = response.nextIterationPath;
+          state.fileControls = [...response.files];
+          state.fileListRebuilds += 1;
+          state.targetOpens += 1;
+        });
+      })();
+
+      pending = true;
+      coordinator.invalidate();
+      state.fileControlsEnabled = false;
+      state.inspectorRevealed = true;
+      state.reviewFocus = "accept";
+      workspace.resolve({
+        rootName: "Late workspace",
+        files: ["iterations/iteration-3.svg"],
+        nextIterationPath: "iterations/iteration-4.svg",
+      });
+
+      expect(await refresh).toBe(false);
+      expect(state).toEqual({
+        ...before,
+        fileControlsEnabled: false,
+        inspectorRevealed: true,
+        reviewFocus: "accept",
+      });
+      pending = false;
+      state.fileControlsEnabled = true;
+      state.reviewFocus = decision;
+      expect(state.targetOpens).toBe(0);
+      expect(state.fileListRebuilds).toBe(0);
+    });
+  }
+
+  for (const saved of [true, false]) {
+    for (const decision of ["accept", "revert"] as const) {
+      it(`blocks a ${saved ? "successful" : "failed"} in-flight Save after review reaches ${decision}`, async () => {
+        const coordinator = new FileOpenCoordinator();
+        const request = coordinator.begin();
+        const save = deferred<boolean>();
+        const state = {
+          currentFile: "concepts/original.svg",
+          svg: '<svg viewBox="0 0 10 10"><path id="logo" /></svg>',
+          dirty: true,
+          history: ["rename"],
+          selection: ["logo"],
+          drillScope: "mark",
+          zoom: 1.75,
+          recovery: "pending-race",
+          fileControlsEnabled: true,
+          dialogOpen: true,
+          targetOpens: 0,
+          fileListRebuilds: 0,
+          discardFallthroughs: 0,
+          reviewFocus: "none",
+        };
+        const before = structuredClone(state);
+        const switching = (async () => {
+          const result = await save.promise;
+          if (!coordinator.canCommit(request, true)) return false;
+          if (!result) state.dialogOpen = true;
+          else state.fileListRebuilds += 1;
+          state.targetOpens += 1;
+          return true;
+        })();
+
+        coordinator.invalidate();
+        state.dialogOpen = false;
+        state.fileControlsEnabled = false;
+        state.reviewFocus = "accept";
+        save.resolve(saved);
+
+        expect(await switching).toBe(false);
+        expect(state).toEqual({
+          ...before,
+          dialogOpen: false,
+          fileControlsEnabled: false,
+          reviewFocus: "accept",
+        });
+        state.fileControlsEnabled = true;
+        state.reviewFocus = decision;
+        expect(state.targetOpens).toBe(0);
+        expect(state.fileListRebuilds).toBe(0);
+        expect(state.discardFallthroughs).toBe(0);
+      });
+    }
+  }
+
+  it("blocks a dialog decision that resolves in the same turn as review staging", async () => {
+    const coordinator = new FileOpenCoordinator();
+    const request = coordinator.begin();
+    const decision = deferred<"discard">();
+    const state = { targetOpens: 0, discardFallthroughs: 0, reviewFocus: "none" };
+    const switching = (async () => {
+      const result = await decision.promise;
+      if (!coordinator.canCommit(request, true)) return false;
+      if (result === "discard") state.discardFallthroughs += 1;
+      state.targetOpens += 1;
+      return true;
+    })();
+    coordinator.invalidate();
+    state.reviewFocus = "accept";
+    decision.resolve("discard");
+    expect(await switching).toBe(false);
+    expect(state).toEqual({ targetOpens: 0, discardFallthroughs: 0, reviewFocus: "accept" });
+  });
 });

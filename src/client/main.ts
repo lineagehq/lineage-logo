@@ -4,14 +4,24 @@ import {
   getSelectionAncestry,
   getSelectionLabel,
   isSelectableNode,
+  serializeSvg,
   SvgEditor,
   type SelectionContext,
 } from "./canvas/editor";
-import { AgentCanvasTransport, AgentDecisionError } from "./agent/transport";
-import type { AgentDocumentManifest } from "../shared/agent-protocol";
+import { AgentCanvasTransport, AgentDecisionError, AgentRecoveryError, type AgentRecoveryState } from "./agent/transport";
+import { validateCleanAgentSvg, type AgentDocumentManifest } from "../shared/agent-protocol";
 import { AgentSession } from "./agent/session";
 import { buildPendingReview, outcomeReview, type AgentReviewModel } from "./agent/review";
-import { commitLatestFileOpen, FileOpenCoordinator } from "./file-open";
+import {
+  commitAuthorizedFileSwitch,
+  commitLatestFileOpen,
+  FileOpenCoordinator,
+  type FileSwitchAuthority,
+} from "./file-open";
+import { CanvasLayoutController, isLayoutShortcutTarget, safeLayoutStorage } from "./ui/layout";
+import { UnsavedDialogController } from "./ui/unsaved-dialog";
+import { createSvgPreview, eligiblePreviewTargetIds } from "./preview";
+import { renderInspectorSummaries } from "./ui/inspector";
 
 const favicon = document.createElement("link");
 favicon.rel = "icon";
@@ -32,6 +42,53 @@ interface WorkspaceResponse {
   nextIterationPath: string;
 }
 
+interface PendingReviewRecovery {
+  transactionId: string;
+  sessionId: string;
+  sourcePath: string;
+  revision: number;
+  svg: string;
+  dirty: boolean;
+}
+
+const PENDING_REVIEW_RECOVERY_KEY = "lineage.pending-agent-review.v1";
+
+function readPendingReviewRecovery(): PendingReviewRecovery | undefined {
+  try {
+    const raw = sessionStorage.getItem(PENDING_REVIEW_RECOVERY_KEY);
+    if (!raw) return undefined;
+    const value = JSON.parse(raw) as Partial<PendingReviewRecovery>;
+    if (!value || Object.keys(value).length !== 6
+      || typeof value.transactionId !== "string" || !value.transactionId
+      || typeof value.sessionId !== "string" || !value.sessionId
+      || typeof value.sourcePath !== "string" || !value.sourcePath
+      || !Number.isSafeInteger(value.revision) || Number(value.revision) < 0
+      || typeof value.svg !== "string"
+      || typeof value.dirty !== "boolean") throw new Error("Invalid pending review recovery state.");
+    validateCleanAgentSvg(value.svg);
+    return value as PendingReviewRecovery;
+  } catch {
+    try { sessionStorage.removeItem(PENDING_REVIEW_RECOVERY_KEY); } catch { /* storage unavailable */ }
+    return undefined;
+  }
+}
+
+function clearPendingReviewRecovery(transactionId?: string): void {
+  const recovery = readPendingReviewRecovery();
+  if (transactionId && recovery?.transactionId !== transactionId) return;
+  try { sessionStorage.removeItem(PENDING_REVIEW_RECOVERY_KEY); } catch { /* storage unavailable */ }
+}
+
+function persistPendingReviewRecovery(recovery: PendingReviewRecovery): boolean {
+  try {
+    sessionStorage.setItem(PENDING_REVIEW_RECOVERY_KEY, JSON.stringify(recovery));
+    return sessionStorage.getItem(PENDING_REVIEW_RECOVERY_KEY) === JSON.stringify(recovery);
+  } catch {
+    clearPendingReviewRecovery(recovery.transactionId);
+    return false;
+  }
+}
+
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App root is missing.");
 
@@ -40,10 +97,15 @@ app.innerHTML = `
     <div class="brand"><span class="brand-mark">L</span><span>Lineage Logo</span></div>
     <div class="workspace-name" id="workspace-name">Connecting…</div>
   </header>
-  <main class="shell">
-    <aside class="sidebar file-sidebar">
-      <div class="panel-heading"><span>Workspace</span><span id="file-count">0</span></div>
-      <div id="file-list" class="file-list"></div>
+  <main class="shell" id="canvas-shell">
+    <aside class="sidebar file-sidebar" aria-label="Workspace files">
+      <div class="sidebar-rail">
+        <button type="button" id="toggle-left-sidebar" class="sidebar-toggle" aria-controls="workspace-panel" title="Toggle workspace panel ([)"><span aria-hidden="true">‹</span><span class="rail-label">Files</span></button>
+      </div>
+      <div class="sidebar-content" id="workspace-panel">
+        <div class="panel-heading"><span>Workspace</span><span id="file-count">0</span></div>
+        <div id="file-list" class="file-list"></div>
+      </div>
     </aside>
     <section class="stage-panel">
       <div class="toolbar">
@@ -85,10 +147,15 @@ app.innerHTML = `
         <span id="document-size">No document loaded</span>
       </footer>
     </section>
-    <aside class="sidebar review-sidebar">
-      <section id="agent-review" class="agent-review" aria-labelledby="agent-review-title" hidden>
+    <aside class="sidebar review-sidebar" aria-label="Layers and inspector">
+      <div class="sidebar-rail">
+        <button type="button" id="toggle-right-sidebar" class="sidebar-toggle" aria-controls="inspector-panel" title="Toggle layers and inspector panel (])"><span aria-hidden="true">›</span><span class="rail-label">Inspect</span><span id="pending-review-badge" class="pending-review-badge" aria-label="Pending agent review" hidden>!</span></button>
+      </div>
+      <div class="sidebar-content" id="inspector-panel">
+      <section id="agent-review" class="agent-review" aria-labelledby="agent-review-title" aria-describedby="agent-review-lock agent-review-summary" tabindex="-1" hidden>
         <div class="panel-heading"><span id="agent-review-title">Agent review</span><strong id="agent-review-status">Pending</strong></div>
         <div class="agent-review-body">
+          <p id="agent-review-lock" class="agent-review-lock"><strong>Editing locked.</strong> Accept or revert before editing.</p>
           <p id="agent-review-summary" class="agent-review-summary" role="status" aria-live="polite"></p>
           <button type="button" id="agent-preview-toggle" class="agent-preview-toggle" aria-pressed="false">Show proposed preview</button>
           <ul id="agent-impact-list" class="agent-impact-list" aria-label="Layers changed by agent"></ul>
@@ -129,7 +196,7 @@ app.innerHTML = `
             <button type="button" id="delete-selection" class="danger">Delete</button>
           </div>
           <details class="inspector-group" id="organization-group" open>
-            <summary>Organization</summary>
+            <summary>Organization <span id="organization-summary" class="group-summary"></span></summary>
             <div class="organization-actions" aria-label="Layer organization">
               <button type="button" id="lock-selection">Lock</button>
               <button type="button" id="reorder-earlier" title="Move one SVG paint-order position backward">Send backward</button>
@@ -140,7 +207,7 @@ app.innerHTML = `
             <p id="hierarchy-reason" class="hierarchy-reason">Select adjacent sibling layers to organize them.</p>
           </details>
           <details class="inspector-group" id="alignment-group">
-            <summary>Alignment</summary>
+            <summary>Alignment <span id="alignment-summary" class="group-summary"></span></summary>
             <div class="alignment-actions" aria-label="Align selected layers">
               <button type="button" id="align-left" title="Align left edges">Left</button>
               <button type="button" id="align-center" title="Align horizontal centers">Center</button>
@@ -152,7 +219,7 @@ app.innerHTML = `
             <p id="alignment-reason" class="alignment-reason">Select at least two sibling layers to align.</p>
           </details>
           <details class="inspector-group" id="paint-group" open>
-            <summary>Paint</summary>
+            <summary>Paint <span id="paint-summary" class="group-summary"></span></summary>
             <div class="field-grid paint-grid">
             <label class="paint-field">
               <span>Fill</span>
@@ -174,8 +241,20 @@ app.innerHTML = `
             </label>
             </div>
           </details>
+          <details class="inspector-group" id="text-group">
+            <summary>Text <span id="text-summary" class="group-summary"></span></summary>
+            <div class="field-grid text-grid">
+              <label class="wide-field">Content<input id="text-content" type="text" maxlength="2048" aria-describedby="text-error" /></label>
+              <label>Font size<input id="text-size" type="number" min="0.0001" max="1000" step="0.5" aria-describedby="text-error" /></label>
+              <label>Weight<input id="text-weight" type="text" maxlength="7" placeholder="normal or 1–1000" aria-describedby="text-error" /></label>
+              <label class="wide-field">Font family<input id="text-family" type="text" maxlength="128" placeholder="Local family list" aria-describedby="text-error" /></label>
+              <label>Alignment<select id="text-anchor" aria-describedby="text-error"><option value="start">Start</option><option value="middle">Middle</option><option value="end">End</option></select></label>
+              <label>Letter spacing<input id="text-letter-spacing" type="text" maxlength="12" placeholder="normal or number" aria-describedby="text-error" /></label>
+            </div>
+            <small id="text-error" class="field-error" aria-live="polite"></small>
+          </details>
           <details class="inspector-group" id="geometry-group">
-            <summary>Geometry</summary>
+            <summary>Geometry <span id="geometry-summary" class="group-summary"></span></summary>
             <div class="field-grid">
             <label>Stroke width<input id="stroke-width" type="number" min="0" step="0.5" /></label>
             <label>Opacity<input id="opacity" type="number" min="0" max="1" step="0.05" /></label>
@@ -190,8 +269,12 @@ app.innerHTML = `
       </section>
       <section class="preview-section">
         <div class="panel-heading"><span>Small-size check</span></div>
+        <label class="preview-target">Target<input id="preview-target" type="text" value="#icon" list="preview-targets" maxlength="128" aria-describedby="preview-status" /></label>
+        <datalist id="preview-targets"><option value="#icon"></option></datalist>
+        <p id="preview-status" class="preview-status" role="status" aria-live="polite">Whole SVG until a document is loaded.</p>
         <div id="favicon-preview" class="favicon-preview empty-copy">Live previews appear here.</div>
       </section>
+      </div>
     </aside>
   </main>
   <dialog id="shortcut-dialog" class="shortcut-dialog" aria-labelledby="shortcut-title">
@@ -206,9 +289,20 @@ app.innerHTML = `
       <div><dt>Nudge</dt><dd>Arrow keys · Shift for 10 units</dd></div>
       <div><dt>Delete</dt><dd>Delete or Backspace</dd></div>
       <div><dt>Fit artboard / selection</dt><dd>F · Shift+F</dd></div>
+      <div><dt>Workspace / Inspector panels</dt><dd>[ · ]</dd></div>
       <div><dt>Exact selection</dt><dd>Alt-click or double-click</dd></div>
       <div><dt>Leave group / clear selection</dt><dd>Escape</dd></div>
     </dl>
+  </dialog>
+  <dialog id="unsaved-dialog" class="unsaved-dialog" aria-labelledby="unsaved-title" aria-describedby="unsaved-message unsaved-error">
+    <h2 id="unsaved-title">Unsaved corrections</h2>
+    <p id="unsaved-message"></p>
+    <p id="unsaved-error" class="dialog-error" role="alert" aria-live="assertive"></p>
+    <div class="unsaved-actions">
+      <button type="button" id="unsaved-cancel">Cancel</button>
+      <button type="button" id="unsaved-discard">Discard</button>
+      <button type="button" id="unsaved-save" class="primary-action">Save</button>
+    </div>
   </dialog>
 `;
 
@@ -218,6 +312,9 @@ const agentPreview = getElement("agent-preview");
 const emptyState = getElement("empty-state");
 const layerList = getElement("layer-list");
 const faviconPreview = getElement("favicon-preview");
+const previewTarget = getInput<HTMLInputElement>("preview-target");
+const previewTargets = getElement("preview-targets");
+const previewStatus = getElement("preview-status");
 const stage = getElement("stage");
 const undoButton = getInput<HTMLButtonElement>("undo");
 const redoButton = getInput<HTMLButtonElement>("redo");
@@ -233,12 +330,28 @@ const layerSearch = getInput<HTMLInputElement>("layer-search");
 const clearLayerSearchButton = getInput<HTMLButtonElement>("clear-layer-search");
 const agentReviewPanel = getElement("agent-review");
 const agentReviewStatus = getElement("agent-review-status");
+const agentReviewLock = getElement("agent-review-lock");
 const agentReviewSummary = getElement("agent-review-summary");
 const agentPreviewToggle = getInput<HTMLButtonElement>("agent-preview-toggle");
 const agentImpactList = getElement("agent-impact-list");
 const agentAcceptButton = getInput<HTMLButtonElement>("agent-accept");
 const agentRevertButton = getInput<HTMLButtonElement>("agent-revert");
 const agentReviewConsequence = getElement("agent-review-consequence");
+const layout = new CanvasLayoutController({
+  shell: getElement("canvas-shell"),
+  leftToggle: getInput("toggle-left-sidebar"),
+  rightToggle: getInput("toggle-right-sidebar"),
+  pendingBadge: getElement("pending-review-badge"),
+  storage: safeLayoutStorage(() => localStorage),
+});
+const unsavedDialog = new UnsavedDialogController({
+  dialog: getInput("unsaved-dialog"),
+  message: getElement("unsaved-message"),
+  error: getElement("unsaved-error"),
+  cancel: getInput("unsaved-cancel"),
+  discard: getInput("unsaved-discard"),
+  save: getInput("unsaved-save"),
+});
 const fileButtons = new Map<string, HTMLButtonElement>();
 const collapsedLayerKeys = new Set<string>();
 let currentFile: SvgFileEntry | undefined;
@@ -253,7 +366,13 @@ let agentReview: AgentReviewModel | undefined;
 let agentPreviewActive = false;
 let reviewImpactKeys = new Set<string>();
 let agentDecisionInFlight = false;
+let agentReviewReturnFocus: HTMLElement | undefined;
+let agentTransportStarted = false;
+let agentTransportClosed = false;
+let agentManifestRetry: number | undefined;
+const agentTerminalReconciliationInFlight = new Set<string>();
 const fileOpenCoordinator = new FileOpenCoordinator();
+const fileSwitchCoordinator = new FileOpenCoordinator();
 
 function getElement(id: string): HTMLElement {
   const element = document.getElementById(id);
@@ -302,6 +421,13 @@ const editor = new SvgEditor(
     strokePicker: getInput("stroke-picker"),
     strokeState: getElement("stroke-state"),
     strokeWidth: getInput("stroke-width"),
+    textAnchor: getInput("text-anchor"),
+    textContent: getInput("text-content"),
+    textError: getElement("text-error"),
+    textFamily: getInput("text-family"),
+    textLetterSpacing: getInput("text-letter-spacing"),
+    textSize: getInput("text-size"),
+    textWeight: getInput("text-weight"),
     ungroupButton: getInput("ungroup-selection"),
   },
   {
@@ -350,7 +476,25 @@ function publishAgentDocument(): void {
   agentManifestSync = agentManifestSync
     .catch(() => undefined)
     .then(() => agentTransport.publishDocument(manifest))
-    .catch((error) => setStatus(error instanceof Error ? error.message : "Agent synchronization failed"));
+    .then(() => {
+      if (agentManifestRetry !== undefined) {
+        window.clearTimeout(agentManifestRetry);
+        agentManifestRetry = undefined;
+      }
+      if (!agentTransportStarted) {
+        agentTransportStarted = true;
+        agentTransport.start();
+      }
+    })
+    .catch((error) => {
+      setStatus(error instanceof Error ? error.message : "Agent synchronization failed");
+      if (!agentTransportClosed && agentManifestRetry === undefined) {
+        agentManifestRetry = window.setTimeout(() => {
+          agentManifestRetry = undefined;
+          publishAgentDocument();
+        }, 500);
+      }
+    });
 }
 
 agentSession = new AgentSession(editor, publishAgentDocument);
@@ -368,13 +512,41 @@ function agentLayers(svg: SVGSVGElement): AgentDocumentManifest["layers"] {
 }
 
 const agentTransport = new AgentCanvasTransport({
+  connect: false,
   onTransaction: (transaction) => {
     if (!agentSession) return undefined;
     const pendingBeforeStage = agentSession.pending;
     const staged = agentSession.stage(transaction);
     if (staged?.result.status === "staged") {
+      if (!pendingBeforeStage && document.activeElement instanceof HTMLElement && document.activeElement !== document.body) {
+        agentReviewReturnFocus = document.activeElement;
+      }
+      const persisted = persistPendingReviewRecovery({
+        transactionId: transaction.transactionId,
+        sessionId: transaction.document.sessionId,
+        sourcePath: transaction.document.sourcePath,
+        revision: transaction.document.baseRevision,
+        svg: editor.serializeClean(),
+        dirty,
+      });
+      if (!persisted) {
+        agentSession.revert();
+        const rejected = {
+          result: {
+            transactionId: transaction.transactionId,
+            status: "rejected" as const,
+            error: { code: "invalid_payload" as const, message: "Browser tab storage is unavailable, so the proposal was not staged for recoverable review." },
+          },
+        };
+        agentReview = outcomeReview("failed", transaction.transactionId, "This proposal was not staged because browser tab storage is unavailable. Ask the producer to retry after storage is enabled.");
+        renderAgentReview();
+        setStatus("Agent proposal rejected: browser tab storage is unavailable");
+        return rejected;
+      }
       if (!pendingBeforeStage && agentSession.pending?.transaction.transactionId === transaction.transactionId) {
         fileOpenCoordinator.invalidate();
+        fileSwitchCoordinator.invalidate();
+        if (unsavedDialog.preempt()) agentReviewReturnFocus = saveButton;
       }
       agentReview = buildPendingReview(transaction, staged, editor.selectionContext.lockedKeys);
       reviewImpactKeys = new Set(agentReview.layers.map((layer) => layer.sessionKey));
@@ -383,6 +555,7 @@ const agentTransport = new AgentCanvasTransport({
       agentReviewConsequence.textContent = "Accept creates one undoable edit. Revert leaves the document unchanged.";
       renderAgentReview();
       setStatus(`Agent transaction ${transaction.transactionId} is staged for review`);
+      if (!pendingBeforeStage) queueMicrotask(() => agentAcceptButton.focus());
     } else if (staged?.result.status === "rejected") {
       agentReview = outcomeReview(staged.result.error.code === "stale_document" ? "stale" : "failed", transaction.transactionId, staged.result.error.message);
       renderAgentReview();
@@ -393,20 +566,12 @@ const agentTransport = new AgentCanvasTransport({
     }
     return staged;
   },
-  onTerminalState: ({ transactionId, status }) => {
-    if (!agentSession?.reconcileTerminal(transactionId, status)) return;
-    finishAgentReview("reverted");
-    agentReview = outcomeReview(status === "stale" ? "stale" : status === "rejected" ? "failed" : "reverted", transactionId,
-      status === "reverted"
-        ? "The server review timeout reverted this exact proposal without changing the document."
-        : "The server rejected this exact proposal; its isolated changes were not kept.");
-    renderAgentReview();
-    setStatus(`Agent transaction ${transactionId}: ${status}`);
-  },
+  onTerminalState: (state) => { void reconcileStreamTerminal(state); },
   onServerReplacement: () => {
     const transactionId = agentSession?.pending?.transaction.transactionId;
     const outcome = agentSession?.serverReplaced() ?? "none";
     if (outcome === "detached-cleared") {
+      clearPendingReviewRecovery(transactionId);
       finishAgentReview("reverted");
       agentReview = outcomeReview("reverted", transactionId, "The local agent server restarted. Its detached proposal was cleared without changing the document.");
     } else if (outcome === "provisional-uncertain" && agentReview) {
@@ -431,6 +596,42 @@ const agentTransport = new AgentCanvasTransport({
     setStatus(message);
   },
 });
+
+async function reconcileStreamTerminal({ transactionId, status }: { transactionId: string; status: "accepted" | "reverted" | "rejected" | "stale" }): Promise<void> {
+  // The deciding page converges from its acknowledgement response. Reacting to
+  // its concurrently broadcast terminal event would race that local finalize.
+  if (agentDecisionInFlight) return;
+  if (agentTerminalReconciliationInFlight.has(transactionId)) return;
+  agentTerminalReconciliationInFlight.add(transactionId);
+  try {
+    if (status !== "accepted" && agentSession?.reconcileTerminal(transactionId, status)) {
+      clearPendingReviewRecovery(transactionId);
+      finishAgentReview("reverted");
+      agentReview = outcomeReview(status === "stale" ? "stale" : status === "rejected" ? "failed" : "reverted", transactionId,
+        status === "reverted"
+          ? "The server reverted this exact proposal without changing the document."
+          : "The server rejected this exact proposal; its isolated changes were not kept.");
+      renderAgentReview();
+      setStatus(`Agent transaction ${transactionId}: ${status}`);
+      return;
+    }
+    const recovery = readPendingReviewRecovery();
+    if (!recovery || recovery.transactionId !== transactionId) return;
+    try {
+      const recovered = await agentTransport.recover(recovery);
+      if (!("state" in recovered) || recovered.state.status !== status) {
+        throw new AgentRecoveryError("Terminal recovery did not match the announced authoritative state.", false);
+      }
+      reconcileRecoveredTerminal(recovered);
+    } catch (error) {
+      agentReview = outcomeReview("disconnected", transactionId, "The server announced a terminal review state, but its authoritative details could not be read. Reload to retry; the stored document remains unchanged.");
+      renderAgentReview();
+      setStatus(error instanceof Error ? error.message : "Authoritative agent recovery is temporarily unavailable");
+    }
+  } finally {
+    agentTerminalReconciliationInFlight.delete(transactionId);
+  }
+}
 
 function renderAgentReview(): void {
   if (!agentReview) {
@@ -457,11 +658,13 @@ function renderAgentReview(): void {
     agentImpactList.append(item);
   }
   const pending = Boolean(agentSession?.pending);
+  layout.setPendingReview(pending);
   const recoveryRequired = agentSession?.recoveryRequired === true;
   agentPreviewToggle.hidden = !pending;
   agentAcceptButton.hidden = !pending || recoveryRequired;
   agentRevertButton.hidden = !pending;
   agentReviewConsequence.hidden = !pending;
+  agentReviewLock.hidden = !pending;
   agentAcceptButton.disabled = agentDecisionInFlight;
   agentRevertButton.disabled = agentDecisionInFlight;
   agentRevertButton.textContent = recoveryRequired ? "Restore previous document" : "Revert";
@@ -511,11 +714,15 @@ function focusReviewLayer(sessionKey: string): void {
 
 function finishAgentReview(status: "accepted" | "reverted"): void {
   const transactionId = agentReview?.transactionId;
+  clearPendingReviewRecovery(transactionId);
   reviewImpactKeys.clear();
   editor.setAgentReviewHighlights(reviewImpactKeys);
   setReviewPreview(false);
   agentReview = outcomeReview(status, transactionId);
   renderAgentReview();
+  const returnFocus = agentReviewReturnFocus?.isConnected ? agentReviewReturnFocus : layerSearch;
+  agentReviewReturnFocus = undefined;
+  queueMicrotask(() => returnFocus.focus());
 }
 
 agentPreviewToggle.addEventListener("click", () => setReviewPreview(!agentPreviewActive));
@@ -604,6 +811,8 @@ function renderSelectionContext(context: SelectionContext): void {
   backToGroupButton.disabled = !context.canDrillBack;
   editInsideButton.disabled = !context.canEditInside;
   const root = editor.svgNode;
+  const selected = context.selected;
+  renderInspectorSummaries(context);
   const selectedBox = context.selected?.getBoundingClientRect();
   const canFitSelection = Boolean(
     context.selected
@@ -618,7 +827,6 @@ function renderSelectionContext(context: SelectionContext): void {
     : context.selected
       ? "Show the selected layer before fitting it"
       : "Select a visible layer to fit it";
-  if (context.selectedNodes.length > 1) alignmentGroup.open = true;
   if (root && context.selected) {
     let expanded = false;
     for (const ancestor of getSelectionAncestry(context.selected, root).slice(0, -1)) {
@@ -727,23 +935,75 @@ function createFileSection(title: string, files: SvgFileEntry[]): HTMLElement {
     button.dataset.path = file.path;
     button.setAttribute("aria-current", "false");
     button.innerHTML = `<span class="file-glyph">◇</span><span>${file.name.replace(/\.svg$/i, "")}</span>`;
-    button.addEventListener("click", () => {
-      if (agentSession?.pending) {
-        setStatus("Accept or revert the pending agent proposal before switching files.");
-        agentReviewPanel.focus();
-        return;
-      }
-      if (dirty && !window.confirm(`Discard unsaved changes and open ${file.name}?`)) return;
-      void openSvg(file, button);
-    });
+    button.addEventListener("click", () => void requestFileSwitch(file, button));
     fileButtons.set(file.path, button);
     section.append(button);
   }
   return section;
 }
 
+async function requestFileSwitch(file: SvgFileEntry, button: HTMLButtonElement): Promise<void> {
+  if (agentSession?.pending) {
+    setStatus("Accept or revert the pending agent proposal before switching files.");
+    layout.reveal("right");
+    agentReviewPanel.focus();
+    return;
+  }
+  const request = fileSwitchCoordinator.begin();
+  if (!dirty) {
+    if (!fileSwitchCoordinator.canCommit(request, Boolean(agentSession?.pending))) return;
+    await openSvg(file, button);
+    return;
+  }
+  let decision = await unsavedDialog.request(file.name, button);
+  while (true) {
+    if (!fileSwitchCoordinator.canCommit(request, Boolean(agentSession?.pending))) return;
+    if (decision === "cancel") return;
+    if (decision === "discard") {
+      await openSvg(file, button);
+      return;
+    }
+    unsavedDialog.setBusy(true);
+    const saved = await saveIteration(false);
+    if (!fileSwitchCoordinator.canCommit(request, Boolean(agentSession?.pending))) return;
+    if (saved) break;
+    unsavedDialog.showError("The iteration could not be saved. Your current document is unchanged; try Save again or Cancel.");
+    decision = await unsavedDialog.waitForDecision();
+  }
+  if (!fileSwitchCoordinator.canCommit(request, Boolean(agentSession?.pending))) return;
+  unsavedDialog.closeAfterSuccess();
+  await loadWorkspace(file.path, {
+    coordinator: fileSwitchCoordinator,
+    request,
+    isPending: () => Boolean(agentSession?.pending),
+  });
+}
+
 async function openSvg(file: SvgFileEntry, button: HTMLButtonElement): Promise<void> {
   if (agentSession?.pending) return;
+  let recovery = readPendingReviewRecovery();
+  if (recovery?.sourcePath !== file.path) recovery = undefined;
+  let recovered: AgentRecoveryState | undefined;
+  if (recovery) {
+    try {
+      recovered = await agentTransport.recover(recovery);
+    } catch (error) {
+      if (!(error instanceof AgentRecoveryError) || !error.terminal) {
+        setStatus("Agent review recovery is temporarily unavailable. The stored document was not opened or changed.");
+        return;
+      }
+      clearPendingReviewRecovery(recovery.transactionId);
+      recovery = undefined;
+      agentReview = outcomeReview("disconnected", undefined, "The stored review no longer matches an authoritative server transaction. The workspace file was reopened without restoring stale tab state.");
+      renderAgentReview();
+    }
+    if (recovered && "status" in recovered && recovered.status === "unknown") {
+      clearPendingReviewRecovery(recovery?.transactionId);
+      recovery = undefined;
+      agentReview = outcomeReview("disconnected", recovered.transactionId, "The previous server no longer knows this review. The workspace file was reopened without restoring stale tab state.");
+      renderAgentReview();
+    }
+  }
   await commitLatestFileOpen({
     coordinator: fileOpenCoordinator,
     isPending: () => Boolean(agentSession?.pending),
@@ -757,11 +1017,26 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement): Promise<v
       const parsed = new DOMParser().parseFromString(source, "image/svg+xml");
       const svg = parsed.documentElement;
       if (svg.localName !== "svg" || parsed.querySelector("parsererror")) throw new Error("The selected file is not valid SVG.");
-      return svg;
+      return svg as unknown as SVGSVGElement;
     },
     onEligibleError: (error) => setStatus(error instanceof Error ? error.message : "Unable to open SVG."),
     commit: (svg) => {
-      if (agentSession && !agentSession.open(crypto.randomUUID(), file.path)) throw new Error("File-open commit gate lost pending eligibility.");
+      const storedRecovery = readPendingReviewRecovery();
+      if (recovery && JSON.stringify(storedRecovery) !== JSON.stringify(recovery)) {
+        throw new Error("Agent review recovery changed while the SVG was loading. Reload to reconcile the authoritative state.");
+      }
+      const savedBaseline = serializeSvg(svg, true);
+      if (recovery?.sourcePath === file.path) {
+        const parsed = new DOMParser().parseFromString(recovery.svg, "image/svg+xml");
+        if (parsed.documentElement.localName !== "svg" || parsed.querySelector("parsererror")) {
+          clearPendingReviewRecovery(recovery.transactionId);
+          throw new Error("Pending review recovery SVG is invalid.");
+        }
+        svg = parsed.documentElement as unknown as SVGSVGElement;
+      }
+      const sessionId = recovery?.sourcePath === file.path ? recovery.sessionId : crypto.randomUUID();
+      const revision = recovery?.sourcePath === file.path ? recovery.revision : 0;
+      if (agentSession && !agentSession.open(sessionId, file.path, revision)) throw new Error("File-open commit gate lost pending eligibility.");
       for (const selected of fileList.querySelectorAll<HTMLButtonElement>(".selected")) {
         selected.classList.remove("selected");
         selected.setAttribute("aria-current", "false");
@@ -791,14 +1066,65 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement): Promise<v
       emptyState.hidden = true;
       artboard.hidden = false;
       setZoom(1);
-      editor.load(renderedSvg);
+      editor.load(renderedSvg, recovery?.dirty ? savedBaseline : undefined);
+      if (recovery && recovered && "state" in recovered) {
+        if (recovered.state.status === "pending_review") restoreRecoveredPending(recovered);
+        else reconcileRecoveredTerminal(recovered);
+      }
+      const activeSvg = editor.svgNode;
+      if (!activeSvg) throw new Error("Committed SVG is missing after agent recovery.");
       publishAgentDocument();
-      renderLayers(renderedSvg);
+      renderLayers(activeSvg);
       renderFavicons(editor.serializeClean());
-      getElement("document-size").textContent = renderedSvg.getAttribute("viewBox") ?? "No viewBox";
-      setStatus(`${file.collection} / ${file.name}`);
+      getElement("document-size").textContent = activeSvg.getAttribute("viewBox") ?? "No viewBox";
+      if (!recovered) setStatus(`${file.collection} / ${file.name}`);
+      if (recovered && "status" in recovered) queueMicrotask(() => layerSearch.focus());
     },
   });
+}
+
+function restoreRecoveredPending(recovered: Extract<AgentRecoveryState, { state: unknown }>): void {
+  const { transaction, state } = recovered;
+  if (!agentSession || state.status !== "pending_review") throw new Error("Pending agent recovery is unavailable.");
+  const staged = agentSession.stage(transaction);
+  if (staged?.result.status !== "staged" || JSON.stringify(staged.result) !== JSON.stringify(state.result)) {
+    agentSession.revert();
+    throw new Error("Recovered pending review no longer evaluates to its authoritative result.");
+  }
+  fileOpenCoordinator.invalidate();
+  fileSwitchCoordinator.invalidate();
+  agentReview = buildPendingReview(transaction, staged, editor.selectionContext.lockedKeys);
+  reviewImpactKeys = new Set(agentReview.layers.map((layer) => layer.sessionKey));
+  editor.setAgentReviewHighlights(reviewImpactKeys);
+  setReviewPreview(false);
+  agentReviewConsequence.textContent = "Accept creates one undoable edit. Revert leaves the document unchanged.";
+  renderAgentReview();
+  setStatus(`Agent transaction ${transaction.transactionId} was restored for review`);
+  queueMicrotask(() => agentAcceptButton.focus());
+}
+
+function reconcileRecoveredTerminal(recovered: Extract<AgentRecoveryState, { state: unknown }>): void {
+  const { transaction, state } = recovered;
+  if (!agentSession) throw new Error("Agent session is unavailable during terminal recovery.");
+  if (state.status === "accepted") {
+    if (!state.artifact) throw new Error("Authoritative acceptance has no artifact receipt.");
+    const parsed = new DOMParser().parseFromString(state.artifact.svg, "image/svg+xml");
+    const accepted = parsed.documentElement;
+    if (!(accepted instanceof SVGSVGElement) || parsed.querySelector("parsererror")
+      || !agentSession.recoverAcceptedArtifact(transaction, accepted)) {
+      throw new Error("Authoritative accepted artifact could not be restored.");
+    }
+    agentReview = outcomeReview("accepted", transaction.transactionId, "The server had already accepted this exact proposal. Its authoritative artifact was restored as one undoable edit.");
+  } else {
+    agentReview = outcomeReview(state.status === "stale" ? "stale" : state.status === "rejected" ? "failed" : "reverted", transaction.transactionId,
+      state.status === "reverted"
+        ? "The server had already reverted this exact proposal. The accepted document remains unchanged."
+        : "The server had already terminated this exact proposal without applying it.");
+  }
+  clearPendingReviewRecovery(transaction.transactionId);
+  renderAgentReview();
+  setStatus(`Recovered authoritative agent transaction ${transaction.transactionId}: ${state.status}`);
+  queueMicrotask(() => layerSearch.focus());
 }
 
 function renderLayers(svg: SVGSVGElement): void {
@@ -922,8 +1248,19 @@ function layerVisibilityIcon(hidden: boolean): string {
 }
 
 function renderFavicons(source: string): void {
+  const eligibleIds = eligiblePreviewTargetIds(source);
+  const previousTarget = previewTarget.value;
+  const options = ["icon", ...eligibleIds.filter((id) => id !== "icon")];
+  previewTargets.replaceChildren(...options.map((id) => {
+    const option = document.createElement("option");
+    option.value = `#${id}`;
+    return option;
+  }));
+  previewTarget.value = previousTarget || "#icon";
+  const preview = createSvgPreview(source, previewTarget.value || "#icon");
+  previewStatus.textContent = preview.status;
   const previousObjectUrl = currentObjectUrl;
-  currentObjectUrl = URL.createObjectURL(new Blob([source], { type: "image/svg+xml" }));
+  currentObjectUrl = URL.createObjectURL(new Blob([preview.svg], { type: "image/svg+xml" }));
   if (previousObjectUrl) window.setTimeout(() => URL.revokeObjectURL(previousObjectUrl), 1000);
   faviconPreview.className = "favicon-preview";
   faviconPreview.replaceChildren();
@@ -935,13 +1272,24 @@ function renderFavicons(source: string): void {
     image.src = currentObjectUrl;
     image.width = size;
     image.height = size;
-    image.alt = `${size}px logo preview`;
+    image.alt = `${size}px ${preview.fallback ? "whole SVG fallback" : `#${preview.targetId}`} preview`;
     const label = document.createElement("span");
     label.textContent = `${size}px`;
     item.append(image, label);
     faviconPreview.append(item);
   }
 }
+
+previewTarget.addEventListener("change", () => {
+  const source = editor.serializeClean();
+  if (source) renderFavicons(source);
+});
+previewTarget.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  const source = editor.serializeClean();
+  if (source) renderFavicons(source);
+});
 
 layerSearch.addEventListener("input", () => {
   layerQuery = layerSearch.value.trim().toLocaleLowerCase();
@@ -1022,7 +1370,15 @@ let panStartTop = 0;
 
 document.addEventListener("keydown", (event) => {
   const target = event.target;
-  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
+  if (!event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey
+    && (event.key === "[" || event.key === "]")
+    && !document.querySelector("dialog[open]") && !isLayoutShortcutTarget(target)) {
+    event.preventDefault();
+    layout.toggle(event.key === "[" ? "left" : "right");
+    return;
+  }
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement
+    || (target instanceof HTMLElement && target.isContentEditable)) return;
   if (shortcutDialog.open) {
     if (event.key === "Escape") {
       event.preventDefault();
@@ -1084,13 +1440,16 @@ stage.addEventListener("pointercancel", finishPan);
 stage.addEventListener("lostpointercapture", finishPan);
 
 window.addEventListener("beforeunload", (event) => {
-  if (!dirty && !agentSession?.pending) return;
+  // A clean pending review is recoverable from tab-scoped state. Manual edits
+  // still require the ordinary warning because closing the tab destroys that
+  // recovery state along with the unsaved document.
+  if (!dirty) return;
   event.preventDefault();
   event.returnValue = "";
 });
 window.addEventListener("pagehide", () => {
-  const transactionId = agentSession?.pending?.transaction.transactionId;
-  if (transactionId && !agentSession?.recoveryRequired) agentTransport.decideOnUnload(transactionId);
+  agentTransportClosed = true;
+  if (agentManifestRetry !== undefined) window.clearTimeout(agentManifestRetry);
   agentTransport.close();
 });
 
@@ -1107,10 +1466,10 @@ for (const button of document.querySelectorAll<HTMLButtonElement>(".background-b
   });
 }
 
-async function saveIteration(): Promise<void> {
+async function saveIteration(openSaved = true): Promise<boolean> {
   if (!currentFile || !dirty || agentSession?.pending) {
     if (agentSession?.pending) setStatus("Accept or revert the pending agent proposal before saving.");
-    return;
+    return false;
   }
   setStatus(`Saving ${nextIterationPath}…`);
   try {
@@ -1130,40 +1489,60 @@ async function saveIteration(): Promise<void> {
     if (!response.ok || !result.file) {
       throw new Error(result.error ?? "Unable to save the iteration.");
     }
-    await loadWorkspace(result.file.path);
+    if (openSaved) await loadWorkspace(result.file.path);
     setStatus(`Saved ${result.file.path}`);
+    return true;
   } catch (error) {
     setStatus(error instanceof Error ? error.message : "Unable to save the iteration.");
+    return false;
   }
 }
 
-async function loadWorkspace(openPath?: string): Promise<void> {
+async function loadWorkspace(openPath?: string, authority?: FileSwitchAuthority): Promise<void> {
   try {
     const response = await fetch("/api/workspace");
     const workspace = await response.json() as WorkspaceResponse & { error?: string };
     if (!response.ok) throw new Error(workspace.error ?? "Unable to load workspace.");
 
-    getElement("workspace-name").textContent = workspace.rootName;
-    getElement("file-count").textContent = String(workspace.files.length);
-    nextIterationPath = workspace.nextIterationPath;
-    saveButton.textContent = `Save ${nextIterationPath.split("/").at(-1)?.replace(/\.svg$/i, "")}`;
-    saveButton.title = `Create ${nextIterationPath}`;
-    const concepts = workspace.files.filter((file) => file.collection === "concepts");
-    const iterations = workspace.files.filter((file) => file.collection === "iterations");
-    fileButtons.clear();
-    fileList.replaceChildren(
-      createFileSection("Concepts", concepts),
-      createFileSection("Iterations", iterations),
-    );
+    let file: SvgFileEntry | undefined;
+    let button: HTMLButtonElement | undefined;
+    const commitWorkspace = () => {
+      getElement("workspace-name").textContent = workspace.rootName;
+      getElement("file-count").textContent = String(workspace.files.length);
+      nextIterationPath = workspace.nextIterationPath;
+      saveButton.textContent = `Save ${nextIterationPath.split("/").at(-1)?.replace(/\.svg$/i, "")}`;
+      saveButton.title = `Create ${nextIterationPath}`;
+      const concepts = workspace.files.filter((candidate) => candidate.collection === "concepts");
+      const iterations = workspace.files.filter((candidate) => candidate.collection === "iterations");
+      fileButtons.clear();
+      fileList.replaceChildren(
+        createFileSection("Concepts", concepts),
+        createFileSection("Iterations", iterations),
+      );
+      if (openPath) {
+        file = workspace.files.find((candidate) => candidate.path === openPath);
+        button = fileButtons.get(openPath);
+      }
+    };
+    if (authority) {
+      if (!commitAuthorizedFileSwitch(authority, commitWorkspace)) return;
+    } else {
+      commitWorkspace();
+    }
     if (openPath) {
-      const file = workspace.files.find((candidate) => candidate.path === openPath);
-      const button = fileButtons.get(openPath);
-      if (file && button) await openSvg(file, button);
+      if (file && button) {
+        await openSvg(file, button);
+        return;
+      }
     }
     setStatus(`${workspace.files.length} SVG files available`);
   } catch (error) {
+    if (authority && !authority.coordinator.canCommit(authority.request, authority.isPending())) return;
     setStatus(error instanceof Error ? error.message : "Unable to load workspace.");
   }
 }
 
-void loadWorkspace();
+void loadWorkspace(readPendingReviewRecovery()?.sourcePath);
+const updateResponsiveLayout = () => layout.responsive(window.innerWidth);
+window.addEventListener("resize", updateResponsiveLayout);
+updateResponsiveLayout();

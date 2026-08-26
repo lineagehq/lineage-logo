@@ -1,7 +1,7 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
-  AGENT_ERROR_CODES, AGENT_MAX_ACKNOWLEDGEMENT_BYTES, AGENT_MAX_PAYLOAD_BYTES, AgentProtocolError, parseAgentTransaction, validateCleanAgentSvg,
+  AGENT_ERROR_CODES, AGENT_MAX_ACKNOWLEDGEMENT_BYTES, AGENT_MAX_PAYLOAD_BYTES, AGENT_MAX_SOURCE_PATH_CHARACTERS, AgentProtocolError, parseAgentTransaction, validateCleanAgentSvg,
   type AgentAcceptedArtifact, type AgentAcknowledgement, type AgentDocumentManifest, type AgentErrorCode, type AgentTerminalDecision, type AgentTransactionResult, type AgentTransactionStatus,
   type AgentTransactionV1,
 } from "../shared/agent-protocol.js";
@@ -90,6 +90,11 @@ export class AgentTransport {
       sendJson(response, 200, { status: "synchronized" });
       return true;
     }
+    if (request.method === "POST" && url.pathname === "/api/agent/recovery") {
+      requireOrigin(request, this.#editorOrigin);
+      await this.#recover(request, response);
+      return true;
+    }
     if (request.method === "GET" && url.pathname === "/api/agent/events") {
       requireOrigin(request, this.#editorOrigin);
       this.#connect(request, response);
@@ -122,6 +127,34 @@ export class AgentTransport {
     if (!header?.startsWith("Bearer ")) throw new HttpError(401, "A bearer token is required.");
     const supplied = Buffer.from(header.slice(7));
     if (supplied.length !== this.#token.length || !timingSafeEqual(supplied, this.#token)) throw new HttpError(401, "Bearer token is invalid.");
+  }
+
+  async #recover(request: IncomingMessage, response: ServerResponse): Promise<void> {
+    const input = exactObject(await readJsonBody(request, AGENT_MAX_SOURCE_PATH_CHARACTERS * 4 + 1024),
+      ["transactionId", "sessionId", "sourcePath", "revision"],
+      ["transactionId", "sessionId", "sourcePath", "revision"], "Recovery identity");
+    if (typeof input.transactionId !== "string" || typeof input.sessionId !== "string"
+      || typeof input.sourcePath !== "string" || !Number.isSafeInteger(input.revision)) {
+      throw new HttpError(400, "Recovery identity is invalid.");
+    }
+    const entry = this.#registry.get(input.transactionId);
+    if (!entry) {
+      sendJson(response, 200, { serverInstanceId: this.#serverInstanceId, transactionId: input.transactionId, status: "unknown" });
+      return;
+    }
+    if (entry.transaction.document.sessionId !== input.sessionId
+      || entry.transaction.document.sourcePath !== input.sourcePath
+      || entry.transaction.document.baseRevision !== input.revision) {
+      throw new HttpError(409, "Recovery identity does not match the recorded transaction.");
+    }
+    if (!new Set(["pending_review", "accepted", "reverted", "rejected", "stale"]).has(entry.state.status)) {
+      throw new HttpError(409, `Transaction cannot be recovered from ${entry.state.status}.`);
+    }
+    sendJson(response, 200, {
+      serverInstanceId: this.#serverInstanceId,
+      transaction: entry.transaction,
+      state: entry.state,
+    });
   }
 
   async #submit(request: IncomingMessage, response: ServerResponse): Promise<void> {
@@ -185,6 +218,13 @@ export class AgentTransport {
       const entry = this.#registry.get(event.transactionId);
       if (event.id <= lastId || !entry) continue;
       if (event.kind === "transaction" && entry.state.status === "queued") this.#deliver(response, event, entry);
+      else if (event.kind === "transaction" && entry.state.status === "pending_review" && this.#matchesOpenDocument(entry.transaction)) {
+        // A fresh browser transport has no SSE cursor or detached candidate.
+        // Replay the original, byte-identical transaction without moving the
+        // authoritative lifecycle out of pending_review. Its duplicate staged
+        // acknowledgement is accepted only when it exactly matches the first.
+        this.#writeEvent(response, event);
+      }
       else if (event.kind === "terminal" && entry.state.status === JSON.parse(event.data).status) this.#writeEvent(response, event);
     }
     const heartbeat = setInterval(() => response.write(": heartbeat\n\n"), this.#heartbeatMs);
@@ -209,6 +249,12 @@ export class AgentTransport {
     response.once("close", disconnect);
   }
 
+  #matchesOpenDocument(transaction: AgentTransactionV1): boolean {
+    return this.#document?.sessionId === transaction.document.sessionId
+      && this.#document.sourcePath === transaction.document.sourcePath
+      && this.#document.revision === transaction.document.baseRevision;
+  }
+
   #writeEvent(response: ServerResponse, event: EventRecord): void {
     response.write(`id: ${event.id}\nevent: ${event.kind === "transaction" ? "transaction" : "transaction-terminal"}\ndata: ${event.data}\n\n`);
   }
@@ -231,7 +277,7 @@ export class AgentTransport {
     }, this.#deliveryTimeoutMs);
   }
 
-  #emitTerminal(transactionId: string, status: "reverted" | "rejected" | "stale"): void {
+  #emitTerminal(transactionId: string, status: "accepted" | "reverted" | "rejected" | "stale"): void {
     const event: EventRecord = {
       id: this.#nextEventId++, kind: "terminal", transactionId,
       data: JSON.stringify({ transactionId, status }),
@@ -349,6 +395,7 @@ export class AgentTransport {
         ...(decision.status === "accepted" ? { artifact: decision.artifact } : {}),
       };
       this.#pruneEvent(entry);
+      this.#emitTerminal(transactionId, decision.status);
       sendJson(response, 200, entry.state);
       return;
     }
@@ -372,16 +419,19 @@ export class AgentTransport {
     else if ("error" in result) status = result.error.code === "stale_document" ? "stale" : "rejected";
     else throw new HttpError(400, "Acknowledgement status is invalid.");
     entry.state = { transactionId, status, result };
-    this.#pruneEvent(entry);
     if (status === "pending_review") {
       entry.timer = setTimeout(() => {
         if (entry.state.status === "pending_review") {
           entry.state = { ...entry.state, status: "reverted" };
+          this.#pruneEvent(entry);
           this.#emitTerminal(transactionId, "reverted");
         }
       }, this.#reviewTimeoutMs);
     } else if (status === "rejected" || status === "stale") {
+      this.#pruneEvent(entry);
       this.#emitTerminal(transactionId, status);
+    } else {
+      this.#pruneEvent(entry);
     }
     sendJson(response, 200, entry.state);
   }

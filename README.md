@@ -45,8 +45,32 @@ The panel announces pending, accepted, reverted, failed, stale, and disconnected
 states, and all review controls expose keyboard-focusable names and pressed state.
 Accepted and reverted decisions converge back to the authenticated producer. Exact
 duplicates are idempotent, conflicting decisions are rejected, and an unacknowledged
-delivered frame is replayed without duplicating review or history. File switching
-remains disabled while review is pending.
+delivered frame is replayed without duplicating review or history. A staged proposal
+also survives a same-tab reload: Lineage restores the exact base SVG, document session,
+source path, and revision from tab-scoped storage, republishes that manifest, and the
+browser first reconciles it through an exact-origin, identity-bound recovery request.
+The server either replays the matching pending transaction, returns its authoritative
+accepted/reverted/failed state, or reports it unknown without exposing producer credentials.
+Every explicit Accept or Revert also records a retained terminal stream event. If a reload
+first observes pending and the old decision commits before the replacement stream subscribes,
+that event makes the new page re-read and converge the authoritative state. Duplicate events
+are coalesced and cannot add another application or checkpoint.
+An already-accepted artifact is restored once as one undoable edit; a terminal non-accept
+restores no candidate; an unknown or replacement-server record is discarded without
+overwriting the workspace file. The recovered pending candidate still requires a fresh
+explicit Accept or Revert decision. If tab storage is unavailable, staging is rejected
+immediately so the producer receives a terminal outcome instead of waiting on a review
+that cannot survive reload. File switching and every mutation
+remain disabled while review is pending, the review panel announces that lock, focuses
+an action, and returns focus to the editing surface after the decision.
+If a proposal arrives while the unsaved-file dialog is open or its Save is still
+in flight, review preempts that switch: the dialog closes, no delayed decision or
+save or workspace-refresh response can update workspace metadata, open the target,
+or rebuild file controls, and the exact current editor and recovery state remains
+in place until Accept or Revert completes.
+Malformed or truncated successful recovery responses are treated as transient: Lineage keeps
+the exact recovery record, opens or mutates nothing, and retries on the next reload. Only an
+authoritative unknown result or exact 4xx identity conflict discards stale tab state.
 
 SVGs produced by the logo-designer skill can enter this same public boundary through
 the thin local adapter. See [docs/agent-canvas.md](docs/agent-canvas.md) for the artifact
@@ -120,8 +144,15 @@ Fill and stroke accept standard SVG paint values, including `none`, CSS colors,
 removes the presentation attribute so the paint is inherited. Invalid values
 are explained without changing the SVG or adding an undo step; the adjacent
 color picker provides an accessible shortcut for choosing a solid color.
+Selecting an SVG `<text>` layer exposes a bounded Text group for plain content,
+font size, weight, local font-family lists, start/middle/end alignment, and letter
+spacing. Edits commit as one undo step; Escape cancels, while invalid or unchanged
+values leave the SVG and history untouched. Markup, CSS injection, font URLs, and
+general-purpose style editing are intentionally unsupported.
 The inspector keeps Duplicate, Hide, and Delete available near the selection
-header while Organization, Alignment, Paint, and Geometry can be collapsed.
+header while Organization, Alignment, Paint, Text, and Geometry can be collapsed.
+Collapsed groups retain a concise selection-relevant value or availability summary
+without changing the user's disclosure choices.
 Arrow keys nudge by one SVG unit; Shift+Arrow nudges by ten. Delete removes a
 selection; Cmd/Ctrl+D duplicates, Cmd/Ctrl+G groups, Cmd/Ctrl+Shift+G ungroups,
 F fits the artboard, Shift+F fits the selected layer, and Escape clears the
@@ -130,13 +161,28 @@ shortcut without changing the current selection. Standard
 Undo and Redo shortcuts restore the selection context as well as the SVG. Drag the
 canvas background, middle-drag, or hold Space while dragging to pan.
 
+The Workspace and Inspector sidebars collapse independently into visible rails.
+Use their named rail controls or unmodified `[` and `]` when focus is outside a
+form field or dialog. Preferences persist locally; narrower windows temporarily
+collapse panels without replacing those preferences, and reduced-motion settings
+remove the layout animation. A pending agent review reveals the Inspector without
+changing its saved preference and leaves a pending badge on its rail if collapsed.
+
 During local development, a disconnected preview displays an explicit restart
 message and a Try again action instead of leaving a stale editor that appears
 live.
 
+Small-size checks render detached clean-SVG clones at 64, 32, and 16 px. They
+default to a usable `#icon`, allow another eligible ID to be selected, preserve
+local defs and references, and announce a whole-SVG fallback when the requested
+target is absent, hidden, invalid, or has no visible bounds. Previewing never
+changes the live document, selection, history, zoom, dirty state, or saved bytes.
+
 `Reset edits` restores the SVG to the state in which it was opened, while the
-`100%` control resets only the zoom level. The editor asks before switching
-files when the current SVG has unsaved corrections.
+`100%` control resets only the zoom level. Switching files with unsaved corrections
+opens an in-app Save, Discard, or Cancel dialog. Cancel and failed saves keep the
+current document intact; successful Save writes the current iteration before the
+requested file opens.
 
 Saving never overwrites the loaded SVG. It creates the next available file in
 `iterations/` without injecting editor provenance or review metadata. Explicit root

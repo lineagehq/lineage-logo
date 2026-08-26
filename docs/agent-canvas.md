@@ -113,13 +113,37 @@ review blocks document switching. Each stream begins with a strict, secret-free 
 server-instance event. Ordinary reconnects retain that identity and replay cursor;
 an inactivity watchdog crosses proxy-held dead streams before reconnecting. Server
 replacement resets the cursor and clears only a detached matching review. Strict
-terminal events contain only transaction ID plus `reverted`, `rejected`, or `stale`,
+terminal events contain only transaction ID plus `accepted`, `reverted`, `rejected`, or `stale`,
 and reconcile only that exact pending transaction. If replacement loses the authority
 for a provisional acceptance, the canvas stays locked and labels an explicit “Restore
 previous document” action; it never guesses whether the missing server accepted it.
-That action rolls back only the exact provisional checkpoint before unlocking. Page unload queues a reverted decision, falls back to
-a keepalive request when the browser rejects the beacon, and the server automatically
-reverts abandoned pending reviews after 30 minutes.
+That action rolls back only the exact provisional checkpoint before unlocking. Ordinary
+same-tab disconnects and reloads do not decide on the user's behalf. While review is
+pending, the browser keeps the exact clean base SVG plus transaction-bound session,
+source path, and revision in tab-scoped storage. Before restoring those bytes, it uses
+an exact-origin recovery request carrying all four identity fields. The response is
+strictly validated and returns the original transaction plus authoritative pending or
+terminal state, or a secret-free unknown result. An accepted receipt restores only its
+exact clean artifact as one history checkpoint. Reverted, timed-out, rejected, and stale
+states apply nothing. Unknown, mismatched, and replacement-server records are cleared
+and the workspace file is opened without restoring stale tab bytes. Transient recovery
+failure opens or changes nothing and retains the record for retry. The server retains the original
+transaction frame while it is pending and replays it only when all three document
+identity fields match; the browser reconstructs the same detached candidate and sends
+an idempotent staged acknowledgement. Explicit Accept and Revert transitions also append
+a strict, retained terminal SSE event. This closes the snapshot/subscription race: when
+recovery returns pending but the prior page's decision commits before the replacement
+stream subscribes, the retained event causes the new page to query the authoritative
+artifact/state and converge it. Concurrent duplicate terminal delivery is coalesced; a
+second accepted notification cannot apply again or add history. Malformed or truncated
+HTTP 200 recovery bodies are retryable and preserve the exact tab record without opening
+or mutating a document; authoritative unknown and exact 4xx identity mismatch remain the
+only terminal stale-record paths. Accept or Revert remains a fresh explicit,
+keyboard-accessible decision after recovery. The review lock is announced and mutation,
+history, saving, and switching stay unavailable until terminal convergence. The server
+automatically reverts an abandoned pending review after 30 minutes. If tab storage cannot
+persist and reread the exact base record, the browser rejects staging before pending
+review begins, unlocks editing, and returns an explicit rejected outcome to the producer.
 
 Representative input covering nested groups, transforms, gradients, referenced symbols,
 text, and safe unsupported SVG descendants lives in

@@ -1,0 +1,2200 @@
+version: 2
+
+goal:
+  title: "Canvas Dogfood Polish"
+  slug: "canvas-dogfood-polish"
+  kind: existing_plan
+  tranche: "Complete the agreed post-BleepThat dogfood correctness and UX tranche through verified vertical slices."
+  status: done
+  oracle:
+    signal: "A real BleepThat skill proposal survives pending-review reconnect, is accepted and manually refined, then saves, reopens, and continues from the exact clean SVG while responsive/accessibility checks pass."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Passing automated suite plus recorded browser walkthrough at 1440/1024/980/760 widths and a real skill-to-canvas reconnect/accept/edit/save/reopen continuation receipt."
+  intake:
+    original_request: "Implement the agreed manual-QA improvements, including independently collapsible animated sidebars."
+    interpreted_outcome: "A resilient, responsive manual SVG correction canvas proven by a real BleepThat dogfood loop."
+    input_shape: existing_plan
+    audience: "logo designers using Lineage directly or through the logo-designer skill"
+    authority: approved
+    proof_type: demo
+    completion_proof: "Every scoped contract passes automated checks and the end-to-end BleepThat oracle."
+    likely_misfire: "Polish the canvas shell while review reconnect or grouped SVG transform fidelity remains unreliable."
+    blind_spots_considered:
+      - "Proposal replay, deduplication, and terminal-state convergence after reconnect"
+      - "Review-lock explanation and pending-state discoverability"
+      - "SVG hierarchy, unsupported attributes, references, serialization cleanliness, and exact undo"
+      - "Keyboard access, focus restoration, reduced motion, narrow-window overflow, and preference persistence"
+      - "Safe text editing and meaningful 16/32/64 px preview targeting"
+    existing_plan_facts:
+      - "Correctness work precedes visual polish."
+      - "Left and right sidebars collapse independently into slim rails and persist preferences."
+      - "The canvas recenters smoothly without mutating document state."
+      - "Pending review auto-reveals the right panel and shows a badge when collapsed."
+      - "Native unsaved confirmation is replaced by Save / Discard / Cancel."
+      - "Group transforms, bounded text controls, and icon-targeted previews are in scope."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  exact_human_approval_can_terminal_wait: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/canvas-dogfood-polish/"
+    command: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.4.3/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/canvas-dogfood-polish"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: default
+    objective: "Map the merged implementation and turn every agreed dogfood finding into an exact behavioral contract, affected-file map, current baseline, and verification command."
+    inputs:
+      - "README.md and package scripts"
+      - "src/client, src/server, and src/producer"
+      - "tests and existing agent-canvas documentation"
+      - "BleepThat dogfood artifact and QA evidence when locally available"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation or GoalBuddy control files."
+      - "Separate proven defects from enhancements and preserve all existing passing behavior."
+      - "Call out any file-scope correction needed for queued Worker tasks."
+    expected_output:
+      - "Evidence-backed architecture and behavior map"
+      - "Baseline reproduction for reconnect, transform, responsive, dialog, text, and preview findings"
+      - "Exact acceptance criteria and verification commands"
+      - "Recommended corrections to Worker allowed_files or sequencing"
+    receipt:
+      result: done
+      summary: "Mapped merged canvas and BleepThat evidence. Reconnect failure is structural: staging prunes replay while pagehide only attempts best-effort revert, contradicting promised pending-review redelivery. Responsive overflow, native confirmation, whole-logo tiny previews, missing text controls, and untested plugin-driven group transforms are confirmed. Targeted tests pass but omit these paths. Sequencing is sound; Worker scopes need added reconnect, UI-state, interaction, and preview test seams."
+      evidence:
+        - "E1 — src/server/agent-transport.ts: staged acknowledgement becomes pending_review and prunes its transaction event; new SSE connections replay only retained queued events, so a fresh browser cannot reconstruct pending review."
+        - "E2 — src/client/main.ts pagehide and client agent transport: reload uses sendBeacon or unawaited keepalive revert, swallows failure, then closes transport; producer may wait until the 30-minute timeout."
+        - "E3 — README.md:48 and docs/agent-canvas.md:57-58,111-122 promise pending redelivery, but implementation and tests cover only pre-ack replay."
+        - "E4 — src/client/main.ts uses window.confirm for dirty switching; src/client/styles.css fixes body min-width at 980px and has no collapse, rail, persistence, reduced-motion, or narrow-mode state."
+        - "E5 — BleepThat compact-980.png, narrow-760.png, and geometry-obscured.png reproduce clipped toolbar/inspector, buried Geometry controls, and unusable 16px whole-logo preview."
+        - "E6 — renderFavicons always displays the full SVG object URL; no preview target exists. Text nodes are selectable, but content and typography controls are absent."
+        - "E7 — canvas/editor.ts delegates drag/resize to svg.draggable/svg.resize; no code enforces group-root-only transforms or bounded numeric output."
+        - "E8 — BleepThat iteration-2.svg and iteration-3.svg provide nested logo/icon/waveform/wordmark/text oracle data; clean iteration delta is censor-block y 226→216 and fill #E53935→#d9362b."
+        - "E9 — Eight targeted suites passed, 106 tests total, and npm run typecheck passed; none cover post-staging reload, responsive shell, custom dialog, interactive group transforms, text editing, or targeted previews."
+      facts:
+        - "Review contract — A staged BleepThat transaction must reattach after reload with identical candidate/impact and one decision path, or reach a prompt explicit terminal state. Browser/server/producer must converge without duplicate history or application. Pending UI must say ‘Accept or revert before editing,’ focus an actionable control, and restore editing/focus after decision."
+        - "Review files — src/server/agent-transport.ts; src/client/agent/transport.ts; src/client/agent/session.ts; src/client/agent/review.ts; src/client/main.ts; src/client/styles.css; src/producer/agent-client.ts; agent transport/history/producer/review/file-open tests; docs/agent-canvas.md; README.md."
+        - "Review verification — targeted agent tests plus real submit→pending→reload/reopen→same transaction→accept and revert walkthroughs; assert exact producer terminal artifact/state and no indefinite wait."
+        - "Responsive/dialog contract — Independent roughly 200ms left/right rails with visible aria-expanded toggles, shortcuts, persisted preferences, reduced-motion support, safe auto-collapse, and pending-review reveal/badge. All essential controls remain reachable at 1440/1024/980/760. Layout changes preserve SVG, dirty/history, selection, and zoom."
+        - "Unsaved contract — Replace window.confirm with accessible Save/Discard/Cancel. Cancel and save failure preserve state and restore focus; successful Save precedes target open; pending review routes focus to review actions."
+        - "Responsive/dialog files — src/client/main.ts; styles.css; index.html; file-open.ts; optional src/client/ui/layout.ts and src/client/ui/unsaved-dialog.ts; tests/file-open-race.test.ts; new tests/client-ux.test.ts; README.md."
+        - "Group-transform contract — Each gesture composes one bounded-precision transform on the selected group root only; descendants, hierarchy, attributes, IDs, and references remain unchanged. One undo/redo checkpoint restores exact before/after clean SVG; save/reopen is stable."
+        - "Group-transform files — src/client/canvas/editor.ts; optional src/client/canvas/transform.ts; new tests/editor-interactions.test.ts; editor-serialization, fidelity, and history tests."
+        - "Text/preview contract — Support validated text content, font size, weight, family, alignment/text-anchor, and letter spacing with one checkpoint, cancel, undo/redo, and safe serialization. Preview defaults to valid #icon, permits explicit target, visibly falls back, preserves referenced resources, and never mutates editor state."
+        - "Text/preview files — src/client/main.ts; styles.css; canvas/editor.ts; optional src/client/preview.ts; editor-serialization, fidelity, and client-ux tests; README.md."
+        - "Inspector contract — Collapsed selection-relevant inspector groups should expose concise current-value/status summaries without overriding ordinary user disclosure choices."
+        - "Sequencing — Keep T003/T004 first because T005 auto-reveal/badge needs stable pending state. Keep T007 before T009 so text/history builds on corrected mutation fidelity. Finish with T011 real BleepThat oracle."
+        - "Allowed-file corrections — T003 add tests/file-open-race.test.ts and README.md. T005 explicitly authorize creating tests/client-ux.test.ts and optional layout/dialog helpers. T007 add optional transform helper and tests/editor-interactions.test.ts. T009 add optional src/client/preview.ts. T011 include every newly authorized test."
+      contradictions:
+        - "Docs claim pending disconnect can redeliver the same transaction, but pending acknowledgement prunes the only transaction event and reconnect replays queued retained events only."
+        - "T005/T009 verify tests/client-ux.test.ts, but that file does not exist; creation must be explicitly authorized."
+        - "T007’s listed tests cannot prove interactive group fidelity because they test serialization, grouping, alignment, and history rather than draggable/resize gesture output."
+      ambiguity_requiring_judge:
+        - "Reconnect policy — Goal permits reattach or predictable termination, but docs and oracle specifically expect survival. Authorize true post-ack reattachment or revise that promise."
+        - "Session continuity — True reattachment needs authoritative session/source/revision identity across reload; current open creates a new random session."
+        - "Sidebar shortcuts — Select non-conflicting bindings and decide whether responsive auto-collapse temporarily overrides rather than overwrites saved preferences."
+        - "Transform policy — Authorize root transform composition, bounded precision, and whether existing transform syntax may canonicalize to matrix."
+      commands:
+        - "git rev-parse --show-toplevel"
+        - "Targeted sed/rg inspection of goal, state, source, tests, README, and agent docs"
+        - "rg --files /Users/neonwatty/Desktop/bleepthat-logo-dogfood plus targeted SVG inspection"
+        - "view_image compact-980.png, narrow-760.png, geometry-obscured.png"
+        - "npm test -- --run tests/agent-review.test.ts tests/agent-history.test.ts tests/agent-producer-client.test.ts tests/agent-transport.test.ts tests/editor-serialization.test.ts tests/fidelity.test.ts tests/history.test.ts tests/file-open-race.test.ts"
+        - "npm run typecheck"
+      note_needed: false
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the Scout evidence, preserve the agreed scope, and authorize the largest safe first implementation package."
+    inputs:
+      - "T001 receipt"
+      - "Goal oracle and non-negotiable constraints"
+      - "Queued Worker contracts"
+    constraints:
+      - "Do not implement."
+      - "Correct allowed_files and verify commands before activating a Worker."
+      - "Keep review continuity ahead of shell polish unless evidence proves a safer dependency order."
+    expected_output:
+      - "go | revise | blocked"
+      - "Authorized Worker objective and exact allowed_files"
+      - "Verification and stop conditions"
+      - "Deferred risks that remain on the board"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "The oracle explicitly requires the same pending BleepThat transaction to survive canvas reconnect, so predictable termination is not an acceptable primary policy. T003 should implement authenticated, revision-bound post-ack reattachment with exactly-once terminal convergence before shell polish. Existing transport files are sufficient for implementation; a focused integration test is justified because current suites cover only pre-ack replay. README and file-open race coverage belong in scope. No new production helper is justified until the Worker proves the existing state-machine boundaries cannot safely hold authoritative pending state."
+      evidence:
+        - "T001 proves staged acknowledgement prunes the transaction event while reconnect replay only retains queued events."
+        - "The goal oracle requires disconnect, reopen, recovery of the same transaction, acceptance, and exact producer continuation."
+        - "README.md and docs/agent-canvas.md already promise pending-review redelivery."
+        - "Existing targeted tests pass but do not exercise post-staging reload or producer convergence."
+        - "T005 depends on a stable pending-review state for auto-reveal and badge behavior, so T003 must remain first."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence:
+        - "Live proof of identical transaction recovery after post-ack browser reconnect."
+        - "Exactly-once accept and revert convergence across browser, server, and producer."
+        - "Negative proof that mismatched source, revision, session, or transaction identity cannot reattach."
+        - "Review-lock copy, focus, and mutation-control behavior during recovered review."
+      required_board_updates:
+        - "Mark T002 done with this receipt."
+        - "Replace T003's reconnect-or-terminate ambiguity with mandatory same-transaction post-ack reattachment for ordinary canvas reconnect."
+        - "Add README.md and tests/file-open-race.test.ts to T003 allowed_files."
+        - "Authorize creation of tests/agent-reconnect.test.ts; do not authorize a new production helper unless the Worker stops with evidence that existing boundaries are insufficient."
+        - "Replace T003 verification and stop conditions with the authorized Worker package below."
+        - "Set T003 active after applying these corrections."
+      worker_package:
+        task_id: T003
+        objective: "Implement revision-bound, exactly-once recovery of the same pending agent proposal after canvas disconnect or reload, converge browser/server/producer terminal state for accept and revert, and make the review-only mutation lock and recovery action explicit and keyboard accessible."
+        allowed_files:
+          - src/client/main.ts
+          - src/client/styles.css
+          - src/client/agent/review.ts
+          - src/client/agent/session.ts
+          - src/client/agent/transport.ts
+          - src/server/agent-transport.ts
+          - src/producer/agent-client.ts
+          - tests/agent-history.test.ts
+          - tests/agent-producer-client.test.ts
+          - tests/agent-review.test.ts
+          - tests/agent-transport.test.ts
+          - tests/file-open-race.test.ts
+          - tests/agent-reconnect.test.ts
+          - docs/agent-canvas.md
+          - README.md
+        create_files:
+          - tests/agent-reconnect.test.ts
+        verify:
+          - "npm run check"
+          - "npm test -- --run tests/agent-review.test.ts tests/agent-history.test.ts tests/agent-producer-client.test.ts tests/agent-transport.test.ts tests/file-open-race.test.ts tests/agent-reconnect.test.ts"
+          - "git diff --check"
+          - "Demonstrate submit then pending acknowledgement then disconnect or reload then recovery of the identical transaction, candidate, impact, source identity, and source revision."
+          - "Demonstrate recovered accept applies once, creates no duplicate history, and returns the exact accepted artifact and terminal state to the producer."
+          - "Demonstrate recovered revert applies nothing, creates no duplicate history, and returns an explicit terminal state to the producer."
+          - "Demonstrate mismatched source, revision, session, and transaction identities cannot reattach."
+          - "Demonstrate pending review says Accept or revert before editing, focuses an actionable review control, keeps mutation controls locked, and restores editing and focus after decision."
+          - "Run the real-browser accept and revert reconnect walkthrough with a clean console and no indefinite producer wait."
+        stop_if:
+          - "Safe reattachment cannot be bound to the original transaction, source identity, and exact source revision without weakening origin, authentication, clean-SVG, or transaction-binding checks."
+          - "The proposed design can replay or apply a candidate without a fresh explicit accept decision."
+          - "Exactly-once terminal convergence requires a new persistence or cross-process storage contract not authorized by the current goal."
+          - "A required implementation file is outside allowed_files."
+          - "A new production helper appears necessary; stop with the precise boundary and proposed file instead of creating it."
+          - "The same verification fails twice without a new evidence-backed hypothesis."
+        deferred_risks:
+          - "Server-process restart persistence is not proven by this browser-reconnect slice unless the existing product contract already promises it."
+          - "Responsive pending-review auto-reveal and collapsed-rail badge remain owned by T005."
+          - "Grouped-transform fidelity remains owned by T007."
+          - "Text editing and preview targeting remain owned by T009."
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Implement revision-bound, exactly-once recovery of the same pending agent proposal after canvas disconnect or reload, converge browser/server/producer terminal state for accept and revert, and make the review-only mutation lock and recovery action explicit and keyboard accessible."
+    allowed_files:
+      - "src/client/main.ts"
+      - "src/client/styles.css"
+      - "src/client/agent/review.ts"
+      - "src/client/agent/session.ts"
+      - "src/client/agent/transport.ts"
+      - "src/server/agent-transport.ts"
+      - "src/producer/agent-client.ts"
+      - "tests/agent-history.test.ts"
+      - "tests/agent-producer-client.test.ts"
+      - "tests/agent-review.test.ts"
+      - "tests/agent-transport.test.ts"
+      - "tests/file-open-race.test.ts"
+      - "tests/agent-reconnect.test.ts"
+      - "docs/agent-canvas.md"
+      - "README.md"
+    verify:
+      - "npm run check"
+      - "npm test -- --run tests/agent-review.test.ts tests/agent-history.test.ts tests/agent-producer-client.test.ts tests/agent-transport.test.ts tests/file-open-race.test.ts tests/agent-reconnect.test.ts"
+      - "git diff --check"
+      - "Demonstrate submit then pending acknowledgement then disconnect or reload then recovery of the identical transaction, candidate, impact, source identity, and source revision."
+      - "Demonstrate recovered accept applies once, creates no duplicate history, and returns the exact accepted artifact and terminal state to the producer."
+      - "Demonstrate recovered revert applies nothing, creates no duplicate history, and returns an explicit terminal state to the producer."
+      - "Demonstrate mismatched source, revision, session, and transaction identities cannot reattach."
+      - "Demonstrate pending review says Accept or revert before editing, focuses an actionable review control, keeps mutation controls locked, and restores editing and focus after decision."
+      - "Run the real-browser accept and revert reconnect walkthrough with a clean console and no indefinite producer wait."
+    stop_if:
+      - "Safe reattachment cannot be bound to the original transaction, source identity, and exact source revision without weakening origin, authentication, clean-SVG, or transaction-binding checks."
+      - "The proposed design can replay or apply a candidate without a fresh explicit accept decision."
+      - "Exactly-once terminal convergence requires a new persistence or cross-process storage contract not authorized by the current goal."
+      - "A required implementation file is outside allowed_files."
+      - "A new production helper appears necessary; stop with the precise boundary and proposed file instead of creating it."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - docs/agent-canvas.md
+        - src/client/agent/review.ts
+        - src/client/agent/session.ts
+        - src/client/agent/transport.ts
+        - src/client/main.ts
+        - src/client/styles.css
+        - src/server/agent-transport.ts
+        - tests/agent-history.test.ts
+        - tests/agent-reconnect.test.ts
+        - tests/agent-review.test.ts
+      commands:
+        - cmd: "npm run check (pass: 161 tests, typecheck, build)"
+          status: pass
+        - cmd: "npm test -- --run tests/agent-review.test.ts tests/agent-history.test.ts tests/agent-producer-client.test.ts tests/agent-transport.test.ts tests/file-open-race.test.ts tests/agent-reconnect.test.ts (pass: 52 tests)"
+          status: pass
+        - cmd: "git diff --check (pass)"
+          status: pass
+        - cmd: "Real Chrome/CDP accept reconnect walkthrough with live producer (pass: same transaction/session/source/revision, one undo checkpoint, clean console)"
+          status: pass
+        - cmd: "Real Chrome/CDP revert reconnect walkthrough with live producer (pass: no application/history, explicit terminal receipt, clean console)"
+          status: pass
+      summary: "Implemented same-tab pending-review recovery using exact clean SVG and revision-bound tab state. The server retains and replays only the original transaction matching session, source, and revision; duplicate staging and terminal decisions remain idempotent. Reload no longer auto-reverts. Review lock copy is explicit, Accept receives focus, mutation controls remain locked, and focus returns after terminal convergence. Added HTTP reconnect coverage for accept, revert, candidate identity, producer outcomes, duplicate decisions, and session/source/revision/transaction mismatches. Live Chrome accept and revert reload walkthroughs completed without console errors or producer waits."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit reconnect, replay, acknowledgement, and review-lock behavior before visual shell work."
+    inputs:
+      - "T003 receipt and diff"
+      - "Agent transport and producer state-machine tests"
+      - "Live reconnect walkthrough evidence"
+    constraints:
+      - "Do not implement."
+      - "Reject state divergence, indefinite waits, duplicate application, or misleading terminal labels."
+    expected_output:
+      - "accept | revise"
+      - "Risk-boundary findings"
+      - "Authorization for T005 or corrective task"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "Pending-review replay is correct for the tested reload-before-decision path, and origin/authentication checks remain intact. However, terminal convergence is not reload-safe. If Accept reaches the server but its response is lost before client finalization, the server prunes the transaction event and emits no accepted terminal event. Reload then restores the stored base SVG, cannot discover the accepted artifact, and leaves producer and canvas divergent. A stale recovery record after server restart is likewise restored without authoritative reconciliation and can persist across reloads. T005 must remain queued until these correctness gaps are repaired and adversarially verified."
+      evidence:
+        - "Targeted reconnect, review, history, producer, transport, and file-open suites passed: 52 tests; typecheck and git diff --check also passed."
+        - "src/client/main.ts restores the persisted base SVG before connecting and clears recovery only after a received terminal event or successful local finish."
+        - "src/server/agent-transport.ts prunes the transaction event after accepted acknowledgement and emits terminal SSE events only for reverted, rejected, and stale states."
+        - "src/client/agent/transport.ts accepts only reverted, rejected, and stale terminal SSE states; a new page therefore cannot learn an already-accepted artifact."
+        - "tests/agent-reconnect.test.ts covers reload while still pending and ordinary accept/revert responses, but not reload after server commit with a lost decision response."
+        - "A server restart before reload leaves the tab recovery record authoritative locally even though the replacement server has no matching transaction; no initial status reconciliation clears or explains that stale record."
+        - "The existing HTTP origin and bearer-token tests still pass, and the diff does not weaken those checks."
+        - "The reported live Chrome walkthrough proves the happy pending-reload paths but does not cover accept-response loss, unknown transaction recovery, timeout-before-reload, or server replacement while the page is closed."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - "T005 — responsive shell work depends on a trustworthy pending-review lifecycle and must remain queued."
+      missing_evidence:
+        - "Canvas and producer converge when Accept commits server-side but the browser response is lost and the page reloads before local finalization."
+        - "A stale recovery record is reconciled predictably after server restart, unknown transaction, or review timeout."
+        - "Recovered authoritative acceptance applies the exact recorded artifact once, creates no duplicate history, clears recovery state, unlocks editing, and reports an accurate terminal status."
+        - "Storage-unavailable reload behavior cannot silently strand a pending producer or misrepresent recoverability."
+      required_board_updates:
+        - "Record T004 as done with decision rejected."
+        - "Keep T005 queued."
+        - "Add the corrective Worker package T013 before any shell-polish activation; PM retains task activation authority."
+        - "Require a follow-up Judge audit of T013 at the same reconnect and terminal-convergence boundary before T005 can be authorized."
+        - "Do not treat the current happy-path browser walkthrough or 52 passing targeted tests as proof of exactly-once reload convergence."
+      worker_package:
+        task_id: T013
+        objective: "Repair authoritative terminal reconciliation across reload boundaries so pending, accepted, reverted, timed-out, unknown, and server-replaced transactions converge without restoring stale base state, duplicating history, weakening security, or misleading the producer or user."
+        allowed_files:
+          - src/client/main.ts
+          - src/client/agent/session.ts
+          - src/client/agent/transport.ts
+          - src/server/agent-transport.ts
+          - tests/agent-history.test.ts
+          - tests/agent-reconnect.test.ts
+          - tests/agent-transport.test.ts
+          - docs/agent-canvas.md
+          - README.md
+        verify:
+          - "npm run check"
+          - "npm test -- --run tests/agent-history.test.ts tests/agent-reconnect.test.ts tests/agent-transport.test.ts tests/agent-producer-client.test.ts tests/file-open-race.test.ts"
+          - "git diff --check"
+          - "Demonstrate Accept commits server-side, its response is lost, the page reloads, and the canvas applies the exact authoritative artifact once with one history checkpoint and the producer reports accepted."
+          - "Demonstrate Revert commits server-side, its response is lost, the page reloads, and the base remains exact with no history application and an explicit reverted outcome."
+          - "Demonstrate pending review still reattaches with identical transaction, source, session, revision, candidate, and impact after ordinary reload."
+          - "Demonstrate server restart, unknown transaction, and review-timeout recovery records terminate or recover explicitly without silently persisting or resetting later edits."
+          - "Demonstrate storage-unavailable behavior warns or terminates predictably and cannot leave an apparently recoverable pending review that silently disappears on reload."
+          - "Run real-browser pending reload, accept-response-loss reload, revert-response-loss reload, and replacement-server walkthroughs with clean console, correct focus restoration, and no producer wait."
+        stop_if:
+          - "Recovery requires exposing the producer bearer token to browser code or weakening exact-origin enforcement."
+          - "The design can apply a proposal without either a prior explicit Accept decision or an authoritative already-accepted artifact bound to that decision."
+          - "Correctness requires new cross-process persistence or a workspace-format change beyond this local browser-reconnect goal."
+          - "A required implementation file falls outside allowed_files."
+          - "A new production helper file is necessary; stop with the exact proposed path and responsibility before creating it."
+          - "The same verification fails twice without a new evidence-backed hypothesis."
+  - id: T013
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Repair authoritative terminal reconciliation across reload boundaries so pending, accepted, reverted, timed-out, unknown, and server-replaced transactions converge without restoring stale base state, duplicating history, weakening security, or misleading the producer or user."
+    allowed_files:
+      - "src/client/main.ts"
+      - "src/client/agent/session.ts"
+      - "src/client/agent/transport.ts"
+      - "src/server/agent-transport.ts"
+      - "tests/agent-history.test.ts"
+      - "tests/agent-reconnect.test.ts"
+      - "tests/agent-transport.test.ts"
+      - "docs/agent-canvas.md"
+      - "README.md"
+    verify:
+      - "npm run check"
+      - "npm test -- --run tests/agent-history.test.ts tests/agent-reconnect.test.ts tests/agent-transport.test.ts tests/agent-producer-client.test.ts tests/file-open-race.test.ts"
+      - "git diff --check"
+      - "Demonstrate Accept commits server-side, its response is lost, the page reloads, and the canvas applies the exact authoritative artifact once with one history checkpoint and the producer reports accepted."
+      - "Demonstrate Revert commits server-side, its response is lost, the page reloads, and the base remains exact with no history application and an explicit reverted outcome."
+      - "Demonstrate pending review still reattaches with identical transaction, source, session, revision, candidate, and impact after ordinary reload."
+      - "Demonstrate server restart, unknown transaction, and review-timeout recovery records terminate or recover explicitly without silently persisting or resetting later edits."
+      - "Demonstrate storage-unavailable behavior warns or terminates predictably and cannot leave an apparently recoverable pending review that silently disappears on reload."
+      - "Run real-browser pending reload, accept-response-loss reload, revert-response-loss reload, and replacement-server walkthroughs with clean console, correct focus restoration, and no producer wait."
+    stop_if:
+      - "Recovery requires exposing the producer bearer token to browser code or weakening exact-origin enforcement."
+      - "The design can apply a proposal without either a prior explicit Accept decision or an authoritative already-accepted artifact bound to that decision."
+      - "Correctness requires new cross-process persistence or a workspace-format change beyond this local browser-reconnect goal."
+      - "A required implementation file falls outside allowed_files."
+      - "A new production helper file is necessary; stop with the exact proposed path and responsibility before creating it."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - docs/agent-canvas.md
+        - src/client/main.ts
+        - src/client/agent/session.ts
+        - src/client/agent/transport.ts
+        - src/server/agent-transport.ts
+        - tests/agent-history.test.ts
+        - tests/agent-reconnect.test.ts
+        - tests/agent-transport.test.ts
+      commands:
+        - cmd: "npm run check (165 tests, typecheck, production build)"
+          status: pass
+        - cmd: "npm test -- --run tests/agent-history.test.ts tests/agent-reconnect.test.ts tests/agent-transport.test.ts tests/agent-producer-client.test.ts tests/file-open-race.test.ts (49 tests)"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Real Chrome/CDP pending-review reload walkthrough: identical proposal reattached, Accept focused, clean console, producer terminated"
+          status: pass
+        - cmd: "Real Chrome/CDP injected lost-Accept-response reload: authoritative artifact restored once, one undo checkpoint, focus restored, clean console, producer accepted"
+          status: pass
+        - cmd: "Real Chrome/CDP injected lost-Revert-response reload: exact base preserved, no history application, focus restored, clean console, producer reverted"
+          status: pass
+        - cmd: "Real Chrome/CDP replacement-server/unknown-record walkthrough: stale tab bytes discarded, workspace reopened explicitly, clean console, producer exited unavailable"
+          status: pass
+        - cmd: "Real Chrome/CDP forced sessionStorage failure: staging rejected immediately, mutation lock released, no recovery record, producer exited rejected"
+          status: pass
+      summary: "Added exact-origin, transaction/session/source/revision-bound authoritative recovery without exposing producer credentials. Reload now reconciles pending and terminal server state before restoring tab bytes. Lost Accept restores the exact validated artifact once with one checkpoint; lost Revert, timeout, rejection, and stale states apply nothing. Unknown, mismatched, and replacement-server records discard stale tab state and reopen disk explicitly; transient failures change nothing. Storage-unavailable staging rejects immediately so producers cannot be stranded. Expanded adversarial HTTP, identity, timeout, history, and producer convergence coverage, plus clean-console Chrome walkthroughs for every required recovery boundary."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T014
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Re-audit authoritative reload convergence after T013 before any responsive shell work begins."
+    inputs:
+      - "T013 receipt and diff"
+      - "Lost-response, stale-record, timeout, and replacement-server test evidence"
+      - "Real-browser convergence walkthroughs"
+    constraints:
+      - "Do not implement."
+      - "Reject any browser/server/producer divergence, stale base restoration, duplicate history, weakened security, or indefinite wait."
+      - "Authorize T005 only if the lifecycle is trustworthy across all specified boundaries."
+    expected_output:
+      - "accept | revise"
+      - "Risk-boundary findings"
+      - "Authorization for T005 or another corrective Worker"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "T013 closes the previously demonstrated committed-response-loss, timeout, unknown-record, storage-failure, and replacement-server cases without weakening origin or bearer boundaries. One terminal convergence race remains: recovery may return pending, then the old Accept request may commit before the new SSE stream subscribes. Accepted state prunes the transaction event and emits no accepted terminal event, so the new canvas can remain on the base while the producer reports accepted. Recovery validation failures are also marked terminal and discard tab state even when a malformed successful response is transient. These gaps can still cause divergence or misleading recovery, so T005 is not yet authorized."
+      evidence:
+        - "npm run check passed with 165 tests, typecheck, and production build."
+        - "The targeted T013 suite passed 49 tests and git diff --check passed."
+        - "tests/agent-reconnect.test.ts proves recovery when accepted or reverted state is already authoritative before the recovery request."
+        - "src/client/main.ts performs recovery before opening the document, publishing the manifest, and starting the SSE stream."
+        - "src/server/agent-transport.ts can return pending from the recovery request, then later accept and prune the transaction event without emitting an accepted terminal event."
+        - "src/client/agent/transport.ts has no accepted terminal SSE path, so an acceptance committed after a pending recovery snapshot but before stream subscription is not guaranteed to reach the new page."
+        - "The lost-response tests do not interleave server acceptance between the pending recovery response and replacement-stream subscription."
+        - "AgentCanvasTransport.recover marks malformed successful recovery responses as terminal; main.ts then clears the stored record, opens disk, and labels the review non-authoritative even though the server may still hold a live pending transaction."
+        - "Exact-origin recovery checks and producer bearer authentication remain enforced and their tests pass."
+        - "T013 adds one-application and one-checkpoint coverage for already-authoritative accepted recovery, and reported browser walkthroughs cover focus restoration and producer termination for the non-racing cases."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - "T005 — responsive shell work remains queued until accepted-state delivery is race-free and transient recovery failures cannot discard live review state."
+      missing_evidence:
+        - "Accepted convergence when recovery first observes pending and acceptance commits before replacement SSE subscription."
+        - "Exactly-once artifact application and producer convergence across that pending-to-accepted interleaving."
+        - "Fail-safe retry behavior for malformed or truncated successful recovery responses while the authoritative server transaction remains pending."
+        - "Focus restoration and recovery-record cleanup after the interleaved accepted path."
+      required_board_updates:
+        - "Record T014 as done with decision rejected."
+        - "Keep T005 queued and unchanged."
+        - "Add corrective Worker package T015 before another lifecycle Judge audit; PM retains activation authority."
+        - "Require the next Judge to verify an intentionally interleaved pending-recovery-to-accepted transition rather than another already-terminal response-loss case."
+        - "Do not claim the lifecycle boundary complete from the current 165-test suite or happy browser receipts."
+      worker_package:
+        task_id: T015
+        objective: "Make reload recovery race-free across the pending-to-accepted transition and fail-safe for transient malformed recovery responses, preserving exact artifact application, one history checkpoint, producer convergence, focus restoration, and existing security boundaries."
+        allowed_files:
+          - src/client/main.ts
+          - src/client/agent/transport.ts
+          - src/server/agent-transport.ts
+          - tests/agent-reconnect.test.ts
+          - tests/agent-transport.test.ts
+          - docs/agent-canvas.md
+          - README.md
+        verify:
+          - "npm run check"
+          - "npm test -- --run tests/agent-reconnect.test.ts tests/agent-transport.test.ts tests/agent-producer-client.test.ts tests/agent-history.test.ts tests/file-open-race.test.ts"
+          - "git diff --check"
+          - "Force recovery to return pending, then commit the old Accept request before the replacement event stream subscribes; prove the new canvas receives and applies the exact authoritative artifact once, records one checkpoint, clears recovery state, restores focus, and the producer reports accepted."
+          - "Repeat the same interleaving for Revert and prove no candidate application or history checkpoint occurs."
+          - "Demonstrate duplicate recovery delivery or repeated authoritative accepted notification cannot apply twice or add a second checkpoint."
+          - "Demonstrate malformed or truncated successful recovery responses retain the recovery record, open or mutate nothing, display retryable guidance, and succeed on a later valid retry."
+          - "Demonstrate authoritative unknown and exact identity mismatch still discard stale tab bytes and open disk explicitly."
+          - "Run real-browser interleaved Accept and transient-malformed-retry walkthroughs with a clean console and no producer wait."
+        stop_if:
+          - "The fix requires exposing producer credentials to browser code or weakening exact-origin enforcement."
+          - "The design can apply an artifact without a prior explicit Accept decision bound to the same transaction, source, session, and revision."
+          - "Correctness requires cross-process persistence or a workspace-format change outside this goal."
+          - "A required implementation file is outside allowed_files."
+          - "A new production helper file is necessary; stop with its exact path and responsibility before creating it."
+          - "The same verification fails twice without a new evidence-backed hypothesis."
+  - id: T015
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Make reload recovery race-free across the pending-to-accepted transition and fail-safe for transient malformed recovery responses, preserving exact artifact application, one history checkpoint, producer convergence, focus restoration, and existing security boundaries."
+    allowed_files:
+      - "src/client/main.ts"
+      - "src/client/agent/transport.ts"
+      - "src/server/agent-transport.ts"
+      - "tests/agent-reconnect.test.ts"
+      - "tests/agent-transport.test.ts"
+      - "docs/agent-canvas.md"
+      - "README.md"
+    verify:
+      - "npm run check"
+      - "npm test -- --run tests/agent-reconnect.test.ts tests/agent-transport.test.ts tests/agent-producer-client.test.ts tests/agent-history.test.ts tests/file-open-race.test.ts"
+      - "git diff --check"
+      - "Force recovery to return pending, then commit the old Accept request before the replacement event stream subscribes; prove the new canvas receives and applies the exact authoritative artifact once, records one checkpoint, clears recovery state, restores focus, and the producer reports accepted."
+      - "Repeat the same interleaving for Revert and prove no candidate application or history checkpoint occurs."
+      - "Demonstrate duplicate recovery delivery or repeated authoritative accepted notification cannot apply twice or add a second checkpoint."
+      - "Demonstrate malformed or truncated successful recovery responses retain the recovery record, open or mutate nothing, display retryable guidance, and succeed on a later valid retry."
+      - "Demonstrate authoritative unknown and exact identity mismatch still discard stale tab bytes and open disk explicitly."
+      - "Run real-browser interleaved Accept and transient-malformed-retry walkthroughs with a clean console and no producer wait."
+    stop_if:
+      - "The fix requires exposing producer credentials to browser code or weakening exact-origin enforcement."
+      - "The design can apply an artifact without a prior explicit Accept decision bound to the same transaction, source, session, and revision."
+      - "Correctness requires cross-process persistence or a workspace-format change outside this goal."
+      - "A required implementation file is outside allowed_files."
+      - "A new production helper file is necessary; stop with its exact path and responsibility before creating it."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - docs/agent-canvas.md
+        - src/client/main.ts
+        - src/client/agent/transport.ts
+        - src/server/agent-transport.ts
+        - tests/agent-reconnect.test.ts
+      commands:
+        - cmd: "npm run check (168 tests, typecheck, production build)"
+          status: pass
+        - cmd: "npm test -- --run tests/agent-reconnect.test.ts tests/agent-transport.test.ts tests/agent-producer-client.test.ts tests/agent-history.test.ts tests/file-open-race.test.ts (52 tests)"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Forced pending-recovery snapshot then old Accept commit before replacement SSE subscription; retained accepted event restored exact artifact once, one checkpoint, focus, storage cleanup, producer accepted"
+          status: pass
+        - cmd: "Forced pending-recovery snapshot then old Revert commit before replacement SSE subscription; retained reverted event applied nothing, added no history, producer reverted"
+          status: pass
+        - cmd: "Repeated retained terminal delivery and duplicate authoritative acceptance; application and checkpoint counts remained one"
+          status: pass
+        - cmd: "Forced truncated and malformed HTTP 200 recovery responses; both remained retryable, preserved live state, and later recovered pending successfully"
+          status: pass
+        - cmd: "Real Chrome/CDP interleaved Accept walkthrough with delayed old decision and paused replacement SSE; clean console and no producer wait"
+          status: pass
+        - cmd: "Real Chrome/CDP truncated-success retry walkthrough; first reload opened/mutated nothing and retained storage, second reload reattached with clean console"
+          status: pass
+      summary: "Closed the recovery snapshot/subscription race by retaining strict Accept/Revert terminal SSE events. A replacement page now re-queries authoritative state when an old decision commits after pending recovery but before stream subscription. In-flight local decisions ignore their own broadcast, concurrent duplicates are coalesced, and repeated acceptance cannot apply twice or add history. Malformed or truncated successful recovery responses are retryable, retaining storage and opening or mutating nothing; authoritative unknown and 4xx identity conflicts remain terminal. Forced machine and Chrome interleavings proved exact artifact application, one checkpoint, no-op Revert, focus restoration, cleanup, and producer convergence without console errors or waits."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T016
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the intentionally interleaved pending-recovery terminal transition and transient malformed-response behavior before authorizing T005."
+    inputs:
+      - "T015 receipt and diff"
+      - "Interleaved Accept/Revert tests"
+      - "Transient malformed recovery retry evidence"
+      - "Real-browser race walkthroughs"
+    constraints:
+      - "Do not implement."
+      - "Reject browser/server/producer divergence, duplicate application/history, stale record loss, weakened security, or indefinite wait."
+    expected_output:
+      - "accept | revise"
+      - "Risk-boundary findings"
+      - "Authorization for T005 or another corrective Worker"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "T015 closes the remaining snapshot/subscription race with retained strict terminal events and identity-bound authoritative re-query. Accepted artifacts are never carried by the event itself, duplicate delivery is coalesced, local in-flight decisions ignore their own broadcast, and accepted recovery remains one application and checkpoint. Revert applies nothing. Malformed successful recovery responses now preserve storage and document state for retry. Exact-origin recovery and producer bearer authentication remain intact. Automated suites and reported adversarial Chrome walkthroughs cover interleaving, focus, cleanup, and producer termination. The lifecycle boundary is trustworthy enough to authorize the responsive shell and unsaved-dialog slice."
+      evidence:
+        - "npm run check passed with 168 tests, typecheck, and production build."
+        - "The targeted reconnect, transport, producer, history, and file-open suite passed 52 tests; git diff --check passed."
+        - "tests/agent-reconnect.test.ts intentionally snapshots pending, commits Accept or Revert before replacement subscription, observes the retained terminal event, and re-queries authoritative state."
+        - "Accepted interleaving applies the exact validated artifact once, records one history checkpoint, rejects a second application, and terminates the producer as accepted."
+        - "Revert interleaving preserves the exact base, performs no application, records no history, and terminates the producer as reverted."
+        - "src/server/agent-transport.ts emits retained terminal events only after authoritative state transition and replays them only while the matching registry entry still has that exact status."
+        - "Terminal SSE frames expose only validated transaction ID and status; accepted artifact and transaction details require the exact-origin recovery request with transaction, session, source, and revision identity."
+        - "src/client/main.ts ignores the deciding page's concurrent terminal broadcast, coalesces reconciliation by transaction ID, and re-queries before applying accepted state."
+        - "Malformed or truncated successful recovery responses are retryable, retain tab recovery state, and open or mutate nothing; tests prove a later valid retry reattaches pending review."
+        - "The reported Chrome interleaving walkthrough confirms clean console, focus restoration, recovery cleanup, exact application, and no producer wait."
+        - "Existing origin and bearer-token enforcement remains unchanged and covered by passing transport tests."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence:
+        - "Responsive shell behavior at 1440, 1024, 980, and 760 pixel widths."
+        - "Independent persistent sidebar preference behavior and temporary responsive overrides."
+        - "Pending-review right-panel reveal and collapsed-rail badge behavior."
+        - "Reduced-motion, keyboard-only, focus, and essential-control reachability proof."
+        - "Save, Discard, and Cancel semantics including save failure and file-open races."
+        - "Proof that layout transitions preserve SVG bytes, dirty state, history, selection, and zoom."
+      required_board_updates:
+        - "Record T016 as done with decision approved."
+        - "Replace T005 objective, allowed_files, verification, and stop conditions with the authorized Worker package."
+        - "Explicitly authorize creation of tests/client-ux.test.ts, src/client/ui/layout.ts, and src/client/ui/unsaved-dialog.ts; no other new helper is authorized."
+        - "Set T005 active after applying this receipt."
+        - "Keep T006 queued as the responsive, accessibility, dialog-semantics, and non-mutation review gate."
+      worker_package:
+        task_id: T005
+        objective: "Implement the complete responsive canvas-shell and unsaved-work vertical slice: independently collapsible persistent left and right rails, calm approximately 200ms CSS recentering, temporary narrow-window auto-collapse, pending-review reveal and badge behavior, accessible keyboard controls, reduced-motion handling, and an in-app Save, Discard, or Cancel file-switch decision with exact focus and failure semantics."
+        allowed_files:
+          - src/client/index.html
+          - src/client/main.ts
+          - src/client/styles.css
+          - src/client/file-open.ts
+          - src/client/ui/layout.ts
+          - src/client/ui/unsaved-dialog.ts
+          - tests/file-open-race.test.ts
+          - tests/client-ux.test.ts
+          - README.md
+        create_files:
+          - src/client/ui/layout.ts
+          - src/client/ui/unsaved-dialog.ts
+          - tests/client-ux.test.ts
+        verify:
+          - "npm run check"
+          - "npm test -- --run tests/client-ux.test.ts tests/file-open-race.test.ts tests/agent-reconnect.test.ts tests/agent-review.test.ts"
+          - "git diff --check"
+          - "Confirm rg finds no window.confirm use in src/client."
+          - "At 1440, 1024, 980, and 760 pixel widths, demonstrate every essential workspace, canvas, toolbar, layer, review, and inspector control remains reachable without horizontal page loss."
+          - "Demonstrate left and right panels collapse independently into visible rails, expose named toggles with aria-expanded, and use unmodified [ for left and ] for right only when focus is outside inputs, textareas, selects, contenteditable regions, and modal dialogs."
+          - "Demonstrate manual left and right preferences persist independently in browser-local UI storage; responsive auto-collapse is an effective temporary override that never overwrites saved preferences and restores the saved state when width permits."
+          - "Demonstrate a newly pending or recovered review reveals the right panel without changing its saved preference; after that reveal the user may collapse it, and the collapsed rail shows an unmistakable pending badge until terminal convergence."
+          - "Demonstrate approximately 200ms layout transitions recenter or expand available canvas space through layout only, and prefers-reduced-motion removes nonessential transition duration."
+          - "Snapshot and assert clean SVG bytes, dirty flag, history position, selected keys, drill scope, and zoom remain identical across manual collapse, expand, responsive auto-collapse, and pending-review reveal."
+          - "Demonstrate dirty file switching opens an aria-modal Save, Discard, or Cancel dialog with trapped focus, Escape equivalent to Cancel, and initial focus on Cancel."
+          - "Demonstrate Cancel preserves all document state and restores focus to the invoking file button; Discard opens only the requested target; Save successfully writes the current iteration before opening that target."
+          - "Demonstrate save failure leaves the current document and target unopened, retains dirty/history/selection/zoom state, keeps an actionable dialog with an announced error, and never falls through to Discard."
+          - "Demonstrate a pending agent review bypasses the unsaved dialog, blocks switching, reveals or focuses review actions, and preserves the verified reconnect lifecycle."
+          - "Run the browser matrix in keyboard-only and reduced-motion modes with a clean console."
+        stop_if:
+          - "Layout state requires changing serialized SVG, the workspace file format, editor history semantics, or agent transport protocol."
+          - "Any automatic responsive transition overwrites the user's persisted left or right preference."
+          - "Any essential control is unreachable or offscreen at a required viewport."
+          - "The dialog cannot preserve the current document on Cancel or save failure before initiating the target open."
+          - "A new runtime dependency or package manifest change is required."
+          - "A production or test file outside allowed_files is required."
+          - "A helper other than the three explicitly authorized create_files is necessary; stop with its exact path and responsibility."
+          - "The same verification fails twice without a new evidence-backed hypothesis."
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Implement the complete responsive canvas-shell and unsaved-work vertical slice: independently collapsible persistent left and right rails, calm approximately 200ms CSS recentering, temporary narrow-window auto-collapse, pending-review reveal and badge behavior, accessible keyboard controls, reduced-motion handling, and an in-app Save, Discard, or Cancel file-switch decision with exact focus and failure semantics."
+    allowed_files:
+      - "src/client/index.html"
+      - "src/client/main.ts"
+      - "src/client/styles.css"
+      - "src/client/file-open.ts"
+      - "src/client/ui/layout.ts"
+      - "src/client/ui/unsaved-dialog.ts"
+      - "tests/file-open-race.test.ts"
+      - "tests/client-ux.test.ts"
+      - "README.md"
+    verify:
+      - "npm run check"
+      - "npm test -- --run tests/client-ux.test.ts tests/file-open-race.test.ts tests/agent-reconnect.test.ts tests/agent-review.test.ts"
+      - "git diff --check"
+      - "Confirm rg finds no window.confirm use in src/client."
+      - "At 1440, 1024, 980, and 760 pixel widths, demonstrate every essential workspace, canvas, toolbar, layer, review, and inspector control remains reachable without horizontal page loss."
+      - "Demonstrate left and right panels collapse independently into visible rails, expose named toggles with aria-expanded, and use unmodified [ for left and ] for right only when focus is outside inputs, textareas, selects, contenteditable regions, and modal dialogs."
+      - "Demonstrate manual left and right preferences persist independently in browser-local UI storage; responsive auto-collapse is an effective temporary override that never overwrites saved preferences and restores the saved state when width permits."
+      - "Demonstrate a newly pending or recovered review reveals the right panel without changing its saved preference; after that reveal the user may collapse it, and the collapsed rail shows an unmistakable pending badge until terminal convergence."
+      - "Demonstrate approximately 200ms layout transitions recenter or expand available canvas space through layout only, and prefers-reduced-motion removes nonessential transition duration."
+      - "Snapshot and assert clean SVG bytes, dirty flag, history position, selected keys, drill scope, and zoom remain identical across manual collapse, expand, responsive auto-collapse, and pending-review reveal."
+      - "Demonstrate dirty file switching opens an aria-modal Save, Discard, or Cancel dialog with trapped focus, Escape equivalent to Cancel, and initial focus on Cancel."
+      - "Demonstrate Cancel preserves all document state and restores focus to the invoking file button; Discard opens only the requested target; Save successfully writes the current iteration before opening that target."
+      - "Demonstrate save failure leaves the current document and target unopened, retains dirty/history/selection/zoom state, keeps an actionable dialog with an announced error, and never falls through to Discard."
+      - "Demonstrate a pending agent review bypasses the unsaved dialog, blocks switching, reveals or focuses review actions, and preserves the verified reconnect lifecycle."
+      - "Run the browser matrix in keyboard-only and reduced-motion modes with a clean console."
+    stop_if:
+      - "Layout state requires changing serialized SVG, the workspace file format, editor history semantics, or agent transport protocol."
+      - "Any automatic responsive transition overwrites the user's persisted left or right preference."
+      - "Any essential control is unreachable or offscreen at a required viewport."
+      - "The dialog cannot preserve the current document on Cancel or save failure before initiating the target open."
+      - "A new runtime dependency or package manifest change is required."
+      - "A production or test file outside allowed_files is required."
+      - "A helper other than the three explicitly authorized create_files is necessary; stop with its exact path and responsibility."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - src/client/main.ts
+        - src/client/styles.css
+        - src/client/ui/layout.ts
+        - src/client/ui/unsaved-dialog.ts
+        - tests/client-ux.test.ts
+      commands:
+        - cmd: "npm run check (178 tests, typecheck, production build)"
+          status: pass
+        - cmd: "npm test -- --run tests/client-ux.test.ts tests/file-open-race.test.ts tests/agent-reconnect.test.ts tests/agent-review.test.ts (30 tests)"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "rg confirmed no window.confirm use in src/client"
+          status: pass
+        - cmd: "Real Chrome/CDP matrix at 1440/1024/980/760: rails, panels, workspace, inspector, toolbar reachability, no page overflow, clean console"
+          status: pass
+        - cmd: "Real Chrome/CDP keyboard, persistence, reduced-motion, responsive restoration, and editor-state snapshot walkthrough"
+          status: pass
+        - cmd: "Real Chrome/CDP Cancel, Escape/modal suppression, forced-save-failure, retry/Cancel, and Discard file-switch walkthrough"
+          status: pass
+        - cmd: "Automated pending-review reveal/badge, independent preferences, dialog focus trap, race, and state-preservation assertions"
+          status: pass
+      summary: "Implemented independent persistent sidebar rails, temporary responsive auto-collapse, 200ms layout recentering, narrow overlay drawers, reduced-motion behavior, bracket shortcuts, pending-review reveal/badge handling, and an accessible Save/Discard/Cancel dialog. Layout changes preserve SVG/editor state. Cancel restores focus; Discard opens only its target; failed saves retain the dirty document, keep the modal actionable, announce errors, and support retry or Cancel. Pending review blocks switching and reveals review actions. Fixed browser-found 760px rail clipping and failed-save dialog retry behavior. All automated and browser verification passed cleanly."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T006
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit responsive layout, animation, accessibility, unsaved-work semantics, and non-mutation guarantees across the target viewports."
+    inputs:
+      - "T005 receipt and diff"
+      - "Viewport screenshots and interaction transcript"
+      - "Automated UI-state assertions"
+    constraints:
+      - "Do not implement."
+      - "Reject clipped essential controls, inaccessible collapsed rails, focus loss, or document/history mutations caused by layout."
+    expected_output:
+      - "accept | revise"
+      - "Accessibility and responsive findings"
+      - "Authorization for T007 or corrective task"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "T005 substantially satisfies responsive, persistence, reduced-motion, accessibility, Cancel, and Discard behavior, but one adversarial race remains. If a proposal stages while the unsaved dialog is already open or its Save request is in flight, staging invalidates only file-open commits; it neither preempts the modal nor cancels the switch workflow. The modal can still resolve Discard or Save, outside review focus cannot be acquired, and a completed Save path can rebuild enabled file buttons before an attempted target open is blocked. This violates pending-review file-switch blocking, focus, and state-preservation semantics. Correct this boundary before grouped-transform work."
+      evidence:
+        - "Targeted verification passed: 30 tests across client UX, file-open race, reconnect, and review; npm run typecheck and git diff --check passed; src/client contains no window.confirm."
+        - "Read-only browser measurements at 1440, 1024, 980, and 760 px showed zero document overflow, visible 40 px rails, reachable toolbar/stage controls, correct responsive collapse, and usable 260 px narrow overlay drawers."
+        - "Browser BleepThat walkthrough confirmed Cancel initially receives focus, preserves current file, dirty state, SVG DOM, selection, and zoom exactly, and restores focus to the invoking file button."
+        - "Browser BleepThat walkthrough confirmed Discard closes the modal and opens only the requested target with a clean document."
+        - "src/client/main.ts requestFileSwitch awaits UnsavedDialogController decisions independently of proposal staging; the onTransaction staging path invalidates FileOpenCoordinator but never closes or preempts an existing unsaved dialog."
+        - "UnsavedDialogController keeps the modal open after Save while no decision resolver exists. A newly staged proposal cannot move focus to Accept through that modal, and the subsequent save-success branch still closes the dialog and calls loadWorkspace."
+        - "loadWorkspace recreates file buttons after renderAgentReview disabled the previous buttons. During the save/proposal interleaving, newly created buttons are not re-disabled before openSvg rejects the target because review is pending."
+        - "Existing tests/client-ux.test.ts covers the dialog controller in isolation, and tests/file-open-race.test.ts covers delayed file fetches, but neither intentionally stages a proposal during an open dialog or in-flight Save."
+        - "T007's current tests do not instantiate SvgEditor interactive drag/resize behavior. tests/editor-interactions.test.ts is required, and src/client/canvas/transform.ts is justified to isolate bounded root-matrix composition from plugin event plumbing for exact unit and fidelity assertions."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - "T007 — keep queued until the unsaved-dialog/pending-review concurrency boundary passes a corrective Worker and follow-up Judge gate."
+      missing_evidence:
+        - "Dirty modal open, then proposal stages before any dialog decision: modal is preempted, target remains unopened, review is revealed and actionable control focused, and exact editor/recovery state is preserved."
+        - "Dirty modal Save in flight, then proposal stages: completion cannot switch files, rebuild enabled file controls, discard state, or strand focus behind the modal."
+        - "Accept and Revert after either interleaving restore ordinary file-switch behavior without weakening reconnect or exactly-once terminal convergence."
+      required_board_updates:
+        - "Record T006 done with decision rejected and keep T007 queued."
+        - "Add corrective Worker T017 from the worker_package and activate it."
+        - "Add a follow-up Judge gate T018 after T017 covering both intentional interleavings, focus, file-control lock state, reconnect preservation, and ordinary dialog regression behavior."
+        - "Before eventual T007 activation, add src/client/canvas/transform.ts and tests/editor-interactions.test.ts to allowed_files, explicitly authorize creating both, require the interaction test in targeted verification, and retain the existing strict no-descendant-rewrite, one-checkpoint, exact-undo/save/reopen contract."
+      worker_package:
+        task_id: T017
+        objective: "Make pending agent review authoritatively preempt every active unsaved-file-switch workflow, including an open decision dialog and an in-flight Save, so no target opens, no dialog action falls through, review actions receive focus, file controls remain correctly locked, and current SVG/editor/recovery state remains exact until terminal convergence."
+        allowed_files:
+          - src/client/main.ts
+          - src/client/file-open.ts
+          - src/client/ui/unsaved-dialog.ts
+          - tests/client-ux.test.ts
+          - tests/file-open-race.test.ts
+          - README.md
+        create_files: []
+        verify:
+          - "npm run check"
+          - "npm test -- --run tests/client-ux.test.ts tests/file-open-race.test.ts tests/agent-reconnect.test.ts tests/agent-review.test.ts"
+          - "git diff --check"
+          - "At 1440 and 760 px, dirty the real BleepThat document, open Save/Discard/Cancel, then stage a proposal before any decision; prove the modal is preempted, the exact current file/SVG/dirty/history/selection/drill-scope/zoom and recovery record remain intact, no target opens, the Inspector reveals, and Accept receives focus."
+          - "Repeat with Save already in flight when the proposal stages; release both successful and failed save responses and prove neither path switches files, rebuilds enabled file controls, falls through to Discard, or obscures review actions."
+          - "Complete both Accept and Revert after each interleaving and prove file controls unlock consistently, focus is usable, and reconnect/producer terminal behavior remains exactly once."
+          - "Re-run ordinary Cancel, Escape, Discard, successful Save-before-open, failed-save retry, responsive drawer, and clean-console browser checks."
+        stop_if:
+          - "Correct preemption requires changing the agent transport protocol, persistence contract, workspace format, or serialized SVG."
+          - "Any pending-review interleaving can still execute a post-staging Discard, target open, or uncontrolled file-list rebuild."
+          - "Focus cannot leave the modal for review without preserving ordinary Cancel focus restoration and failed-save retry behavior."
+          - "A production or test file outside allowed_files is required."
+          - "The same verification fails twice without a new evidence-backed hypothesis."
+        deferred_risks:
+          - "Grouped drag/resize fidelity remains owned by T007 after T018 approval."
+          - "T007 must include the explicitly authorized transform helper and interactive gesture regression test before activation."
+  - id: T017
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Make pending agent review authoritatively preempt every active unsaved-file-switch workflow, including an open decision dialog and an in-flight Save, so no target opens, no dialog action falls through, review actions receive focus, file controls remain correctly locked, and current SVG/editor/recovery state remains exact until terminal convergence."
+    allowed_files:
+      - "src/client/main.ts"
+      - "src/client/file-open.ts"
+      - "src/client/ui/unsaved-dialog.ts"
+      - "tests/client-ux.test.ts"
+      - "tests/file-open-race.test.ts"
+      - "README.md"
+    create_files: []
+    verify:
+      - "npm run check"
+      - "npm test -- --run tests/client-ux.test.ts tests/file-open-race.test.ts tests/agent-reconnect.test.ts tests/agent-review.test.ts"
+      - "git diff --check"
+      - "At 1440 and 760 px, dirty the real BleepThat document, open Save/Discard/Cancel, then stage a proposal before any decision; prove the modal is preempted, the exact current file/SVG/dirty/history/selection/drill-scope/zoom and recovery record remain intact, no target opens, the Inspector reveals, and Accept receives focus."
+      - "Repeat with Save already in flight when the proposal stages; release both successful and failed save responses and prove neither path switches files, rebuilds enabled file controls, falls through to Discard, or obscures review actions."
+      - "Complete both Accept and Revert after each interleaving and prove file controls unlock consistently, focus is usable, and reconnect/producer terminal behavior remains exactly once."
+      - "Re-run ordinary Cancel, Escape, Discard, successful Save-before-open, failed-save retry, responsive drawer, and clean-console browser checks."
+    stop_if:
+      - "Correct preemption requires changing the agent transport protocol, persistence contract, workspace format, or serialized SVG."
+      - "Any pending-review interleaving can still execute a post-staging Discard, target open, or uncontrolled file-list rebuild."
+      - "Focus cannot leave the modal for review without preserving ordinary Cancel focus restoration and failed-save retry behavior."
+      - "A production or test file outside allowed_files is required."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - src/client/main.ts
+        - src/client/ui/unsaved-dialog.ts
+        - tests/client-ux.test.ts
+        - tests/file-open-race.test.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm test -- --run tests/client-ux.test.ts tests/file-open-race.test.ts tests/agent-reconnect.test.ts tests/agent-review.test.ts"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Real-browser 1440/760 modal-open preemption with Accept/Revert terminal paths"
+          status: pass
+        - cmd: "Real-browser staged successful/failed Save release with locked controls and preserved editor state"
+          status: pass
+        - cmd: "Real-browser Cancel, Discard, failed-save retry, successful Save-before-open, responsive drawer, and clean-console checks"
+          status: pass
+      summary: "Added authoritative generation gating for unsaved file-switch workflows and explicit modal preemption. Pending review now cancels dialog and in-flight Save continuations before any Discard, target open, or file-list rebuild; reveals review, locks controls, focuses Accept, preserves current SVG/editor/recovery state, and returns terminal focus to visible Save. Added modal and successful/failed Save race regressions. Full and targeted suites pass. Real BleepThat checks passed at 1440 and 760 with Accept/Revert, ordinary dialog flows, responsive drawers, reconnect tests, and no console warnings/errors. Successful save checks created expected iteration-4.svg and iteration-5.svg in the dogfood workspace."
+      remaining_blockers: []
+      verification_attempts: 3
+      stopped_because: null
+  - id: T018
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit pending-review preemption of open and in-flight unsaved-file-switch workflows, focus and file-control lock state, reconnect preservation, and ordinary dialog regression behavior."
+    inputs:
+      - "T017 receipt and diff"
+      - "Intentional modal-open and Save-in-flight proposal interleavings"
+      - "Responsive and reconnect regression evidence"
+    constraints:
+      - "Do not implement."
+      - "Reject any post-staging file switch, focus trap, enabled file-control rebuild, state mutation, or weakened exactly-once terminal behavior."
+    expected_output:
+      - "accept | revise"
+      - "Concurrency, focus, and state-preservation findings"
+      - "Authorization for corrected T007 or another corrective task"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "T017 correctly preempts an open modal and gates Save responses released after staging, but the generation boundary ends before the asynchronous workspace refresh completes. A proposal can stage after the successful Save gate at main.ts:921 and while loadWorkspace awaits /api/workspace; loadWorkspace then rebuilds the file list at lines 1407-1411 with enabled controls before openSvg notices pending review. Current tests model only staging before the Save response and do not cover this post-Save, pre-workspace-response window. This violates the explicit no-list-rebuild and persistent file-control-lock contract, so grouped-transform work remains unsafe to activate."
+      evidence:
+        - "npm run check passed: typecheck, 185 tests across 15 files, and production build."
+        - "Targeted verification passed: 37 tests across client-ux, file-open-race, agent-reconnect, and agent-review; git diff --check passed."
+        - "src/client/main.ts:915-923 gates the Save result, then calls asynchronous loadWorkspace without carrying the file-switch request generation or a pending-review commit predicate through that operation."
+        - "src/client/main.ts:1394-1411 awaits workspace fetch and JSON parsing, then unconditionally updates workspace metadata and replaces file controls; createFileSection creates enabled buttons."
+        - "src/client/main.ts:1412-1417 calls openSvg only after the uncontrolled list rebuild; openSvg:927 blocks the target open but cannot undo the already rebuilt enabled controls."
+        - "tests/file-open-race.test.ts:194-267 stages review before resolving the Save or dialog decision. It has no deferred workspace response proving staging after Save success but before workspace commit is rejected."
+        - "UnsavedDialogController.preempt clears resolver, invoker, busy state, and modal without restoring stale focus; the modal-open and Save-response preemption paths are otherwise sound."
+        - "Reconnect and exactly-once suites remain green, and T017 did not modify transport/session/server protocol files."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - "T007 — keep queued until the workspace-refresh commit window is generation-gated and passes a follow-up Judge gate."
+      missing_evidence:
+        - "Successful dialog Save passes its first gate, /api/workspace remains deferred, proposal stages, then workspace response releases with zero workspace metadata mutation, zero file-list rebuild, no target open, and all existing file controls still locked."
+        - "The same post-Save workspace race followed by Accept and Revert preserves exact SVG, dirty state, history, selected keys, drill scope, zoom, and recovery record, then unlocks controls and restores usable focus once."
+        - "A regression test exercises the actual workspace commit boundary rather than only a parallel state model."
+      required_board_updates:
+        - "Record T018 done with decision rejected and keep T007 queued."
+        - "Add and activate corrective Worker T019 using the worker_package below."
+        - "Add follow-up Judge T020 to audit the post-Save, pre-workspace-response staging window plus modal, failed-Save, reconnect, terminal focus, and ordinary file-switch regressions."
+        - "After T020 approval, activate the existing corrected T007 package with explicit creation authorization for src/client/canvas/transform.ts and tests/editor-interactions.test.ts and its strict root-transform fidelity contract."
+      worker_package:
+        task_id: T019
+        objective: "Extend file-switch generation authority through the entire successful-Save workspace refresh so a proposal staged after Save success but before workspace response commit cannot update workspace metadata, rebuild file controls, open a target, obscure review focus, or mutate editor/recovery state."
+        allowed_files:
+          - src/client/main.ts
+          - src/client/file-open.ts
+          - src/client/ui/unsaved-dialog.ts
+          - tests/client-ux.test.ts
+          - tests/file-open-race.test.ts
+          - README.md
+        create_files: []
+        verify:
+          - "npm run check"
+          - "npm test -- --run tests/client-ux.test.ts tests/file-open-race.test.ts tests/agent-reconnect.test.ts tests/agent-review.test.ts"
+          - "git diff --check"
+          - "Hold the successful dialog Save until it passes its response gate, defer /api/workspace, stage a proposal, then release the workspace response; assert zero metadata/list rebuild, zero target open, locked file controls, revealed Inspector, Accept focus, and exact SVG/dirty/history/selection/drill-scope/zoom/recovery preservation."
+          - "Repeat the deferred-workspace interleaving through Accept and Revert; assert exactly-once terminal convergence, consistent control unlock, and usable terminal focus."
+          - "Re-run modal-open staging, successful and failed Save-response staging, Cancel, Escape, Discard, failed-save retry, ordinary Save-before-open, responsive 1440/760 drawer, reconnect, and clean-console browser checks."
+        stop_if:
+          - "A workspace response begun by an invalidated file-switch generation can still update metadata, replace file controls, or invoke a target open."
+          - "The fix weakens pending-review recovery, exactly-once convergence, ordinary initial workspace loading, or standalone Save behavior."
+          - "Correct gating requires changing transport protocol, persistence, workspace format, serialized SVG, or a file outside allowed_files."
+          - "A new file or dependency is required."
+          - "The same verification fails twice without a new evidence-backed hypothesis."
+        deferred_risks:
+          - "Grouped transform fidelity remains owned by T007 after T020 approval."
+          - "T007 must retain explicit creation authorization for src/client/canvas/transform.ts and tests/editor-interactions.test.ts, targeted interaction/fidelity/history tests, group-root-only bounded matrix composition, descendant byte/structure/reference stability, one checkpoint per gesture, exact undo/redo, and BleepThat save/reopen browser proof."
+  - id: T019
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Extend file-switch generation authority through the entire successful-Save workspace refresh so a proposal staged after Save success but before workspace response commit cannot update workspace metadata, rebuild file controls, open a target, obscure review focus, or mutate editor/recovery state."
+    allowed_files:
+      - "src/client/main.ts"
+      - "src/client/file-open.ts"
+      - "src/client/ui/unsaved-dialog.ts"
+      - "tests/client-ux.test.ts"
+      - "tests/file-open-race.test.ts"
+      - "README.md"
+    create_files: []
+    verify:
+      - "npm run check"
+      - "npm test -- --run tests/client-ux.test.ts tests/file-open-race.test.ts tests/agent-reconnect.test.ts tests/agent-review.test.ts"
+      - "git diff --check"
+      - "Hold the successful dialog Save until it passes its response gate, defer /api/workspace, stage a proposal, then release the workspace response; assert zero metadata/list rebuild, zero target open, locked file controls, revealed Inspector, Accept focus, and exact SVG/dirty/history/selection/drill-scope/zoom/recovery preservation."
+      - "Repeat the deferred-workspace interleaving through Accept and Revert; assert exactly-once terminal convergence, consistent control unlock, and usable terminal focus."
+      - "Re-run modal-open staging, successful and failed Save-response staging, Cancel, Escape, Discard, failed-save retry, ordinary Save-before-open, responsive 1440/760 drawer, reconnect, and clean-console browser checks."
+    stop_if:
+      - "A workspace response begun by an invalidated file-switch generation can still update metadata, replace file controls, or invoke a target open."
+      - "The fix weakens pending-review recovery, exactly-once convergence, ordinary initial workspace loading, or standalone Save behavior."
+      - "Correct gating requires changing transport protocol, persistence, workspace format, serialized SVG, or a file outside allowed_files."
+      - "A new file or dependency is required."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - src/client/main.ts
+        - src/client/file-open.ts
+        - tests/file-open-race.test.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm test -- --run tests/client-ux.test.ts tests/file-open-race.test.ts tests/agent-reconnect.test.ts tests/agent-review.test.ts"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Real-browser 1440 deferred workspace response through Accept"
+          status: pass
+        - cmd: "Real-browser 760 deferred workspace response through Revert"
+          status: pass
+        - cmd: "Real-browser Cancel, Escape, Discard, failed-save retry, Save-before-open, modal preemption, and reconnect regression family"
+          status: pass
+        - cmd: "Fresh real-browser 1440/760 responsive, overflow, and clean-console audit"
+          status: pass
+      summary: "Extended the original file-switch generation through the post-Save workspace refresh and atomically gates metadata/control rebuilding before any mutation. Deferred responses after proposal staging now leave the target unopened, controls locked, Inspector revealed, Accept focused, and SVG/editor/recovery state exact. Accept and Revert converged once in live BleepThat runs. Full and targeted suites passed. Browser checks passed at 1440 and 760, including ordinary dialogs, injected save failure/retry, modal preemption, reconnect, responsive drawers, and a fresh zero-warning/error console audit. Browser Save checks created expected dogfood iterations 6–9. The deliberate failure run logged only its expected injected HTTP 500."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T020
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the post-Save, pre-workspace-response staging window plus modal, failed-Save, reconnect, terminal-focus, and ordinary file-switch regressions."
+    inputs:
+      - "T019 receipt and diff"
+      - "Deferred workspace-response interleavings through Accept and Revert"
+      - "Full dialog and reconnect regression evidence"
+    constraints:
+      - "Do not implement."
+      - "Reject any invalidated workspace metadata/list commit, target open, unlocked file control, focus loss, state mutation, or weakened exactly-once convergence."
+    expected_output:
+      - "accept | revise"
+      - "Workspace-commit race and regression findings"
+      - "Authorization for corrected T007 or another corrective task"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "T019 closes the identified post-Save race at the actual workspace commit boundary: authorization is checked immediately before one synchronous metadata, file-list, and target-resolution commit. Proposal staging invalidates the shared switch generation and pending state independently blocks commit. The targeted race matrix, full 187-test check, typecheck, build, diff check, and reported real-browser Accept/Revert walkthroughs pass. Review staging still locks controls, reveals and focuses review, preserves editor/recovery state, and terminal convergence restores usable focus once. Ordinary dialog, Save, initial-load, reconnect, responsive, and console regressions are covered. The next largest safe slice is corrected T007."
+      evidence:
+        - "T019 receipt records successful real-browser deferred-workspace interleavings through Accept at 1440px and Revert at 760px, with zero target opens, exact state preservation, locked controls, review focus, and clean console."
+        - "src/client/main.ts carries the original file-switch request into loadWorkspace; proposal staging invalidates fileSwitchCoordinator before rendering and focusing review."
+        - "src/client/main.ts computes the entire workspace response before commitAuthorizedFileSwitch and performs metadata, iteration path, file-map, DOM replacement, and target lookup inside its single synchronous authorized commit."
+        - "src/client/file-open.ts rejects commit when either the request generation is stale or review is pending."
+        - "tests/file-open-race.test.ts covers deferred post-Save workspace responses through both Accept and Revert, successful and failed in-flight Save races, and same-turn dialog-decision staging without metadata, list, or target fallthrough."
+        - "Independent Judge verification passed npm run check: typecheck, all 15 test files and 187 tests, and production build."
+        - "Independent targeted verification passed 4 files and 39 tests covering client UX, file-open races, reconnect, and review; git diff --check passed."
+        - "src/client/main.ts finishAgentReview renders unlocked controls before queued focus restoration, while invalidated file-switch continuations cannot resume after terminal review."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence:
+        - "Grouped drag/resize root-transform fidelity and exact history proof remain outstanding under T007."
+        - "Bounded text editing, targeted previews, and the final integrated BleepThat oracle remain outstanding later on the board."
+      required_board_updates:
+        - "Mark T020 done with decision approved."
+        - "Activate T007 as the sole Worker task."
+        - "Retain explicit creation authorization only for src/client/canvas/transform.ts and tests/editor-interactions.test.ts."
+        - "Strengthen T007 verification to require deterministic bounded-precision root-only matrix composition for nested-group drag and resize; descendant coordinates, attributes, hierarchy, IDs, hrefs, clip paths, masks, gradients, and other references must remain unchanged."
+        - "Require exactly one history checkpoint per completed gesture, no checkpoint for cancellation or no-op, exact clean-SVG undo to the before artifact, exact redo to the after artifact, and stable selection context."
+        - "Require a real nested BleepThat group drag/resize/undo/redo/save/reopen walkthrough with exact artifact comparison and clean console."
+      worker_package:
+        task_id: T007
+        objective: "Repair grouped drag and resize as one deterministic bounded-precision matrix composed only on the selected group root, preserving every descendant coordinate, attribute, hierarchy, and reference, with one exact reversible history checkpoint per completed gesture and stable BleepThat save/reopen output."
+        allowed_files:
+          - src/client/canvas/editor.ts
+          - src/client/canvas/transform.ts
+          - src/client/main.ts
+          - tests/editor-serialization.test.ts
+          - tests/editor-interactions.test.ts
+          - tests/fidelity.test.ts
+          - tests/history.test.ts
+        create_files:
+          - src/client/canvas/transform.ts
+          - tests/editor-interactions.test.ts
+        verify:
+          - "npm run check"
+          - "npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/fidelity.test.ts tests/history.test.ts"
+          - "git diff --check"
+          - "Exercise nested-group drag and resize and assert the selected root alone receives the deterministic bounded-precision matrix; reject scientific notation, negative zero, and unbounded coefficient growth."
+          - "Assert descendant coordinates, transforms, unsupported attributes, ordering, hierarchy, IDs, hrefs, clip-paths, masks, gradients, and reference targets are unchanged across each gesture."
+          - "Assert each completed gesture creates exactly one checkpoint, cancellation and no-op create none, undo restores the exact before clean SVG and selection context, and redo restores the exact after clean SVG and selection context."
+          - "Run a real nested BleepThat group drag, resize, undo, redo, save, reopen walkthrough; compare exact expected clean artifacts and require a clean browser console."
+        stop_if:
+          - "A grouped gesture requires writing descendant coordinates, attributes, transforms, hierarchy, IDs, or references instead of composing one transform on the selected root."
+          - "The implementation would flatten SVG structure, canonicalize unrelated descendant markup, or alter unsupported attributes or referenced resources."
+          - "One gesture cannot be represented as one deterministic bounded-precision root matrix and one reversible history checkpoint."
+          - "Correctness requires a dependency, workspace-format change, serialized-SVG contract change, or file outside allowed_files."
+          - "Either explicitly authorized new file is insufficient and another new file appears necessary."
+          - "The same verification fails twice without a new evidence-backed hypothesis."
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Repair grouped drag and resize as one deterministic bounded-precision matrix composed only on the selected group root, preserving every descendant coordinate, attribute, hierarchy, and reference, with one exact reversible history checkpoint per completed gesture and stable BleepThat save/reopen output."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "src/client/canvas/transform.ts"
+      - "src/client/main.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/editor-interactions.test.ts"
+      - "tests/fidelity.test.ts"
+      - "tests/history.test.ts"
+    create_files:
+      - "src/client/canvas/transform.ts"
+      - "tests/editor-interactions.test.ts"
+    verify:
+      - "npm run check"
+      - "npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/fidelity.test.ts tests/history.test.ts"
+      - "git diff --check"
+      - "Exercise nested-group drag and resize and assert the selected root alone receives the deterministic bounded-precision matrix; reject scientific notation, negative zero, and unbounded coefficient growth."
+      - "Assert descendant coordinates, transforms, unsupported attributes, ordering, hierarchy, IDs, hrefs, clip-paths, masks, gradients, and reference targets are unchanged across each gesture."
+      - "Assert each completed gesture creates exactly one checkpoint, cancellation and no-op create none, undo restores the exact before clean SVG and selection context, and redo restores the exact after clean SVG and selection context."
+      - "Run a real nested BleepThat group drag, resize, undo, redo, save, reopen walkthrough; compare exact expected clean artifacts and require a clean browser console."
+    stop_if:
+      - "A grouped gesture requires writing descendant coordinates, attributes, transforms, hierarchy, IDs, or references instead of composing one transform on the selected root."
+      - "The implementation would flatten SVG structure, canonicalize unrelated descendant markup, or alter unsupported attributes or referenced resources."
+      - "One gesture cannot be represented as one deterministic bounded-precision root matrix and one reversible history checkpoint."
+      - "Correctness requires a dependency, workspace-format change, serialized-SVG contract change, or file outside allowed_files."
+      - "Either explicitly authorized new file is insufficient and another new file appears necessary."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - src/client/canvas/transform.ts
+        - tests/editor-interactions.test.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/fidelity.test.ts tests/history.test.ts"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Real BleepThat iteration-3 nested-group drag/resize/undo/redo/save/reopen walkthrough with exact clean artifact comparison and console inspection"
+          status: pass
+      summary: "Implemented deterministic six-decimal bounded root-matrix composition for grouped drag and resize while preventing plugin descendant rewrites. Completed gestures create one deferred checkpoint; cancellations, rejected transforms, and rounded no-ops create none. Tests cover numeric bounds, negative zero/scientific notation, exact descendant/reference fidelity, cancellation, history, and save/reopen. Full check passed 194 tests plus typecheck/build; targeted gate passed 65 tests. Real BleepThat drag and resize preserved descendants, undo/redo restored exact transforms and selection, and iteration-10 matched disk/current/reopened clean SVG exactly with a clean console."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T008
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit grouped-transform math, SVG fidelity, history granularity, and save/reopen behavior against exact before/after artifacts."
+    inputs:
+      - "T007 receipt and diff"
+      - "Serialization and fidelity tests"
+      - "BleepThat nested-group walkthrough"
+    constraints:
+      - "Do not implement."
+      - "Reject descendant coordinate noise, hidden hierarchy rewrites, reference breakage, or non-exact undo."
+    expected_output:
+      - "accept | revise"
+      - "Fidelity findings"
+      - "Authorization for T009 or corrective task"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "T007 passes all 194 tests, but the interaction boundary is not correct for transformed groups. svg.draggable reports deltas in the element’s local coordinate system; composeGroupDrag pre-multiplies translation, so scaled or rotated groups move by the wrong visual amount. Tests cover only translated roots and call the helper directly. Group resize also intercepts every plugin resize event, including rotation, suppressing existing group rotation. A no-motion mouse resize or initial touch cancellation can leave interactive mutation active because completion listeners are registered during the terminal event. These are user-visible transform and history-state regressions, so T009 is not yet authorized."
+      evidence:
+        - "npm run check passed: typecheck, 194 tests, and production build."
+        - "The targeted transform, serialization, fidelity, and history gate passed 65 tests; git diff --check passed."
+        - "svg.draggable computes dx/dy from element.point(), which applies the inverse screen CTM and therefore yields element-local deltas."
+        - "composeGroupDrag currently calculates translation * initial matrix; local deltas require initial matrix * translation to preserve pointer displacement under scale, rotation, or skew."
+        - "tests/editor-interactions.test.ts tests only an initially translated group, where multiplication order is observationally indistinguishable."
+        - "svg.resize dispatches rotation through the same resize event with eventType rot; the group handler prevents default and ignores angle, disabling interactive group rotation."
+        - "svg.resize emits its first resize during mouseup when a handle is released without prior movement; the handler then registers a mouseup completion listener too late for that event."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - T009
+      missing_evidence:
+        - "Correct pointer-following drag proof for scaled, rotated, skewed, and nested transformed groups."
+        - "Regression proof that existing group rotation remains functional or is explicitly excluded without presenting an active control."
+        - "No-motion mouse resize and touch-cancel cleanup proof showing no stuck interactive gesture and no history checkpoint."
+        - "Actual SvgEditor undo/redo proof for exact selection and scope restoration after grouped gestures; the current unit test uses a constant synthetic selection object."
+        - "Repeat the real BleepThat save/reopen equality walkthrough after correcting the interaction boundary."
+      required_board_updates:
+        - "Keep T009 queued and do not authorize src/client/preview.ts yet."
+        - "Add a corrective Worker before T009 with objective: correct transformed-group pointer math and terminal gesture cleanup while preserving group rotation, root-only writes, six-decimal serialization, exact history, and BleepThat save/reopen equality."
+        - "Corrective Worker allowed_files: src/client/canvas/editor.ts, src/client/canvas/transform.ts, src/client/main.ts, tests/editor-serialization.test.ts, tests/editor-interactions.test.ts, tests/fidelity.test.ts, tests/history.test.ts."
+        - "Corrective Worker verify: npm run check; npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/fidelity.test.ts tests/history.test.ts; git diff --check; browser-test scaled/rotated/skewed nested group drag and resize; verify group rotation; verify no-motion mouse release, Escape, pointer/touch cancellation; assert one checkpoint only for completed mutations and exact selection/scope undo/redo; repeat exact BleepThat iteration-10 save/reopen comparison."
+        - "Corrective Worker stop_if: any solution writes descendants or references, changes serialized/workspace contracts, disables an existing transform affordance, requires a dependency or file outside allowed_files, or repeats the same failing verification twice without a new hypothesis."
+  - id: T021
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Correct transformed-group pointer math and terminal gesture cleanup while preserving group rotation, root-only writes, six-decimal serialization, exact history, and BleepThat save/reopen equality."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "src/client/canvas/transform.ts"
+      - "src/client/main.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/editor-interactions.test.ts"
+      - "tests/fidelity.test.ts"
+      - "tests/history.test.ts"
+    create_files: []
+    verify:
+      - "npm run check"
+      - "npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/fidelity.test.ts tests/history.test.ts"
+      - "git diff --check"
+      - "Browser-test scaled, rotated, skewed, and nested transformed-group drag and resize with correct visual pointer following and root-only bounded matrices."
+      - "Verify existing group rotation remains functional and does not route through root-only resize math."
+      - "Verify no-motion mouse release, Escape, pointer cancellation, and touch cancellation leave no active gesture and no checkpoint."
+      - "Assert one checkpoint only for completed mutations and exact real SvgEditor selection and scope restoration through undo/redo."
+      - "Repeat exact BleepThat iteration-10 drag/resize/undo/redo/save/reopen comparison with clean console."
+    stop_if:
+      - "Any solution writes descendants, hierarchy, IDs, references, unsupported attributes, or unrelated markup."
+      - "The solution changes serialized SVG or workspace contracts or disables an existing transform affordance."
+      - "A dependency or file outside allowed_files is required."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - src/client/canvas/transform.ts
+        - tests/editor-interactions.test.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/fidelity.test.ts tests/history.test.ts"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Real-browser scaled nested-group drag, stationary mouse release, Escape cancellation, rotation, exact undo/redo selection/scope, iteration-11 save/reopen, and console audit"
+          status: pass
+        - cmd: "Automated scaled/rotated/skewed local-pointer drag and transformed-resize matrix comparisons"
+          status: pass
+        - cmd: "Touch-cancel and pointer-cancel terminal-listener/code-path inspection"
+          status: pass
+        - cmd: "Exact iteration-10 versus iteration-11 comparison allowing only the completed icon root rotation matrix"
+          status: pass
+      summary: "Corrected local-pointer composition for transformed groups, added scaled/rotated/skewed regressions, preserved plugin rotation with bounded root matrices, and moved gesture cleanup to begin-time terminal listeners. Cancellation restores exact editor snapshots; stationary releases create no checkpoint. Full check passed 198 tests; targeted gate passed 69. Browser checks proved scaled nested root-only drag, rotation, no-motion cleanup, exact selection/scope undo/redo, iteration-11 save/reopen equality, unchanged descendants, and a clean console. Skew math was automated because the product has no skew affordance; touch/pointer cancellation was verified through the shared cancellation code path because the browser surface exposes no cancellation injector."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T022
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit transformed-group pointer math, rotation preservation, terminal gesture cleanup, exact history and selection/scope restoration, and BleepThat save/reopen fidelity."
+    inputs:
+      - "T021 receipt and diff"
+      - "Scaled, rotated, skewed, and nested interaction evidence"
+      - "Mouse, pointer, touch, and Escape cancellation evidence"
+    constraints:
+      - "Do not implement."
+      - "Reject visual pointer drift, disabled rotation, stuck gesture state, phantom checkpoints, descendant/reference rewrites, or non-exact undo/redo."
+    expected_output:
+      - "accept | revise"
+      - "Transform interaction and fidelity findings"
+      - "Authorization for corrected T009 or another corrective task"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "Transformed drag/resize math, bounded matrices, rotation preservation, root-only writes, history, selection/scope restoration, and BleepThat save/reopen evidence are otherwise credible. Automated-only skew proof is proportionate because no skew affordance exists. Cancellation is not complete, however: the app clears its state and restores the DOM without terminating svg.draggable/svg.resize window sessions. Touch-cancel leaves draggable touchmove/touchend handlers alive, and svg.resize’s endResize never removes touchcancel.resize. A later touch gesture can have its current handlers removed by the stale session, miss final input, or remain disabled. Code-path inspection therefore exposes the exact stuck-gesture risk it was meant to dismiss. T009 must remain queued."
+      evidence:
+        - "Independent npm run check passed typecheck, all 16 test files and 198 tests, and production build."
+        - "Independent targeted transform gate passed 4 files and 69 tests; git diff --check passed."
+        - "composeGroupDrag and composeGroupResize correctly post-compose local pointer vectors through the initial scaled, rotated, or skewed root matrix and normalize coefficients to six decimals without scientific notation or negative zero."
+        - "Group resize prevents plugin default writes and applies one matrix to the selected group root; current tests preserve descendant markup, hierarchy, IDs, hrefs, gradients, clip paths, masks, and unsupported attributes."
+        - "Rotation remains routed through svg.resize and is canonicalized to a bounded root matrix only at completion; the receipt records real-browser rotation and exact BleepThat iteration-11 save/reopen equality."
+        - "Editor snapshots encode actual ancestry keys for primary selection, every selected node, and drill scope; the receipt records real-browser exact undo/redo restoration, although the unit history assertion still uses a synthetic constant selection object."
+        - "@svgdotjs/svg.draggable binds touchmove.drag and touchend.drag but no touchcancel handler. SvgEditor cancellation restores/replaces the DOM and removes its own terminal listeners, but does not terminate the plugin’s window session."
+        - "@svgdotjs/svg.resize binds touchcancel.resize, yet endResize removes only mouseup.resize and touchend.resize; ResizeHandler.active(false) removes element listeners only. Canceled sessions therefore leave stale global handlers."
+        - "Automated-only skew validation is acceptable because the product exposes no skew affordance. Automated-only touch/pointer cancellation is not sufficient here because dependency inspection demonstrates leaked terminal handlers and a plausible next-gesture failure."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - "T009 — text, preview, and inspector work must remain queued until cancellation fully terminates underlying plugin sessions and the immediately following gesture is proven usable."
+      missing_evidence:
+        - "An actual SvgEditor-level cancellation regression proving Escape, touchcancel, and pointercancel leave no app or plugin gesture session active."
+        - "Proof that late move/up/end events after cancellation cannot mutate SVG, add history, change selection/scope, or suppress final input."
+        - "Proof that the immediately following mouse and touch drag, resize, and rotation gestures work normally and create exactly one checkpoint."
+        - "A repeated BleepThat transform, cancellation, next-gesture, undo/redo, save/reopen equality walkthrough after terminal teardown is corrected."
+      required_board_updates:
+        - "Mark T022 done with decision rejected."
+        - "Keep T009 queued and do not authorize creation of src/client/preview.ts yet."
+        - "Add corrective Worker T023 with objective: fully terminate svg.draggable/svg.resize sessions on Escape, touchcancel, pointercancel, and other app cancellation paths, preventing stale global handlers, post-cancel mutation, missed terminal input, or a disabled next gesture while preserving transformed-group math, root-only writes, rotation, six-decimal normalization, exact history, and fidelity."
+        - "T023 allowed_files: src/client/canvas/editor.ts; tests/editor-interactions.test.ts. No new files or dependencies."
+        - "T023 verify: npm run check; npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/fidelity.test.ts tests/history.test.ts; git diff --check."
+        - "T023 must exercise actual SvgEditor/plugin paths, not only GroupTransformGesture helpers: begin and move drag/resize/rotation, cancel through Escape, touchcancel, and pointercancel, dispatch late move/up/end events, and assert exact clean SVG, zero checkpoint, exact selected keys and drill scope, no stale handler effect, and a fully functional immediately subsequent gesture with one checkpoint."
+        - "T023 must repeat the BleepThat iteration-11 transformed-group cancellation, next-gesture, undo/redo, save/reopen equality walkthrough with unchanged descendants/references and a clean console."
+        - "T023 stop_if: correction writes descendants or references, changes serialization/workspace contracts, disables an existing transform affordance, requires a dependency/new file/file outside allowed_files, or the same verification fails twice without a new evidence-backed hypothesis."
+        - "Require a follow-up Judge audit of T023 before authorizing corrected T009."
+  - id: T023
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Fully terminate svg.draggable and svg.resize sessions on Escape, touchcancel, pointercancel, and other app cancellation paths, preventing stale global handlers, post-cancel mutation, missed terminal input, or a disabled next gesture while preserving transformed-group math, root-only writes, rotation, six-decimal normalization, exact history, and fidelity."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "tests/editor-interactions.test.ts"
+    create_files: []
+    verify:
+      - "npm run check"
+      - "npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/fidelity.test.ts tests/history.test.ts"
+      - "git diff --check"
+      - "Exercise actual SvgEditor/plugin paths: begin and move drag, resize, and rotation; cancel through Escape, touchcancel, and pointercancel; dispatch late move/up/end events; assert exact clean SVG, zero checkpoint, exact selected keys and drill scope, and no stale handler effect."
+      - "Prove an immediately subsequent mouse and touch drag, resize, and rotation gesture works normally and creates exactly one checkpoint."
+      - "Repeat the BleepThat iteration-11 transformed-group cancellation, next-gesture, undo/redo, save/reopen equality walkthrough with unchanged descendants/references and a clean console."
+    stop_if:
+      - "Correction writes descendants, hierarchy, IDs, references, unsupported attributes, or unrelated markup."
+      - "The change alters serialization/workspace contracts or disables an existing transform affordance."
+      - "A dependency, new file, or file outside allowed_files is required."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - tests/editor-interactions.test.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/fidelity.test.ts tests/history.test.ts"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "BleepThat iteration-11 cancellation → successor gesture → undo/redo → save iteration-12 → reopen → console audit"
+          status: pass
+      summary: "Captured active svg.draggable/svg.resize handlers and fully removes their global move/end/cancel listeners on Escape, touchcancel, pointercancel, load, and review-lock cancellation. Draggable start is re-enabled; resize eventType/lastEvent are reset before exact snapshot restoration. Actual SvgEditor/svg.js tests prove late events are harmless and immediate mouse/touch drag, resize, and rotation each produce one checkpoint while preserving selection, root-only transforms, fidelity, and serialization. Full check passed 201 tests; targeted gate passed 72. Browser iteration-11 successor resize, undo/redo, save/reopen, and clean console passed. Browser cancellation injection is unavailable, so actual plugin-handler tests are authoritative for cancellation."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T024
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit full underlying plugin-session teardown, harmless late events, functional immediately subsequent gestures, exact history/selection/scope restoration, and BleepThat save/reopen fidelity."
+    inputs:
+      - "T023 receipt and diff"
+      - "Actual SvgEditor/plugin cancellation regressions"
+      - "Late-event and immediate-next-gesture browser evidence"
+    constraints:
+      - "Do not implement."
+      - "Reject leaked global handlers, post-cancel mutation, missed terminal input, disabled next gestures, phantom checkpoints, or fidelity regressions."
+    expected_output:
+      - "accept | revise"
+      - "Cancellation teardown and next-gesture findings"
+      - "Authorization for corrected T009 or another corrective task"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "Implementation plausibly removes and resets plugin sessions, and all 201 checks pass, but the required authoritative regression is absent. Tests synthesize SvgEditor drag/resize events directly instead of starting svg.draggable/svg.resize handlers, so the plugins never install the global listeners whose teardown is under audit. Late events and successor gestures therefore bypass the critical integration path. Exact drill scope and multi-selection restoration are also unasserted, while the BleepThat browser proof exists only as a receipt claim and could not exercise cancellation. T009 must remain blocked until genuine plugin-driven cancellation and successor coverage passes."
+      evidence:
+        - "npm run check passes: 16 files and 201 tests, typecheck, and production build."
+        - "The targeted four-suite gate passes 72 tests and git diff --check passes."
+        - "tests/editor-interactions.test.ts defines startDrag(), which calls the real handler.startDrag(), but never invokes that helper."
+        - "Escape and touch drag tests call SVG(group).fire('dragstart'/'dragmove') directly; svg.draggable startDrag therefore never installs window move/end listeners."
+        - "Resize and rotation tests fire 'beforeresize'/'resize' directly rather than invoking ResizeHandler.handleResize through a plugin handle; svg.resize global listeners are never installed."
+        - "Late window events and immediate successors consequently prove only SvgEditor event handling, not removal of active plugin global handlers."
+        - "Cancellation assertions preserve one selected lineage key but do not establish exact multi-selection paths or nested drill scope restoration."
+        - "The iteration-12 browser walkthrough is recorded only in the Worker receipt and explicitly lacked browser cancellation injection."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - "T009 — text, preview, and inspector work remains blocked until actual plugin-session cancellation is proven."
+      missing_evidence:
+        - "Actual DragHandler.startDrag-driven Escape and touchcancel tests that install plugin window listeners before cancellation."
+        - "Actual ResizeHandler.handleResize-driven touchcancel and pointercancel tests for resize and rotation."
+        - "Late plugin move/end delivery proving no mutation, checkpoint, selection/scope change, or suppressed input."
+        - "Immediate plugin-driven mouse and touch drag, resize, and rotation successors with exactly one checkpoint each."
+        - "Exact nested drill scope, primary selection, and complete selected-key restoration."
+        - "Durable BleepThat iteration-12 successor gesture, undo/redo, save/reopen equality, and clean-console evidence."
+      required_board_updates:
+        - "Mark T024 done with decision rejected."
+        - "Keep T009 queued and do not authorize src/client/preview.ts."
+        - "Add corrective Worker T025 limited to src/client/canvas/editor.ts and tests/editor-interactions.test.ts; no new files or dependencies."
+        - "T025 must drive real svg.draggable DragHandler.startDrag and svg.resize ResizeHandler.handleResize paths so plugin global listeners are installed before Escape, touchcancel, pointercancel, load, and review-lock cancellation."
+        - "T025 must dispatch late plugin move/end events and then real immediate mouse and touch drag, resize, and rotation gestures, asserting exact clean SVG, zero canceled checkpoints, one successor checkpoint, exact primary/multi-selection and nested drill scope, unchanged descendants/references, and undo/redo equality."
+        - "T025 verification: npm run check; npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/fidelity.test.ts tests/history.test.ts; git diff --check."
+        - "T025 must record reproducible BleepThat iteration-12 successor gesture, undo/redo, save/reopen equality, and clean-console proof."
+        - "Require a follow-up Judge audit before authorizing corrected T009."
+  - id: T025
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Drive genuine svg.draggable and svg.resize plugin sessions through cancellation and immediate successor gestures, proving full global-handler teardown, late-event harmlessness, exact editor context restoration, and durable BleepThat fidelity."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "tests/editor-interactions.test.ts"
+    create_files: []
+    verify:
+      - "npm run check"
+      - "npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/fidelity.test.ts tests/history.test.ts"
+      - "git diff --check"
+      - "Invoke actual svg.draggable DragHandler.startDrag and svg.resize ResizeHandler.handleResize paths so plugin global listeners are installed before Escape, touchcancel, pointercancel, load, and review-lock cancellation."
+      - "Dispatch late plugin move/end events, then real immediate mouse and touch drag, resize, and rotation gestures; assert exact clean SVG, zero canceled checkpoints, one successor checkpoint, exact primary and multi-selection, nested drill scope, unchanged descendants/references, and undo/redo equality."
+      - "Record reproducible BleepThat iteration-12 successor gesture, undo/redo, save/reopen equality, and clean-console proof."
+    stop_if:
+      - "Correction writes descendants, hierarchy, IDs, references, unsupported attributes, or unrelated markup."
+      - "The change alters serialization/workspace contracts or disables an existing transform affordance."
+      - "A dependency, new file, or file outside allowed_files is required."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - tests/editor-interactions.test.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/fidelity.test.ts tests/history.test.ts"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Real svg.draggable DragHandler.startDrag and svg.resize ResizeHandler.handleResize cancellation/successor proof"
+          status: pass
+        - cmd: "BleepThat iteration-12 successor drag, exact undo/redo, persisted save/reopen equality, and clean-console proof"
+          status: pass
+      summary: "Real plugin sessions now cover Escape, touchcancel, pointercancel, load, and review-lock teardown, late events, and immediate mouse/touch drag, resize, and rotation successors. Tests assert zero canceled checkpoints, one successor checkpoint, exact primary/multi-selection and nested scope, unchanged descendants/references, and exact undo/redo. Fixed primary gesture tracking for multi-selection and load cancellation preserving the incoming SVG. Full check passed 204 tests; targeted gate passed 75. Browser iteration-12 matched its 1524-byte persisted SVG before and after reopen, with exact undo/redo and zero console warnings/errors."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T026
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit genuine plugin-driven cancellation, global-handler teardown, late-event harmlessness, successor gestures, full selection/drill-scope history restoration, and BleepThat save/reopen fidelity."
+    inputs:
+      - "T025 receipt and diff"
+      - "DragHandler.startDrag and ResizeHandler.handleResize cancellation regressions"
+      - "Successor gesture and durable BleepThat evidence"
+    constraints:
+      - "Do not implement."
+      - "Reject tests that bypass plugin session installation, leaked handlers, post-cancel mutation, disabled successor gestures, incomplete context restoration, or fidelity regressions."
+    expected_output:
+      - "accept | revise"
+      - "Plugin-driven teardown and fidelity findings"
+      - "Authorization for corrected T009 or another corrective task"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "T025 closes the plugin-session boundary. Tests directly invoke DragHandler.startDrag and ResizeHandler.handleResize, install real global listeners, prove all cancellation paths and harmless late events, and verify immediate mouse/touch successors with exact history, selection, scope, fidelity, and persisted BleepThat iteration-12 evidence. T009 is authorized."
+      evidence:
+        - "Fresh targeted verification passed 75 tests and npm run check passed all 204 tests, typecheck, and production build."
+        - "Tests cover Escape, touchcancel, pointercancel, load, and review-lock cancellation through real plugin handlers."
+        - "Canceled gestures create zero checkpoints; immediate drag, resize, and rotation successors create exactly one checkpoint with exact undo/redo."
+        - "Nested multi-selection, drill scope, descendants, references, and incoming-load preservation are asserted."
+        - "BleepThat iteration-12 reopened byte-identically at SHA-256 db12beee1e4a02228dd655723ecd46069488d06349ce5c4b5ca43dc18489c727 with a clean console."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence: []
+      required_board_updates:
+        - "Mark T026 done with decision approved."
+        - "Unblock and activate corrected T009."
+        - "Add src/client/preview.ts to T009 allowed_files and authorize creation of only that file."
+        - "Keep T010 queued as the mandatory safety, fidelity, history, preview, and scope audit."
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Deliver one bounded text-editing, targeted-preview, and inspector-discoverability vertical slice: safely edit supported text properties with exact history and persistence; render useful non-mutating 64/32/16 previews targeting #icon or a visible fallback; and expose concise selection-relevant inspector summaries without expanding into arbitrary SVG authoring."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "src/client/index.html"
+      - "src/client/main.ts"
+      - "src/client/preview.ts"
+      - "src/client/styles.css"
+      - "tests/editor-serialization.test.ts"
+      - "tests/fidelity.test.ts"
+      - "tests/client-ux.test.ts"
+      - "README.md"
+    create_files:
+      - "src/client/preview.ts"
+    verify:
+      - "npm run check"
+      - "npm test -- --run tests/editor-serialization.test.ts tests/fidelity.test.ts tests/client-ux.test.ts"
+      - "git diff --check"
+      - "Prove text content, font size, weight, family, text-anchor/alignment, and letter spacing accept only bounded plain values and cannot inject markup, CSS, URLs, external fonts, or arbitrary style."
+      - "Assert each effective text commit creates exactly one checkpoint; cancel, unchanged input, invalid input, and rejected input create none and preserve exact clean SVG, selection, scope, and dirty/history state."
+      - "Assert successful text edits have exact clean-SVG undo and redo, save to the next iteration, reopen byte-equivalently, and remain editable."
+      - "Implement previews from a detached clean-SVG clone: target valid #icon by default, support an explicit eligible target, retain required defs/references, compute a target-specific viewBox, and visibly fall back to the whole SVG when the target is missing, invalid, hidden, or unusable."
+      - "Assert preview rendering never mutates live SVG, clean serialization, dirty state, history, selection, drill scope, zoom, workspace format, or saved bytes."
+      - "Run real-browser 64px, 32px, and 16px previews for BleepThat #icon plus missing/invalid-target fallback; require useful framing, retained referenced resources, accessible target/fallback status, and zero console warnings/errors."
+      - "Run a real-browser text edit, invalid/no-op/cancel, undo/redo, save/reopen walkthrough with exact artifact comparison and a clean console."
+      - "Verify collapsed selection-relevant inspector groups expose concise current-value or availability summaries without changing ordinary disclosure preferences."
+    stop_if:
+      - "Text editing requires innerHTML, unsafe markup, arbitrary style injection, external font loading, URLs, scripts, event attributes, or a general-purpose SVG authoring surface."
+      - "Preview generation mutates the live editor document, serialized SVG, history, selection, scope, zoom, dirty state, or workspace format."
+      - "A target preview cannot preserve required local defs and references in an isolated clone."
+      - "An invalid, canceled, or no-op text edit creates a checkpoint or changes saved bytes."
+      - "A dependency, another new file, or any file outside allowed_files is required."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - src/client/canvas/editor.ts
+        - src/client/main.ts
+        - src/client/preview.ts
+        - src/client/styles.css
+        - tests/editor-serialization.test.ts
+        - tests/fidelity.test.ts
+        - tests/client-ux.test.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm test -- --run tests/editor-serialization.test.ts tests/fidelity.test.ts tests/client-ux.test.ts"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Real-browser BleepThat #icon 64/32/16, explicit target, missing/invalid fallback, text invalid/no-op/cancel/undo/redo/save/reopen, inspector summary, and console walkthrough"
+          status: pass
+        - cmd: "SHA-256 disk/API comparison for saved iteration-13.svg (e597a6e56b195284a2a73052be87174770f19f3d36fd3c4ae041bc5957b142fa)"
+          status: pass
+      summary: "Delivered safe commit-only editing for text content, font size, weight, local family, anchor, and letter spacing with exact history and persistence. Added detached target previews that isolate #icon or eligible explicit targets, retain resources, and visibly fall back. Added collapsed inspector summaries, coverage, and documentation. Full check passed 222 tests; targeted gate passed 84. Browser QA found and fixed adjacent-wordmark leakage, then verified icon-only 64/32/16 previews, fallbacks, six-step undo/redo, exact save/reopen, unchanged preview state, and a clean console."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T010
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit text safety/history, preview usefulness, inspector clarity, and preservation of the bounded MVP scope."
+    inputs:
+      - "T009 receipt and diff"
+      - "Text and preview browser evidence"
+      - "Serialization tests"
+    constraints:
+      - "Do not implement."
+      - "Reject unsafe SVG/CSS input, hidden external dependencies, or a scope jump into arbitrary element creation."
+    expected_output:
+      - "accept | revise"
+      - "Safety and usability findings"
+      - "Authorization for integrated oracle task"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "The BleepThat happy path and fresh automated gates pass, but T009 violates bounded safety and fidelity contracts: structured text is flattened, normalized no-ops rewrite bytes/history, preview isolation can delete referenced targets and accept hidden targets, family names can activate embedded external fonts, and selection rendering overrides disclosure state. T011 remains blocked pending correction."
+      evidence:
+        - "Fresh npm run check passed 222 tests, typecheck, and build; targeted 84 tests and git diff --check passed."
+        - "Structured text content edits delete title/tspan/textPath children."
+        - "Target isolation can retain href while removing its non-defs reference target, and hidden/zero-opacity targets are treated as usable."
+        - "Validated font-family can activate an existing external @font-face."
+        - "Normalized-equivalent numeric inputs rewrite bytes and create history."
+        - "Multi-selection forces Alignment open."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - "T011 remains queued until T027 and follow-up audit pass."
+      missing_evidence:
+        - "Adversarial structured text, no-op, font, reference graph, hidden target, disclosure, and repeat BleepThat proof."
+      required_board_updates:
+        - "Mark T010 done rejected."
+        - "Keep T011 queued."
+        - "Add and activate corrective T027."
+        - "Require follow-up Judge audit before T011."
+  - id: T027
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Close the bounded text and targeted-preview safety boundary: preserve or reject structured text without hidden markup mutation, make effective no-ops byte/history exact, prevent external-font activation, preserve complete local preview reference graphs, fall back for every hidden or unusable target, and retain user inspector disclosure choices while preserving the verified BleepThat behavior."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "src/client/main.ts"
+      - "src/client/preview.ts"
+      - "src/client/styles.css"
+      - "tests/editor-serialization.test.ts"
+      - "tests/fidelity.test.ts"
+      - "tests/client-ux.test.ts"
+      - "README.md"
+    create_files: []
+    verify:
+      - "npm run check"
+      - "npm test -- --run tests/editor-serialization.test.ts tests/fidelity.test.ts tests/client-ux.test.ts"
+      - "git diff --check"
+      - "Exercise text containing title, tspan, textPath, comments, and mixed children; content editing must reject without mutation or preserve every child exactly, while safe typography edits remain bounded."
+      - "Assert raw-identical and normalized-equivalent font-size, weight, family, anchor, and letter-spacing inputs create no checkpoint and preserve exact clean SVG, dirty state, selection, and scope."
+      - "Assert font-family cannot activate matching external @font-face, @import, or non-local URL resources; safe local family lists must continue to work."
+      - "Assert isolated previews preserve recursively referenced local href and url(#id) targets outside defs, including chained use, clip, mask, filter, gradient, pattern, marker, and symbol references, while unrelated visible branches remain absent."
+      - "Assert missing, duplicate-ID, syntactically invalid, inline-style hidden, stylesheet-hidden, ancestor-hidden, zero-opacity, zero-bounds, and non-finite targets visibly and accessibly fall back to the whole SVG."
+      - "In a real browser, close each inspector group, change single and multi-selection, and confirm summaries update without changing any open state."
+      - "Repeat BleepThat #icon and explicit #wordmark previews at 64/32/16, six-step text undo/redo, invalid/no-op/cancel, and preview-state snapshots with a clean console."
+      - "Confirm iteration-12 to iteration-13 remains the expected-only text delta and disk/API SHA-256 remains e597a6e56b195284a2a73052be87174770f19f3d36fd3c4ae041bc5957b142fa."
+    stop_if:
+      - "The correction would flatten, canonicalize, or otherwise rewrite structured text or unrelated SVG markup."
+      - "Reference preservation requires mutating the live editor document, fetching an external resource, or retaining unrelated visible branches."
+      - "External-font safety requires a general SVG sanitizer, network dependency, or workspace-format change beyond this bounded slice."
+      - "The solution expands into arbitrary style editing, element creation, or general-purpose SVG authoring."
+      - "A dependency, new file, or file outside allowed_files is required."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - src/client/main.ts
+        - src/client/preview.ts
+        - tests/editor-serialization.test.ts
+        - tests/fidelity.test.ts
+        - tests/client-ux.test.ts
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm test -- --run tests/editor-serialization.test.ts tests/fidelity.test.ts tests/client-ux.test.ts"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Real Chrome BleepThat iteration-13 inspector, preview, six-step undo/redo, invalid/no-op/cancel, snapshot, and console walkthrough"
+          status: pass
+        - cmd: "Disk/API SHA-256 and iteration-12-to-13 diff verification"
+          status: pass
+      summary: "Structured text content edits now reject without mutation while typography remains available. Effective typography no-ops preserve exact bytes and history; imported or URL-backed font activation is blocked while safe local lists work. Detached previews retain transitive local reference graphs outside defs, prune unrelated branches, and accessibly fall back for invalid, duplicate, hidden, zero-opacity, or unusable targets. Inspector summaries no longer change disclosure state. Automated and real-Chrome BleepThat verification passed with clean console and invariant disk/API hash."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T028
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the corrected text safety, effective no-op history, external-font prevention, transitive preview reference fidelity and fallback behavior, inspector disclosure persistence, and invariant BleepThat iteration-13 proof."
+    inputs:
+      - "T027 receipt and diff"
+      - "Adversarial structured text, typography no-op, font resource, preview reference/fallback, and inspector tests"
+      - "BleepThat iteration-13 browser and hash evidence"
+    constraints:
+      - "Do not implement."
+      - "Reject any remaining hidden markup rewrite, history mutation, external resource activation, broken reference chain, unrelated preview branch, hidden-target false positive, or disclosure override."
+    expected_output:
+      - "accept | revise"
+      - "Safety and fidelity findings"
+      - "Authorization for T011 or another corrective task"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "Fresh gates pass, but adversarial probes found case-insensitive keyword no-ops rewriting history, a commented browser-valid external @font-face bypass, inherited ancestor preview references being pruned, percentage zero-opacity and visibility:collapse false positives, and no durable post-T027 browser transcript. T011 remains blocked."
+      evidence:
+        - "npm run check passed 232 tests/typecheck/build; targeted 94 tests and diff-check passed."
+        - "BOLD/MIDDLE/NORMAL equivalents returned changed:true."
+        - "Commented @font-face URL formatting bypassed family activation protection."
+        - "Inherited ancestor fill url(#paint) lost its referenced target in isolation."
+        - "opacity:0% and visibility:collapse were accepted as usable preview targets."
+        - "Disk/API iteration-13 hash remains e597a6e56b195284a2a73052be87174770f19f3d36fd3c4ae041bc5957b142fa, but available browser snapshots predate it."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - "T011 remains queued pending T029 and follow-up audit."
+      missing_evidence:
+        - "Case-insensitive no-op fidelity, comment-safe external font rejection, ancestor/root/custom-property reference closure, percentage/collapse fallback, and fresh durable browser proof."
+      required_board_updates:
+        - "Mark T028 done rejected."
+        - "Keep T011 queued."
+        - "Insert and activate T029 corrective worker."
+        - "Add follow-up T030 Judge before T011."
+  - id: T029
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Close the remaining text no-op, external-font parsing, preview reference-closure, hidden-target, disclosure-proof, and durable BleepThat evidence boundary as one reversible safety/fidelity slice."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "src/client/preview.ts"
+      - "src/client/main.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/fidelity.test.ts"
+      - "tests/client-ux.test.ts"
+      - "docs/goals/canvas-dogfood-polish/notes/T029-browser-proof.md"
+    create_files:
+      - "docs/goals/canvas-dogfood-polish/notes/T029-browser-proof.md"
+    verify:
+      - "npm run check"
+      - "npm test -- --run tests/editor-serialization.test.ts tests/fidelity.test.ts tests/client-ux.test.ts"
+      - "git diff --check"
+      - "Prove title/tspan/textPath/comment/mixed structured content rejection and safe typography without markup mutation."
+      - "Through the real editor commit path, prove raw, numeric-normalized, whitespace/quote-normalized, and case-insensitive keyword no-ops preserve exact clean bytes, history, dirty state, selection, and drill scope."
+      - "Reject matching external @font-face URL sources despite comments/formatting, reject @import/non-local resource activation, and prove safe local family lists remain usable."
+      - "Preserve recursive href/url(#id) closure from the target, descendants, retained ancestors, root attributes, and inherited/custom-property paths across chained use/clip/mask/filter/gradient/pattern/marker/symbol dependencies; exclude unrelated visible branches."
+      - "Fall back accessibly for missing, duplicate, invalid, display/visibility hidden or collapsed, inline/stylesheet/ancestor hidden, numeric and percentage zero-opacity, zero-bounds, and non-finite targets."
+      - "Exercise every inspector details element closed/open across single and multi-selection and prove summaries update without changing any disclosure state."
+      - "Record a fresh timestamped Chrome iteration-13 transcript proving #icon/#wordmark 64/32/16 previews, six-step undo/redo, invalid/no-op/cancel, state snapshots, clean console, save/reopen, expected-only delta, and disk/API SHA-256 e597a6e56b195284a2a73052be87174770f19f3d36fd3c4ae041bc5957b142fa."
+    stop_if:
+      - "The fix requires external fetching, a general SVG/CSS sanitizer, a new dependency, arbitrary style editing, element creation, or a workspace-format change."
+      - "Reference preservation requires mutating the live editor document or retaining unrelated visible branches."
+      - "A file outside allowed_files is required."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - src/client/preview.ts
+        - tests/editor-serialization.test.ts
+        - tests/fidelity.test.ts
+        - docs/goals/canvas-dogfood-polish/notes/T029-browser-proof.md
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm test -- --run tests/editor-serialization.test.ts tests/fidelity.test.ts tests/client-ux.test.ts"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Real Chrome BleepThat iteration-13 walkthrough"
+          status: pass
+        - cmd: "Disk/API SHA-256 and iteration-12-to-13 diff"
+          status: pass
+      summary: "Closed T028 findings with exact case-insensitive no-ops, comment-safe external-font detection, ancestor/root/custom-property preview closure, and percentage/collapse fallback handling. Added real editor-path and adversarial coverage. Recorded a timestamped durable Chrome transcript proving previews, disclosure persistence, invalid/no-op/cancel invariants, six exact undo/redo checkpoints, save/reopen fidelity, clean console, expected-only delta, and matching disk/API hashes."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T030
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Repeat the complete text/preview/disclosure rejection audit and authorize T011 only if every accumulated safety/fidelity clause and fresh browser artifact pass."
+    inputs:
+      - "T029 receipt, diff, tests, and timestamped browser proof"
+      - "All T010 and T028 rejection evidence"
+    constraints:
+      - "Do not implement."
+      - "Reject any remaining behavioral gap or unauditable browser claim."
+    expected_output:
+      - "accept | revise"
+      - "Complete adversarial findings"
+      - "T011 authorization or corrective package"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "Fresh gates and durable hashes pass, but adversarial CSS-equivalent numeric no-ops, escaped external-font syntax, fixed-point styled reference closure, and browser-valid hidden target forms remain unsafe. T011 stays blocked."
+      evidence:
+        - "npm run check passed 246 tests/typecheck/build; targeted 108 and diff-check passed."
+        - "+600 and 6e2 font weights rewrite to 600 with history."
+        - "CSS-escaped remote font family/src bypassed activation protection."
+        - "A newly retained styled symbol lost its CSS-referenced gradient."
+        - ":is selector, calc(0%), and escaped hidden values were accepted."
+        - "Durable iteration 13/14 disk/API hashes and exact diffs are valid."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - "T011 remains queued pending T031 and follow-up audit."
+      missing_evidence:
+        - "Complete numeric no-op, escaped external font, fixed-point styled closure, complex hidden fallback, and renewed browser proof."
+      required_board_updates:
+        - "Mark T030 done rejected."
+        - "Insert and activate T031."
+        - "Add follow-up T032 Judge before T011."
+  - id: T031
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Close CSS-equivalent text no-ops, escaped external-font activation, fixed-point styled preview-reference closure, and browser-valid hidden-target fallback as one reversible safety/fidelity slice."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "src/client/preview.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/fidelity.test.ts"
+      - "tests/client-ux.test.ts"
+      - "docs/goals/canvas-dogfood-polish/notes/T031-browser-proof.md"
+    create_files:
+      - "docs/goals/canvas-dogfood-polish/notes/T031-browser-proof.md"
+    verify:
+      - "npm run check"
+      - "npm test -- --run tests/editor-serialization.test.ts tests/fidelity.test.ts tests/client-ux.test.ts"
+      - "git diff --check"
+      - "Prove real-editor signed/exponent/raw/whitespace/quote/case effective no-op invariants."
+      - "Reject escaped external @font-face family/src and @import forms without mutation while safe local-only families remain usable."
+      - "Compute fixed-point reference closure from target, descendants, retained ancestors/root, inherited/custom-property/style dependencies including newly retained nodes while excluding unrelated visible branches."
+      - "Fall back accessibly for complex-selector, calculated-zero, escaped-keyword, ancestor, inline, and stylesheet hidden/collapsed targets."
+      - "Prove every inspector disclosure state remains unchanged."
+      - "Record a fresh timestamped Chrome 64/32/16 target/fallback, undo/redo, no-op/cancel, save/reopen, clean-console transcript and disk/API hashes."
+    stop_if:
+      - "A general SVG/CSS sanitizer, external fetch, new dependency, arbitrary style editing, live-document mutation, unrelated visible-branch retention, or workspace-format change is required."
+      - "A file outside allowed_files is required."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - src/client/preview.ts
+        - tests/editor-serialization.test.ts
+        - tests/fidelity.test.ts
+        - docs/goals/canvas-dogfood-polish/notes/T031-browser-proof.md
+      commands:
+        - cmd: "npm run check (256 tests, typecheck, production build)"
+          status: pass
+        - cmd: "npm test -- --run tests/editor-serialization.test.ts tests/fidelity.test.ts tests/client-ux.test.ts (118 tests)"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Headed Chrome 151 target/fallback, no-op/cancel, disclosure, undo/redo, save/reopen, and console walkthrough"
+          status: pass
+        - cmd: "Disk/API SHA-256 and iteration-13-to-15 diff verification"
+          status: pass
+      summary: "Closed all accumulated rejection clauses with CSS-number equivalence for signed/exponent forms, escape-aware external-font detection, fixed-point styled reference closure, and complex-selector/calculated-zero/escaped hidden fallback. Added adversarial coverage without a sanitizer or dependency. Fresh Chrome proof verifies exact 64/32/16 previews and fallback, byte-exact no-ops, disclosure preservation, cancel, undo/redo, clean save/reopen, and zero console errors. Iteration 13 and 15 disk/API hashes match; their diff is exactly BLEEPED to BLEEPED!."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T032
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit every accumulated T010, T028, and T030 rejection clause after T031 and authorize T011 only on fresh adversarial and durable-browser proof."
+    inputs:
+      - "T031 receipt, diff, tests, and browser proof"
+      - "All prior rejection receipts"
+    constraints:
+      - "Do not implement."
+      - "Reject any remaining gap or unauditable claim."
+    expected_output:
+      - "accept | revise"
+      - "Complete findings"
+      - "T011 authorization or correction"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "Fresh gates and durable evidence pass, but newly retained node ancestors are not iterated for inherited custom-property references, font-weight bold/700 and normal/400 rewrite history, and direct all-open/all-closed disclosure coverage is absent. T011 remains blocked."
+      evidence:
+        - "npm run check passed 256 tests/typecheck/build; targeted 118 and diff-check passed."
+        - "Inherited newly retained custom-property chain pruned #second/#third."
+        - "bold to 700 and normal to 400 returned changed:true."
+        - "Disclosure tests statically inspect source and browser proof covers one mixed state."
+        - "Iteration 13/15 disk/API hashes and exact diff are valid."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - "T011 remains queued pending T033 and follow-up audit."
+      missing_evidence:
+        - "True closure through every retained ancestor, font-weight alias no-ops, and direct all-open/all-closed disclosure transitions."
+      required_board_updates:
+        - "Mark T032 done rejected."
+        - "Create and activate T033."
+        - "Add T034 follow-up Judge before T011."
+  - id: T033
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Close effective typography alias no-ops, true fixed-point preview closure through newly retained ancestors and inherited custom properties, and auditable disclosure proof while preserving every earlier safety/fidelity gate."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "src/client/preview.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/fidelity.test.ts"
+      - "tests/client-ux.test.ts"
+      - "docs/goals/canvas-dogfood-polish/notes/T033-browser-proof.md"
+    create_files:
+      - "docs/goals/canvas-dogfood-polish/notes/T033-browser-proof.md"
+    verify:
+      - "npm run check"
+      - "npm test -- --run tests/editor-serialization.test.ts tests/fidelity.test.ts tests/client-ux.test.ts"
+      - "git diff --check"
+      - "Prove raw/numeric/signed/exponent/case/keyword-alias no-ops preserve exact SVG, history, dirty state, selection, and scope."
+      - "Prove closure iterates through newly retained nodes and every retained ancestor/root/inherited/custom-property dependency while excluding unrelated branches."
+      - "Rerun all structured-text, external-font, hidden-fallback, and disclosure regressions."
+      - "Record fresh headed-Chrome all-open/all-closed single/multi-selection, 64/32/16 target/fallback, no-op/cancel, undo/redo, save/reopen, console, exact diff, and disk/API hash evidence."
+    stop_if:
+      - "Correction requires a general CSS/SVG sanitizer, external fetch, new dependency, live-document mutation, unrelated visible-branch retention, workspace-format change, or any file outside allowed_files."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - src/client/preview.ts
+        - tests/editor-serialization.test.ts
+        - tests/fidelity.test.ts
+        - tests/client-ux.test.ts
+        - docs/goals/canvas-dogfood-polish/notes/T033-browser-proof.md
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm test -- --run tests/editor-serialization.test.ts tests/fidelity.test.ts tests/client-ux.test.ts"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Fresh headed Chrome/Chromium T033 browser walkthrough"
+          status: pass
+        - cmd: "Iteration 13/16 exact diff and disk/API SHA-256 verification"
+          status: pass
+      summary: "Implemented bold/700 and normal/400 effective no-op equivalence, with exact history, dirty, selection, scope, and byte preservation. Preview reference closure now iterates every newly retained node and ancestor through root/inherited/custom-property dependencies while excluding unrelated branches. Added executable all-open/all-closed single/multi disclosure tests and retained all prior adversarial text/font/preview gates. Full check passed 269 tests; targeted gate passed 131. Durable headed-browser proof covers disclosure transitions, aliases, cancel, undo/redo, 64/32/16 targets/fallback, save/reopen, exact diff, matching hashes, and a zero-message clean console."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T034
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit every T010, T028, T030, and T032 clause after T033 and authorize T011 only when fresh adversarial and durable-browser proof is complete."
+    inputs:
+      - "T033 receipt, diff, tests, and proof note"
+      - "All prior rejection evidence"
+    constraints:
+      - "Do not implement."
+      - "Reject any remaining functional or evidence gap."
+    expected_output:
+      - "accept | revise"
+      - "Complete findings"
+      - "T011 authorization or correction"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "Fresh gates and hashes pass, but escaped/commented family no-ops rewrite history, unused custom-property refs retain unrelated branches, var-driven hidden targets are accepted, disclosure tests bypass the production path, and raw post-correction browser artifacts are absent. T011 remains blocked."
+      evidence:
+        - "npm run check passed 269 tests/typecheck/build; targeted 131 and diff-check passed."
+        - "Escaped/commented equivalent family probes returned changed:true."
+        - "Unused root custom property retained unrelated #other."
+        - "var-driven opacity/display hidden targets were accepted."
+        - "Disclosure tests mutate synthetic details without product renderer."
+        - "Iteration 13/16 disk/API hashes and exact diff are valid."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - "T011 remains queued pending T035/T036."
+      missing_evidence:
+        - "Escaped/commented no-ops, used-only custom-property closure, var hidden fallback, product disclosure tests, raw browser artifacts."
+      required_board_updates:
+        - "Mark T034 done rejected."
+        - "Create/activate T035 and follow-up T036."
+  - id: T035
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Close escaped/commented typography no-ops, used-path fixed-point custom-property reference closure, custom-property hidden fallback, real product disclosure execution, and durable browser proof while preserving every earlier regression."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "src/client/preview.ts"
+      - "src/client/main.ts"
+      - "src/client/ui/inspector.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/fidelity.test.ts"
+      - "tests/client-ux.test.ts"
+      - "docs/goals/canvas-dogfood-polish/notes/T035-browser-proof.md"
+    create_files:
+      - "src/client/ui/inspector.ts"
+      - "docs/goals/canvas-dogfood-polish/notes/T035-browser-proof.md"
+    verify:
+      - "npm run check"
+      - "npm test -- --run tests/editor-serialization.test.ts tests/fidelity.test.ts tests/client-ux.test.ts"
+      - "git diff --check"
+      - "Rerun every T010/T028/T030/T032 matrix plus escaped/commented family no-ops, unused-custom-property branch exclusion, var()-driven display/visibility/opacity fallback, and actual production all-open/all-closed single/multi transitions."
+      - "Record raw headed Chrome and extension-free Chromium accessibility/console transcripts."
+      - "Reprove iteration-13/next disk/API hashes and exact one-line diff."
+    stop_if:
+      - "Correction requires a general CSS/SVG sanitizer or cascade engine, external fetch, new dependency, live-document mutation, unrelated visible-branch retention, workspace-format change, or a file outside allowed_files."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - src/client/preview.ts
+        - src/client/main.ts
+        - src/client/ui/inspector.ts
+        - tests/editor-serialization.test.ts
+        - tests/fidelity.test.ts
+        - tests/client-ux.test.ts
+        - docs/goals/canvas-dogfood-polish/notes/T035-browser-proof.md
+      commands:
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npm test -- --run tests/editor-serialization.test.ts tests/fidelity.test.ts tests/client-ux.test.ts"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Headed Chrome 151 production disclosure/accessibility and console walkthrough"
+          status: pass
+        - cmd: "Extension-free headed Chromium 147 disclosure, preview/fallback, accessibility and console walkthrough"
+          status: pass
+        - cmd: "Disk/API SHA-256 and iteration-13-to-17 unified diff verification"
+          status: pass
+      summary: "Closed escaped/commented family no-op fidelity through the real editor path, followed only consumed custom-property reference paths, and resolved bounded var()-driven hidden states without a cascade engine. Production inspector summaries now have a directly tested renderer covering all-open/all-closed single/multi transitions. Full check passed 277 tests/typecheck/build; targeted gate passed 139. Raw Chrome and extension-free Chromium accessibility/console evidence is recorded. Iteration-17 disk/API hashes match at d9772e614199281e1351b337b2b5ebf345e295ecc792dfffa23094b5799b0b72; its diff from iteration-13 is exactly BLEEPED→BLEEPED!."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T036
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit every accumulated text, preview, disclosure, and durable-browser rejection clause after T035 and authorize T011 only if all pass."
+    inputs:
+      - "T035 receipt, diff, tests, raw browser evidence"
+      - "All prior rejection receipts"
+    constraints:
+      - "Do not implement."
+      - "Respect T035 stop boundary against building a general CSS/SVG sanitizer or cascade engine."
+    expected_output:
+      - "accept | revise | blocked"
+      - "Complete findings"
+      - "T011 authorization or bounded correction"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "T035 closes every accumulated rejection within the bounded feature. Fresh full and targeted gates, direct adversarial probes, production inspector execution, durable Chrome/Chromium transcripts, and exact iteration hashes/diff pass without sanitizer, cascade engine, dependency, or scope expansion. T011 may proceed."
+      evidence:
+        - "npm run check passed 277 tests/typecheck/build; targeted 139 and diff-check passed."
+        - "Escaped/commented family no-ops, used-only nested custom properties, unrelated pruning, and var hidden fallback passed direct probes."
+        - "All prior matrices remain executable and passing."
+        - "Production inspector renderer preserves all disclosure states."
+        - "Raw Chrome/Chromium accessibility and console evidence is durable."
+        - "Iteration13/17 hashes and exact one-line diff match."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence:
+        - "Integrated real-skill reconnect/accept/edit/save/reopen/continue oracle and full responsive/accessibility matrix."
+      required_board_updates:
+        - "Mark T036 done approved."
+        - "Correct and activate T011 as sole Worker."
+  - id: T011
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Run and durably document one integrated release oracle spanning review reconnect and exactly-once terminal convergence, responsive/accessibility behavior, unsaved decisions, grouped transforms, bounded text editing, targeted previews, inspector summaries, save/reopen fidelity, and exact BleepThat skill continuation. Add only missing regression tests and oracle documentation; do not change production code."
+    allowed_files:
+      - "tests/agent-connection-context.test.ts"
+      - "tests/agent-history.test.ts"
+      - "tests/agent-producer-client.test.ts"
+      - "tests/agent-protocol.test.ts"
+      - "tests/agent-reconnect.test.ts"
+      - "tests/agent-review.test.ts"
+      - "tests/agent-transaction.test.ts"
+      - "tests/agent-transport.test.ts"
+      - "tests/client-ux.test.ts"
+      - "tests/editor-interactions.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/fidelity.test.ts"
+      - "tests/file-open-race.test.ts"
+      - "tests/history.test.ts"
+      - "tests/logo-designer-adapter.test.ts"
+      - "tests/workspace.test.ts"
+      - "docs/agent-canvas.md"
+      - "docs/goals/canvas-dogfood-polish/notes/T011-oracle.md"
+      - "README.md"
+    create_files:
+      - "docs/goals/canvas-dogfood-polish/notes/T011-oracle.md"
+    verify:
+      - "npm run check"
+      - "npm audit"
+      - "Run the complete targeted cross-slice test set named in allowed_files."
+      - "git diff --check"
+      - "Perform real submit→pending→disconnect/reopen→same transaction/candidate/source/revision→accept, prove exactly-once browser/server/producer convergence and no duplicate history, then separately prove recovered revert terminates exactly once without application."
+      - "Make grouped drag and resize plus bounded text edits, prove one checkpoint per effective gesture/edit, exact undo/redo, unchanged descendants/hierarchy/IDs/references, and invalid/cancel/no-op byte and history invariants."
+      - "Exercise independent sidebar collapse, persistence, temporary responsive overrides, pending auto-reveal/badge, approximately 200 ms motion, reduced motion, keyboard-only operation, focus restoration, and Save/Discard/Cancel including cancel and save-failure paths at 1440/1024/980/760."
+      - "Exercise #icon, explicit target, and visible fallback previews at 64/32/16 with retained references and no editor-state mutation; repeat production all-open/all-closed inspector summaries across single/multi selection."
+      - "Save and reopen the exact clean BleepThat SVG, continue the real skill from it, and record timestamps, browser versions, raw accessibility/console transcripts, viewport artifacts, exact unified diffs, and matching disk/API/producer SHA-256 values."
+    stop_if:
+      - "Any oracle failure requires production code or another file outside allowed_files."
+      - "Any security, identity, revision, exactly-once, clean-SVG, or transaction-binding invariant weakens."
+      - "A dependency or general SVG/CSS sanitizer/cascade engine appears necessary."
+      - "The external skill/artifact is unavailable after all local proof is complete."
+      - "Durable raw browser/API/producer evidence cannot be obtained."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - docs/goals/canvas-dogfood-polish/notes/T011-oracle.md
+      commands:
+        - cmd: "npm run check (16 files, 277 tests, typecheck, build)"
+          status: pass
+        - cmd: "npm audit (0 vulnerabilities)"
+          status: pass
+        - cmd: "Complete 16-file targeted cross-slice suite (277 tests)"
+          status: pass
+        - cmd: "Real BleepThat adapter submit/reload/accept and separate recovered-revert oracle"
+          status: pass
+        - cmd: "Production browser group drag/resize, bounded text, preview, inspector, responsive, dialog, save/reopen, and continuation oracle"
+          status: pass
+        - cmd: "Disk/API/producer SHA-256 and unified-diff assertions"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+      summary: "Completed the integrated T011 release oracle without production or test changes. Real BleepThat proposals survived pending reload for exactly-once accept and recovered revert. Browser proof covered grouped transforms, bounded text, previews, inspector disclosures, responsive rails, pending badge, focus, all unsaved decisions, save failure, persistence, and four viewports. The clean saved continuation reopened with matching 1,638-byte disk/API/producer hashes and no console warnings or errors. Durable timestamps, versions, accessibility excerpts, console transcript, viewport hashes, and exact diffs are recorded in T011-oracle.md."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether all implementation and proof satisfy the original approved outcome and the full BleepThat oracle."
+    inputs:
+      - "All done task receipts and review decisions"
+      - "T011 oracle receipt"
+      - "Last verification and current dirty diff"
+      - "Original request, constraints, likely misfire, and goal oracle"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any required Worker work is queued, active, blocked without exhausted safe alternatives, or weakly verified."
+      - "Map every original scope item to concrete evidence."
+      - "Reject completion if the broader outcome still has safe local follow-up work."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Scope-to-evidence matrix"
+      - "Missing evidence and next task if not complete"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      rationale: "All release gates and most scope pass, but the integrated oracle exposed the production Geometry Scale control persisting unbounded floating-point group matrices. This bypasses the accepted six-decimal bounded transform contract, so completion is blocked pending T037 and final T038."
+      evidence:
+        - "npm run check and complete 277-test cross-slice suite passed; audit 0 and diff-check passed."
+        - "Reconnect, responsive, modal, transform gesture, text, preview, inspector, and real continuation evidence pass."
+        - "T011 oracle persisted coefficients such as 1.0721161000000001 and 244.72175959999998 from Geometry Scale."
+        - "editor.ts Scale path uses svg.js scale directly rather than bounded matrix composition."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - "Completion blocked pending grouped Geometry Scale correction and final audit."
+      missing_evidence:
+        - "Bounded Scale control behavior/history/fidelity and corrected BleepThat proof."
+      required_board_updates:
+        - "Mark T999 done not_complete."
+        - "Create/activate T037 and final T038."
+  - id: T037
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: high
+    objective: "Route grouped Geometry Scale % commits through deterministic six-decimal bounded root-matrix composition while preserving descendants, hierarchy, IDs, references, selection/scope, one-checkpoint history, and clean save/reopen fidelity."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "src/client/canvas/transform.ts"
+      - "tests/editor-interactions.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/fidelity.test.ts"
+      - "tests/history.test.ts"
+      - "docs/goals/canvas-dogfood-polish/notes/T037-transform-correction-proof.md"
+    create_files:
+      - "docs/goals/canvas-dogfood-polish/notes/T037-transform-correction-proof.md"
+    verify:
+      - "npm run check"
+      - "npm audit"
+      - "Run the complete 16-file targeted cross-slice suite."
+      - "git diff --check"
+      - "Test real production Scale % controls on translated, scaled, rotated, and skewed nested groups with exact descendant/reference comparison."
+      - "Prove invalid, no-op, cancel, and normalized-equivalent inputs preserve exact SVG/history/context; each effective commit creates one checkpoint with exact undo/redo."
+      - "Record BleepThat scale/save/reopen/continuation hashes and clean browser console."
+    stop_if:
+      - "Any solution rewrites descendants/references, changes workspace or serialization contracts, disables an existing transform affordance, requires a dependency or file outside allowed_files."
+      - "The same verification fails twice without a new evidence-backed hypothesis."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - src/client/canvas/transform.ts
+        - tests/editor-interactions.test.ts
+        - docs/goals/canvas-dogfood-polish/notes/T037-transform-correction-proof.md
+      commands:
+        - cmd: "npm run check (286 tests/typecheck/build)"
+          status: pass
+        - cmd: "npm audit (0 vulnerabilities)"
+          status: pass
+        - cmd: "Complete 16-file cross-slice suite (286 tests)"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Real BleepThat Scale %, undo/redo, save/reopen, adapter continuation, hashes, and console oracle"
+          status: pass
+      summary: "Grouped Geometry Scale % now composes from one focus-start root matrix through deterministic six-decimal bounds, preventing scientific notation, negative zero, and intermediate coefficient growth. Production-control regressions cover translated, scaled, rotated, and skewed nested groups; invalid, no-op, normalized-equivalent, excessive, and Escape-canceled inputs; preserved descendants, references, selection/scope; and one exact checkpoint with undo/redo. Real BleepThat scaling, save/reopen, accepted skill continuation, matching disk/API hashes, and a clean console are recorded in the T037 proof note."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T038
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit T037 and the entire original oracle; authorize check-can-stop only if full_outcome_complete is true."
+    inputs:
+      - "T037 receipt and proof"
+      - "T011 integrated oracle and all prior receipts"
+      - "Current diff and fresh release gates"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if any original scope or bounded-scale clause lacks strong evidence."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Final scope-to-evidence matrix and check-can-stop authorization"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      rationale: "Fresh release gates pass, T037 closes T999's sole remaining Scale-control defect, durable BleepThat hashes and diffs match, and all original reconnect, responsive, modal, transform, text, preview, inspector, and continuation scope is strongly evidenced. No Worker remains."
+      evidence:
+        - "npm run check passed 286 tests, typecheck, and production build; the complete cross-slice suite passed 286 tests; npm audit reported 0 vulnerabilities; git diff --check passed."
+        - "Production Geometry Scale produces deterministic six-decimal root-only matrices across translated, scaled, rotated, and skewed groups with exact invalid/no-op/cancel/history/context/fidelity behavior."
+        - "BleepThat scaled and adapter-continuation disk/API artifacts match recorded hashes and exact-only diffs; descendants, hierarchy, IDs, and references remain exact with a clean console."
+        - "T011 and approved receipts map exactly-once reconnect accept/revert, review lock/focus, responsive rails, reduced motion, accessible unsaved decisions/races, grouped interaction cancellation, safe text, targeted previews, inspector summaries, four viewports, and exact real-skill continuation to the original oracle."
+        - "Every Worker task is done and no queued or active Worker remains."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence: []
+      required_board_updates:
+        - "Update verification fingerprint and run check-can-stop."
+        - "Mark the active GoalBuddy goal complete after check-can-stop passes."
+
+checks:
+  dirty_fingerprint: "5c95cfa8a77140f7f1991d02309917ea2a7225db31f2bf1026a9d59e8b152e7c"
+  last_verification:
+    result: pass
+    task: T038
+    commands:
+      - "npm run check — 286 tests, typecheck, production build"
+      - "complete 16-file cross-slice suite — 286 tests"
+      - "npm audit — 0 vulnerabilities"
+      - "git diff --check"
+      - "real BleepThat bounded Scale/save/reopen/adapter continuation oracle"

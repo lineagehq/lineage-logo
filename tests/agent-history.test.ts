@@ -153,6 +153,18 @@ describe("agent transaction history and revision", () => {
     expect(session.context.sourcePath).toBe("other.svg");
   });
 
+  it("restores an exact persisted document revision and rejects invalid recovery identity", () => {
+    const editor = new FakeEditor(initialMarkup);
+    const session = new AgentSession(editor);
+    expect(session.open("persisted-session", "concept.svg", 7)).toBe(true);
+    expect(session.context).toEqual({ sessionId: "persisted-session", sourcePath: "concept.svg", revision: 7 });
+    expect(session.open("", "concept.svg", 7)).toBe(false);
+    expect(session.open("persisted-session", "", 7)).toBe(false);
+    expect(session.open("persisted-session", "concept.svg", -1)).toBe(false);
+    expect(session.open("persisted-session", "concept.svg", 1.5)).toBe(false);
+    expect(session.context).toEqual({ sessionId: "persisted-session", sourcePath: "concept.svg", revision: 7 });
+  });
+
   it("keeps provisional acceptance locked and restores exact state, revision, and history after acknowledgement conflict", () => {
     const editor = new FakeEditor(initialMarkup, initialSelection);
     const session = new AgentSession(editor);
@@ -192,6 +204,26 @@ describe("agent transaction history and revision", () => {
     expect(session.pending).toBeUndefined();
     expect(editor.undo()).toBe(true);
     expect(editor.state).toEqual({ markup: initialMarkup, selection: initialSelection });
+  });
+
+  it("recovers an already-authoritative acceptance as one application and one checkpoint", () => {
+    const editor = new FakeEditor(initialMarkup, initialSelection);
+    const session = new AgentSession(editor);
+    session.open("session", "concept.svg");
+    editor.next = { candidate: candidate(), selection: acceptedSelection, result: { transactionId: "recovered-accept", status: "staged", impact: [] } };
+    const authoritative = candidate();
+    authoritative.querySelector("#b")?.setAttribute("aria-label", "Recovered authoritative");
+
+    expect(session.recoverAcceptedArtifact(transaction("recovered-accept"), authoritative)).toBe(true);
+    expect(editor.acceptCalls).toBe(1);
+    expect(editor.history.checkpointCount).toBe(1);
+    expect(editor.state.markup).toContain('aria-label="Recovered authoritative"');
+    expect(editor.blocked).toBe(false);
+    expect(session.pending).toBeUndefined();
+    expect(session.revision).toBe(1);
+    expect(session.recoverAcceptedArtifact(transaction("recovered-accept"), authoritative)).toBe(false);
+    expect(editor.acceptCalls).toBe(1);
+    expect(editor.history.checkpointCount).toBe(1);
   });
 
   it("reconciles only an exact automatic terminal event and leaves canonical history unchanged", () => {

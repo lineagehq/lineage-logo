@@ -1,10 +1,11 @@
-import { SVG, type Element as SvgElement, type Svg } from "@svgdotjs/svg.js";
+import { off, SVG, type Element as SvgElement, type Svg } from "@svgdotjs/svg.js";
 import "@svgdotjs/svg.draggable.js";
 import "@svgdotjs/svg.select.js";
 import "@svgdotjs/svg.resize.js";
 import { History } from "../history/history";
 import { evaluateAgentTransaction, type AgentDocumentContext, type AgentSelectionIntent, type StagedAgentTransaction } from "../agent/transaction";
 import type { AgentTransactionV1 } from "../../shared/agent-protocol";
+import { composeGroupScale, formatMatrix, GroupTransformGesture, type TransformBox } from "./transform";
 
 interface EditorControls {
   alignBottomButton: HTMLButtonElement;
@@ -41,6 +42,13 @@ interface EditorControls {
   strokePicker: HTMLInputElement;
   strokeState: HTMLElement;
   strokeWidth: HTMLInputElement;
+  textAnchor: HTMLSelectElement;
+  textContent: HTMLInputElement;
+  textError: HTMLElement;
+  textFamily: HTMLInputElement;
+  textLetterSpacing: HTMLInputElement;
+  textSize: HTMLInputElement;
+  textWeight: HTMLInputElement;
   ungroupButton: HTMLButtonElement;
 }
 
@@ -78,6 +86,262 @@ const SECONDARY_ATTRIBUTE = "data-lineage-secondary";
 const REVIEW_ATTRIBUTE = "data-lineage-review-highlight";
 
 export type SvgPaintProperty = "fill" | "stroke";
+
+export type SvgTextProperty = "content" | "font-size" | "font-weight" | "font-family" | "text-anchor" | "letter-spacing";
+
+export interface SvgTextEdit {
+  property: SvgTextProperty;
+  value: string;
+}
+
+export interface SvgTextValidation {
+  valid: boolean;
+  normalized?: string;
+  error?: string;
+}
+
+const TEXT_LIMITS = {
+  content: 2048,
+  family: 128,
+  size: 1000,
+  spacing: 100,
+};
+
+const CSS_NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
+
+function decodeCssEscapes(value: string): string {
+  return value.replace(/\\(?:([0-9a-f]{1,6})(?:\r\n|[\t\n\f\r ])?|\r\n|[\n\r\f]|(.))/gi, (_match, hex: string | undefined, escaped: string | undefined) => {
+    if (hex) {
+      const codePoint = Number.parseInt(hex, 16);
+      return codePoint === 0 || codePoint > 0x10ffff ? "\uFFFD" : String.fromCodePoint(codePoint);
+    }
+    return escaped ?? "";
+  });
+}
+
+export function validateSvgTextEdit(edit: SvgTextEdit): SvgTextValidation {
+  const value = edit.value.trim();
+  if (edit.property === "content") {
+    if (edit.value.length > TEXT_LIMITS.content) return { valid: false, error: `Text is limited to ${TEXT_LIMITS.content} characters.` };
+    if (/[<>\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(edit.value)) {
+      return { valid: false, error: "Text must be plain content without markup or control characters." };
+    }
+    return { valid: true, normalized: edit.value };
+  }
+  if (edit.property === "text-anchor") {
+    const keyword = value.toLowerCase();
+    return ["start", "middle", "end"].includes(keyword)
+      ? { valid: true, normalized: keyword }
+      : { valid: false, error: "Alignment must be start, middle, or end." };
+  }
+  if (edit.property === "font-weight") {
+    const keyword = value.toLowerCase();
+    if (["normal", "bold", "bolder", "lighter"].includes(keyword)) return { valid: true, normalized: keyword };
+    const weight = Number(value);
+    return CSS_NUMBER.test(value) && Number.isInteger(weight) && weight >= 1 && weight <= 1000
+      ? { valid: true, normalized: String(weight) }
+      : { valid: false, error: "Weight must be normal, bold, bolder, lighter, or an integer from 1 to 1000." };
+  }
+  if (edit.property === "font-family") {
+    if (!value || value.length > TEXT_LIMITS.family || /(?:url\s*\(|@import|[;{}<>\\])/i.test(value)
+      || !/^[\p{L}\p{N} _,'".-]+(?:\s*,\s*[\p{L}\p{N} _,'".-]+)*$/u.test(value)) {
+      return { valid: false, error: "Use a bounded local font-family list without URLs, CSS, or external font rules." };
+    }
+    return { valid: true, normalized: value };
+  }
+  if (edit.property === "font-size") {
+    const size = Number(value);
+    const normalized = Number(size.toFixed(4));
+    return CSS_NUMBER.test(value) && Number.isFinite(size) && normalized > 0 && normalized <= TEXT_LIMITS.size
+      ? { valid: true, normalized: String(normalized) }
+      : { valid: false, error: `Font size must be at least 0.0001 and at most ${TEXT_LIMITS.size}.` };
+  }
+  const spacing = Number(value);
+  if (value.toLowerCase() === "normal") return { valid: true, normalized: "normal" };
+  return CSS_NUMBER.test(value) && Number.isFinite(spacing) && Math.abs(spacing) <= TEXT_LIMITS.spacing
+    ? { valid: true, normalized: String(Number(spacing.toFixed(4))) }
+    : { valid: false, error: `Letter spacing must be normal or between -${TEXT_LIMITS.spacing} and ${TEXT_LIMITS.spacing}.` };
+}
+
+const GENERIC_FONT_FAMILIES = new Set([
+  "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui",
+  "ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded", "emoji", "math", "fangsong",
+]);
+
+function fontFamilies(value: string): string[] {
+  const decoded = decodeCssEscapes(value.replace(/\/\*[\s\S]*?\*\//g, " "));
+  const families: string[] = [];
+  let start = 0;
+  let quote = "";
+  for (let index = 0; index < decoded.length; index += 1) {
+    const character = decoded[index];
+    if (quote) {
+      if (character === quote) quote = "";
+    } else if (character === "\"" || character === "'") {
+      quote = character;
+    } else if (character === ",") {
+      families.push(decoded.slice(start, index));
+      start = index + 1;
+    }
+  }
+  families.push(decoded.slice(start));
+  return families.map((family) => family.trim().replace(/^(['"])([\s\S]*)\1$/, "$2").replace(/\s+/g, " ").toLowerCase());
+}
+
+function activatesExternalFont(node: SVGTextElement, value: string): boolean {
+  const requested = fontFamilies(value).filter((family) => !GENERIC_FONT_FAMILIES.has(family));
+  if (requested.length === 0) return false;
+  const root = node.closest("svg");
+  if (!root) return false;
+  // CSS comments are whitespace to the browser. Strip them only in this
+  // detection copy so formatting stays byte-exact and cannot hide a rule.
+  const css = Array.from(root.querySelectorAll("style"))
+    .map((style) => style.textContent ?? "")
+    .join("\n")
+    .replace(/\/\*[\s\S]*?\*\//g, " ");
+  const decodedCss = decodeCssEscapes(css);
+  if (/@\s*import\b/i.test(decodedCss) || root.querySelector('link[rel~="stylesheet" i][href]')) return true;
+  // Let the browser parse a detached CSSOM copy so quoted or escaped braces
+  // cannot confuse rule boundaries and no stylesheet is activated or fetched.
+  for (const style of Array.from(root.querySelectorAll("style"))) {
+    let rules: CSSRuleList;
+    try {
+      if (style.sheet?.cssRules.length) {
+        rules = style.sheet.cssRules;
+      } else {
+        const Sheet = root.ownerDocument.defaultView?.CSSStyleSheet;
+        if (!Sheet) return true;
+        const sheet = new Sheet();
+        sheet.replaceSync(decodeCssEscapes((style.textContent ?? "").replace(/\/\*[\s\S]*?\*\//g, "")));
+        rules = sheet.cssRules;
+      }
+    } catch {
+      return true;
+    }
+    const pending = [...Array.from(rules)];
+    while (pending.length > 0) {
+      const rule = pending.shift()!;
+      const nested = (rule as CSSRule & { cssRules?: CSSRuleList }).cssRules;
+      if (nested) pending.push(...Array.from(nested));
+      if (rule.type !== 5) continue;
+      const fontFace = rule as CSSFontFaceRule;
+      const family = fontFace.style.getPropertyValue("font-family");
+      const source = fontFace.style.getPropertyValue("src");
+      if (source && /url\s*\(/i.test(decodeCssEscapes(source))
+        && fontFamilies(family).some((candidate) => requested.includes(candidate))) return true;
+    }
+  }
+  return false;
+}
+
+function effectiveTextValue(property: Exclude<SvgTextProperty, "content">, value: string): string | undefined {
+  const validation = validateSvgTextEdit({ property, value });
+  if (!validation.valid || validation.normalized === undefined) return undefined;
+  if (property === "font-family") return fontFamilies(validation.normalized).join(",");
+  if (property === "font-weight") {
+    const weight = validation.normalized.toLowerCase();
+    if (weight === "normal") return "400";
+    if (weight === "bold") return "700";
+    return weight;
+  }
+  if (property === "text-anchor" || property === "letter-spacing") {
+    return validation.normalized.toLowerCase();
+  }
+  return validation.normalized;
+}
+
+function importedTextValue(property: Exclude<SvgTextProperty, "content">, value: string): string {
+  if ((property === "font-size" || property === "letter-spacing") && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?px$/i.test(value.trim())) {
+    return value.trim().slice(0, -2);
+  }
+  return value;
+}
+
+function cssTextValue(property: Exclude<SvgTextProperty, "content">, value: string): string {
+  if ((property === "font-size" || property === "letter-spacing") && value.toLowerCase() !== "normal") return `${value}px`;
+  return value;
+}
+
+function displayedTextValue(node: SVGTextElement, property: Exclude<SvgTextProperty, "content">, fallback = ""): string {
+  const explicit = node.style.getPropertyValue(property) || node.getAttribute(property);
+  if (explicit) return importedTextValue(property, explicit);
+  try {
+    const computed = node.ownerDocument.defaultView?.getComputedStyle(node).getPropertyValue(property);
+    return computed ? importedTextValue(property, computed) : fallback;
+  } catch { return fallback; }
+}
+
+function cssControlsTextProperty(node: SVGTextElement, property: Exclude<SvgTextProperty, "content">): { controlled: boolean; important: boolean } {
+  let controlled = Boolean(node.style.getPropertyValue(property));
+  let important = node.style.getPropertyPriority(property) === "important";
+  const root = node.closest("svg");
+  if (!root) return { controlled, important };
+  for (const style of Array.from(root.querySelectorAll("style"))) {
+    let rules: CSSRuleList;
+    try {
+      if (style.sheet?.cssRules.length) rules = style.sheet.cssRules;
+      else {
+        const Sheet = root.ownerDocument.defaultView?.CSSStyleSheet;
+        if (!Sheet) continue;
+        const sheet = new Sheet();
+        sheet.replaceSync(style.textContent ?? "");
+        rules = sheet.cssRules;
+      }
+    } catch { continue; }
+    const pending = [...Array.from(rules)];
+    while (pending.length > 0) {
+      const rule = pending.shift()!;
+      const nested = (rule as CSSRule & { cssRules?: CSSRuleList }).cssRules;
+      if (nested) pending.push(...Array.from(nested));
+      if (rule.type !== 1) continue;
+      const cssRule = rule as CSSStyleRule;
+      try {
+        if (!node.matches(cssRule.selectorText) || !cssRule.style.getPropertyValue(property)) continue;
+      } catch { continue; }
+      controlled = true;
+      important ||= cssRule.style.getPropertyPriority(property) === "important";
+    }
+  }
+  return { controlled, important };
+}
+
+export function applySvgTextEdit(node: SVGTextElement, edit: SvgTextEdit): { changed: boolean; error?: string } {
+  const current = edit.property === "content" ? null : node.getAttribute(edit.property);
+  // Existing SVG may use CSS escapes or comments that the bounded editor does
+  // not accept for new values. A browser-equivalent family commit is still an
+  // exact no-op and must not rewrite those imported bytes.
+  if (edit.property === "font-family" && current !== null
+    && fontFamilies(current).join(",") === fontFamilies(edit.value).join(",")) {
+    return { changed: false };
+  }
+  const validation = validateSvgTextEdit(edit);
+  if (!validation.valid || validation.normalized === undefined) return { changed: false, error: validation.error };
+  if (edit.property === "content") {
+    if (Array.from(node.childNodes).some((child) => child.nodeType !== 3) || node.childNodes.length > 1) {
+      return { changed: false, error: "Content editing is unavailable for structured text; typography edits remain available." };
+    }
+    if (node.textContent === validation.normalized) return { changed: false };
+    node.textContent = validation.normalized;
+    return { changed: true };
+  }
+  if (edit.property === "font-family" && activatesExternalFont(node, validation.normalized)) {
+    return { changed: false, error: "This family could activate an imported or URL-backed font. Use a local family list." };
+  }
+  const cssControl = cssControlsTextProperty(node, edit.property);
+  const inlineCurrent = node.style.getPropertyValue(edit.property);
+  const effectiveCurrent = inlineCurrent || current || (cssControl.controlled ? displayedTextValue(node, edit.property) : null);
+  if (effectiveCurrent !== null && effectiveTextValue(edit.property, importedTextValue(edit.property, effectiveCurrent))
+    === effectiveTextValue(edit.property, validation.normalized)) {
+    return { changed: false };
+  }
+  if (cssControl.controlled) {
+    node.removeAttribute(edit.property);
+    node.style.setProperty(edit.property, cssTextValue(edit.property, validation.normalized), cssControl.important ? "important" : "");
+    return { changed: true };
+  }
+  node.setAttribute(edit.property, validation.normalized);
+  return { changed: true };
+}
 
 export function isValidSvgPaint(
   value: string,
@@ -498,6 +762,28 @@ interface EditorSnapshot {
   selectionKeys: string[];
 }
 
+function interactionPoint(event: Event): { x: number; y: number } | undefined {
+  const candidate = event as Event & {
+    changedTouches?: ArrayLike<{ clientX: number; clientY: number }>;
+    clientX?: number;
+    clientY?: number;
+    touches?: ArrayLike<{ clientX: number; clientY: number }>;
+  };
+  const touch = candidate.touches?.[0] ?? candidate.changedTouches?.[0];
+  const x = touch?.clientX ?? candidate.clientX;
+  const y = touch?.clientY ?? candidate.clientY;
+  return Number.isFinite(x) && Number.isFinite(y) ? { x: Number(x), y: Number(y) } : undefined;
+}
+
+interface DraggableSession {
+  init: (enabled: boolean) => void;
+}
+
+interface ResizeSession {
+  eventType: string;
+  lastEvent: Event | null;
+}
+
 export class SvgEditor {
   readonly #artboard: HTMLElement;
   readonly #callbacks: EditorCallbacks;
@@ -509,6 +795,14 @@ export class SvgEditor {
   #interactiveMutation = false;
   #interactiveMoved = false;
   #interactiveSnapshot = "";
+  #groupTransformGesture?: GroupTransformGesture;
+  #groupTransformRejected = false;
+  #groupDragOffset = { x: 0, y: 0 };
+  #groupRotationGesture = false;
+  #interactiveCleanup?: () => void;
+  #interactivePluginSession?: DraggableSession | ResizeSession;
+  #interactivePluginType?: "drag" | "resize";
+  #interactiveStartPoint?: { x: number; y: number };
   readonly #inspectorEdit = new InspectorEditSession();
   #keyCounter = 0;
   #lockedKeys = new Set<string>();
@@ -519,16 +813,32 @@ export class SvgEditor {
   #suppressCanvasClickUntil = 0;
   #syncingControls = false;
   #agentMutationBlocked = false;
+  #groupScaleEdit?: {
+    box: TransformBox;
+    initialMatrix: { a: number; b: number; c: number; d: number; e: number; f: number };
+    initialPercent: number;
+    originalScale: string | null;
+    originalTransform: string | null;
+    snapshot: string;
+  };
 
   constructor(artboard: HTMLElement, controls: EditorControls, callbacks: EditorCallbacks) {
     this.#artboard = artboard;
     this.#controls = controls;
+    const compatibleControls = controls as unknown as Record<string, HTMLElement | undefined>;
+    for (const name of ["textContent", "textFamily", "textLetterSpacing", "textSize", "textWeight"]) {
+      compatibleControls[name] ??= artboard.ownerDocument.createElement("input");
+    }
+    compatibleControls.textAnchor ??= artboard.ownerDocument.createElement("select");
+    compatibleControls.textError ??= artboard.ownerDocument.createElement("small");
     this.#callbacks = callbacks;
     this.#bindControls();
     document.addEventListener("keydown", (event) => this.#handleKeydown(event));
   }
 
-  load(svg: SVGSVGElement): void {
+  load(svg: SVGSVGElement, savedBaseline?: string): void {
+    this.#cancelInteractiveMutation(false);
+    this.#groupScaleEdit = undefined;
     this.#clearHover();
     this.#deselect();
     this.#drawing = SVG(svg) as Svg;
@@ -539,11 +849,29 @@ export class SvgEditor {
     this.#assignKeys(svg);
     this.#scope = svg;
     this.#bindCanvasSelection(svg);
-    this.#baseline = this.serializeClean();
+    this.#baseline = savedBaseline ?? this.serializeClean();
     this.#initialSnapshot = this.#snapshot();
+    if (savedBaseline !== undefined) {
+      const parsed = new DOMParser().parseFromString(savedBaseline, "image/svg+xml");
+      const saved = parsed.documentElement as unknown as SVGSVGElement;
+      if (saved.localName === "svg" && !parsed.querySelector("parsererror")) {
+        const currentCounter = this.#keyCounter;
+        this.#keyCounter = 0;
+        this.#assignKeys(saved);
+        this.#keyCounter = currentCounter;
+        this.#initialSnapshot = JSON.stringify({
+          markup: serializeSvg(saved, false),
+          primaryKeys: [],
+          selectionPaths: [],
+          scopeKeys: [],
+          selectionKeys: [],
+        } satisfies EditorSnapshot);
+      }
+    }
     this.#setSelectionUi(undefined);
     this.#notifySelectionContext();
     this.#notifyHistory();
+    if (savedBaseline !== undefined) this.#callbacks.onDirtyChange(this.serializeClean() !== this.#baseline);
   }
 
   selectNode(node: SVGGraphicsElement, extend = false): void {
@@ -626,35 +954,87 @@ export class SvgEditor {
     const selected = SVG(nextPrimary) as SvgElement;
     this.#selected = selected;
 
-    const hasComplexResources = Boolean(node.querySelector(RESOURCE_SELECTOR))
-      || Array.from(node.attributes).some((attribute) => attribute.value.includes("url(#"));
+    const hasComplexResources = node.localName !== "g" && (
+      Boolean(node.querySelector(RESOURCE_SELECTOR))
+      || Array.from(node.attributes).some((attribute) => attribute.value.includes("url(#"))
+    );
     if (!this.#agentMutationBlocked && node.getAttribute("display") !== "none" && !this.#isLocked(node) && !hasComplexResources) {
       selected
         .select()
         .resize({ preserveAspectRatio: true, aroundCenter: false, grid: 1, degree: 1 })
         .draggable();
-      selected.on("dragstart.lineage", () => this.#beginInteractiveMutation());
+      selected.on("dragstart.lineage", (event) => {
+        const handler = (event as CustomEvent<{ handler: DraggableSession }>).detail.handler;
+        this.#beginInteractiveMutation("drag", undefined, handler);
+      });
       selected.on("dragmove.lineage", (event) => {
         if (this.#agentMutationBlocked) {
           event.preventDefault();
           return;
         }
-        this.#markInteractiveMoved();
+        if (this.#groupTransformGesture) {
+          event.preventDefault();
+          const detail = (event as CustomEvent<{ dx: number; dy: number }>).detail;
+          this.#groupDragOffset.x += detail.dx;
+          this.#groupDragOffset.y += detail.dy;
+          try {
+            this.#markInteractiveMoved(this.#groupTransformGesture.drag(this.#groupDragOffset.x, this.#groupDragOffset.y));
+          } catch (error) {
+            this.#rejectGroupTransform(error);
+          }
+        } else if (this.#groupTransformRejected) {
+          event.preventDefault();
+        } else {
+          this.#markInteractiveMoved(true);
+        }
         this.#syncSelectionUi();
       });
       selected.on("dragend.lineage", () => {
         this.#finishInteractiveMutation();
         if (this.#agentMutationBlocked) queueMicrotask(() => selected.draggable(false));
       });
-      selected.on("beforeresize.lineage", () => this.#beginInteractiveMutation());
+      selected.on("beforeresize.lineage", (event) => {
+        const detail = (event as CustomEvent<{
+          event: CustomEvent<{ event: Event }>;
+          handler: ResizeSession;
+        }>).detail;
+        this.#beginInteractiveMutation(
+          detail.event.type === "rot" ? "rotation" : "resize",
+          detail.event.detail.event,
+          detail.handler,
+        );
+      });
       selected.on("resize.lineage", (event) => {
         if (this.#agentMutationBlocked) {
           event.preventDefault();
           return;
         }
-        this.#markInteractiveMoved();
+        const detail = (event as CustomEvent<{ box: TransformBox; event: Event; eventType: string }>).detail;
+        const terminalPoint = interactionPoint(detail.event);
+        const releasedAtStart = Boolean(terminalPoint && this.#interactiveStartPoint
+          && Math.abs(terminalPoint.x - this.#interactiveStartPoint.x) <= 1
+          && Math.abs(terminalPoint.y - this.#interactiveStartPoint.y) <= 1);
+        const terminalWithoutMotion = (detail.event.type === "mouseup" || detail.event.type === "touchend")
+          && (!this.#interactiveMoved || releasedAtStart);
+        if (detail.event.type === "touchcancel" || terminalWithoutMotion) {
+          event.preventDefault();
+          this.#cancelInteractiveMutation();
+          return;
+        } else if (detail.eventType === "rot") {
+          this.#markInteractiveMoved(true);
+        } else if (this.#groupTransformGesture) {
+          event.preventDefault();
+          try {
+            this.#markInteractiveMoved(this.#groupTransformGesture.resize(detail.box));
+          } catch (error) {
+            this.#rejectGroupTransform(error);
+          }
+        } else if (this.#groupTransformRejected) {
+          event.preventDefault();
+        } else {
+          this.#markInteractiveMoved(true);
+        }
         this.#syncSelectionUi();
-        this.#scheduleInteractiveFinish();
       });
     }
 
@@ -726,7 +1106,7 @@ export class SvgEditor {
   stageAgentTransaction(transaction: AgentTransactionV1, context: AgentDocumentContext): StagedAgentTransaction | undefined {
     const root = this.svgNode;
     if (!root) return undefined;
-    if (this.#interactiveMutation) {
+    if (this.#interactiveMutation || this.#groupScaleEdit) {
       return {
         result: {
           transactionId: transaction.transactionId,
@@ -740,6 +1120,12 @@ export class SvgEditor {
 
   setAgentMutationBlocked(blocked: boolean): void {
     if (this.#agentMutationBlocked === blocked) return;
+    if (blocked) {
+      this.#cancelInteractiveMutation();
+      const scaleSnapshot = this.#groupScaleEdit?.snapshot;
+      this.#groupScaleEdit = undefined;
+      if (scaleSnapshot) this.#restore(scaleSnapshot);
+    }
     this.#agentMutationBlocked = blocked;
     this.#setSelection([...this.#selectedNodes], this.selectedNode);
     const availability = visibleHistoryAvailability(blocked, this.#history.canUndo, this.#history.canRedo);
@@ -1018,6 +1404,51 @@ export class SvgEditor {
   }
 
   #bindControls(): void {
+    const textControls: Array<[HTMLInputElement | HTMLSelectElement, SvgTextProperty]> = [
+      [this.#controls.textContent, "content"],
+      [this.#controls.textSize, "font-size"],
+      [this.#controls.textWeight, "font-weight"],
+      [this.#controls.textFamily, "font-family"],
+      [this.#controls.textAnchor, "text-anchor"],
+      [this.#controls.textLetterSpacing, "letter-spacing"],
+    ];
+    const commitText = (control: HTMLInputElement | HTMLSelectElement, property: SvgTextProperty) => {
+      if (this.#syncingControls || !this.#canMutatePrimary()) return;
+      const node = this.selectedNode;
+      if (!node || node.localName !== "text") return;
+      const before = this.#snapshot();
+      const result = applySvgTextEdit(node as SVGTextElement, { property, value: control.value });
+      if (result.error) {
+        control.setAttribute("aria-invalid", "true");
+        this.#controls.textError.textContent = result.error;
+        return;
+      }
+      control.removeAttribute("aria-invalid");
+      this.#controls.textError.textContent = "";
+      if (!result.changed) return;
+      this.#history.checkpoint(before);
+      this.#syncSelectionUi();
+      this.#notifyDocumentChange();
+      this.#notifyHistory();
+      this.#callbacks.onStatus(`Updated ${property === "content" ? "text content" : property}`);
+    };
+    for (const [control, property] of textControls) {
+      control.addEventListener("change", () => commitText(control, property));
+      control.addEventListener("keydown", (rawEvent) => {
+        const event = rawEvent as KeyboardEvent;
+        if (event.key === "Enter" && control instanceof HTMLInputElement) {
+          event.preventDefault();
+          commitText(control, property);
+          control.blur();
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          this.#syncSelectionUi();
+          control.blur();
+          this.#callbacks.onStatus("Canceled the text edit");
+        }
+      });
+    }
+
     const paintControls: Array<[
       HTMLInputElement,
       HTMLInputElement,
@@ -1084,7 +1515,6 @@ export class SvgEditor {
     const transformControls: Array<[HTMLInputElement, () => void]> = [
       [this.#controls.positionX, () => this.#moveSelection("x")],
       [this.#controls.positionY, () => this.#moveSelection("y")],
-      [this.#controls.scale, () => this.#scaleSelection()],
       [this.#controls.rotation, () => this.#rotateSelection()],
     ];
     for (const [control, apply] of transformControls) {
@@ -1097,6 +1527,53 @@ export class SvgEditor {
       });
       control.addEventListener("change", () => this.#syncSelectionUi());
     }
+    this.#controls.scale.addEventListener("focus", () => {
+      if (!this.#canMutatePrimary() || this.selectedNode?.localName !== "g" || !this.#selected) {
+        this.#beginInspectorEdit();
+        return;
+      }
+      const node = this.selectedNode;
+      const initialPercent = Number(node.dataset.lineageScale ?? 100);
+      if (!Number.isFinite(initialPercent) || initialPercent <= 0) return;
+      try {
+        this.#groupScaleEdit = {
+          box: this.#selected.bbox(),
+          initialMatrix: this.#selected.matrixify(),
+          initialPercent,
+          originalScale: node.getAttribute("data-lineage-scale"),
+          originalTransform: node.getAttribute("transform"),
+          snapshot: this.#snapshot(),
+        };
+      } catch (error) {
+        this.#callbacks.onStatus(error instanceof Error ? error.message : "The grouped scale was rejected.");
+      }
+    });
+    this.#controls.scale.addEventListener("input", () => {
+      if (this.#syncingControls || !this.#canMutatePrimary()) return;
+      if (this.#groupScaleEdit && this.selectedNode?.localName === "g") {
+        this.#scaleGroupSelection();
+        return;
+      }
+      const before = this.#snapshot();
+      this.#scaleSelection();
+      this.#checkpointInspectorMutation(before, this.#snapshot());
+    });
+    this.#controls.scale.addEventListener("change", () => {
+      if (this.#groupScaleEdit) this.#completeGroupScaleEdit();
+      this.#syncSelectionUi();
+    });
+    this.#controls.scale.addEventListener("blur", () => {
+      if (this.#groupScaleEdit) this.#completeGroupScaleEdit();
+    });
+    this.#controls.scale.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || !this.#groupScaleEdit) return;
+      event.preventDefault();
+      const snapshot = this.#groupScaleEdit.snapshot;
+      this.#groupScaleEdit = undefined;
+      this.#restore(snapshot);
+      this.#controls.scale.blur();
+      this.#callbacks.onStatus("Canceled the grouped scale edit");
+    });
     this.#controls.duplicateButton.addEventListener("click", () => this.#duplicateSelection());
     this.#controls.deleteButton.addEventListener("click", () => this.#deleteSelection());
     this.#controls.hideButton.addEventListener("click", () => this.toggleVisibility());
@@ -1139,32 +1616,124 @@ export class SvgEditor {
     this.#notifyHistory();
   }
 
-  #beginInteractiveMutation(): void {
+  #beginInteractiveMutation(
+    kind: "drag" | "resize" | "rotation",
+    source?: Event,
+    pluginSession?: DraggableSession | ResizeSession,
+  ): void {
     if (!this.#canMutatePrimary()) return;
     if (this.#interactiveMutation) return;
     this.#interactiveSnapshot = this.#snapshot();
     this.#interactiveMutation = true;
     this.#interactiveMoved = false;
+    this.#groupTransformGesture = undefined;
+    this.#groupTransformRejected = false;
+    this.#groupDragOffset = { x: 0, y: 0 };
+    this.#groupRotationGesture = kind === "rotation" && this.selectedNode?.localName === "g";
+    this.#interactiveStartPoint = source ? interactionPoint(source) : undefined;
+    this.#interactivePluginSession = pluginSession;
+    this.#interactivePluginType = kind === "drag" ? "drag" : "resize";
+    this.#bindInteractiveTerminals();
+    const node = this.selectedNode;
+    if (kind !== "rotation" && node?.localName === "g" && this.#selected) {
+      try {
+        const matrix = this.#selected.matrixify();
+        const box = this.#selected.bbox();
+        this.#groupTransformGesture = new GroupTransformGesture(node, matrix, box);
+      } catch (error) {
+        this.#groupTransformRejected = true;
+        this.#callbacks.onStatus(error instanceof Error ? error.message : `Unable to begin grouped ${kind}`);
+      }
+    }
   }
 
-  #markInteractiveMoved(): void {
-    if (!this.#interactiveMutation || this.#agentMutationBlocked || this.#interactiveMoved) return;
+  #markInteractiveMoved(changed: boolean): void {
+    if (!this.#interactiveMutation || this.#agentMutationBlocked || !changed) return;
     this.#interactiveMoved = true;
-    this.#history.checkpoint(this.#interactiveSnapshot);
-    this.#notifyHistory();
   }
 
-  #scheduleInteractiveFinish(): void {
-    window.addEventListener("pointerup", () => this.#finishInteractiveMutation(), { once: true });
-    window.addEventListener("mouseup", () => this.#finishInteractiveMutation(), { once: true });
+  #bindInteractiveTerminals(): void {
+    const finish = () => queueMicrotask(() => this.#finishInteractiveMutation());
+    const cancel = () => queueMicrotask(() => this.#cancelInteractiveMutation());
+    window.addEventListener("mouseup", finish);
+    window.addEventListener("touchend", finish);
+    window.addEventListener("touchcancel", cancel);
+    window.addEventListener("pointercancel", cancel);
+    this.#interactiveCleanup = () => {
+      window.removeEventListener("mouseup", finish);
+      window.removeEventListener("touchend", finish);
+      window.removeEventListener("touchcancel", cancel);
+      window.removeEventListener("pointercancel", cancel);
+      this.#interactiveCleanup = undefined;
+    };
   }
 
   #finishInteractiveMutation(): void {
     if (!this.#interactiveMutation) return;
+    this.#interactiveCleanup?.();
     this.#interactiveMutation = false;
-    if (this.#interactiveMoved) this.#suppressCanvasClickUntil = performance.now() + 150;
+    const groupChanged = this.#groupTransformGesture?.complete();
+    if (this.#groupRotationGesture && this.#interactiveMoved && this.#selected) {
+      try {
+        this.selectedNode?.setAttribute("transform", formatMatrix(this.#selected.matrixify()));
+      } catch (error) {
+        this.#groupRotationGesture = false;
+        this.#restore(this.#interactiveSnapshot);
+        this.#callbacks.onStatus(error instanceof Error ? error.message : "The grouped rotation was rejected.");
+        return;
+      }
+    }
+    const changed = this.#groupTransformGesture ? groupChanged === true : this.#interactiveMoved && this.#snapshot() !== this.#interactiveSnapshot;
+    this.#groupTransformGesture = undefined;
+    this.#groupTransformRejected = false;
+    this.#groupRotationGesture = false;
+    this.#interactiveStartPoint = undefined;
+    this.#interactivePluginSession = undefined;
+    this.#interactivePluginType = undefined;
+    if (changed) {
+      this.#history.checkpoint(this.#interactiveSnapshot);
+      this.#notifyHistory();
+      this.#suppressCanvasClickUntil = performance.now() + 150;
+    }
     this.#syncSelectionUi();
     this.#notifyDocumentChange();
+  }
+
+  #cancelInteractiveMutation(restoreSnapshot = true): void {
+    if (!this.#interactiveMutation) return;
+    this.#interactiveCleanup?.();
+    this.#terminateInteractivePlugin();
+    this.#groupTransformGesture = undefined;
+    this.#groupTransformRejected = false;
+    this.#groupRotationGesture = false;
+    this.#interactiveStartPoint = undefined;
+    this.#interactiveMutation = false;
+    this.#interactiveMoved = false;
+    if (restoreSnapshot) this.#restore(this.#interactiveSnapshot);
+  }
+
+  #terminateInteractivePlugin(): void {
+    if (this.#interactivePluginType === "drag") {
+      off(window, "mousemove.drag touchmove.drag mouseup.drag touchend.drag");
+      (this.#interactivePluginSession as DraggableSession | undefined)?.init(true);
+    } else if (this.#interactivePluginType === "resize") {
+      off(window, "mousemove.resize touchmove.resize mouseup.resize touchend.resize touchcancel.resize");
+      const session = this.#interactivePluginSession as ResizeSession | undefined;
+      if (session) {
+        session.lastEvent = null;
+        session.eventType = "";
+      }
+    }
+    this.#interactivePluginSession = undefined;
+    this.#interactivePluginType = undefined;
+  }
+
+  #rejectGroupTransform(error: unknown): void {
+    this.#groupTransformGesture?.cancel();
+    this.#groupTransformGesture = undefined;
+    this.#groupTransformRejected = true;
+    this.#interactiveMoved = false;
+    this.#callbacks.onStatus(error instanceof Error ? error.message : "The grouped transform was rejected.");
   }
 
   #mutate(change: () => void): void {
@@ -1198,6 +1767,50 @@ export class SvgEditor {
     });
   }
 
+  #scaleGroupSelection(): void {
+    const edit = this.#groupScaleEdit;
+    const node = this.selectedNode;
+    if (!edit || !node || node.localName !== "g") return;
+    const next = Number(this.#controls.scale.value);
+    if (!Number.isFinite(next) || next <= 0) return;
+    const before = this.#snapshot();
+    try {
+      if (next === edit.initialPercent) {
+        if (edit.originalTransform === null) node.removeAttribute("transform");
+        else node.setAttribute("transform", edit.originalTransform);
+        if (edit.originalScale === null) node.removeAttribute("data-lineage-scale");
+        else node.setAttribute("data-lineage-scale", edit.originalScale);
+      } else {
+        node.setAttribute("transform", formatMatrix(composeGroupScale(
+          edit.initialMatrix,
+          edit.box,
+          next / edit.initialPercent,
+        )));
+        node.dataset.lineageScale = String(next);
+      }
+    } catch (error) {
+      if (edit.originalTransform === null) node.removeAttribute("transform");
+      else node.setAttribute("transform", edit.originalTransform);
+      if (edit.originalScale === null) node.removeAttribute("data-lineage-scale");
+      else node.setAttribute("data-lineage-scale", edit.originalScale);
+      this.#callbacks.onStatus(error instanceof Error ? error.message : "The grouped scale was rejected.");
+    }
+    this.#syncSelectionUi();
+    if (this.#snapshot() !== before) {
+      this.#notifyDocumentChange();
+      this.#notifyHistory();
+    }
+  }
+
+  #completeGroupScaleEdit(): void {
+    const edit = this.#groupScaleEdit;
+    if (!edit) return;
+    this.#groupScaleEdit = undefined;
+    if (this.#snapshot() === edit.snapshot) return;
+    this.#history.checkpoint(edit.snapshot);
+    this.#notifyHistory();
+  }
+
   #rotateSelection(): void {
     if (!this.#selected) return;
     const next = Number(this.#controls.rotation.value);
@@ -1212,8 +1825,7 @@ export class SvgEditor {
   }
 
   #duplicateSelection(): void {
-    if (!this.#canMutatePrimary()) return;
-    const source = this.selectedNode;
+    const source = this.#singleMutableSelection("duplicating");
     if (!source) return;
     this.#mutate(() => {
       const clone = source.cloneNode(true) as SVGGraphicsElement;
@@ -1250,8 +1862,7 @@ export class SvgEditor {
   }
 
   #deleteSelection(): void {
-    if (!this.#canMutatePrimary()) return;
-    const node = this.selectedNode;
+    const node = this.#singleMutableSelection("deleting");
     if (!node) return;
     const root = this.svgNode;
     const fallbackScope = root ? getSelectableParent(node, root) ?? root : undefined;
@@ -1296,6 +1907,10 @@ export class SvgEditor {
     }
     if (event.key === "Escape") {
       event.preventDefault();
+      if (this.#interactiveMutation) {
+        this.#cancelInteractiveMutation();
+        return;
+      }
       if (this.#scope && this.svgNode && this.#scope !== this.svgNode) this.backToGroup();
       else this.#setSelection([]);
       return;
@@ -1305,7 +1920,7 @@ export class SvgEditor {
       this.#deleteSelection();
       return;
     }
-    if (!this.#canMutatePrimary() || !event.key.startsWith("Arrow")) return;
+    if (this.#selectedNodes.length !== 1 || !this.#canMutatePrimary() || !event.key.startsWith("Arrow")) return;
     event.preventDefault();
     const step = event.shiftKey ? 10 : 1;
     const movement: Record<string, [number, number]> = {
@@ -1341,6 +1956,7 @@ export class SvgEditor {
       this.#controls.name.value = "";
       this.#controls.fillState.textContent = "";
       this.#controls.strokeState.textContent = "";
+      this.#controls.textError.textContent = "";
       this.#syncOperationUi();
       return;
     }
@@ -1383,6 +1999,22 @@ export class SvgEditor {
     this.#controls.positionY.value = String(Number(box.y.toFixed(2)));
     this.#controls.scale.value = node.dataset.lineageScale ?? "100";
     this.#controls.rotation.value = node.dataset.lineageRotation ?? "0";
+    const isText = node.localName === "text";
+    this.#controls.textContent.value = isText ? node.textContent ?? "" : "";
+    this.#controls.textSize.value = isText ? displayedTextValue(node as SVGTextElement, "font-size") : "";
+    this.#controls.textWeight.value = isText ? displayedTextValue(node as SVGTextElement, "font-weight") : "";
+    this.#controls.textFamily.value = isText ? displayedTextValue(node as SVGTextElement, "font-family") : "";
+    this.#controls.textAnchor.value = isText ? displayedTextValue(node as SVGTextElement, "text-anchor", "start") : "start";
+    this.#controls.textLetterSpacing.value = isText ? displayedTextValue(node as SVGTextElement, "letter-spacing") : "";
+    this.#controls.textError.textContent = "";
+    for (const control of [
+      this.#controls.textContent,
+      this.#controls.textSize,
+      this.#controls.textWeight,
+      this.#controls.textFamily,
+      this.#controls.textAnchor,
+      this.#controls.textLetterSpacing,
+    ]) control.removeAttribute("aria-invalid");
     this.#controls.hideButton.textContent = node.getAttribute("display") === "none" ? "Show" : "Hide";
     this.#controls.name.value = node.getAttribute("aria-label") ?? "";
     const locked = this.#isLocked(node);
@@ -1405,6 +2037,14 @@ export class SvgEditor {
       this.#controls.deleteButton,
       this.#controls.hideButton,
     ]) control.disabled = !single || locked;
+    for (const control of [
+      this.#controls.textContent,
+      this.#controls.textSize,
+      this.#controls.textWeight,
+      this.#controls.textFamily,
+      this.#controls.textAnchor,
+      this.#controls.textLetterSpacing,
+    ]) control.disabled = !single || locked || !isText;
     this.#controls.nameClearButton.disabled = !single || locked || !node.hasAttribute("aria-label");
     this.#controls.fillPicker.disabled = !single || locked || !fillPickerValue;
     this.#controls.strokePicker.disabled = !single || locked || !strokePickerValue;
@@ -1498,7 +2138,7 @@ export class SvgEditor {
   #canMutatePrimary(): boolean {
     if (this.#agentMutationBlocked) return false;
     const node = this.selectedNode;
-    return Boolean(node && this.#selectedNodes.length === 1 && !this.#isLocked(node));
+    return Boolean(node && !this.#isLocked(node));
   }
 
   #singleMutableSelection(action: string): SVGGraphicsElement | undefined {
