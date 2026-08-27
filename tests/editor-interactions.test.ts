@@ -2,7 +2,7 @@ import { Window } from "happy-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { registerWindow, SVG } from "@svgdotjs/svg.js";
 import { History } from "../src/client/history/history";
-import { serializeSvg, SvgEditor } from "../src/client/canvas/editor";
+import { matrixRotationDegrees, rotationHandleRadii, serializeSvg, SvgEditor } from "../src/client/canvas/editor";
 import {
   composeGroupDrag,
   composeGroupResize,
@@ -278,6 +278,27 @@ describe("deterministic grouped transform composition", () => {
     )).toThrow(/scale range/);
     expect(formatMatrix({ ...IDENTITY, b: -0, e: 0.00000001 })).toBe("matrix(1,0,0,1,0,0)");
     expect(formatMatrix({ ...IDENTITY, e: 0.000001 })).not.toMatch(/[eE][+-]?\d/);
+  });
+});
+
+describe("rotation affordance", () => {
+  it.each([
+    [{ a: 1, b: 0 }, 0],
+    [{ a: 0, b: 1 }, 90],
+    [{ a: 0, b: -1 }, -90],
+    [{ a: Math.SQRT1_2, b: Math.SQRT1_2 }, 45],
+  ])("reports the visible matrix angle for %o", (matrix, expected) => {
+    expect(matrixRotationDegrees(matrix)).toBe(expected);
+  });
+
+  it("uses a standard rotation icon with a prominent 30 pixel hit target", () => {
+    expect(rotationHandleRadii(0.5)).toEqual({ hit: 30, knob: 18 });
+    const { group, root } = editorHarness();
+    expect(group.hasAttribute("data-lineage-rotation")).toBe(false);
+    expect(root.querySelector(".lineage-rotation-knob")?.getAttribute("r")).toBe("9");
+    expect(root.querySelector(".lineage-rotation-knob")?.getAttribute("stroke-width")).toBe("12");
+    expect(root.querySelector(".lineage-rotation-icon")?.getAttribute("d")).toContain("a9 9");
+    expect(root.querySelector(".svg_select_handle_rot")?.children).toHaveLength(3);
   });
 });
 
@@ -583,7 +604,7 @@ describe("SvgEditor plugin cancellation teardown", () => {
   });
 
   it("uses ResizeHandler.handleResize for touchcancel and a real immediate touch rotation", async () => {
-    const { editor, window } = editorHarness();
+    const { controls, editor, statuses, window } = editorHarness();
     const group = selectNestedMulti(editor);
     const before = editor.serializeClean();
     const context = editorContext(editor);
@@ -604,6 +625,8 @@ describe("SvgEditor plugin cancellation teardown", () => {
 
     startResize(editor.selectedNode as SVGGraphicsElement, window, "rot", touchEvent(window, "touchstart", 10, -10));
     dispatch(window, touchEvent(window, "touchmove", 20, 10));
+    expect(controls.rotation.value).not.toBe("0");
+    expect(statuses.at(-1)).toMatch(/^Rotation -?\d+(?:\.\d)?°$/);
     dispatch(window, touchEvent(window, "touchend", 20, 10));
     await Promise.resolve();
     const after = editor.serializeClean();

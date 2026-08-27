@@ -888,6 +888,9 @@ function setZoom(nextZoom: number, center?: Element): void {
   zoom = Math.min(4, Math.max(0.25, nextZoom));
   artboard.style.transform = `scale(${zoom})`;
   getElement("zoom-label").textContent = `${Math.round(zoom * 100)}%`;
+  const refreshAffordances = () => editor.refreshSelectionAffordances();
+  window.requestAnimationFrame(refreshAffordances);
+  window.setTimeout(refreshAffordances, 170);
   if (center) {
     const centerTarget = () => {
     const target = center;

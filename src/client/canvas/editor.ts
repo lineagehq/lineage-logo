@@ -84,8 +84,64 @@ const RESOURCE_SELECTOR = "defs, metadata, clipPath, mask, filter, linearGradien
 const HOVER_ATTRIBUTE = "data-lineage-hover";
 const SECONDARY_ATTRIBUTE = "data-lineage-secondary";
 const REVIEW_ATTRIBUTE = "data-lineage-review-highlight";
+const ROTATION_HANDLE_SELECTOR = ".svg_select_handle_rot";
+const ROTATION_KNOB_CLASS = "lineage-rotation-knob";
+const ROTATION_ICON_CLASS = "lineage-rotation-icon";
+const ROTATION_ICON_PATH = "M21 12a9 9 0 1 1-2.64-6.36L21 8M21 3v5h-5";
+const ROTATION_HIT_TARGET_DIAMETER_PX = 30;
+const ROTATION_KNOB_DIAMETER_PX = 18;
+const ROTATION_ICON_DIAMETER_PX = 12;
 
 export type SvgPaintProperty = "fill" | "stroke";
+
+interface RotationMatrix {
+  a: number;
+  b: number;
+}
+
+export function matrixRotationDegrees(matrix: RotationMatrix): number {
+  const degrees = Math.atan2(matrix.b, matrix.a) * (180 / Math.PI);
+  return normalizeRotationDegrees(degrees);
+}
+
+function normalizeRotationDegrees(degrees: number): number {
+  const normalized = ((degrees + 180) % 360 + 360) % 360 - 180;
+  const rounded = Number(normalized.toFixed(1));
+  return Object.is(rounded, -0) ? 0 : rounded;
+}
+
+export function rotationHandleRadii(screenScale: number): { hit: number; knob: number } {
+  const scale = Number.isFinite(screenScale) && screenScale > 0 ? screenScale : 1;
+  return {
+    hit: ROTATION_HIT_TARGET_DIAMETER_PX / 2 / scale,
+    knob: ROTATION_KNOB_DIAMETER_PX / 2 / scale,
+  };
+}
+
+function enhanceRotationHandle(root: SVGSVGElement): void {
+  const handle = root.querySelector<SVGGElement>(ROTATION_HANDLE_SELECTOR);
+  const knob = handle?.querySelector<SVGCircleElement>("circle");
+  if (!handle || !knob) return;
+  const matrix = knob.getScreenCTM();
+  const scaleX = matrix ? Math.hypot(matrix.a, matrix.b) : 1;
+  const scaleY = matrix ? Math.hypot(matrix.c, matrix.d) : scaleX;
+  const measuredScale = Math.max(scaleX, scaleY);
+  const screenScale = Number.isFinite(measuredScale) && measuredScale > 0 ? measuredScale : 1;
+  const { hit, knob: knobRadius } = rotationHandleRadii(screenScale);
+  knob.classList.add(ROTATION_KNOB_CLASS);
+  knob.setAttribute("r", String(knobRadius));
+  knob.setAttribute("stroke-width", String((hit - knobRadius) * 2));
+
+  const icon = handle.querySelector<SVGPathElement>(`.${ROTATION_ICON_CLASS}`)
+    ?? root.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "path");
+  const centerX = Number(knob.getAttribute("cx"));
+  const centerY = Number(knob.getAttribute("cy"));
+  const iconScale = ROTATION_ICON_DIAMETER_PX / 24 / screenScale;
+  icon.classList.add(ROTATION_ICON_CLASS);
+  icon.setAttribute("d", ROTATION_ICON_PATH);
+  icon.setAttribute("transform", `translate(${centerX - 12 * iconScale} ${centerY - 12 * iconScale}) scale(${iconScale})`);
+  if (!icon.isConnected) handle.append(icon);
+}
 
 export type SvgTextProperty = "content" | "font-size" | "font-weight" | "font-family" | "text-anchor" | "letter-spacing";
 
@@ -963,6 +1019,7 @@ export class SvgEditor {
         .select()
         .resize({ preserveAspectRatio: true, aroundCenter: false, grid: 1, degree: 1 })
         .draggable();
+      enhanceRotationHandle(root);
       selected.on("dragstart.lineage", (event) => {
         const handler = (event as CustomEvent<{ handler: DraggableSession }>).detail.handler;
         this.#beginInteractiveMutation("drag", undefined, handler);
@@ -1009,7 +1066,7 @@ export class SvgEditor {
           event.preventDefault();
           return;
         }
-        const detail = (event as CustomEvent<{ box: TransformBox; event: Event; eventType: string }>).detail;
+        const detail = (event as CustomEvent<{ angle: number; box: TransformBox; event: Event; eventType: string }>).detail;
         const terminalPoint = interactionPoint(detail.event);
         const releasedAtStart = Boolean(terminalPoint && this.#interactiveStartPoint
           && Math.abs(terminalPoint.x - this.#interactiveStartPoint.x) <= 1
@@ -1022,6 +1079,9 @@ export class SvgEditor {
           return;
         } else if (detail.eventType === "rot") {
           this.#markInteractiveMoved(true);
+          const degrees = normalizeRotationDegrees(matrixRotationDegrees(selected.matrixify()) + detail.angle);
+          node.dataset.lineageRotation = String(degrees);
+          this.#callbacks.onStatus(`Rotation ${degrees}°`);
         } else if (this.#groupTransformGesture) {
           event.preventDefault();
           try {
@@ -1101,6 +1161,11 @@ export class SvgEditor {
 
   get selectedNodes(): SVGGraphicsElement[] {
     return [...this.#selectedNodes];
+  }
+
+  refreshSelectionAffordances(): void {
+    const root = this.svgNode;
+    if (root && this.#selected) enhanceRotationHandle(root);
   }
 
   stageAgentTransaction(transaction: AgentTransactionV1, context: AgentDocumentContext): StagedAgentTransaction | undefined {
@@ -1815,7 +1880,9 @@ export class SvgEditor {
     if (!this.#selected) return;
     const next = Number(this.#controls.rotation.value);
     const node = this.#selected.node as SVGGraphicsElement;
-    const previous = Number(node.dataset.lineageRotation ?? 0);
+    const previous = node.dataset.lineageRotation === undefined
+      ? matrixRotationDegrees(this.#selected.matrixify())
+      : Number(node.dataset.lineageRotation);
     if (!Number.isFinite(next) || !Number.isFinite(previous)) return;
     const box = this.#selected.bbox();
     this.#mutateWithoutCheckpoint(() => {
@@ -1969,6 +2036,7 @@ export class SvgEditor {
   #syncSelectionUi(): void {
     if (!this.#selected || !this.#drawing) return;
     const node = this.#selected.node as SVGGraphicsElement;
+    enhanceRotationHandle(this.#drawing.node as SVGSVGElement);
     let box: { x: number; y: number };
     try {
       box = this.#selected.rbox(this.#drawing);
@@ -1998,7 +2066,8 @@ export class SvgEditor {
     this.#controls.positionX.value = String(Number(box.x.toFixed(2)));
     this.#controls.positionY.value = String(Number(box.y.toFixed(2)));
     this.#controls.scale.value = node.dataset.lineageScale ?? "100";
-    this.#controls.rotation.value = node.dataset.lineageRotation ?? "0";
+    this.#controls.rotation.value = node.dataset.lineageRotation
+      ?? String(matrixRotationDegrees(this.#selected.matrixify()));
     const isText = node.localName === "text";
     this.#controls.textContent.value = isText ? node.textContent ?? "" : "";
     this.#controls.textSize.value = isText ? displayedTextValue(node as SVGTextElement, "font-size") : "";
