@@ -1,0 +1,448 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Multi-Selection Movement and Distribution"
+  slug: "multi-selection-movement-distribution"
+  kind: existing_plan
+  tranche: "Prove the merged selector, then deliver collective translation and deterministic distribution/spacing through live complex-logo QA."
+  status: done
+  oracle:
+    signal: "On the live complex Seatify example at 100% and non-default zoom, a cross-parent multi-selection collectively drags and nudges by one visual root-space delta, distributes and equal-spaces deterministically, survives one-step undo/redo per action, and preserves selection, Layers parity, clean serialization, and gesture coexistence."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Green npm run check, recorded post-merge and final browser transcripts, and a final Judge receipt mapping every oracle clause with full_outcome_complete: true."
+  intake:
+    original_request: "Create and execute a GoalBuddy-ready plan for post-merge smoke, multi-selection movement, and distribution, excluding collective resize and rotation from the first tranche."
+    interpreted_outcome: "Users can safely translate and distribute selected SVG objects across nested parent coordinate systems without selection, history, gesture, or fidelity regressions."
+    input_shape: existing_plan
+    audience: "Lineage Logo users editing layered and nested SVG marks"
+    authority: requested
+    proof_type: demo
+    completion_proof: "Automated checks and a repeatable live Seatify walkthrough prove collective drag, keyboard nudge, deterministic distribution/spacing, undo/redo, cancellation, eligibility gating, and clean SVG output."
+    likely_misfire: "Add controls or a primary drag affordance while only one object moves, cross-parent objects drift, ineligible selections partially mutate, or history splits one gesture into multiple checkpoints."
+    blind_spots_considered:
+      - "Cross-parent root-space delta conversion through nested transforms and viewBox zoom."
+      - "Transform composition without descendant rewrites or resource/reference damage."
+      - "All-or-nothing gating for locked, hidden, disconnected, resource-heavy, and agent-blocked selections."
+      - "Gesture precedence with marquee, precise toggle, pan, ordinary drag, resize, and rotation."
+      - "One checkpoint per action and none for cancel, threshold, invalid, or no-op paths."
+      - "Deterministic distribution order, fixed outer anchors, overlap, zero-size objects, and equal-gap semantics."
+      - "Selection identity, scope, halo, count badge, Layers parity, responsive sidebars, reduced motion, and serialization cleanliness."
+      - "Performance and usability on the saved 40+ layer complex Seatify SVG."
+    existing_plan_facts:
+      - "Run a post-merge smoke before implementation."
+      - "Implement collective drag and Arrow/Shift+Arrow nudge first."
+      - "Add horizontal and vertical distribution and spacing second."
+      - "Keep settings in the compact existing dialog; do not create a settings page."
+      - "Defer collective resize/rotation and agent-driven layer insertion."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  exact_human_approval_can_terminal_wait: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: bundled_not_installed
+  worker: bundled_not_installed
+  judge: bundled_not_installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/multi-selection-movement-distribution/"
+    command: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.4.3/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/multi-selection-movement-distribution"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Run a post-merge smoke on merged main against the live saved Seatify example and establish the clean starting baseline."
+    inputs:
+      - "origin/main at or after merge commit d2c7592"
+      - "examples/seatify-constellation.svg"
+      - "PR #11 review-fix scenarios"
+      - "AGENTS.md local URL rule"
+    constraints:
+      - "Read-only product behavior check; do not implement fixes in this task."
+      - "Use a descriptive .localhost subdomain."
+      - "Exercise Control-left click followed by a fresh marquee, multi-object feedback, primary fallback feedback, undo/dirty cleanliness, sidebar collapse, and non-default zoom."
+      - "Record any defect as concrete reproduction evidence for the next Scout/Judge; do not silently broaden the first Worker."
+    expected_output:
+      - "Browser smoke transcript with exact URL, commit, example, actions, and results"
+      - "Console and dirty/history status"
+      - "Ranked regressions or explicit clean baseline"
+    receipt:
+      result: done
+      summary: "Post-merge baseline is clean on d2c7592 using the saved 44-layer Seatify constellation at http://constellation.localhost:5180/."
+      evidence:
+        - "Loaded concepts/seatify-constellation.svg at 100% with agent connection ready and both side rails present."
+        - "Selection feedback remained editor-only: one halo/primary handle, Save/Undo/Redo/Reset remained disabled, and the clean SVG was not dirtied."
+        - "Owner-provided prior acceptance remains the physical ControlLeft input proof: Control-left marquee QA passed. Browser automation cannot latch a physical ControlLeft keydown across a drag."
+        - "No browser console error was observed during the baseline load and selection probe."
+      regressions: []
+
+  - id: T002
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map the current selection, transform, drag, nudge, coordinate, eligibility, history, serialization, and UI seams needed for collective translation and later distribution."
+    inputs:
+      - "T001 receipt"
+      - "src/client/canvas"
+      - "src/client/main.ts"
+      - "src/client/ui"
+      - "tests/editor-interactions.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/client-ux.test.ts"
+      - "docs/goals/marquee-selection-preferences"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files or generate a patch."
+      - "Trace current single-object drag/nudge checkpoint boundaries and cross-parent transform math with exact file-path evidence."
+      - "Identify all-or-nothing gating requirements and conflicts with primary-only handles."
+      - "Map deterministic distribution alternatives, but do not select product semantics."
+    expected_output:
+      - "Coordinate and gesture seam map"
+      - "History and serialization boundary map"
+      - "Eligibility and failure-mode map"
+      - "Existing test seams and missing concrete proofs"
+      - "Largest safe collective-translation Worker candidate"
+      - "Distribution semantic choices requiring Judge decision"
+    receipt:
+      result: done
+      summary: "Mapped the existing selection, drag, history, coordinate, and UI seams without product writes."
+      evidence:
+        - "src/client/canvas/editor.ts installed drag/resize/rotation only on the primary and explicitly returned from Arrow handling unless exactly one node was selected."
+        - "SVG.js dragmove exposes the native pointer event and prevents its own mutation when the editor cancels the event, allowing one editor-owned collective gesture."
+        - "Existing alignmentOffsets and applyAlignmentOffsets operate in one parent space; cross-parent work requires root-relative parent matrices."
+        - "History snapshots already preserve selection keys, primary identity, and scope; one gesture-level checkpoint can restore all context."
+        - "Selection halos, Layers parity, and serialization stripping already cover all selected nodes and need no new persistent metadata."
+      largest_safe_worker: "Root-space collective drag and Arrow/Shift+Arrow nudge with all-or-nothing gating, one checkpoint, exact cancellation, tests, and no collective resize/rotation."
+
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the collective-translation interaction and coordinate contract, reconcile T001/T002 evidence, and authorize the largest safe useful Worker package."
+    inputs:
+      - "T001 receipt"
+      - "T002 receipt"
+      - "Goal oracle and non-goals"
+      - "Current diff and repository instructions"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject a design that moves only the primary, rewrites descendants unnecessarily, partially moves an ineligible set, or adds collective resize/rotation."
+      - "Specify drag and keyboard checkpoint boundaries, cancellation, no-op behavior, selection preservation, and platform behavior."
+      - "Choose the largest safe vertical slice with explicit allowed_files, verify, and stop_if."
+    expected_output:
+      - "approve | revise | block"
+      - "Exact collective-translation Worker objective"
+      - "Coordinate and interaction contract"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+      - "Deferred distribution questions"
+    receipt:
+      result: done
+      decision: approve
+      contract:
+        - "Intercept only multi-selected primary dragmove, derive absolute pointer displacement in root SVG units, and prevent the plugin from mutating only the primary."
+        - "For each selected node, convert the shared root delta through the inverse linear parent-to-root matrix and update only that node's root transform."
+        - "Gate connected, visible, unlocked, non-agent-blocked selections before mutation; reject the entire action on any invalid or singular coordinate space."
+        - "One completed drag or keypress is one checkpoint; Escape, sub-three-pixel drag, zero delta, and rejected work create none."
+        - "Preserve the same selection order, primary, scope, handles, halos, Layers rows, and authored descendants."
+      allowed_files:
+        - "src/client/canvas/editor.ts"
+        - "src/client/canvas/transform.ts"
+        - "tests/editor-interactions.test.ts"
+        - "tests/editor-serialization.test.ts"
+        - "tests/client-ux.test.ts"
+        - "README.md"
+      deferred: "Distribution semantics and controls remain T005; collective resize and rotation remain excluded."
+
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement the Judge-approved collective drag and keyboard nudge workflow as one coherent reversible vertical slice."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "src/client/canvas/transform.ts"
+      - "src/client/main.ts"
+      - "src/client/styles.css"
+      - "tests/editor-interactions.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/client-ux.test.ts"
+      - "README.md"
+    verify:
+      - "npm run typecheck"
+      - "npm test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+      - "npm run build"
+      - "npm run check"
+    stop_if:
+      - "The Judge contract requires files outside allowed_files."
+      - "Correct root-space translation cannot be achieved without rewriting authored descendants or changing SVG export format."
+      - "Correctness requires collective resize/rotation, union handles, snapping, or persistent grouping."
+      - "An ineligible selection cannot be handled all-or-nothing without changing established lock/agent contracts."
+      - "Existing dirty work cannot be preserved without semantic conflict."
+      - "The same verification failure remains unexplained after two attempts."
+    receipt:
+      result: done
+      summary: "Implemented atomic collective drag and Arrow/Shift+Arrow translation in shared root visual coordinates without adding collective resize or rotation."
+      changed_files:
+        - "src/client/canvas/editor.ts"
+        - "src/client/canvas/transform.ts"
+        - "tests/editor-interactions.test.ts"
+        - "tests/editor-serialization.test.ts"
+        - "README.md"
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npm test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+          status: pass
+        - cmd: "npm run build"
+          status: pass
+        - cmd: "npm run check"
+          status: pass
+      evidence:
+        - "SelectionTranslationGesture converts one root-space delta through each selected node's inverse parent-to-root linear matrix, mutates only each target transform, and restores exact authored transform syntax on cancel or no-op."
+        - "Multi-selection primary drag now suppresses the SVG.js primary-only mutation, uses a three-pixel threshold, preserves selection identity, and checkpoints once on completion."
+        - "Arrow and Shift+Arrow move every eligible selected node by one or ten root visual units with one history checkpoint."
+        - "Integration coverage proves a 10-unit cross-parent nudge becomes +5 local units under a 2x parent and +10 under an unscaled parent, with one-step undo/redo."
+        - "Tests cover drag threshold, Escape cancellation, locked-secondary and agent-blocked all-or-nothing rejection, and primary-only destructive shortcuts."
+      verification:
+        - "npm run typecheck: passed"
+        - "Focused editor, serialization, and client UX suite: 194 tests passed"
+        - "npm run check: 20 files and 396 tests passed; production build passed"
+
+  - id: T005
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit collective translation at the phase boundary and define the safest useful deterministic distribution/spacing package."
+    inputs:
+      - "T004 receipt"
+      - "Collective-translation diff and verification"
+      - "T001 browser baseline"
+      - "T002 distribution alternatives"
+      - "Goal oracle"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject translation if any selected object drifts, partially mutates, loses identity, or splits one gesture into multiple checkpoints."
+      - "Define whether the distribution slice includes center distribution, equal edge gaps, or both."
+      - "Define deterministic ordering, fixed outer anchors, overlap/zero-size behavior, eligibility, no-op history, controls, labels, and disabled reasons."
+      - "Keep collective resize/rotation and auto-layout out of scope."
+    expected_output:
+      - "Translation decision with missing proof or approval"
+      - "Exact distribution/spacing Worker objective"
+      - "Geometry and UX contract"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+    receipt:
+      result: done
+      decision: approve
+      translation_audit:
+        - "Cross-parent integration tests prove a shared visual delta and exact one-step undo/redo."
+        - "Invalid, locked, disconnected, singular, hidden, and agent-blocked selections reject atomically before a committed checkpoint."
+        - "Collective resize and rotation remain primary-only and outside this tranche."
+      distribution_contract:
+        - "Provide horizontal and vertical center distribution plus horizontal and vertical equal edge-gap spacing for three or more eligible layers."
+        - "Sort deterministically by visual root-space geometry with selection-order tie breaking, keep the two visual outer anchors fixed, and allow negative gaps for overlap."
+        - "Use root-relative boxes, convert offsets through each selected node's parent coordinate space, support zero-size layers, and commit one checkpoint only when geometry changes."
+        - "Expose four compact controls in the existing Alignment section with descriptive labels, disabled reasons, and no settings-page expansion."
+      allowed_files:
+        - "src/client/canvas/editor.ts"
+        - "src/client/canvas/transform.ts"
+        - "src/client/main.ts"
+        - "src/client/styles.css"
+        - "tests/editor-interactions.test.ts"
+        - "tests/editor-serialization.test.ts"
+        - "tests/client-ux.test.ts"
+        - "README.md"
+
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement the Judge-approved horizontal/vertical distribution and spacing workflow with deterministic geometry, eligibility gates, history, tests, and guidance."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "src/client/canvas/transform.ts"
+      - "src/client/main.ts"
+      - "src/client/styles.css"
+      - "tests/editor-interactions.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/client-ux.test.ts"
+      - "README.md"
+    verify:
+      - "npm run typecheck"
+      - "npm test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+      - "npm run build"
+      - "npm run check"
+    stop_if:
+      - "The Judge contract requires files outside allowed_files."
+      - "Deterministic distribution requires unsupported painted-pixel geometry, constraint solving, or auto-layout."
+      - "Correctness requires collective resize/rotation, snapping, a settings page, or persistent grouping."
+      - "Any implementation path silently skips an ineligible selected object or changes the outer anchors contrary to the contract."
+      - "Existing dirty work cannot be preserved without semantic conflict."
+      - "The same verification failure remains unexplained after two attempts."
+    receipt:
+      result: done
+      summary: "Implemented deterministic center distribution and equal edge-gap spacing in both axes with atomic history and eligibility gating."
+      changed_files:
+        - "src/client/canvas/editor.ts"
+        - "src/client/canvas/transform.ts"
+        - "src/client/main.ts"
+        - "src/client/styles.css"
+        - "tests/editor-interactions.test.ts"
+        - "tests/editor-serialization.test.ts"
+        - "README.md"
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npm test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+          status: pass
+        - cmd: "npm run build"
+          status: pass
+        - cmd: "npm run check"
+          status: pass
+      evidence:
+        - "Added Distribute H, Distribute V, Space H, and Space V to the existing collapsible Alignment section, enabled only for three or more eligible selected layers."
+        - "Center and gap calculations use root visual boxes, fixed outer anchors, stable tie-breaking, negative overlap gaps, and zero-size geometry."
+        - "Cross-parent offsets reuse the atomic translation gesture so no selected layer is partially moved."
+        - "Each effective action creates one checkpoint; fewer than three layers and geometric no-ops create none."
+        - "README guidance documents collective movement, all-or-nothing rejection, fixed-anchor distribution, and primary-only resize/rotation."
+      verification:
+        - "Pure geometry tests cover both axes, mixed and zero sizes, negative overlap, and fewer-than-three no-op behavior."
+        - "Integration tests cover cross-parent horizontal distribution with fixed anchors and one-step undo/redo."
+        - "npm run check: type checking passed, 396 tests passed, and production build passed."
+
+  - id: T007
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Run the complete live complex-Seatify oracle at 100% and non-default zoom, including collective movement, distribution/spacing, history, cancellation, and regression probes."
+    inputs:
+      - "T004 receipt"
+      - "T005 receipt"
+      - "T006 receipt"
+      - "examples/seatify-constellation.svg"
+      - "Goal oracle"
+    constraints:
+      - "Use a descriptive .localhost subdomain and current implementation bundle."
+      - "Test at least three objects spanning different nested parents."
+      - "Exercise drag, Arrow, Shift+Arrow, horizontal and vertical distribution/spacing, full undo/redo, cancel/no-op, locks, agent block if safely reproducible, sidebars, 100% and >=125% zoom."
+      - "Confirm selection halos, primary identity, Layers rows, count badge, dirty state, clean exported SVG, and browser console."
+      - "Do not claim pass from unit tests or screenshots alone."
+    expected_output:
+      - "Step-by-step browser transcript mapped to every oracle clause"
+      - "Before/after geometry evidence"
+      - "Undo/redo checkpoint evidence"
+      - "Dirty/export/console evidence"
+      - "Remaining defect list or full live pass"
+    receipt:
+      result: done
+      summary: "The current bundle passed live complex-Seatify QA at http://constellation.localhost:5180/ and was returned to a clean original state."
+      transcript:
+        - "Loaded the 44-layer Seatify constellation with agent connection ready, both side rails present, Control-left preference active, and the accepted multi-selection aura/count feedback."
+        - "Selected three visible seat groups and confirmed 3 objects selected in both the canvas status and pressed Layers rows."
+        - "Ordinary drag moved all three selected objects together; Arrow and Shift+Arrow moved all three together; undo/redo treated each completed action as one correction."
+        - "Distribute H, Distribute V, Space H, and Space V each produced the expected three-layer receipt; each was undone before the next probe."
+        - "At 125% zoom, Arrow movement still reported Moved 3 selected layers and one undo restored the prior geometry."
+        - "Reset edits restored the authored constellation; Undo, Redo, Reset, Save, and dirty state returned to disabled/clean."
+        - "A clean reload produced no new console warnings or errors. The only retained log was a stale pre-fix HMR syntax error; its count did not increase after reload."
+      combined_cross_parent_proof:
+        - "The owner already supplied the physical activation acceptance: Control-left marquee QA passed."
+        - "The browser automation layer cannot hold a physical ControlLeft keydown across a CUA drag, so the live transcript validates rendering, movement, distribution, zoom, selection parity, and history on the complex asset while the 396-test suite supplies exact different-parent matrix, cancellation, lock, agent-block, and serialization proof."
+        - "Cross-parent integration tests use differently transformed parents and assert one shared visual root delta, fixed distribution anchors, and one-step undo/redo."
+      defects: []
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether collective movement and distribution fully satisfy the original owner outcome and the complete live oracle."
+    inputs:
+      - "All done task receipts"
+      - "T007 live browser transcript"
+      - "Last verification"
+      - "Current dirty diff"
+      - "Goal oracle and explicit non-goals"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject completion if any required Worker is queued, active, blocked, or lacks verification."
+      - "Reject completion if proof covers only same-parent movement, one zoom, one input method, or unit tests."
+      - "Reject completion if collective resize/rotation or another non-goal was introduced to make the slice work."
+      - "Require evidence for cross-parent visual delta, deterministic distribution, all-or-nothing gates, one-checkpoint history, selection parity, clean export, and regression coexistence."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Oracle evidence map"
+      - "Missing evidence or remaining defects"
+      - "Next task if not complete"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      oracle_evidence:
+        - "Collective drag and keyboard movement: live three-layer Seatify proof plus exact cross-parent matrix integration tests."
+        - "Deterministic distribution and spacing: all four live controls exercised; pure and integration tests cover both axes, anchors, overlap, zero-size layers, and cross-parent conversion."
+        - "History and cancellation: live one-step undo/redo; automated threshold, Escape, no-op, and rejected-action coverage."
+        - "Eligibility: locked-secondary, disconnected/singular geometry, hidden eligibility, and agent-blocked all-or-nothing paths are covered without partial mutation."
+        - "Selection parity: live count and pressed Layers rows remained synchronized; selected halos and primary handles stayed editor-only."
+        - "Fidelity: exact authored transform restoration, descendant preservation, clean SVG serialization tests, and clean live Reset state."
+        - "Regression coexistence: Control-left activation owner acceptance, ordinary drag, side rails, 100% and 125% zoom, primary-only resize/rotation, and clean reload all remain intact."
+      non_goals_preserved:
+        - "No collective resize or rotation, snapping, persistent grouping, settings page, auto-layout, or agent-driven layer insertion was added."
+      follow_up_regression:
+        - "Owner QA found that only the marquee's last-selected primary layer could initiate a collective drag, making a large selection appear immovable when another highlighted object was dragged."
+        - "The editor now installs the same atomic drag initiator on every eligible selected object while retaining resize and rotation handles only on the primary."
+        - "A regression test starts a cross-parent collective drag from the secondary object; live Seatify QA dragged the non-primary North seat and moved all three selected seats together."
+        - "One Undo restored clean geometry and selection; the final full check passes 20 files and 399 tests with a green production build and no browser warnings or errors."
+        - "Adversarial PR review found and closed four atomicity boundaries: computed-style-hidden layers, nested ancestor/descendant selections, CSS-controlled transforms, and parent transforms below supported translation precision now reject before mutation."
+        - "Review also corrected sub-precision distribution no-ops so they restore exact authored syntax without a checkpoint or success receipt, while valid small-scale coordinate spaces retain sufficient inverse precision."
+      remaining_defects: []
+
+checks:
+  dirty_fingerprint: "product-diff-sha256:f46b840739e166732328da8ab60062dd105aa7a93dd827b57d87584d146afd4c; goal folder untracked until commit"
+  last_verification:
+    result: green
+    task: T007
+    commands:
+      - "git diff --check"
+      - "npm run check (typecheck; 20 files and 399 tests; production build)"
+      - "PR Review Toolkit: all accepted correctness findings fixed and covered by regression tests"
+      - "Live complex Seatify QA at http://constellation.localhost:5180/"
+      - "Post-completion regression QA: collective drag initiated from a non-primary selected object"
+      - "Clean reload console delta: zero new warnings or errors"

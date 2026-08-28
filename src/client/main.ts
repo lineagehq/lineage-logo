@@ -232,6 +232,12 @@ app.innerHTML = `
               <button type="button" id="align-middle" title="Align vertical centers">Middle</button>
               <button type="button" id="align-bottom" title="Align bottom edges">Bottom</button>
             </div>
+            <div class="distribution-actions" aria-label="Distribute and space selected layers">
+              <button type="button" id="distribute-horizontal" title="Distribute horizontal centers with fixed outer layers">Distribute H</button>
+              <button type="button" id="distribute-vertical" title="Distribute vertical centers with fixed outer layers">Distribute V</button>
+              <button type="button" id="space-horizontal" title="Equalize horizontal edge gaps with fixed outer layers">Space H</button>
+              <button type="button" id="space-vertical" title="Equalize vertical edge gaps with fixed outer layers">Space V</button>
+            </div>
             <p id="alignment-reason" class="alignment-reason">Select at least two sibling layers to align.</p>
           </details>
           <details class="inspector-group" id="paint-group" open>
@@ -476,6 +482,8 @@ const editor = new SvgEditor(
     alignMiddleButton: getInput("align-middle"),
     alignRightButton: getInput("align-right"),
     alignTopButton: getInput("align-top"),
+    distributeHorizontalButton: getInput("distribute-horizontal"),
+    distributeVerticalButton: getInput("distribute-vertical"),
     deleteButton: getInput("delete-selection"),
     duplicateButton: getInput("duplicate-selection"),
     fill: getInput("fill"),
@@ -503,6 +511,8 @@ const editor = new SvgEditor(
     strokePicker: getInput("stroke-picker"),
     strokeState: getElement("stroke-state"),
     strokeWidth: getInput("stroke-width"),
+    spaceHorizontalButton: getInput("space-horizontal"),
+    spaceVerticalButton: getInput("space-vertical"),
     textAnchor: getInput("text-anchor"),
     textContent: getInput("text-content"),
     textError: getElement("text-error"),

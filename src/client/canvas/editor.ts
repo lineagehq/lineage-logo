@@ -5,7 +5,17 @@ import "@svgdotjs/svg.resize.js";
 import { History } from "../history/history";
 import { evaluateAgentTransaction, type AgentDocumentContext, type AgentSelectionIntent, type StagedAgentTransaction } from "../agent/transaction";
 import type { AgentTransactionV1 } from "../../shared/agent-protocol";
-import { composeGroupScale, formatMatrix, GroupTransformGesture, type TransformBox } from "./transform";
+import {
+  composeGroupScale,
+  formatMatrix,
+  GroupTransformGesture,
+  relativeMatrix,
+  SelectionTranslationGesture,
+  transformVectorToLocal,
+  type MatrixCoefficients,
+  type SelectionTranslationTarget,
+  type TransformBox,
+} from "./transform";
 import { marqueeMatches, renderedClientRect, type ClientRect, type MarqueeHitRule } from "./marquee-selection";
 import { DEFAULT_SELECTION_PREFERENCES, type SelectionPreferences } from "../selection-preferences";
 
@@ -17,6 +27,8 @@ interface EditorControls {
   alignMiddleButton: HTMLButtonElement;
   alignRightButton: HTMLButtonElement;
   alignTopButton: HTMLButtonElement;
+  distributeHorizontalButton: HTMLButtonElement;
+  distributeVerticalButton: HTMLButtonElement;
   groupButton: HTMLButtonElement;
   hierarchyReason: HTMLElement;
   lockButton: HTMLButtonElement;
@@ -44,6 +56,8 @@ interface EditorControls {
   strokePicker: HTMLInputElement;
   strokeState: HTMLElement;
   strokeWidth: HTMLInputElement;
+  spaceHorizontalButton: HTMLButtonElement;
+  spaceVerticalButton: HTMLButtonElement;
   textAnchor: HTMLSelectElement;
   textContent: HTMLInputElement;
   textError: HTMLElement;
@@ -625,6 +639,7 @@ export function getSelectionLabel(node: SVGGraphicsElement, root: SVGSVGElement)
 
 export type HierarchyDirection = "earlier" | "later";
 export type AlignmentDirection = "left" | "center" | "right" | "top" | "middle" | "bottom";
+export type DistributionDirection = "horizontal-centers" | "vertical-centers" | "horizontal-gaps" | "vertical-gaps";
 
 export interface AlignmentBox {
   height: number;
@@ -638,9 +653,137 @@ export interface AlignmentOffset {
   dy: number;
 }
 
+function transformBox(box: AlignmentBox, matrix: MatrixCoefficients): AlignmentBox {
+  const corners = [
+    { x: box.x, y: box.y },
+    { x: box.x + box.width, y: box.y },
+    { x: box.x, y: box.y + box.height },
+    { x: box.x + box.width, y: box.y + box.height },
+  ].map((point) => ({
+    x: matrix.a * point.x + matrix.c * point.y + matrix.e,
+    y: matrix.b * point.x + matrix.d * point.y + matrix.f,
+  }));
+  const x = Math.min(...corners.map((point) => point.x));
+  const right = Math.max(...corners.map((point) => point.x));
+  const y = Math.min(...corners.map((point) => point.y));
+  const bottom = Math.max(...corners.map((point) => point.y));
+  if (![x, right, y, bottom].every(Number.isFinite)) throw new RangeError("A selected layer has invalid visual bounds.");
+  return { x, y, width: right - x, height: bottom - y };
+}
+
+function rootBox(node: SVGGraphicsElement, root: SVGSVGElement): AlignmentBox {
+  const rootScreen = screenMatrix(root);
+  const nodeScreen = screenMatrix(node);
+  if (!rootScreen || !nodeScreen) throw new RangeError("A selected layer's visual bounds are unavailable.");
+  return transformBox(node.getBBox(), relativeMatrix(rootScreen, nodeScreen));
+}
+
 export interface OperationAvailability {
   allowed: boolean;
   reason: string;
+}
+
+function matrixCoefficients(matrix: DOMMatrix | SVGMatrix | null): MatrixCoefficients | undefined {
+  if (!matrix) return undefined;
+  const value = { a: matrix.a, b: matrix.b, c: matrix.c, d: matrix.d, e: matrix.e, f: matrix.f };
+  return Object.values(value).every(Number.isFinite) ? value : undefined;
+}
+
+function screenMatrix(node: SVGElement): MatrixCoefficients | undefined {
+  return matrixCoefficients((node as SVGGraphicsElement).getScreenCTM?.() ?? null);
+}
+
+function parentToRootMatrix(node: SVGGraphicsElement, root: SVGSVGElement): MatrixCoefficients {
+  const parent = node.parentElement as SVGElement | null;
+  const rootScreen = screenMatrix(root);
+  const parentScreen = parent === root ? rootScreen : parent ? screenMatrix(parent) : undefined;
+  if (!rootScreen || !parentScreen) throw new RangeError("The selected layer's coordinate space is unavailable.");
+  return relativeMatrix(rootScreen, parentScreen);
+}
+
+function translationTargets(nodes: SVGGraphicsElement[], root: SVGSVGElement): SelectionTranslationTarget[] {
+  return nodes.map((node) => ({
+    element: node,
+    initial: (SVG(node) as SvgElement).matrixify(),
+    parentToRoot: parentToRootMatrix(node, root),
+  }));
+}
+
+function isHiddenForTranslation(node: SVGGraphicsElement, root: SVGSVGElement): boolean {
+  let candidate: Element | null = node;
+  while (candidate) {
+    const computed = candidate.ownerDocument.defaultView?.getComputedStyle(candidate);
+    const display = computed?.display || candidate.getAttribute("display");
+    const visibility = computed?.visibility || candidate.getAttribute("visibility");
+    const opacity = computed?.opacity || candidate.getAttribute("opacity");
+    if (display === "none" || visibility === "hidden" || visibility === "collapse"
+      || (opacity !== null && opacity !== "" && Number.isFinite(Number(opacity)) && Number(opacity) <= 0)) return true;
+    if (candidate === root) break;
+    candidate = candidate.parentElement;
+  }
+  return false;
+}
+
+function hasCssControlledTransform(node: SVGGraphicsElement, root: SVGSVGElement): boolean {
+  if (node.style.getPropertyValue("transform")) return true;
+  for (const style of Array.from(root.querySelectorAll("style"))) {
+    let rules: CSSRuleList;
+    try {
+      if (style.sheet) {
+        rules = style.sheet.cssRules;
+      } else {
+        const Sheet = root.ownerDocument.defaultView?.CSSStyleSheet;
+        if (!Sheet) return true;
+        const sheet = new Sheet();
+        sheet.replaceSync(style.textContent ?? "");
+        rules = sheet.cssRules;
+      }
+    } catch {
+      return true;
+    }
+    const pending = [...Array.from(rules)];
+    while (pending.length > 0) {
+      const rule = pending.shift() as CSSRule & { cssRules?: CSSRuleList; selectorText?: string; style?: CSSStyleDeclaration };
+      if (rule.cssRules) pending.push(...Array.from(rule.cssRules));
+      if (!rule.selectorText || !rule.style?.getPropertyValue("transform")) continue;
+      try {
+        if (node.matches(rule.selectorText)) return true;
+      } catch {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+export function translationAvailability(
+  nodes: SVGGraphicsElement[],
+  root: SVGSVGElement,
+  isLocked: (node: SVGGraphicsElement) => boolean = () => false,
+  agentBlocked = false,
+): OperationAvailability {
+  const unique = Array.from(new Set(nodes));
+  if (agentBlocked) return { allowed: false, reason: "Finish the pending Agent review before moving layers." };
+  if (unique.length === 0) return { allowed: false, reason: "Select at least one visible layer to move." };
+  if (unique.some((node) => !node.isConnected || !isSelectableNode(node, root))) {
+    return { allowed: false, reason: "Every selected layer must remain connected and editable before moving." };
+  }
+  if (unique.some((ancestor) => unique.some((descendant) => ancestor !== descendant && ancestor.contains(descendant)))) {
+    return { allowed: false, reason: "Select either a group or its nested layers before moving them together." };
+  }
+  if (unique.some((node) => isHiddenForTranslation(node, root))) {
+    return { allowed: false, reason: "Show every selected layer and its ancestors before moving the selection." };
+  }
+  if (unique.some((node) => hasCssControlledTransform(node, root))) {
+    return { allowed: false, reason: "Convert CSS transforms on every selected layer to SVG transform attributes before moving the selection." };
+  }
+  if (unique.some(isLocked)) return { allowed: false, reason: "Unlock every selected layer and its ancestors before moving the selection." };
+  try {
+    new SelectionTranslationGesture(translationTargets(unique, root));
+  } catch (error) {
+    return { allowed: false, reason: error instanceof Error ? error.message : "The selected coordinate spaces cannot be moved together." };
+  }
+  return { allowed: true, reason: "Move every selected layer by one shared visual delta." };
 }
 
 function directElementChildren(parent: Element): Element[] {
@@ -700,6 +843,60 @@ export function alignmentOffsets(boxes: AlignmentBox[], direction: AlignmentDire
     if (direction === "middle") return { dx: 0, dy: middle - (box.y + box.height / 2) };
     return { dx: 0, dy: bottom - (box.y + box.height) };
   });
+}
+
+export function distributionOffsets(boxes: AlignmentBox[], direction: DistributionDirection): AlignmentOffset[] {
+  if (boxes.length < 3) return boxes.map(() => ({ dx: 0, dy: 0 }));
+  const horizontal = direction.startsWith("horizontal");
+  const gaps = direction.endsWith("gaps");
+  const start = (box: AlignmentBox) => horizontal ? box.x : box.y;
+  const size = (box: AlignmentBox) => horizontal ? box.width : box.height;
+  const center = (box: AlignmentBox) => start(box) + size(box) / 2;
+  const ordered = boxes.map((box, index) => ({ box, index }))
+    .toSorted((left, right) => (gaps ? start(left.box) - start(right.box) : center(left.box) - center(right.box)) || left.index - right.index);
+  const result = boxes.map(() => ({ dx: 0, dy: 0 }));
+  if (gaps) {
+    const first = ordered[0].box;
+    const last = ordered.at(-1)!.box;
+    const span = start(last) + size(last) - start(first);
+    const totalSize = ordered.reduce((sum, item) => sum + size(item.box), 0);
+    const gap = (span - totalSize) / (ordered.length - 1);
+    let cursor = start(first) + size(first) + gap;
+    for (const item of ordered.slice(1, -1)) {
+      const delta = cursor - start(item.box);
+      result[item.index] = horizontal ? { dx: delta, dy: 0 } : { dx: 0, dy: delta };
+      cursor += size(item.box) + gap;
+    }
+  } else {
+    const first = center(ordered[0].box);
+    const last = center(ordered.at(-1)!.box);
+    const step = (last - first) / (ordered.length - 1);
+    for (const [position, item] of ordered.slice(1, -1).entries()) {
+      const delta = first + (position + 1) * step - center(item.box);
+      result[item.index] = horizontal ? { dx: delta, dy: 0 } : { dx: 0, dy: delta };
+    }
+  }
+  return result.map(({ dx, dy }) => ({
+    dx: Math.abs(dx) < 1e-9 ? 0 : dx,
+    dy: Math.abs(dy) < 1e-9 ? 0 : dy,
+  }));
+}
+
+export function distributionAvailability(
+  nodes: SVGGraphicsElement[],
+  root: SVGSVGElement,
+  isLocked: (node: SVGGraphicsElement) => boolean = () => false,
+  agentBlocked = false,
+): OperationAvailability {
+  if (new Set(nodes).size < 3) return { allowed: false, reason: "Select at least three visible layers to distribute or space." };
+  const translation = translationAvailability(nodes, root, isLocked, agentBlocked);
+  if (!translation.allowed) return translation;
+  try {
+    nodes.forEach((node) => rootBox(node, root));
+  } catch (error) {
+    return { allowed: false, reason: error instanceof Error ? error.message : "The selected visual bounds are unavailable." };
+  }
+  return { allowed: true, reason: "Distribute centers or equalize edge gaps while keeping the outer layers fixed." };
 }
 
 export function applyAlignmentOffsets(
@@ -902,6 +1099,9 @@ export class SvgEditor {
   #groupTransformGesture?: GroupTransformGesture;
   #groupTransformRejected = false;
   #groupDragOffset = { x: 0, y: 0 };
+  #selectionTranslationGesture?: SelectionTranslationGesture;
+  #selectionTranslationRejected = false;
+  #translationRootToScreen?: MatrixCoefficients;
   #groupRotationGesture = false;
   #interactiveCleanup?: () => void;
   #interactivePluginSession?: DraggableSession | ResizeSession;
@@ -911,6 +1111,7 @@ export class SvgEditor {
   #keyCounter = 0;
   #lockedKeys = new Set<string>();
   #selected?: SvgElement;
+  #selectionDragSources: SvgElement[] = [];
   #selectedNodes: SVGGraphicsElement[] = [];
   #scope?: SVGGraphicsElement | SVGSVGElement;
   #hovered?: SVGGraphicsElement;
@@ -945,6 +1146,9 @@ export class SvgEditor {
     const compatibleControls = controls as unknown as Record<string, HTMLElement | undefined>;
     for (const name of ["textContent", "textFamily", "textLetterSpacing", "textSize", "textWeight"]) {
       compatibleControls[name] ??= artboard.ownerDocument.createElement("input");
+    }
+    for (const name of ["distributeHorizontalButton", "distributeVerticalButton", "spaceHorizontalButton", "spaceVerticalButton"]) {
+      compatibleControls[name] ??= artboard.ownerDocument.createElement("button");
     }
     compatibleControls.textAnchor ??= artboard.ownerDocument.createElement("select");
     compatibleControls.textError ??= artboard.ownerDocument.createElement("small");
@@ -1078,44 +1282,20 @@ export class SvgEditor {
       && node.getAttribute("display") !== "none"
       && !this.#isLocked(node)
       && !hasComplexResources;
+    const canInstallCollectiveDrag = this.#selectedNodes.length > 1
+      && translationAvailability(
+        this.#selectedNodes,
+        root,
+        (candidate) => this.#isLocked(candidate),
+        this.#agentMutationBlocked,
+      ).allowed;
     if (!canInstallHandles) node.setAttribute(PRIMARY_FALLBACK_ATTRIBUTE, "true");
     this.#renderSelectionHalos();
     if (canInstallHandles) {
       selected
         .select()
-        .resize({ preserveAspectRatio: true, aroundCenter: false, grid: 1, degree: 1 })
-        .draggable();
+        .resize({ preserveAspectRatio: true, aroundCenter: false, grid: 1, degree: 1 });
       enhanceRotationHandle(root);
-      selected.on("dragstart.lineage", (event) => {
-        const handler = (event as CustomEvent<{ handler: DraggableSession }>).detail.handler;
-        this.#beginInteractiveMutation("drag", undefined, handler);
-      });
-      selected.on("dragmove.lineage", (event) => {
-        if (this.#agentMutationBlocked) {
-          event.preventDefault();
-          return;
-        }
-        if (this.#groupTransformGesture) {
-          event.preventDefault();
-          const detail = (event as CustomEvent<{ dx: number; dy: number }>).detail;
-          this.#groupDragOffset.x += detail.dx;
-          this.#groupDragOffset.y += detail.dy;
-          try {
-            this.#markInteractiveMoved(this.#groupTransformGesture.drag(this.#groupDragOffset.x, this.#groupDragOffset.y));
-          } catch (error) {
-            this.#rejectGroupTransform(error);
-          }
-        } else if (this.#groupTransformRejected) {
-          event.preventDefault();
-        } else {
-          this.#markInteractiveMoved(true);
-        }
-        this.#syncSelectionUi();
-      });
-      selected.on("dragend.lineage", () => {
-        this.#finishInteractiveMutation();
-        if (this.#agentMutationBlocked) queueMicrotask(() => selected.draggable(false));
-      });
       selected.on("beforeresize.lineage", (event) => {
         const detail = (event as CustomEvent<{
           event: CustomEvent<{ event: Event }>;
@@ -1163,10 +1343,75 @@ export class SvgEditor {
         this.#syncSelectionUi();
       });
     }
+    const dragNodes = canInstallCollectiveDrag
+      ? this.#selectedNodes
+      : canInstallHandles
+        ? [node]
+        : [];
+    dragNodes.forEach((candidate) => this.#bindSelectionDragSource(candidate));
 
     this.#setSelectionUi(node);
     this.#callbacks.onSelectionChange(node);
     this.#notifySelectionContext();
+  }
+
+  #bindSelectionDragSource(node: SVGGraphicsElement): void {
+    const source = SVG(node) as SvgElement;
+    source.draggable();
+    this.#selectionDragSources.push(source);
+    source.on("dragstart.lineage", (event) => {
+      const detail = (event as CustomEvent<{ event: Event; handler: DraggableSession }>).detail;
+      this.#beginInteractiveMutation("drag", detail.event, detail.handler);
+    });
+    source.on("dragmove.lineage", (event) => {
+      if (this.#agentMutationBlocked) {
+        event.preventDefault();
+        return;
+      }
+      if (this.#selectionTranslationGesture) {
+        event.preventDefault();
+        const detail = (event as CustomEvent<{ event: Event }>).detail;
+        const point = interactionPoint(detail.event);
+        const start = this.#interactiveStartPoint;
+        const rootToScreen = this.#translationRootToScreen;
+        if (!point || !start || !rootToScreen) {
+          this.#rejectSelectionTranslation(new RangeError("The collective drag pointer could not be resolved."));
+        } else {
+          try {
+            const screenDx = point.x - start.x;
+            const screenDy = point.y - start.y;
+            const crossedThreshold = Math.hypot(screenDx, screenDy) >= 3;
+            const rootDelta = crossedThreshold
+              ? transformVectorToLocal(rootToScreen, screenDx, screenDy)
+              : { dx: 0, dy: 0 };
+            this.#markInteractiveMoved(this.#selectionTranslationGesture.move(rootDelta.dx, rootDelta.dy));
+          } catch (error) {
+            this.#rejectSelectionTranslation(error);
+          }
+        }
+      } else if (this.#selectionTranslationRejected) {
+        event.preventDefault();
+      } else if (this.#groupTransformGesture) {
+        event.preventDefault();
+        const detail = (event as CustomEvent<{ dx: number; dy: number }>).detail;
+        this.#groupDragOffset.x += detail.dx;
+        this.#groupDragOffset.y += detail.dy;
+        try {
+          this.#markInteractiveMoved(this.#groupTransformGesture.drag(this.#groupDragOffset.x, this.#groupDragOffset.y));
+        } catch (error) {
+          this.#rejectGroupTransform(error);
+        }
+      } else if (this.#groupTransformRejected) {
+        event.preventDefault();
+      } else {
+        this.#markInteractiveMoved(true);
+      }
+      this.#syncSelectionUi();
+    });
+    source.on("dragend.lineage", () => {
+      this.#finishInteractiveMutation();
+      if (this.#agentMutationBlocked) queueMicrotask(() => source.draggable(false));
+    });
   }
 
   #toggleNode(node: SVGGraphicsElement): void {
@@ -1544,6 +1789,7 @@ export class SvgEditor {
 
   operationState(): {
     align: OperationAvailability;
+    distribute: OperationAvailability;
     group: OperationAvailability;
     reorderEarlier: OperationAvailability;
     reorderLater: OperationAvailability;
@@ -1551,10 +1797,11 @@ export class SvgEditor {
   } {
     const root = this.svgNode;
     const unavailable = { allowed: false, reason: "Open an SVG to organize layers." };
-    if (!root) return { align: unavailable, group: unavailable, reorderEarlier: unavailable, reorderLater: unavailable, ungroup: unavailable };
+    if (!root) return { align: unavailable, distribute: unavailable, group: unavailable, reorderEarlier: unavailable, reorderLater: unavailable, ungroup: unavailable };
     const locked = (node: SVGGraphicsElement) => this.#isLocked(node);
     return {
       align: alignmentAvailability(this.#selectedNodes, root, locked),
+      distribute: distributionAvailability(this.#selectedNodes, root, locked, this.#agentMutationBlocked),
       group: groupAvailability(this.#selectedNodes, root, locked),
       reorderEarlier: reorderAvailability(this.#selectedNodes, root, "earlier", locked),
       reorderLater: reorderAvailability(this.#selectedNodes, root, "later", locked),
@@ -1586,6 +1833,66 @@ export class SvgEditor {
       this.#setSelection(selected, primary);
     });
     this.#callbacks.onStatus(`Aligned ${selected.length} layers ${direction}`);
+  }
+
+  distribute(direction: DistributionDirection): void {
+    const root = this.svgNode;
+    if (!root) return;
+    const availability = distributionAvailability(
+      this.#selectedNodes,
+      root,
+      (node) => this.#isLocked(node),
+      this.#agentMutationBlocked,
+    );
+    if (!availability.allowed) {
+      this.#callbacks.onStatus(availability.reason);
+      return;
+    }
+    let boxes: AlignmentBox[];
+    try {
+      boxes = this.#selectedNodes.map((node) => rootBox(node, root));
+    } catch (error) {
+      this.#callbacks.onStatus(error instanceof Error ? error.message : "The selected visual bounds are unavailable.");
+      return;
+    }
+    const offsets = distributionOffsets(boxes, direction);
+    if (!offsets.some(({ dx, dy }) => Math.abs(dx) >= 1e-9 || Math.abs(dy) >= 1e-9)) {
+      this.#callbacks.onStatus(direction.endsWith("gaps") ? "The selected edge gaps are already equal" : "The selected centers are already distributed");
+      return;
+    }
+    const selected = [...this.#selectedNodes];
+    const primary = this.selectedNode;
+    const before = this.#snapshot();
+    const gestures: SelectionTranslationGesture[] = [];
+    try {
+      const targets = translationTargets(selected, root);
+      offsets.forEach((offset, index) => {
+        if (Math.abs(offset.dx) < 1e-9 && Math.abs(offset.dy) < 1e-9) return;
+        const gesture = new SelectionTranslationGesture([targets[index]]);
+        gestures.push(gesture);
+        gesture.move(offset.dx, offset.dy);
+      });
+      const changed = gestures.map((gesture) => gesture.complete()).some(Boolean);
+      if (!changed) {
+        this.#callbacks.onStatus(direction.endsWith("gaps") ? "The selected edge gaps are already equal" : "The selected centers are already distributed");
+        return;
+      }
+      this.#setSelection(selected, primary);
+      this.#history.checkpoint(before);
+      this.#notifyDocumentChange();
+      this.#notifyHistory();
+      const label = direction === "horizontal-centers"
+        ? "Distributed horizontal centers"
+        : direction === "vertical-centers"
+          ? "Distributed vertical centers"
+          : direction === "horizontal-gaps"
+            ? "Equalized horizontal edge gaps"
+            : "Equalized vertical edge gaps";
+      this.#callbacks.onStatus(`${label} across ${selected.length} layers`);
+    } catch (error) {
+      gestures.forEach((gesture) => gesture.cancel());
+      this.#callbacks.onStatus(error instanceof Error ? error.message : "The selected layers could not be distributed.");
+    }
   }
 
   #assignKeys(root: SVGSVGElement): void {
@@ -1901,6 +2208,10 @@ export class SvgEditor {
     this.#controls.alignTopButton.addEventListener("click", () => this.align("top"));
     this.#controls.alignMiddleButton.addEventListener("click", () => this.align("middle"));
     this.#controls.alignBottomButton.addEventListener("click", () => this.align("bottom"));
+    this.#controls.distributeHorizontalButton.addEventListener("click", () => this.distribute("horizontal-centers"));
+    this.#controls.distributeVerticalButton.addEventListener("click", () => this.distribute("vertical-centers"));
+    this.#controls.spaceHorizontalButton.addEventListener("click", () => this.distribute("horizontal-gaps"));
+    this.#controls.spaceVerticalButton.addEventListener("click", () => this.distribute("vertical-gaps"));
   }
 
   #beginInspectorEdit(): void {
@@ -1928,12 +2239,40 @@ export class SvgEditor {
     this.#groupTransformGesture = undefined;
     this.#groupTransformRejected = false;
     this.#groupDragOffset = { x: 0, y: 0 };
+    this.#selectionTranslationGesture = undefined;
+    this.#selectionTranslationRejected = false;
+    this.#translationRootToScreen = undefined;
     this.#groupRotationGesture = kind === "rotation" && this.selectedNode?.localName === "g";
     this.#interactiveStartPoint = source ? interactionPoint(source) : undefined;
     this.#interactivePluginSession = pluginSession;
     this.#interactivePluginType = kind === "drag" ? "drag" : "resize";
     this.#bindInteractiveTerminals();
     const node = this.selectedNode;
+    const root = this.svgNode;
+    if (kind === "drag" && root && this.#selectedNodes.length > 1) {
+      const availability = translationAvailability(
+        this.#selectedNodes,
+        root,
+        (candidate) => this.#isLocked(candidate),
+        this.#agentMutationBlocked,
+      );
+      if (!availability.allowed) {
+        this.#selectionTranslationRejected = true;
+        this.#callbacks.onStatus(availability.reason);
+        return;
+      }
+      try {
+        const rootToScreen = screenMatrix(root);
+        if (!rootToScreen || !this.#interactiveStartPoint) {
+          throw new RangeError("The collective drag coordinate space is unavailable.");
+        }
+        this.#translationRootToScreen = rootToScreen;
+        this.#selectionTranslationGesture = new SelectionTranslationGesture(translationTargets(this.#selectedNodes, root));
+      } catch (error) {
+        this.#rejectSelectionTranslation(error);
+      }
+      return;
+    }
     if (kind !== "rotation" && node?.localName === "g" && this.#selected) {
       try {
         const matrix = this.#selected.matrixify();
@@ -1971,6 +2310,7 @@ export class SvgEditor {
     if (!this.#interactiveMutation) return;
     this.#interactiveCleanup?.();
     this.#interactiveMutation = false;
+    const selectionChanged = this.#selectionTranslationGesture?.complete();
     const groupChanged = this.#groupTransformGesture?.complete();
     if (this.#groupRotationGesture && this.#interactiveMoved && this.#selected) {
       try {
@@ -1982,7 +2322,14 @@ export class SvgEditor {
         return;
       }
     }
-    const changed = this.#groupTransformGesture ? groupChanged === true : this.#interactiveMoved && this.#snapshot() !== this.#interactiveSnapshot;
+    const changed = this.#selectionTranslationGesture
+      ? selectionChanged === true
+      : this.#groupTransformGesture
+        ? groupChanged === true
+        : this.#interactiveMoved && this.#snapshot() !== this.#interactiveSnapshot;
+    this.#selectionTranslationGesture = undefined;
+    this.#selectionTranslationRejected = false;
+    this.#translationRootToScreen = undefined;
     this.#groupTransformGesture = undefined;
     this.#groupTransformRejected = false;
     this.#groupRotationGesture = false;
@@ -2002,6 +2349,10 @@ export class SvgEditor {
     if (!this.#interactiveMutation) return;
     this.#interactiveCleanup?.();
     this.#terminateInteractivePlugin();
+    this.#selectionTranslationGesture?.cancel();
+    this.#selectionTranslationGesture = undefined;
+    this.#selectionTranslationRejected = false;
+    this.#translationRootToScreen = undefined;
     this.#groupTransformGesture = undefined;
     this.#groupTransformRejected = false;
     this.#groupRotationGesture = false;
@@ -2033,6 +2384,15 @@ export class SvgEditor {
     this.#groupTransformRejected = true;
     this.#interactiveMoved = false;
     this.#callbacks.onStatus(error instanceof Error ? error.message : "The grouped transform was rejected.");
+  }
+
+  #rejectSelectionTranslation(error: unknown): void {
+    this.#selectionTranslationGesture?.cancel();
+    this.#selectionTranslationGesture = undefined;
+    this.#selectionTranslationRejected = true;
+    this.#translationRootToScreen = undefined;
+    this.#interactiveMoved = false;
+    this.#callbacks.onStatus(error instanceof Error ? error.message : "The collective movement was rejected.");
   }
 
   #mutate(change: () => void): void {
@@ -2198,6 +2558,39 @@ export class SvgEditor {
     });
   }
 
+  #translateSelection(dx: number, dy: number): boolean {
+    const root = this.svgNode;
+    if (!root) return false;
+    const availability = translationAvailability(
+      this.#selectedNodes,
+      root,
+      (node) => this.#isLocked(node),
+      this.#agentMutationBlocked,
+    );
+    if (!availability.allowed) {
+      this.#callbacks.onStatus(availability.reason);
+      return false;
+    }
+    const selected = [...this.#selectedNodes];
+    const primary = this.selectedNode;
+    const before = this.#snapshot();
+    let gesture: SelectionTranslationGesture | undefined;
+    try {
+      gesture = new SelectionTranslationGesture(translationTargets(selected, root));
+      gesture.move(dx, dy);
+      if (!gesture.complete()) return false;
+      this.#setSelection(selected, primary);
+      this.#history.checkpoint(before);
+      this.#notifyDocumentChange();
+      this.#notifyHistory();
+      return true;
+    } catch (error) {
+      gesture?.cancel();
+      this.#callbacks.onStatus(error instanceof Error ? error.message : "The selection could not be moved together.");
+      return false;
+    }
+  }
+
   #handleKeydown(event: KeyboardEvent): void {
     const target = event.target;
     if (event.key === "Escape" && (this.#marqueeGesture || this.#precisePointer)) {
@@ -2244,7 +2637,7 @@ export class SvgEditor {
       this.#deleteSelection();
       return;
     }
-    if (this.#selectedNodes.length !== 1 || !this.#canMutatePrimary() || !event.key.startsWith("Arrow")) return;
+    if (this.#selectedNodes.length === 0 || !event.key.startsWith("Arrow")) return;
     event.preventDefault();
     const step = event.shiftKey ? 10 : 1;
     const movement: Record<string, [number, number]> = {
@@ -2254,7 +2647,9 @@ export class SvgEditor {
       ArrowUp: [0, -step],
     };
     const [dx, dy] = movement[event.key] ?? [0, 0];
-    this.#mutate(() => this.#selected?.dmove(dx, dy));
+    if (this.#translateSelection(dx, dy)) {
+      this.#callbacks.onStatus(`Moved ${this.#selectedNodes.length === 1 ? this.#label(this.#selectedNodes[0]) : `${this.#selectedNodes.length} selected layers`}`);
+    }
   }
 
   #mutateWithoutCheckpoint(change: () => void): void {
@@ -2270,9 +2665,14 @@ export class SvgEditor {
       node.removeAttribute(SECONDARY_ATTRIBUTE);
       node.removeAttribute(PRIMARY_FALLBACK_ATTRIBUTE);
     });
+    this.#selectionDragSources.forEach((source) => {
+      source.off(".lineage");
+      source.draggable(false);
+    });
+    this.#selectionDragSources = [];
     if (!this.#selected) return;
     this.#selected.off(".lineage");
-    this.#selected.select(false).resize(false).draggable(false);
+    this.#selected.select(false).resize(false);
     this.#selected = undefined;
   }
 
@@ -2527,7 +2927,7 @@ export class SvgEditor {
 
   #syncOperationUi(): void {
     const state = this.operationState();
-    const operationButtons = [
+    const alignmentButtons = [
       this.#controls.alignLeftButton,
       this.#controls.alignCenterButton,
       this.#controls.alignRightButton,
@@ -2535,13 +2935,26 @@ export class SvgEditor {
       this.#controls.alignMiddleButton,
       this.#controls.alignBottomButton,
     ];
+    const distributionButtons = [
+      this.#controls.distributeHorizontalButton,
+      this.#controls.distributeVerticalButton,
+      this.#controls.spaceHorizontalButton,
+      this.#controls.spaceVerticalButton,
+    ];
     if (this.#agentMutationBlocked) {
-      for (const button of [...operationButtons, this.#controls.groupButton, this.#controls.ungroupButton, this.#controls.reorderEarlierButton, this.#controls.reorderLaterButton]) button.disabled = true;
+      for (const button of [...alignmentButtons, ...distributionButtons, this.#controls.groupButton, this.#controls.ungroupButton, this.#controls.reorderEarlierButton, this.#controls.reorderLaterButton]) button.disabled = true;
       this.#controls.hierarchyReason.textContent = "Review the pending agent transaction before editing layers.";
       this.#controls.alignmentReason.textContent = "Review the pending agent transaction before aligning layers.";
       return;
     }
-    for (const button of operationButtons) button.disabled = !state.align.allowed;
+    for (const button of alignmentButtons) {
+      button.disabled = !state.align.allowed;
+      button.title = state.align.reason;
+    }
+    for (const button of distributionButtons) {
+      button.disabled = !state.distribute.allowed;
+      button.title = state.distribute.reason;
+    }
     this.#controls.groupButton.disabled = !state.group.allowed;
     this.#controls.ungroupButton.disabled = !state.ungroup.allowed;
     this.#controls.reorderEarlierButton.disabled = !state.reorderEarlier.allowed;
@@ -2558,9 +2971,13 @@ export class SvgEditor {
           ? { allowed: true, reason: "Use Send backward or Bring forward to move one paint-order position." }
           : state.reorderEarlier;
     this.#controls.hierarchyReason.textContent = relevant.reason;
-    this.#controls.alignmentReason.textContent = state.align.allowed
-      ? "Align selected layers to their combined selection bounds."
-      : state.align.reason;
+    this.#controls.alignmentReason.textContent = state.distribute.allowed
+      ? "Distribute centers or equalize edge gaps while keeping the outer layers fixed."
+      : state.align.allowed
+        ? "Align selected layers to their combined selection bounds. Select 3+ to distribute or space."
+        : this.#selectedNodes.length >= 3
+          ? state.distribute.reason
+          : state.align.reason;
   }
 
   #hasDirectSelectableChildren(node: SVGGraphicsElement, root: SVGSVGElement): boolean {

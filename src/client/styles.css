@@ -216,9 +216,9 @@ button { font: inherit; }
 .paint-state { min-height: 14px; color: #96938b; font-size: 9px; font-weight: 500; letter-spacing: 0; line-height: 1.3; text-transform: none; }
 .selection-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 12px; }
 .sticky-selection-actions { position: sticky; top: 48px; z-index: 2; margin: 10px -4px 0; padding: 5px 4px; background: #f7f6f2; box-shadow: 0 1px 0 #e3e0d8; }
-.selection-actions button, .organization-actions button, .alignment-actions button { min-width: 0; height: 30px; border: 1px solid #d3d0c8; border-radius: 6px; color: #4d4b46; background: #fff; cursor: pointer; font-size: 11px; }
-.selection-actions button:hover:not(:disabled), .organization-actions button:hover:not(:disabled), .alignment-actions button:hover:not(:disabled) { background: #ebe9e2; }
-.selection-actions button:disabled, .organization-actions button:disabled, .alignment-actions button:disabled { cursor: default; opacity: 0.42; }
+.selection-actions button, .organization-actions button, .alignment-actions button, .distribution-actions button { min-width: 0; height: 30px; border: 1px solid #d3d0c8; border-radius: 6px; color: #4d4b46; background: #fff; cursor: pointer; font-size: 11px; }
+.selection-actions button:hover:not(:disabled), .organization-actions button:hover:not(:disabled), .alignment-actions button:hover:not(:disabled), .distribution-actions button:hover:not(:disabled) { background: #ebe9e2; }
+.selection-actions button:disabled, .organization-actions button:disabled, .alignment-actions button:disabled, .distribution-actions button:disabled { cursor: default; opacity: 0.42; }
 .selection-actions .danger { color: #a53b34; }
 .inspector-group { margin-top: 10px; border-top: 1px solid #dfdcd4; }
 .inspector-group summary { padding: 9px 1px 5px; color: #68655f; cursor: pointer; font-size: 10px; font-weight: 800; letter-spacing: 0.07em; list-style-position: outside; text-transform: uppercase; }
@@ -232,6 +232,7 @@ button { font: inherit; }
 .organization-actions button:first-child { grid-column: 1 / -1; }
 .hierarchy-reason { min-height: 28px; margin: 8px 1px 0; color: #76726b; font-size: 10px; line-height: 1.4; }
 .alignment-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+.distribution-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 6px; }
 .alignment-reason { min-height: 14px; margin: 6px 1px 0; color: #76726b; font-size: 10px; line-height: 1.4; }
 .inspector-hint { margin: 12px 1px 0; color: #96938b; font-size: 10px; line-height: 1.45; }
 .inspector-hint button { border: 1px solid #d3d0c8; border-radius: 5px; padding: 0 6px; color: #56534d; background: #fff; cursor: pointer; font-size: 10px; }

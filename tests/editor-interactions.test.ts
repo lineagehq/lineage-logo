@@ -3,13 +3,17 @@ import { Window } from "happy-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { registerWindow, SVG } from "@svgdotjs/svg.js";
 import { History } from "../src/client/history/history";
-import { cleanSvgsEqualForDirtyComparison, matrixRotationDegrees, rotationHandleRadii, serializeSvg, SvgEditor, type SelectionContext } from "../src/client/canvas/editor";
+import { cleanSvgsEqualForDirtyComparison, matrixRotationDegrees, rotationHandleRadii, serializeSvg, SvgEditor, translationAvailability, type SelectionContext } from "../src/client/canvas/editor";
 import {
   composeGroupDrag,
   composeGroupResize,
   composeGroupScale,
+  composeRootTranslation,
   formatMatrix,
   GroupTransformGesture,
+  relativeMatrix,
+  SelectionTranslationGesture,
+  transformVectorToLocal,
   type MatrixCoefficients,
 } from "../src/client/canvas/transform";
 import { DEFAULT_SELECTION_PREFERENCES } from "../src/client/selection-preferences";
@@ -113,6 +117,13 @@ function mouseEvent(window: Window, type: string, x: number, y: number): unknown
   return event;
 }
 
+function setScreenMatrix(node: SVGElement, matrix: MatrixCoefficients | (() => MatrixCoefficients)): void {
+  Object.defineProperty(node, "getScreenCTM", {
+    configurable: true,
+    value: () => ({ ...(typeof matrix === "function" ? matrix() : matrix) }),
+  });
+}
+
 function dispatch(target: unknown, event: unknown): void {
   (target as { dispatchEvent: (candidate: never) => boolean }).dispatchEvent(event as never);
 }
@@ -160,6 +171,22 @@ function selectNestedMulti(editor: SvgEditor): SVGGraphicsElement {
   editor.selectNode(wordmark);
   editor.selectNode(icon, true);
   return icon;
+}
+
+function selectCrossParentMulti(editor: SvgEditor): { primary: SVGGraphicsElement; secondary: SVGGraphicsElement } {
+  const root = editor.svgNode as SVGSVGElement;
+  const logo = root.querySelector("#logo") as unknown as SVGGraphicsElement;
+  const icon = root.querySelector("#icon") as unknown as SVGGraphicsElement;
+  const secondary = root.querySelector("#waveform") as unknown as SVGGraphicsElement;
+  const primary = root.querySelector("#wordmark") as unknown as SVGGraphicsElement;
+  setScreenMatrix(root, IDENTITY);
+  setScreenMatrix(logo, { ...IDENTITY, e: 4, f: 5 });
+  setScreenMatrix(icon, { a: 2, b: 0, c: 0, d: 2, e: 4, f: 5 });
+  editor.applyAgentSelection({
+    targetSessionKeys: [secondary.dataset.lineageKey!, primary.dataset.lineageKey!],
+    primarySessionKey: primary.dataset.lineageKey,
+  });
+  return { primary, secondary };
 }
 
 function editorContext(editor: SvgEditor): {
@@ -218,6 +245,61 @@ function nestedDocument(): { group: SVGGraphicsElement; root: SVGSVGElement; win
 }
 
 describe("deterministic grouped transform composition", () => {
+  it("converts one root-space delta into scaled, rotated, and skewed parent spaces", () => {
+    expect(transformVectorToLocal({ a: 2, b: 0, c: 0, d: 4, e: 50, f: 60 }, 10, 8)).toEqual({ dx: 5, dy: 2 });
+    expect(transformVectorToLocal({ a: 0, b: 1, c: -1, d: 0, e: 50, f: 60 }, 10, 8)).toEqual({ dx: 8, dy: -10 });
+    expect(composeRootTranslation(
+      { ...IDENTITY, e: 3, f: 4 },
+      { a: 2, b: 0, c: 0, d: 4, e: 50, f: 60 },
+      10,
+      8,
+    )).toEqual({ ...IDENTITY, e: 8, f: 6 });
+  });
+
+  it("derives parent-to-root coordinates without leaking artboard zoom or screen translation", () => {
+    expect(relativeMatrix(
+      { a: 2, b: 0, c: 0, d: 2, e: 100, f: 80 },
+      { a: 4, b: 0, c: 0, d: 6, e: 140, f: 100 },
+    )).toEqual({ a: 2, b: 0, c: 0, d: 3, e: 20, f: 10 });
+  });
+
+  it("moves every translation target atomically and restores exact source syntax on cancel or no-op", () => {
+    const window = new Window();
+    window.document.body.innerHTML = '<svg><g id="scaled"><path id="a" transform="translate(3 4)"/></g><g id="plain"><path id="b"/></g></svg>';
+    const first = window.document.querySelector("#a") as unknown as SVGGraphicsElement;
+    const second = window.document.querySelector("#b") as unknown as SVGGraphicsElement;
+    const before = window.document.querySelector("svg")?.innerHTML;
+    const gesture = new SelectionTranslationGesture([
+      { element: first, initial: { ...IDENTITY, e: 3, f: 4 }, parentToRoot: { a: 2, b: 0, c: 0, d: 2, e: 0, f: 0 } },
+      { element: second, initial: IDENTITY, parentToRoot: IDENTITY },
+    ]);
+    expect(gesture.move(10, -6)).toBe(true);
+    expect(first.getAttribute("transform")).toBe("matrix(1,0,0,1,8,1)");
+    expect(second.getAttribute("transform")).toBe("matrix(1,0,0,1,10,-6)");
+    gesture.cancel();
+    expect(window.document.querySelector("svg")?.innerHTML).toBe(before);
+
+    const noOp = new SelectionTranslationGesture([
+      { element: first, initial: { ...IDENTITY, e: 3, f: 4 }, parentToRoot: IDENTITY },
+      { element: second, initial: IDENTITY, parentToRoot: IDENTITY },
+    ]);
+    noOp.move(0, 0);
+    expect(noOp.complete()).toBe(false);
+    expect(window.document.querySelector("svg")?.innerHTML).toBe(before);
+  });
+
+  it("rejects singular and non-finite collective coordinate spaces before mutation", () => {
+    expect(() => transformVectorToLocal({ a: 1, b: 0, c: 2, d: 0, e: 0, f: 0 }, 1, 1)).toThrow(/singular/);
+    expect(() => composeRootTranslation(IDENTITY, IDENTITY, Number.POSITIVE_INFINITY, 0)).toThrow(/non-finite/);
+    expect(transformVectorToLocal({ a: 0.0009, b: 0, c: 0, d: 0.0009, e: 0, f: 0 }, 1, 1)).toEqual({
+      dx: 1111.111111,
+      dy: 1111.111111,
+    });
+    expect(() => new SelectionTranslationGesture([
+      { element: new Window().document.createElementNS("http://www.w3.org/2000/svg", "path") as unknown as SVGGraphicsElement, initial: IDENTITY, parentToRoot: { a: 10_000_000, b: 0, c: 0, d: 10_000_000, e: 0, f: 0 } },
+    ])).toThrow(/translation precision/);
+  });
+
   it("rounds a drag to a bounded plain-decimal root matrix", () => {
     expect(formatMatrix(composeGroupDrag(
       { ...IDENTITY, e: 4, f: 5 },
@@ -378,14 +460,230 @@ describe("Geometry Scale % grouped commits", () => {
 });
 
 describe("multi-selection mutation boundaries", () => {
-  it("keeps primary-only keyboard actions inert while multiple layers are selected", () => {
+  it("nudges every selected cross-parent layer by the same root-space delta in one reversible checkpoint", () => {
+    const { editor, window } = editorHarness();
+    const { primary, secondary } = selectCrossParentMulti(editor);
+    const before = editor.serializeClean();
+    const context = editorContext(editor);
+
+    dispatch(window.document, new window.KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight", shiftKey: true }));
+    expect(secondary.getAttribute("transform")).toBe("matrix(1,0,0,1,5,0)");
+    expect(primary.getAttribute("transform")).toBe("matrix(1,0,0,1,10,0)");
+    expect(editorContext(editor)).toEqual(context);
+    const after = editor.serializeClean();
+    expect(after).not.toBe(before);
+    expect(editor.undo()).toBe(true);
+    expect(editor.serializeClean()).toBe(before);
+    expect(editorContext(editor)).toEqual(context);
+    expect(editor.undo()).toBe(false);
+    expect(editor.redo()).toBe(true);
+    expect(editor.serializeClean()).toBe(after);
+    expect(editorContext(editor)).toEqual(context);
+    expect(editor.redo()).toBe(false);
+  });
+
+  it("collectively drags cross-parent layers from any selected object and keeps cancellation and threshold paths clean", () => {
+    const { editor, window } = editorHarness();
+    let selection = selectCrossParentMulti(editor);
+    const before = editor.serializeClean();
+    const context = editorContext(editor);
+    expect(SVG(selection.secondary).remember("_draggable")).toBeTruthy();
+    expect(SVG(selection.primary).remember("_draggable")).toBeTruthy();
+    let handler = startDrag(selection.secondary, mouseEvent(window, "mousedown", 5, 5));
+    handler.drag(mouseEvent(window, "mousemove", 15, 11) as never);
+    handler.endDrag(mouseEvent(window, "mouseup", 15, 11) as never);
+    expect(selection.secondary.getAttribute("transform")).toBe("matrix(1,0,0,1,5,3)");
+    expect(selection.primary.getAttribute("transform")).toBe("matrix(1,0,0,1,10,6)");
+    expect(editorContext(editor)).toEqual(context);
+    const after = editor.serializeClean();
+    expect(editor.undo()).toBe(true);
+    expect(editor.serializeClean()).toBe(before);
+    expect(editorContext(editor)).toEqual(context);
+    expect(editor.undo()).toBe(false);
+
+    selection = selectCrossParentMulti(editor);
+    handler = startDrag(selection.primary, mouseEvent(window, "mousedown", 5, 5));
+    handler.drag(mouseEvent(window, "mousemove", 7, 5) as never);
+    handler.endDrag(mouseEvent(window, "mouseup", 7, 5) as never);
+    expect(editor.serializeClean()).toBe(before);
+    expect(editor.undo()).toBe(false);
+
+    selection = selectCrossParentMulti(editor);
+    handler = startDrag(selection.primary, mouseEvent(window, "mousedown", 5, 5));
+    handler.drag(mouseEvent(window, "mousemove", 15, 11) as never);
+    dispatch(window.document, new window.KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    expect(editor.serializeClean()).toBe(before);
+    expect(editorContext(editor)).toEqual(context);
+    expect(editor.undo()).toBe(false);
+    expect(after).not.toBe(before);
+  });
+
+  it("rejects a locked secondary or pending Agent boundary without partially moving the primary", () => {
+    const { editor, statuses, window } = editorHarness();
+    const secondary = editor.svgNode?.querySelector("#waveform") as SVGGraphicsElement;
+    editor.selectNode(secondary);
+    editor.toggleLock();
+    const selection = selectCrossParentMulti(editor);
+    const before = editor.serializeClean();
+    const availability = translationAvailability(editor.selectedNodes, editor.svgNode!, (node) => editor.selectionContext.lockedKeys.has(node.dataset.lineageKey ?? ""));
+    expect(availability.allowed).toBe(false);
+    dispatch(window.document, new window.KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight" }));
+    expect(editor.serializeClean()).toBe(before);
+    expect(statuses.at(-1)).toMatch(/Unlock every selected layer/);
+    const handler = startDrag(selection.primary, mouseEvent(window, "mousedown", 5, 5));
+    handler.drag(mouseEvent(window, "mousemove", 15, 5) as never);
+    handler.endDrag(mouseEvent(window, "mouseup", 15, 5) as never);
+    expect(editor.serializeClean()).toBe(before);
+    expect(editor.undo()).toBe(false);
+
+    editor.setAgentMutationBlocked(true);
+    dispatch(window.document, new window.KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight" }));
+    expect(editor.serializeClean()).toBe(before);
+    expect(statuses.at(-1)).toMatch(/pending Agent review/);
+  });
+
+  it("rejects computed-style-hidden layers and nested ancestor selections atomically", () => {
+    let harness = editorHarness();
+    const hidden = harness.editor.svgNode?.querySelector("#waveform") as SVGGraphicsElement;
+    hidden.setAttribute("style", "display: none");
+    const hiddenSelection = selectCrossParentMulti(harness.editor);
+    const hiddenBefore = harness.editor.serializeClean();
+    expect(hidden.getAttribute("display")).toBeNull();
+    expect(translationAvailability(harness.editor.selectedNodes, harness.editor.svgNode!).reason).toMatch(/Show every selected layer/);
+    dispatch(harness.window.document, new harness.window.KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight" }));
+    expect(harness.editor.serializeClean()).toBe(hiddenBefore);
+    expect(harness.statuses.at(-1)).toMatch(/Show every selected layer/);
+    expect(hiddenSelection.primary.getAttribute("transform")).toBeNull();
+    expect(harness.editor.undo()).toBe(false);
+
+    harness = editorHarness();
+    const root = harness.editor.svgNode!;
+    const ancestor = root.querySelector("#logo") as SVGGraphicsElement;
+    const descendant = root.querySelector("#waveform") as SVGGraphicsElement;
+    harness.editor.applyAgentSelection({
+      targetSessionKeys: [ancestor.dataset.lineageKey!, descendant.dataset.lineageKey!],
+      primarySessionKey: descendant.dataset.lineageKey,
+    });
+    const nestedBefore = harness.editor.serializeClean();
+    expect(harness.editor.selectedNodes).toEqual([ancestor, descendant]);
+    expect(translationAvailability(harness.editor.selectedNodes, root).reason).toMatch(/either a group or its nested layers/);
+    dispatch(harness.window.document, new harness.window.KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight" }));
+    expect(harness.editor.serializeClean()).toBe(nestedBefore);
+    expect(harness.statuses.at(-1)).toMatch(/either a group or its nested layers/);
+    expect(harness.editor.undo()).toBe(false);
+  });
+
+  it("rejects inline and stylesheet-controlled transforms before any collective mutation", () => {
+    for (const source of ["inline", "stylesheet"] as const) {
+      const harness = editorHarness();
+      const root = harness.editor.svgNode!;
+      const controlled = root.querySelector("#waveform") as SVGGraphicsElement;
+      if (source === "inline") controlled.style.transform = "translate(5px, 0px)";
+      else {
+        const style = root.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "style");
+        style.textContent = "#waveform { transform: translate(5px, 0px); }";
+        root.prepend(style);
+      }
+      selectCrossParentMulti(harness.editor);
+      const before = harness.editor.serializeClean();
+      expect(translationAvailability(harness.editor.selectedNodes, root).reason).toMatch(/Convert CSS transforms/);
+      dispatch(harness.window.document, new harness.window.KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight" }));
+      expect(harness.editor.serializeClean()).toBe(before);
+      expect(harness.statuses.at(-1)).toMatch(/Convert CSS transforms/);
+      expect(harness.editor.undo()).toBe(false);
+    }
+  });
+
+  it("distributes cross-parent visual centers with fixed outer anchors in one reversible checkpoint", () => {
+    const { controls, editor, root } = editorHarness();
+    const top = root.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "path") as unknown as SVGGraphicsElement;
+    top.id = "top";
+    top.setAttribute("d", "M0 0h20v20z");
+    root.append(top);
+    const logo = root.querySelector("#logo") as unknown as SVGGraphicsElement;
+    const icon = root.querySelector("#icon") as unknown as SVGGraphicsElement;
+    const waveform = root.querySelector("#waveform") as unknown as SVGGraphicsElement;
+    const wordmark = root.querySelector("#wordmark") as unknown as SVGGraphicsElement;
+    icon.setAttribute("transform", "scale(2)");
+    wordmark.setAttribute("transform", "translate(36 -5)");
+    top.setAttribute("transform", "translate(100 0)");
+    editor.load(root);
+    setScreenMatrix(root, IDENTITY);
+    setScreenMatrix(logo, { ...IDENTITY, e: 4, f: 5 });
+    setScreenMatrix(icon, { a: 2, b: 0, c: 0, d: 2, e: 4, f: 5 });
+    setScreenMatrix(waveform, { a: 2, b: 0, c: 0, d: 2, e: 4, f: 5 });
+    setScreenMatrix(wordmark, () => {
+      const local = SVG(wordmark).matrixify();
+      return { a: local.a, b: local.b, c: local.c, d: local.d, e: 4 + local.e, f: 5 + local.f };
+    });
+    setScreenMatrix(top, { ...IDENTITY, e: 100, f: 0 });
+    editor.applyAgentSelection({
+      targetSessionKeys: [waveform.dataset.lineageKey!, wordmark.dataset.lineageKey!, top.dataset.lineageKey!],
+      primarySessionKey: top.dataset.lineageKey,
+    });
+    const before = editor.serializeClean();
+    const context = editorContext(editor);
+    expect(controls.distributeHorizontalButton.disabled).toBe(false);
+
+    editor.distribute("horizontal-centers");
+    expect(waveform.getAttribute("transform")).toBeNull();
+    expect(wordmark.getAttribute("transform")).toBe("matrix(1,0,0,1,53,-5)");
+    expect(top.getAttribute("transform")).toBe("translate(100 0)");
+    expect(wordmark.getScreenCTM()!.e + 10).toBe(67);
+    expect(editorContext(editor)).toEqual(context);
+    const after = editor.serializeClean();
+    expect(after).not.toBe(before);
+    expect(editor.undo()).toBe(true);
+    expect(editor.serializeClean()).toBe(before);
+    expect(editorContext(editor)).toEqual(context);
+    expect(editor.undo()).toBe(false);
+    expect(editor.redo()).toBe(true);
+    expect(editor.serializeClean()).toBe(after);
+    expect(editorContext(editor)).toEqual(context);
+    expect(editor.redo()).toBe(false);
+  });
+
+  it("does not checkpoint or announce success for a sub-precision distribution no-op", () => {
+    const { editor, root, statuses } = editorHarness();
+    const top = root.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "path") as unknown as SVGGraphicsElement;
+    top.id = "top";
+    top.setAttribute("d", "M0 0h20v20z");
+    root.append(top);
+    const logo = root.querySelector("#logo") as SVGGraphicsElement;
+    const icon = root.querySelector("#icon") as SVGGraphicsElement;
+    const waveform = root.querySelector("#waveform") as SVGGraphicsElement;
+    const wordmark = root.querySelector("#wordmark") as SVGGraphicsElement;
+    logo.removeAttribute("transform");
+    wordmark.setAttribute("transform", "translate(1.0000004 0)");
+    top.setAttribute("transform", "translate(2 0)");
+    editor.load(root);
+    setScreenMatrix(root, IDENTITY);
+    setScreenMatrix(logo, IDENTITY);
+    setScreenMatrix(icon, IDENTITY);
+    setScreenMatrix(waveform, IDENTITY);
+    setScreenMatrix(wordmark, () => SVG(wordmark).matrixify());
+    setScreenMatrix(top, () => SVG(top).matrixify());
+    editor.applyAgentSelection({
+      targetSessionKeys: [waveform.dataset.lineageKey!, wordmark.dataset.lineageKey!, top.dataset.lineageKey!],
+      primarySessionKey: top.dataset.lineageKey,
+    });
+    const before = editor.serializeClean();
+
+    editor.distribute("horizontal-centers");
+
+    expect(editor.serializeClean()).toBe(before);
+    expect(wordmark.getAttribute("transform")).toBe("translate(1.0000004 0)");
+    expect(statuses.at(-1)).toBe("The selected centers are already distributed");
+    expect(editor.undo()).toBe(false);
+  });
+
+  it("keeps destructive and duplicating primary-only shortcuts inert for a multi-selection", () => {
     const { editor, window } = editorHarness();
     selectNestedMulti(editor);
     const before = editor.serializeClean();
     const context = editorContext(editor);
 
     for (const event of [
-      new window.KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight" }),
       new window.KeyboardEvent("keydown", { bubbles: true, key: "Delete" }),
       new window.KeyboardEvent("keydown", { bubbles: true, key: "d", metaKey: true }),
     ]) dispatch(window.document, event);
