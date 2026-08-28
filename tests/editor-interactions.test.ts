@@ -705,6 +705,10 @@ describe("SvgEditor plugin cancellation teardown", () => {
 });
 
 describe("marquee and precise selection interactions", () => {
+  const platformAccelerator = /^(?:Mac|iPhone|iPad|iPod)/.test(navigator.platform)
+    ? { metaKey: true }
+    : { ctrlKey: true };
+
   function setClientRect(node: SVGGraphicsElement, left: number, top: number, width: number, height: number): void {
     Object.defineProperty(node, "getBoundingClientRect", {
       configurable: true,
@@ -865,13 +869,13 @@ describe("marquee and precise selection interactions", () => {
     editor.selectNode(logo);
     editor.editInside();
     editor.selectNode(icon);
-    dispatch(waveform, new window.MouseEvent("click", { bubbles: true, button: 0, metaKey: true }));
+    dispatch(waveform, new window.MouseEvent("click", { bubbles: true, button: 0, ...platformAccelerator }));
     expect(editorContext(editor)).toEqual({ primary: "waveform", scope: "icon", selected: ["waveform"] });
-    dispatch(icon, new window.MouseEvent("click", { bubbles: true, button: 0, metaKey: true }));
+    dispatch(icon, new window.MouseEvent("click", { bubbles: true, button: 0, ...platformAccelerator }));
     expect(editorContext(editor)).toEqual({ primary: "icon", scope: "logo", selected: ["icon"] });
-    dispatch(root.querySelector("#wordmark"), new window.MouseEvent("click", { bubbles: true, button: 0, metaKey: true }));
+    dispatch(root.querySelector("#wordmark"), new window.MouseEvent("click", { bubbles: true, button: 0, ...platformAccelerator }));
     expect(editorContext(editor)).toEqual({ primary: "wordmark", scope: "logo", selected: ["icon", "wordmark"] });
-    dispatch(icon, new window.MouseEvent("click", { bubbles: true, button: 0, metaKey: true, shiftKey: true }));
+    dispatch(icon, new window.MouseEvent("click", { bubbles: true, button: 0, shiftKey: true, ...platformAccelerator }));
     expect(editorContext(editor)).toEqual({ primary: "wordmark", scope: "logo", selected: ["icon", "wordmark"] });
   });
 
@@ -911,7 +915,7 @@ describe("marquee and precise selection interactions", () => {
     let objectPointerDowns = 0;
     group.addEventListener("pointerdown", () => { objectPointerDowns += 1; });
     const pointer = (type: string, x: number, y: number) => {
-      const event = new window.PointerEvent(type, { bubbles: true, button: 0, clientX: x, clientY: y, metaKey: true, pointerId: 17 });
+      const event = new window.PointerEvent(type, { bubbles: true, button: 0, clientX: x, clientY: y, pointerId: 17, ...platformAccelerator });
       dispatch(group, event);
     };
     pointer("pointerdown", 10, 10);
@@ -941,9 +945,10 @@ describe("marquee and precise selection interactions", () => {
     });
     resizeHandle.addEventListener("pointerdown", () => { resizeStarts += 1; });
     rotationHandle.addEventListener("pointerdown", () => { rotationStarts += 1; });
-    const pointer = (target: SVGGraphicsElement, type: string, x: number, y: number, metaKey: boolean, pointerId: number) => {
+    const pointer = (target: SVGGraphicsElement, type: string, x: number, y: number, accelerator: boolean, pointerId: number) => {
       dispatch(target, new window.PointerEvent(type, {
-        bubbles: true, button: 0, clientX: x, clientY: y, metaKey, pointerId,
+        bubbles: true, button: 0, clientX: x, clientY: y, pointerId,
+        ...(accelerator ? platformAccelerator : {}),
       }));
     };
 
@@ -1022,7 +1027,7 @@ describe("marquee and precise selection interactions", () => {
     const original = editorContext(editor);
     controls.name.ownerDocument.body.append(controls.name);
     const preciseDown = (pointerId: number) => dispatch(root.querySelector("#icon"), new window.PointerEvent("pointerdown", {
-      bubbles: true, button: 0, metaKey: true, pointerId,
+      bubbles: true, button: 0, pointerId, ...platformAccelerator,
     }));
 
     preciseDown(21);
@@ -1067,7 +1072,7 @@ describe("marquee and precise selection interactions", () => {
     editor.setSelectionPreferences({ ...DEFAULT_SELECTION_PREFERENCES, preciseModifier: "alt" });
     dispatch(wordmark, new window.MouseEvent("click", { altKey: true, bubbles: true }));
     expect(editorContext(editor)).toEqual({ primary: "wordmark", scope: "logo", selected: ["icon", "wordmark"] });
-    dispatch(icon, new window.MouseEvent("click", { bubbles: true, metaKey: true }));
+    dispatch(icon, new window.MouseEvent("click", { bubbles: true, ...platformAccelerator }));
     expect(editorContext(editor)).toEqual({ primary: "wordmark", scope: "logo", selected: ["icon", "wordmark"] });
     expect(editor.undo()).toBe(false);
   });
