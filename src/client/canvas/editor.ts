@@ -6,6 +6,8 @@ import { History } from "../history/history";
 import { evaluateAgentTransaction, type AgentDocumentContext, type AgentSelectionIntent, type StagedAgentTransaction } from "../agent/transaction";
 import type { AgentTransactionV1 } from "../../shared/agent-protocol";
 import { composeGroupScale, formatMatrix, GroupTransformGesture, type TransformBox } from "./transform";
+import { marqueeMatches, renderedClientRect, type ClientRect, type MarqueeHitRule } from "./marquee-selection";
+import { DEFAULT_SELECTION_PREFERENCES, type SelectionPreferences } from "../selection-preferences";
 
 interface EditorControls {
   alignBottomButton: HTMLButtonElement;
@@ -77,12 +79,16 @@ const HANDLE_SELECTOR = [
   ".svg_select_shape_pointSelect",
   ".svg_select_handle",
   ".svg_select_handle_rot",
+  "[data-lineage-selection-halos]",
 ].join(",");
+const SELECTION_BOUNDING_SHAPE_SELECTOR = ".svg_select_shape, .svg_select_shape_pointSelect";
 
 const EDITABLE_SELECTOR = "g, path, rect, circle, ellipse, polygon, polyline, line, text";
 const RESOURCE_SELECTOR = "defs, metadata, clipPath, mask, filter, linearGradient, radialGradient, pattern, marker, symbol";
 const HOVER_ATTRIBUTE = "data-lineage-hover";
 const SECONDARY_ATTRIBUTE = "data-lineage-secondary";
+const PRIMARY_FALLBACK_ATTRIBUTE = "data-lineage-primary-fallback";
+const SELECTION_HALOS_SELECTOR = "[data-lineage-selection-halos]";
 const REVIEW_ATTRIBUTE = "data-lineage-review-highlight";
 const ROTATION_HANDLE_SELECTOR = ".svg_select_handle_rot";
 const ROTATION_KNOB_CLASS = "lineage-rotation-knob";
@@ -450,6 +456,7 @@ export class InspectorEditSession {
 export function serializeSvg(root: SVGSVGElement | undefined, stripEditorState: boolean): string {
   if (!root) return "";
   const clone = root.cloneNode(true) as SVGSVGElement;
+  clone.querySelectorAll(SELECTION_HALOS_SELECTOR).forEach((node) => node.remove());
   const handles = Array.from(clone.querySelectorAll(HANDLE_SELECTOR));
   const handleGroups = new Set(
     handles
@@ -465,6 +472,7 @@ export function serializeSvg(root: SVGSVGElement | undefined, stripEditorState: 
   for (const element of [clone, ...Array.from(clone.querySelectorAll("*"))]) {
     element.removeAttribute(HOVER_ATTRIBUTE);
     element.removeAttribute(SECONDARY_ATTRIBUTE);
+    element.removeAttribute(PRIMARY_FALLBACK_ATTRIBUTE);
     element.removeAttribute(REVIEW_ATTRIBUTE);
   }
 
@@ -482,6 +490,46 @@ export function serializeSvg(root: SVGSVGElement | undefined, stripEditorState: 
   }
 
   return clone.outerHTML;
+}
+
+function dirtyComparisonKey(source: string): string {
+  const root = source.match(/^<([A-Za-z_][\w:.-]*)/);
+  if (!root) return source;
+  let index = root[0].length;
+  const ordinaryAttributes: string[] = [];
+  const namespaceDeclarations: string[] = [];
+  while (index < source.length) {
+    while (/\s/.test(source[index] ?? "")) index += 1;
+    if (source[index] === ">" || (source[index] === "/" && source[index + 1] === ">")) break;
+    const tokenStart = index;
+    while (index < source.length && !/[\s=/>]/.test(source[index])) index += 1;
+    const name = source.slice(tokenStart, index);
+    if (!name) return source;
+    while (/\s/.test(source[index] ?? "")) index += 1;
+    if (source[index] !== "=") return source;
+    index += 1;
+    while (/\s/.test(source[index] ?? "")) index += 1;
+    const quote = source[index];
+    if (quote !== '"' && quote !== "'") return source;
+    index += 1;
+    while (index < source.length && source[index] !== quote) index += 1;
+    if (source[index] !== quote) return source;
+    index += 1;
+    const token = source.slice(tokenStart, index);
+    if (name === "xmlns" || name.startsWith("xmlns:")) namespaceDeclarations.push(token);
+    else ordinaryAttributes.push(token);
+  }
+  if (index >= source.length) return source;
+  return JSON.stringify([
+    root[0],
+    ordinaryAttributes,
+    namespaceDeclarations.sort(),
+    source.slice(index),
+  ]);
+}
+
+export function cleanSvgsEqualForDirtyComparison(left: string, right: string): boolean {
+  return left === right || dirtyComparisonKey(left) === dirtyComparisonKey(right);
 }
 
 export function visibleHistoryAvailability(blocked: boolean, canUndo: boolean, canRedo: boolean): { canUndo: boolean; canRedo: boolean } {
@@ -869,6 +917,19 @@ export class SvgEditor {
   #suppressCanvasClickUntil = 0;
   #syncingControls = false;
   #agentMutationBlocked = false;
+  #selectionPreferences: SelectionPreferences = { ...DEFAULT_SELECTION_PREFERENCES };
+  #marqueeGesture?: {
+    nodes: SVGGraphicsElement[];
+    primary?: SVGGraphicsElement;
+    scope: SVGGraphicsElement | SVGSVGElement;
+  };
+  #precisePointer?: {
+    candidate: SVGGraphicsElement;
+    moved: boolean;
+    pointerId: number;
+    startX: number;
+    startY: number;
+  };
   #groupScaleEdit?: {
     box: TransformBox;
     initialMatrix: { a: number; b: number; c: number; d: number; e: number; f: number };
@@ -893,6 +954,8 @@ export class SvgEditor {
   }
 
   load(svg: SVGSVGElement, savedBaseline?: string): void {
+    this.cancelMarquee();
+    this.#cancelPrecisePointer();
     this.#cancelInteractiveMutation(false);
     this.#groupScaleEdit = undefined;
     this.#clearHover();
@@ -927,7 +990,7 @@ export class SvgEditor {
     this.#setSelectionUi(undefined);
     this.#notifySelectionContext();
     this.#notifyHistory();
-    if (savedBaseline !== undefined) this.#callbacks.onDirtyChange(this.serializeClean() !== this.#baseline);
+    if (savedBaseline !== undefined) this.#callbacks.onDirtyChange(!cleanSvgsEqualForDirtyComparison(this.serializeClean(), this.#baseline));
   }
 
   selectNode(node: SVGGraphicsElement, extend = false): void {
@@ -997,9 +1060,6 @@ export class SvgEditor {
     this.#clearHover();
     this.#deselect();
     this.#selectedNodes = unique;
-    for (const secondary of unique.filter((candidate) => candidate !== nextPrimary)) {
-      secondary.setAttribute(SECONDARY_ATTRIBUTE, "true");
-    }
     if (!nextPrimary) {
       this.#setSelectionUi(undefined);
       this.#callbacks.onSelectionChange(undefined);
@@ -1014,7 +1074,13 @@ export class SvgEditor {
       Boolean(node.querySelector(RESOURCE_SELECTOR))
       || Array.from(node.attributes).some((attribute) => attribute.value.includes("url(#"))
     );
-    if (!this.#agentMutationBlocked && node.getAttribute("display") !== "none" && !this.#isLocked(node) && !hasComplexResources) {
+    const canInstallHandles = !this.#agentMutationBlocked
+      && node.getAttribute("display") !== "none"
+      && !this.#isLocked(node)
+      && !hasComplexResources;
+    if (!canInstallHandles) node.setAttribute(PRIMARY_FALLBACK_ATTRIBUTE, "true");
+    this.#renderSelectionHalos();
+    if (canInstallHandles) {
       selected
         .select()
         .resize({ preserveAspectRatio: true, aroundCenter: false, grid: 1, degree: 1 })
@@ -1134,7 +1200,7 @@ export class SvgEditor {
   reset(): void {
     if (!this.#drawing || this.#agentMutationBlocked) return;
     this.#lockedKeys.clear();
-    if (this.serializeClean() === this.#baseline) {
+    if (cleanSvgsEqualForDirtyComparison(this.serializeClean(), this.#baseline)) {
       this.#scope = this.svgNode;
       this.#setSelection([]);
       this.#callbacks.onStatus("Cleared the editing context");
@@ -1163,6 +1229,120 @@ export class SvgEditor {
     return [...this.#selectedNodes];
   }
 
+  get marqueeActive(): boolean {
+    return Boolean(this.#marqueeGesture);
+  }
+
+  setSelectionPreferences(preferences: SelectionPreferences): void {
+    this.#selectionPreferences = { ...preferences };
+    if (this.#drawing) this.#setSelection([...this.#selectedNodes], this.selectedNode);
+  }
+
+  canStartMarquee(target: EventTarget | null): boolean {
+    const root = this.svgNode;
+    if (!root || this.#agentMutationBlocked || !(target instanceof Element)) return false;
+    if (target.closest(HANDLE_SELECTOR)) return false;
+    return !getDirectSelectionTarget(target, root);
+  }
+
+  canStartRegionSelection(target: EventTarget | null): boolean {
+    const root = this.svgNode;
+    if (!root || this.#agentMutationBlocked || !(target instanceof Element) || !this.#artboard.contains(target)) return false;
+    return !target.closest(".svg_select_handle, .svg_select_handle_rot");
+  }
+
+  exactRegionCandidate(target: EventTarget | null): SVGGraphicsElement | undefined {
+    const root = this.svgNode;
+    if (!root || !(target instanceof Element)) return undefined;
+    return target.closest(SELECTION_BOUNDING_SHAPE_SELECTOR)
+      ? this.selectedNode
+      : getDirectSelectionTarget(target, root);
+  }
+
+  beginMarquee(): boolean {
+    const root = this.svgNode;
+    if (!root || this.#agentMutationBlocked || this.#marqueeGesture) return false;
+    this.#marqueeGesture = {
+      nodes: [...this.#selectedNodes],
+      primary: this.selectedNode,
+      scope: this.#scope ?? root,
+    };
+    this.#clearHover();
+    this.#notifySelectionContext();
+    return true;
+  }
+
+  completeBackgroundGesture(inert: boolean, additive = false): void {
+    this.#armCanvasClickSuppression();
+    if (!inert && !additive) this.#setSelection([]);
+  }
+
+  completeControlGesture(candidate: SVGGraphicsElement | undefined, additive: boolean): void {
+    const root = this.svgNode;
+    this.cancelMarquee();
+    this.#armCanvasClickSuppression();
+    if (candidate && root && candidate.isConnected) this.#toggleExactNode(candidate, root);
+    else if (!additive) this.#setSelection([]);
+  }
+
+  suppressCanvasClick(): void {
+    this.cancelMarquee();
+    this.#armCanvasClickSuppression();
+  }
+
+  commitMarquee(rect: ClientRect | undefined, additive: boolean, rule: MarqueeHitRule = this.#selectionPreferences.marqueeMode): void {
+    const gesture = this.#marqueeGesture;
+    const root = this.svgNode;
+    if (!gesture || !root) return;
+    this.#marqueeGesture = undefined;
+    this.#suppressCanvasClickUntil = performance.now() + 250;
+    if (!rect) {
+      if (!additive) this.#setSelection([]);
+      this.#announceMarqueeEnd();
+      return;
+    }
+    const visible = Array.from(gesture.scope.querySelectorAll<SVGGraphicsElement>(EDITABLE_SELECTOR))
+      .filter((node) => isSelectableNode(node, root))
+      .map((node) => ({ node, rect: renderedClientRect(node, gesture.scope) }))
+      .filter((candidate): candidate is { node: SVGGraphicsElement; rect: DOMRect } => Boolean(candidate.rect));
+    const leafCandidates = visible.filter(({ node }) => !visible.some(({ node: descendant }) => node !== descendant && node.contains(descendant)));
+    const matches = leafCandidates
+      .filter((candidate) => marqueeMatches(rect, candidate.rect, rule))
+      .map((candidate) => candidate.node);
+    if (additive) {
+      if (matches.length > 0) {
+        const normalized = this.#normalizeMarqueeUnion([...gesture.nodes, ...matches], gesture.scope, root);
+        this.#setSelection(normalized, matches.at(-1));
+      }
+    } else {
+      this.#setSelection(matches, matches.at(-1));
+    }
+    this.#callbacks.onStatus(matches.length === 1 ? "Selected 1 layer" : `Selected ${matches.length} layers`);
+    this.#announceMarqueeEnd();
+  }
+
+  cancelMarquee(): boolean {
+    const gesture = this.#marqueeGesture;
+    if (!gesture) return false;
+    this.#marqueeGesture = undefined;
+    this.#armCanvasClickSuppression();
+    this.#scope = gesture.scope;
+    this.#setSelection(gesture.nodes, gesture.primary);
+    this.#announceMarqueeEnd();
+    return true;
+  }
+
+  #normalizeMarqueeUnion(
+    nodes: SVGGraphicsElement[],
+    scope: SVGGraphicsElement | SVGSVGElement,
+    root: SVGSVGElement,
+  ): SVGGraphicsElement[] {
+    const selected = new Set(nodes.filter((node) => node.isConnected && isSelectableNode(node, root) && scope.contains(node)));
+    const ordered = Array.from(scope.querySelectorAll<SVGGraphicsElement>(EDITABLE_SELECTOR))
+      .filter((node) => selected.has(node));
+    return ordered.filter((node) => !ordered.some((descendant) => node !== descendant && node.contains(descendant)));
+  }
+
   refreshSelectionAffordances(): void {
     const root = this.svgNode;
     if (root && this.#selected) enhanceRotationHandle(root);
@@ -1186,6 +1366,8 @@ export class SvgEditor {
   setAgentMutationBlocked(blocked: boolean): void {
     if (this.#agentMutationBlocked === blocked) return;
     if (blocked) {
+      this.cancelMarquee();
+      this.#cancelPrecisePointer();
       this.#cancelInteractiveMutation();
       const scaleSnapshot = this.#groupScaleEdit?.snapshot;
       this.#groupScaleEdit = undefined;
@@ -1295,8 +1477,7 @@ export class SvgEditor {
     this.#mutate(() => {
       setLayerHidden(node, !hidden);
       if (node === this.selectedNode) {
-        if (hidden) this.#selectNode(node);
-        else this.#selected?.select(false).resize(false).draggable(false);
+        this.#setSelection([...this.#selectedNodes], node);
       }
     });
     this.#callbacks.onStatus(`${hidden ? "Showed" : "Hid"} ${this.#label(node)}`);
@@ -1426,28 +1607,81 @@ export class SvgEditor {
   }
 
   #bindCanvasSelection(svg: SVGSVGElement): void {
+    svg.addEventListener("pointerdown", (event) => {
+      if (!this.#isExactTogglePointer(event)) return;
+      const target = event.target;
+      const candidate = target instanceof Element && target.closest(SELECTION_BOUNDING_SHAPE_SELECTOR)
+        ? this.selectedNode
+        : target instanceof Element ? getDirectSelectionTarget(target, svg) : undefined;
+      if (!candidate) return;
+      this.#precisePointer = {
+        candidate,
+        moved: false,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+      };
+      svg.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }, true);
+    svg.addEventListener("pointermove", (event) => {
+      const precise = this.#precisePointer;
+      if (!precise || precise.pointerId !== event.pointerId) return;
+      if (Math.hypot(event.clientX - precise.startX, event.clientY - precise.startY) >= 4) precise.moved = true;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }, true);
+    svg.addEventListener("pointerup", (event) => {
+      const precise = this.#precisePointer;
+      if (!precise || precise.pointerId !== event.pointerId) return;
+      this.#precisePointer = undefined;
+      if (!precise.moved) this.#toggleExactNode(precise.candidate, svg);
+      this.#suppressCanvasClickUntil = performance.now() + 250;
+      if (svg.hasPointerCapture?.(event.pointerId)) svg.releasePointerCapture(event.pointerId);
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }, true);
+    const cancelPrecise = (event: PointerEvent) => {
+      if (this.#precisePointer?.pointerId !== event.pointerId) return;
+      this.#cancelPrecisePointer();
+      event.stopImmediatePropagation();
+    };
+    svg.addEventListener("pointercancel", cancelPrecise, true);
+    svg.addEventListener("lostpointercapture", cancelPrecise, true);
     svg.addEventListener("pointermove", (event) => {
       const target = event.target;
       if (!(target instanceof Element) || target.closest(HANDLE_SELECTOR)) {
         this.#setHover(undefined);
         return;
       }
-      this.#setHover(getScopedSelectionTarget(target, this.#scope ?? svg, svg));
+      this.#setHover(this.#selectionPreferences.clickDepth === "exact"
+        ? getDirectSelectionTarget(target, svg)
+        : getScopedSelectionTarget(target, this.#scope ?? svg, svg));
     });
     svg.addEventListener("pointerleave", () => this.#setHover(undefined));
     svg.addEventListener("click", (event) => {
       if (performance.now() < this.#suppressCanvasClickUntil) return;
       const target = event.target;
       if (!(target instanceof Element) || target.closest(HANDLE_SELECTOR)) return;
-      const candidate = event.altKey
+      const exactToggle = this.#isExactToggleClick(event);
+      if ((event.metaKey || event.ctrlKey) && !exactToggle) return;
+      const directDefault = this.#selectionPreferences.clickDepth === "exact" && !event.shiftKey;
+      const candidate = event.altKey || exactToggle || directDefault
         ? getDirectSelectionTarget(target, svg)
         : getScopedSelectionTarget(target, this.#scope ?? svg, svg);
+      if (exactToggle && !candidate) return;
       if (candidate) {
-        if (event.altKey) {
+        if (exactToggle) {
+          this.#toggleExactNode(candidate, svg);
+        } else if (event.altKey) {
           this.#scope = getSelectableParent(candidate, svg) ?? svg;
           this.#setSelection([candidate], candidate);
         } else if (event.shiftKey) {
           this.#toggleNode(candidate);
+        } else if (directDefault) {
+          this.#scope = getSelectableParent(candidate, svg) ?? svg;
+          this.#setSelection([candidate], candidate);
         } else {
           this.#setSelection([candidate], candidate);
         }
@@ -1896,6 +2130,7 @@ export class SvgEditor {
     if (!source) return;
     this.#mutate(() => {
       const clone = source.cloneNode(true) as SVGGraphicsElement;
+      this.#labelDuplicate(source, clone);
       this.#remapCloneIds(clone);
       for (const node of [clone, ...Array.from(clone.querySelectorAll<SVGGraphicsElement>(EDITABLE_SELECTOR))]) {
         node.removeAttribute("data-lineage-key");
@@ -1905,6 +2140,23 @@ export class SvgEditor {
       (SVG(clone) as SvgElement).dmove(12, 12);
       this.selectNode(clone);
     });
+  }
+
+  #labelDuplicate(source: SVGGraphicsElement, clone: SVGGraphicsElement): void {
+    const sourceLabel = source.getAttribute("aria-label")?.trim();
+    const root = this.svgNode;
+    if (!sourceLabel || !root) return;
+    const usedLabels = new Set(Array.from(root.querySelectorAll<SVGGraphicsElement>(EDITABLE_SELECTOR))
+      .map((node) => node.getAttribute("aria-label")?.trim())
+      .filter((label): label is string => Boolean(label)));
+    const base = `${sourceLabel} copy`;
+    let candidate = base;
+    let suffix = 2;
+    while (usedLabels.has(candidate)) {
+      candidate = `${base} ${suffix}`;
+      suffix += 1;
+    }
+    clone.setAttribute("aria-label", candidate);
   }
 
   #remapCloneIds(clone: SVGGraphicsElement): void {
@@ -1948,8 +2200,14 @@ export class SvgEditor {
 
   #handleKeydown(event: KeyboardEvent): void {
     const target = event.target;
+    if (event.key === "Escape" && (this.#marqueeGesture || this.#precisePointer)) {
+      event.preventDefault();
+      if (!this.cancelMarquee()) this.#cancelPrecisePointer();
+      return;
+    }
     if (document.querySelector("dialog[open]")) return;
-    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
+    if (target instanceof HTMLElement
+      && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))) return;
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
       event.preventDefault();
       if (event.shiftKey) this.redo();
@@ -1978,8 +2236,7 @@ export class SvgEditor {
         this.#cancelInteractiveMutation();
         return;
       }
-      if (this.#scope && this.svgNode && this.#scope !== this.svgNode) this.backToGroup();
-      else this.#setSelection([]);
+      this.#setSelection([]);
       return;
     }
     if (event.key === "Delete" || event.key === "Backspace") {
@@ -2008,11 +2265,54 @@ export class SvgEditor {
   }
 
   #deselect(): void {
-    this.#selectedNodes.forEach((node) => node.removeAttribute(SECONDARY_ATTRIBUTE));
+    this.svgNode?.querySelector(SELECTION_HALOS_SELECTOR)?.remove();
+    this.#selectedNodes.forEach((node) => {
+      node.removeAttribute(SECONDARY_ATTRIBUTE);
+      node.removeAttribute(PRIMARY_FALLBACK_ATTRIBUTE);
+    });
     if (!this.#selected) return;
     this.#selected.off(".lineage");
     this.#selected.select(false).resize(false).draggable(false);
     this.#selected = undefined;
+  }
+
+  #isExactToggleClick(event: MouseEvent): boolean {
+    if (event.button !== 0 || event.shiftKey) return false;
+    if (this.#selectionPreferences.preciseModifier === "alt") {
+      return event.altKey && !event.metaKey && !event.ctrlKey;
+    }
+    if (event.altKey || event.metaKey === event.ctrlKey) return false;
+    const isApple = /^(?:Mac|iPhone|iPad|iPod)/.test(navigator.platform);
+    return isApple ? event.metaKey : event.ctrlKey;
+  }
+
+  #isExactTogglePointer(event: PointerEvent): boolean {
+    return this.#isExactToggleClick(event);
+  }
+
+  #toggleExactNode(node: SVGGraphicsElement, root: SVGSVGElement): void {
+    const parent = getSelectableParent(node, root) ?? root;
+    if (parent === (this.#scope ?? root)) this.#toggleNode(node);
+    else {
+      this.#scope = parent;
+      this.#setSelection([node], node);
+    }
+  }
+
+  #cancelPrecisePointer(): void {
+    const precise = this.#precisePointer;
+    this.#precisePointer = undefined;
+    if (precise) this.#armCanvasClickSuppression();
+    const root = this.svgNode;
+    if (precise && root?.hasPointerCapture?.(precise.pointerId)) root.releasePointerCapture(precise.pointerId);
+  }
+
+  #armCanvasClickSuppression(): void {
+    this.#suppressCanvasClickUntil = performance.now() + 250;
+  }
+
+  #announceMarqueeEnd(): void {
+    this.#artboard.dispatchEvent(new CustomEvent("lineage-marquee-end"));
   }
 
   #setSelectionUi(node?: SVGGraphicsElement): void {
@@ -2035,6 +2335,7 @@ export class SvgEditor {
 
   #syncSelectionUi(): void {
     if (!this.#selected || !this.#drawing) return;
+    this.#renderSelectionHalos();
     const node = this.#selected.node as SVGGraphicsElement;
     enhanceRotationHandle(this.#drawing.node as SVGSVGElement);
     let box: { x: number; y: number };
@@ -2178,7 +2479,7 @@ export class SvgEditor {
     const root = this.svgNode;
     if (root) {
       this.#callbacks.onDocumentChange(root);
-      this.#callbacks.onDirtyChange(this.serializeClean() !== this.#baseline);
+      this.#callbacks.onDirtyChange(!cleanSvgsEqualForDirtyComparison(this.serializeClean(), this.#baseline));
     }
   }
 
@@ -2282,5 +2583,46 @@ export class SvgEditor {
 
   #notifySelectionContext(): void {
     this.#callbacks.onSelectionContextChange(this.selectionContext);
+  }
+
+  #renderSelectionHalos(): void {
+    const root = this.svgNode;
+    if (!root) return;
+    let group = root.querySelector<SVGGElement>(SELECTION_HALOS_SELECTOR);
+    if (this.#selectedNodes.length === 0) {
+      group?.remove();
+      return;
+    }
+    if (!group) {
+      group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      group.setAttribute("data-lineage-selection-halos", "true");
+      group.setAttribute("aria-hidden", "true");
+      group.setAttribute("pointer-events", "none");
+      root.append(group);
+    }
+    let screenMatrix: DOMMatrix | null = null;
+    try { screenMatrix = root.getScreenCTM?.() ?? null; } catch { /* Detached test SVGs have no screen matrix. */ }
+    const minimumWidth = screenMatrix ? 2 / Math.max(Math.hypot(screenMatrix.a, screenMatrix.b), 0.001) : 1;
+    const minimumHeight = screenMatrix ? 2 / Math.max(Math.hypot(screenMatrix.c, screenMatrix.d), 0.001) : 1;
+    const rects = this.#selectedNodes.flatMap((node) => {
+      try {
+        const box = (SVG(node) as SvgElement).rbox(this.#drawing);
+        if (![box.x, box.y, box.width, box.height].every(Number.isFinite)) return [];
+        const width = Math.max(box.width, minimumWidth);
+        const height = Math.max(box.height, minimumHeight);
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        rect.setAttribute("class", "lineage-selection-halo");
+        rect.setAttribute("x", String(box.x - (width - box.width) / 2));
+        rect.setAttribute("y", String(box.y - (height - box.height) / 2));
+        rect.setAttribute("width", String(width));
+        rect.setAttribute("height", String(height));
+        rect.setAttribute("data-enhanced", String(this.#selectionPreferences.individualOutlines));
+        if (node === this.selectedNode && node.getAttribute(PRIMARY_FALLBACK_ATTRIBUTE) === "true") {
+          rect.setAttribute(PRIMARY_FALLBACK_ATTRIBUTE, "true");
+        }
+        return [rect];
+      } catch { return []; }
+    });
+    group.replaceChildren(...rects);
   }
 }

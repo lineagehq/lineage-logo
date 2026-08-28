@@ -1,0 +1,22 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T022",
+    "board_path": "docs/goals/marquee-selection-preferences/state.yaml",
+    "decision": "approved",
+    "full_outcome_complete": false,
+    "rationale": "T021 closes the sole T019 defect. Shift is frozen at pointerdown and carried only by sub-threshold background-click. Suppression is armed before preserving or clearing. Unmodified short gestures clear; Shift-short preserves; both shifted and unshifted >=4px drags remain inert. Controller and editor tests cover all outcomes. M activation, pan/object precedence, and cancellation lifecycle are unchanged. Fresh targeted verification passes 176 tests; full check passes 376.",
+    "worker_package": null,
+    "evidence": [
+      {"finding":"Frozen Shift","status":"closed","proof":"Background state stores pointerdown additive and returns it on short completion without resampling."},
+      {"finding":"Shift-short preservation","status":"closed","proof":"Editor arms click suppression and clears only when neither inert nor additive; behavioral test includes successor click."},
+      {"finding":"Other four paths","status":"closed","proof":"Unmodified short clears; shifted and unshifted >=4px drags preserve and suppress successor clicks."},
+      {"finding":"Verification","status":"pass","proof":"176 targeted tests; T021 records full 376-test check, typecheck, and build."}
+    ],
+    "subgoal_contract": null,
+    "parallel_safety": null,
+    "blocked_tasks": [],
+    "missing_evidence": ["T020 live browser QA and final oracle."],
+    "required_board_updates": ["Record T022 done and activate T020."]
+  }
+}

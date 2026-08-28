@@ -5,6 +5,7 @@ import {
   applySvgTextEdit,
   alignmentAvailability,
   alignmentOffsets,
+  cleanSvgsEqualForDirtyComparison,
   findSelectableByKeys,
   groupAvailability,
   groupSelection,
@@ -28,6 +29,13 @@ import {
   validateSvgTextEdit,
   visibleHistoryAvailability,
 } from "../src/client/canvas/editor";
+import {
+  clientRectFromPoints,
+  crossedMarqueeThreshold,
+  marqueeContains,
+  marqueeTouches,
+  renderedClientRect,
+} from "../src/client/canvas/marquee-selection";
 
 describe("editor serialization", () => {
   it("keeps history visibly disabled while provisional agent state restores snapshots", () => {
@@ -81,13 +89,22 @@ describe("editor serialization", () => {
     expect(serializeSvg(root, false)).not.toContain("data-lineage-hover");
   });
 
-  it("strips multi-selection affordances and all editor session state from clean saves", () => {
+  it("strips primary fallback and multi-selection affordances from clean saves and snapshots", () => {
     const window = new Window();
-    window.document.body.innerHTML = '<svg><path id="mark" data-lineage-key="element-1" data-lineage-secondary="true" /></svg>';
+    window.document.body.innerHTML = '<svg><path id="mark" data-lineage-key="element-1" data-lineage-secondary="true"/><path id="primary" data-lineage-primary-fallback="true"/></svg>';
     const root = window.document.querySelector("svg") as unknown as SVGSVGElement;
 
-    expect(serializeSvg(root, true)).toBe('<svg><path id="mark"></path></svg>');
+    expect(serializeSvg(root, true)).toBe('<svg><path id="mark"></path><path id="primary"></path></svg>');
     expect(serializeSvg(root, false)).not.toContain("data-lineage-secondary");
+    expect(serializeSvg(root, false)).not.toContain("data-lineage-primary-fallback");
+  });
+
+  it("strips the dedicated selection halo overlay from clean saves and snapshots", () => {
+    const window = new Window();
+    window.document.body.innerHTML = '<svg><path id="mark"/><g data-lineage-selection-halos="true"><rect class="lineage-selection-halo"/></g></svg>';
+    const root = window.document.querySelector("svg") as unknown as SVGSVGElement;
+    expect(serializeSvg(root, true)).toBe('<svg><path id="mark"></path></svg>');
+    expect(serializeSvg(root, false)).not.toContain("lineage-selection-halo");
   });
 
   it("strips agent review highlighting without changing accepted SVG content", () => {
@@ -117,6 +134,83 @@ describe("editor serialization", () => {
     expect(output).not.toContain("data-review-state");
     expect(output).not.toContain("data-transport-id");
     expect(output).not.toContain("data-lineage-");
+  });
+});
+
+describe("clean SVG dirty comparison", () => {
+  const opening = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" role="img" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="mark" fill="#fff"><path d="M0 0h2v2z"/></g></svg>';
+
+  it("ignores only ordering among complete root namespace declaration tokens", () => {
+    const reordered = '<svg xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" role="img"><g id="mark" fill="#fff"><path d="M0 0h2v2z"/></g></svg>';
+    expect(opening).not.toBe(reordered);
+    expect(cleanSvgsEqualForDirtyComparison(opening, reordered)).toBe(true);
+  });
+
+  it.each([
+    ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" role="img" xmlns:href="http://www.w3.org/1999/xlink"><g id="mark" fill="#fff"><path d="M0 0h2v2z"/></g></svg>', "namespace prefix"],
+    ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" role="img" xmlns:xlink="urn:changed"><g id="mark" fill="#fff"><path d="M0 0h2v2z"/></g></svg>', "namespace value"],
+    ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" role="img"><g id="mark" fill="#fff"><path d="M0 0h2v2z"/></g></svg>', "namespace presence"],
+    ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" role="img" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="mark" fill="#fff"><path d="M0 0h2v2z"/></g></svg>', "namespace count"],
+    ['<svg xmlns="http://www.w3.org/2000/svg" role="img" viewBox="0 0 20 20" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="mark" fill="#fff"><path d="M0 0h2v2z"/></g></svg>', "ordinary root attribute order"],
+    ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 20" role="img" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="mark" fill="#fff"><path d="M0 0h2v2z"/></g></svg>', "ordinary root attribute value"],
+    ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" role="img" xmlns:xlink="http://www.w3.org/1999/xlink"><g fill="#fff" id="mark"><path d="M0 0h2v2z"/></g></svg>', "descendant attribute order"],
+    ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" role="img" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="mark" fill="#000"><path d="M0 0h2v2z"/></g></svg>', "descendant value"],
+  ])("rejects a meaningful %s difference", (candidate) => {
+    expect(cleanSvgsEqualForDirtyComparison(opening, candidate)).toBe(false);
+  });
+
+  it("does not alter public clean serialization bytes", () => {
+    const { root } = (() => {
+      const window = new Window();
+      window.document.body.innerHTML = opening;
+      return { root: window.document.querySelector("svg") as unknown as SVGSVGElement };
+    })();
+    expect(serializeSvg(root, true)).toBe(root.outerHTML);
+  });
+});
+
+describe("duplicate layer labels", () => {
+  it("labels named clone roots deterministically without changing the source or descendant labels", () => {
+    const window = new Window({ url: "http://localhost/" });
+    for (const name of [
+      "window", "document", "DOMParser", "Event", "CustomEvent", "KeyboardEvent", "HTMLElement", "HTMLInputElement",
+      "HTMLTextAreaElement", "SVGElement", "SVGGraphicsElement", "SVGSVGElement", "Node", "Element", "CSS",
+    ] as const) vi.stubGlobal(name, window[name as keyof Window]);
+    registerWindow(window as never, window.document as never);
+    try {
+      const artboard = window.document.createElement("div");
+      artboard.innerHTML = '<svg><g id="logo" aria-label="Venue"><path id="child" aria-label="Venue child" d="M0 0h10v10z"/></g><path id="collision" aria-label="Venue copy" d="M20 0h10v10z"/><path id="unnamed" d="M40 0h10v10z"/></svg>';
+      window.document.body.append(artboard);
+      const names = [
+        "alignBottomButton", "alignCenterButton", "alignLeftButton", "alignmentReason", "alignMiddleButton", "alignRightButton",
+        "alignTopButton", "deleteButton", "duplicateButton", "fill", "fillError", "fillPicker", "fillState", "groupButton",
+        "hierarchyReason", "hideButton", "lockButton", "name", "nameClearButton", "opacity", "positionX", "positionY",
+        "reorderEarlierButton", "reorderLaterButton", "rotation", "scale", "selectionEmpty", "selectionName", "selectionPanel",
+        "stroke", "strokeError", "strokePicker", "strokeState", "strokeWidth", "ungroupButton",
+      ];
+      const controls = Object.fromEntries(names.map((name) => [name, window.document.createElement("button")])) as unknown as Record<string, HTMLElement>;
+      const editor = new SvgEditor(artboard as unknown as HTMLElement, controls as never, {
+        onDocumentChange: () => undefined, onDirtyChange: () => undefined, onHistoryChange: () => undefined,
+        onSelectionChange: () => undefined, onSelectionContextChange: () => undefined, onStatus: () => undefined,
+      });
+      editor.load(artboard.querySelector("svg") as unknown as SVGSVGElement);
+      const source = editor.svgNode?.querySelector("#logo") as unknown as SVGGraphicsElement;
+      editor.selectNode(source);
+      controls.duplicateButton.click();
+      expect(source.getAttribute("aria-label")).toBe("Venue");
+      expect(editor.selectedNode?.getAttribute("aria-label")).toBe("Venue copy 2");
+      expect(editor.selectedNode?.querySelector("path")?.getAttribute("aria-label")).toBe("Venue child");
+      editor.selectNode(source);
+      controls.duplicateButton.click();
+      expect(editor.selectedNode?.getAttribute("aria-label")).toBe("Venue copy 3");
+
+      const unnamed = editor.svgNode?.querySelector("#unnamed") as unknown as SVGGraphicsElement;
+      editor.selectNode(unnamed);
+      controls.duplicateButton.click();
+      expect(editor.selectedNode?.hasAttribute("aria-label")).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
@@ -777,5 +871,39 @@ describe("canvas selection", () => {
     window.document.querySelector("path")?.remove();
     expect(findSelectableByKeys(root, ["child", "group"])?.dataset.lineageKey).toBe("group");
     expect(findSelectableByKeys(root, ["missing"])).toBeUndefined();
+  });
+});
+
+describe("marquee client geometry", () => {
+  it("normalizes reverse drags and applies inclusive containment and touching rules", () => {
+    const marquee = clientRectFromPoints({ x: 30, y: 40 }, { x: 10, y: 20 });
+    expect(marquee).toEqual({ bottom: 40, height: 20, left: 10, right: 30, top: 20, width: 20 });
+    expect(marqueeContains(marquee, { bottom: 40, height: 20, left: 10, right: 30, top: 20, width: 20 })).toBe(true);
+    expect(marqueeContains(marquee, { bottom: 41, height: 21, left: 10, right: 30, top: 20, width: 20 })).toBe(false);
+    expect(marqueeTouches(marquee, { bottom: 50, height: 10, left: 30, right: 40, top: 40, width: 10 })).toBe(true);
+    expect(marqueeTouches(marquee, { bottom: 50, height: 9, left: 31, right: 40, top: 41, width: 9 })).toBe(false);
+    expect(crossedMarqueeThreshold({ x: 0, y: 0 }, { x: 3, y: 0 })).toBe(false);
+    expect(crossedMarqueeThreshold({ x: 0, y: 0 }, { x: 4, y: 0 })).toBe(true);
+  });
+
+  it("keeps rendered zero-thickness lines but excludes hidden, transparent, and unusable candidates", () => {
+    const window = new Window();
+    window.document.body.innerHTML = '<svg><g id="scope"><line id="line"/><path id="hidden" style="visibility:hidden"/><g visibility="hidden"><path id="override" style="visibility:visible"/></g><g opacity="0"><path id="transparent"/></g><path id="point"/></g></svg>';
+    const scope = window.document.querySelector("#scope") as unknown as SVGGraphicsElement;
+    const rect = (left: number, top: number, width: number, height: number) => ({
+      bottom: top + height, height, left, right: left + width, top, width,
+      x: left, y: top, toJSON: () => ({}),
+    });
+    const node = (id: string) => window.document.querySelector(`#${id}`) as unknown as SVGGraphicsElement;
+    Object.defineProperty(node("line"), "getBoundingClientRect", { value: () => rect(4, 8, 20, 0) });
+    Object.defineProperty(node("hidden"), "getBoundingClientRect", { value: () => rect(0, 0, 10, 10) });
+    Object.defineProperty(node("override"), "getBoundingClientRect", { value: () => rect(0, 0, 10, 10) });
+    Object.defineProperty(node("transparent"), "getBoundingClientRect", { value: () => rect(0, 0, 10, 10) });
+    Object.defineProperty(node("point"), "getBoundingClientRect", { value: () => rect(4, 8, 0, 0) });
+    expect(renderedClientRect(node("line"), scope)).toMatchObject({ height: 0, width: 20 });
+    expect(renderedClientRect(node("hidden"), scope)).toBeUndefined();
+    expect(renderedClientRect(node("override"), scope)).toMatchObject({ height: 10, width: 10 });
+    expect(renderedClientRect(node("transparent"), scope)).toBeUndefined();
+    expect(renderedClientRect(node("point"), scope)).toBeUndefined();
   });
 });

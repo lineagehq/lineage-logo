@@ -1,0 +1,25 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T019",
+    "board_path": "docs/goals/marquee-selection-preferences/state.yaml",
+    "decision": "rejected",
+    "full_outcome_complete": false,
+    "rationale": "Most locked behaviors are correct and 176 targeted tests pass, but one explicit rule regressed: an unarmed Shift gesture below 4px must preserve selection. The controller discarded additivity for background gestures and main unconditionally cleared. Existing tests missed this case. T020 must wait for bounded remediation and re-review.",
+    "worker_package": {
+      "objective": "Preserve frozen Shift through unarmed background gestures so sub-threshold Shift pointerup is a no-op with successor-click suppression, unmodified sub-threshold pointerup still clears, and every >=4px drag remains inert.",
+      "allowed_files": ["src/client/canvas/marquee-selection.ts","src/client/canvas/editor.ts","src/client/main.ts","tests/client-ux.test.ts","tests/editor-interactions.test.ts"],
+      "verify": ["npm run typecheck","npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts","npm run build","npm run check"],
+      "stop_if": ["Fix requires persistence, export, session, or transform changes.","Unmodified clicks stop clearing.",">=4px drags can clear or mutate.","Shift is sampled after pointerdown.","Successor suppression is lost.","Unrelated hunks cannot be preserved.","Same failure remains unexplained after two attempts."]
+    },
+    "evidence": [
+      {"finding":"Shift background click","status":"open","proof":"Background gesture state loses additive and background-click unconditionally clears."},
+      {"finding":"Other revised behaviors","status":"closed_by_inspection","proof":"KeyM lifecycle, pan/object precedence, leaf-most matching, union normalization, operation gates, serialization, and guidance are substantively covered."}
+    ],
+    "subgoal_contract": null,
+    "parallel_safety": null,
+    "blocked_tasks": ["T020"],
+    "missing_evidence": ["Shift background regression proof","Fresh full verification","T020 live QA"],
+    "required_board_updates": ["Record T019 rejected; create T021 Worker remediation and T022 Judge re-review; keep T020 queued."]
+  }
+}

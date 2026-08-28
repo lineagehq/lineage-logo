@@ -1,0 +1,18 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T014",
+    "board_path": "docs/goals/marquee-selection-preferences/state.yaml",
+    "summary": "Targeted live-browser recheck confirmed ordinary selection-box drag, rotation, resize, root/nested marquee, exact Meta-click, clean dirty/history restoration, and a clean console after T012. The in-app browser drag helper did not carry Meta through pointer movement under any supported spelling, so the precise Meta-drag itself remains a required human final-QA check rather than a falsely claimed pass. T012's behavioral regression and T013 review directly prove the fixed overlay path. Preferences may proceed, but final completion remains gated on human Cmd-drag confirmation.",
+    "note": "notes/T014-browser-recheck.md",
+    "decision": "proceed_with_manual_final_gate",
+    "evidence": [
+      "Reloaded updated app at 149% zoom; Meta-click selected Seatify title precisely with clean controls.",
+      "Ordinary overlay drag, rotation handle, and resize handle each mutated correctly and were individually undone back to exact clean markup.",
+      "Post-fix 100% marquee selected all three Seatify wordmark children; Meta-click removed one exact child; Undo and Save stayed disabled.",
+      "Browser console warnings/errors were empty.",
+      "Browser drag helper failed to deliver Meta during drag; final human Cmd-drag confirmation is required."
+    ],
+    "spawned_tasks": []
+  }
+}

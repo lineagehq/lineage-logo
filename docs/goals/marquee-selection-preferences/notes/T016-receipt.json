@@ -1,0 +1,29 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T016",
+    "board_path": "/Users/neonwatty/Desktop/lineage-logo/docs/goals/marquee-selection-preferences/state.yaml",
+    "summary": "The smallest correct revision adds an explicit M-held input to the existing stage gesture controller and replaces direct-scope matching with deepest-match normalization over all visible selectable descendants of the frozen scope. Shift remains additive at pointerdown. M is ignored in editable/modal/composing contexts and cleared on keyup, blur, or hidden visibility, cancelling an active marquee. Deep normalization must cover the additive union so an old ancestor cannot coexist with a new descendant. Existing highlighting, operation gates, dirty/history, and serialization support cross-parent inspection.",
+    "evidence": [
+      {"path":"src/client/canvas/marquee-selection.ts","finding":"The gesture controller currently starts marquee for every eligible ordinary empty press and has no M input."},
+      {"path":"src/client/main.ts","finding":"No M shortcut exists; global lifecycle already centralizes Space, dialogs, editable targets, and stage cancellation."},
+      {"path":"src/client/canvas/editor.ts","finding":"commitMarquee currently filters to direct children of the frozen scope, which collapses nested artwork to wrapper groups."},
+      {"path":"tests/editor-interactions.test.ts","finding":"Focused direct-child assertions must become deepest-match, cross-parent, additive-normalization, hidden/locked, history, and byte-stability proofs."}
+    ],
+    "facts": [
+      {"topic":"hotkey","value":"Hold physical KeyM to arm; Shift+M is additive; Cmd/Ctrl/Alt, composing, editable, and modal contexts do not arm."},
+      {"topic":"lifecycle","value":"M keyup, window blur, or hidden visibility disarms and cancels pending/active marquee without touching Space/middle pan."},
+      {"topic":"deep_match","value":"Match all selectable descendants in DOM order, then remove any matched ancestor containing another matched node."},
+      {"topic":"additive","value":"Normalize the complete frozen-selection plus new-match union so ancestors and descendants never coexist."},
+      {"topic":"allowed_files","value":["src/client/canvas/marquee-selection.ts","src/client/canvas/editor.ts","src/client/main.ts","tests/client-ux.test.ts","tests/editor-interactions.test.ts","tests/editor-serialization.test.ts","README.md"]},
+      {"topic":"verification","value":["npm run typecheck","npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts","npm run build"]}
+    ],
+    "contradictions": [],
+    "ambiguity_requiring_judge": [
+      {"question":"Must M remain held through pointerup?","recommendation":"Yes; release cancels for deterministic hold-to-activate behavior."},
+      {"question":"Search current scope or whole SVG?","recommendation":"Respect the frozen active scope; root scope reaches all nested artwork."}
+    ],
+    "commands": [],
+    "note_needed": false
+  }
+}

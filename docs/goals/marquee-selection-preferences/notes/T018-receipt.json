@@ -1,0 +1,19 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T018",
+    "board_path": "/Users/neonwatty/Desktop/lineage-logo/docs/goals/marquee-selection-preferences/state.yaml",
+    "changed_files": ["src/client/canvas/marquee-selection.ts","src/client/canvas/editor.ts","src/client/main.ts","src/client/styles.css","tests/client-ux.test.ts","tests/editor-interactions.test.ts","README.md"],
+    "commands": [
+      {"cmd":"npm run typecheck","status":"pass"},
+      {"cmd":"npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts","status":"pass"},
+      {"cmd":"npm run build","status":"pass"},
+      {"cmd":"npm run check","status":"pass"}
+    ],
+    "summary": "Implemented hold-physical-KeyM marquee activation with frozen Shift additivity, strict arming guards, complete disarm/cancellation lifecycle, and preserved Space/middle pan precedence. Unarmed short background presses clear selection; drags at or above 4px are inert and suppress successor clicks. Marquee now selects visible leaf-most descendants within the frozen scope, normalizes full additive unions against ancestor coexistence, preserves DOM order and one primary handle, and keeps cross-parent operations gated. Updated cursor guidance and README. Targeted verification passed 176 tests; full check passed 376 tests, typecheck, and build.",
+    "remaining_blockers": [],
+    "verification_attempts": 1,
+    "stopped_because": null,
+    "deviations": []
+  }
+}

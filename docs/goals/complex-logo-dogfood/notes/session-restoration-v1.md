@@ -1,0 +1,7 @@
+# Workspace session restoration v1
+
+The editor stores one bounded `lineage.workspace-session.v1` record in local storage. The exact v1 schema contains only the workspace name, active `concepts/*.svg` or `iterations/*.svg` path, up to 16 bounded ancestor/selection IDs, zoom from 25–400%, preview background, and the two preferred sidebar states. It never contains SVG markup, undo history, locks, overlays, agent ownership, proposals, reviews, or credentials.
+
+On startup, the record is accepted only when every field and key matches v1 and the workspace name matches the current workspace. The active path must also exist in the current workspace listing before it is opened. A missing file leaves the editor at the workspace list. A missing selected element falls back through the stored ancestry to the nearest surviving selectable element; if none survives, the document opens without a selection. Invalid JSON, extra fields, unsupported versions, out-of-range values, unsafe paths, unavailable storage, and workspace mismatches fail closed.
+
+Restoration applies after the saved workspace SVG is loaded. Intermediate default-state callbacks are not persisted, selection restoration does not focus a control, and selection, zoom, background, and sidebar restoration do not mutate SVG or dirty the document. Existing pending-agent recovery remains authoritative for its source document and is not copied into this record.

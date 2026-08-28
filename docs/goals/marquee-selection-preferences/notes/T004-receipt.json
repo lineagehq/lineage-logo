@@ -1,0 +1,160 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T004",
+    "board_path": "docs/goals/marquee-selection-preferences/state.yaml",
+    "decision": "rejected",
+    "full_outcome_complete": false,
+    "rationale": "Client-coordinate geometry, direct-scope normalization, modifier arbitration, serialization stripping, and targeted verification are sound, but acceptance is premature. A locked, blocked, or complex-resource primary receives neither handles nor a fallback highlight, violating visible-selection requirements. Escape can fail to cancel an active marquee when focus is editable or a dialog is open, and cancellation does not suppress the later synthesized click that can overwrite restored selection. Stage gesture coverage is source-text inspection rather than behavioral proof. One coherent remediation should close these gaps before browser QA.",
+    "worker_package": {
+      "objective": "Remediate the marquee slice as one coherent reliability package: provide visible primary fallback feedback when transform handles are unavailable; make active marquee and precise-pointer Escape cancellation precede focus/modal guards; suppress successor clicks after every explicit cancellation; extract stage gesture classification and state transitions into a testable controller used by main.ts; and add behavioral coverage for pan precedence, thresholds, Shift no-op, commit, pointercancel/lost capture, precise drag suppression, locked-primary feedback, clean history, and serialization.",
+      "allowed_files": [
+        "src/client/canvas/editor.ts",
+        "src/client/canvas/marquee-selection.ts",
+        "src/client/main.ts",
+        "src/client/styles.css",
+        "tests/editor-interactions.test.ts",
+        "tests/editor-serialization.test.ts",
+        "tests/client-ux.test.ts"
+      ],
+      "verify": [
+        "npm run typecheck",
+        "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts",
+        "npm run build"
+      ],
+      "stop_if": [
+        "Any required implementation file is outside allowed_files.",
+        "Existing unrelated dirty hunks cannot be preserved without semantic conflict.",
+        "The remediation requires preference persistence, workspace/session schema changes, exported SVG format changes, or generalized multi-object transforms.",
+        "The testable gesture controller would require a broad application bootstrap rewrite rather than a bounded extraction.",
+        "The same verification failure remains unexplained after two attempts."
+      ]
+    },
+    "evidence": [
+      {
+        "type": "verified_strengths",
+        "items": [
+          "src/client/canvas/marquee-selection.ts uses finite viewport client rectangles, inclusive containment/intersection, and a 4 CSS-pixel Euclidean threshold, so CSS zoom, viewBox mapping, and nested transforms do not require SVG-space conversion.",
+          "src/client/canvas/editor.ts commitMarquee freezes the active scope, enumerates only direct selectable children, preserves DOM order, unions Shift selections, and prevents ancestor/descendant co-selection.",
+          "Precise accelerator pointer handling runs in capture phase, stops propagation before draggable handlers, cancels moved sequences, toggles only within scope, and replaces across scope.",
+          "Hidden and effectively transparent ancestors are filtered while zero-thickness lines and locked visible nodes remain candidates.",
+          "Selection-only editor tests prove unchanged clean SVG bytes and no history checkpoint; serialization strips data-lineage-secondary and marquee UI remains outside SVG."
+        ]
+      },
+      {
+        "type": "finding",
+        "severity": "high",
+        "path": "src/client/canvas/editor.ts",
+        "lines": "1047-1155",
+        "finding": "Only non-primary nodes receive data-lineage-secondary. The primary receives visible feedback solely when svg.js handles are enabled, but handles are skipped for locked nodes, agent-blocked state, display:none nodes, and complex-resource nodes. Such a primary can be selected with no canvas-visible indicator.",
+        "required_fix": "Add an editor-only primary fallback marker and visible blue treatment whenever handles cannot be installed; remove it during deselection and strip it from all clean serialization and snapshots."
+      },
+      {
+        "type": "finding",
+        "severity": "high",
+        "path": "src/client/canvas/editor.ts",
+        "lines": "1271-1278, 2128-2168, 2221-2227",
+        "finding": "Editable-focus and open-dialog guards return before active marquee cancellation. cancelMarquee and cancelPrecisePointer also release state/capture without arming click suppression, so a subsequent synthesized click can clear or toggle the restored selection.",
+        "required_fix": "Handle Escape for an active marquee or precise pointer before ordinary focus/modal guards, restore the pre-gesture selection, and suppress the successor click on every explicit cancellation path."
+      },
+      {
+        "type": "finding",
+        "severity": "medium",
+        "path": "tests/client-ux.test.ts",
+        "lines": "159-176",
+        "finding": "Pan-versus-marquee coverage reads main.ts and asserts source substrings. It does not execute pointer precedence, threshold transitions, commit, cancellation, lost capture, or additive below-threshold behavior.",
+        "required_fix": "Move gesture classification/state transitions into a testable controller used by main.ts and replace the source-string interaction assertions with event/state behavioral tests."
+      },
+      {
+        "type": "verification",
+        "commands": [
+          {
+            "cmd": "npm run typecheck",
+            "status": "pass"
+          },
+          {
+            "cmd": "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts",
+            "status": "pass",
+            "detail": "160 tests passed"
+          },
+          {
+            "cmd": "npm run build",
+            "status": "pass"
+          }
+        ],
+        "assessment": "Green verification confirms current code compiles and existing assertions pass; it does not cover the rejected behaviors."
+      },
+      {
+        "type": "worker_package",
+        "task_id": "T004R",
+        "objective": "Remediate the marquee slice as one coherent reliability package: provide visible primary fallback feedback when transform handles are unavailable; make active marquee and precise-pointer Escape cancellation precede focus/modal guards; suppress successor clicks after every explicit cancellation; extract stage gesture classification and state transitions into a testable controller used by main.ts; and add behavioral coverage for pan precedence, thresholds, Shift no-op, commit, pointercancel/lost capture, precise drag suppression, locked-primary feedback, clean history, and serialization.",
+        "allowed_files": [
+          "src/client/canvas/editor.ts",
+          "src/client/canvas/marquee-selection.ts",
+          "src/client/main.ts",
+          "src/client/styles.css",
+          "tests/editor-interactions.test.ts",
+          "tests/editor-serialization.test.ts",
+          "tests/client-ux.test.ts"
+        ],
+        "verify": [
+          "npm run typecheck",
+          "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts",
+          "npm run build"
+        ],
+        "stop_if": [
+          "Any required implementation file is outside allowed_files.",
+          "Existing unrelated dirty hunks cannot be preserved without semantic conflict.",
+          "The remediation requires preference persistence, workspace/session schema changes, exported SVG format changes, or generalized multi-object transforms.",
+          "The testable gesture controller would require a broad application bootstrap rewrite rather than a bounded extraction.",
+          "The same verification failure remains unexplained after two attempts."
+        ],
+        "acceptance_checks": [
+          "A locked or otherwise handle-ineligible primary has a visible blue fallback marker; ordinary handle-enabled primary behavior remains unchanged.",
+          "Fallback primary and secondary markers are absent from clean serialization and snapshots.",
+          "Escape cancels an active marquee or precise pointer even when an input is focused or a dialog is open, and an immediate successor click cannot change restored selection.",
+          "Behavior-level tests execute middle/Space pan precedence, blank-primary marquee, object-primary non-marquee, 3px pending, 4px activation, unmodified below-threshold clear, Shift below-threshold no-op, commit, pointercancel, and lost-capture cancellation.",
+          "A precise-modifier pointerdown cannot reach a simulated object-drag listener, and moved or cancelled precise sequences neither select nor mutate."
+        ]
+      },
+      {
+        "type": "browser_qa_focus_after_remediation",
+        "items": [
+          "Verify fallback highlight on locked and filter/resource-heavy primary layers.",
+          "Verify Escape while an inspector control retained focus, then release the pointer and confirm selection is restored.",
+          "Verify stage-padding marquee, blank-SVG marquee, Space/middle pan, and object drag at 100% and non-default zoom.",
+          "Probe clip-path and mask cases as geometric-client-bound behavior rather than pixel-painted hit testing.",
+          "Inspect console, dirty indicator, undo state, and exported SVG after cancellations and precise toggles."
+        ]
+      }
+    ],
+    "subgoal_contract": null,
+    "parallel_safety": null,
+    "blocked_tasks": [
+      "T005"
+    ],
+    "missing_evidence": [
+      "Visible primary feedback when handles are unavailable",
+      "Cancellation-safe successor-click behavior",
+      "Behavioral stage gesture arbitration tests",
+      "Real-browser QA at multiple zoom levels"
+    ],
+    "required_board_updates": [
+      {
+        "task_id": "T004",
+        "status": "done",
+        "action": "Record this rejected milestone receipt."
+      },
+      {
+        "task_id": "T004R",
+        "status": "active",
+        "action": "Insert and dispatch exactly one Worker using the worker_package above."
+      },
+      {
+        "task_id": "T005",
+        "status": "queued",
+        "action": "Do not begin browser QA until T004R passes verification and a read-only remediation review."
+      }
+    ]
+  }
+}

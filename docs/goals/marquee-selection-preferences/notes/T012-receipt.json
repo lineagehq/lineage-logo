@@ -1,0 +1,30 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T012",
+    "board_path": "/Users/neonwatty/Desktop/lineage-logo/docs/goals/marquee-selection-preferences/state.yaml",
+    "changed_files": [
+      "src/client/canvas/editor.ts",
+      "tests/editor-interactions.test.ts"
+    ],
+    "commands": [
+      {
+        "cmd": "npm run typecheck",
+        "status": "pass"
+      },
+      {
+        "cmd": "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts",
+        "status": "pass"
+      },
+      {
+        "cmd": "npm run build",
+        "status": "pass"
+      }
+    ],
+    "summary": "Fixed precise-modifier capture for svg.js selection bounding shapes by resolving .svg_select_shape and .svg_select_shape_pointSelect to the current selected object. Meta-drag on the overlay is now intercepted before mutation, while ordinary overlay drag and Meta-modified resize/rotation handles remain available. Added a behavioral regression reproducing the browser coordinates and overlay mutation path, with clean serialization and history assertions. Typecheck, all 165 targeted tests, and production build pass.",
+    "remaining_blockers": [],
+    "verification_attempts": 1,
+    "stopped_because": null,
+    "deviations": []
+  }
+}

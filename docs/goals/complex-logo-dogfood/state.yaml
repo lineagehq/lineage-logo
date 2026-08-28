@@ -1,0 +1,1105 @@
+version: 2
+
+goal:
+  title: "Complex Logo Dogfood and Session Restoration"
+  slug: complex-logo-dogfood
+  kind: existing_plan
+  tranche: "Build the complex stress asset, dogfood it, fix confirmed defects, implement safe versioned restoration, and prove the complete reload-and-restart oracle."
+  status: done
+  oracle:
+    signal: "A 30–50-layer Seatify logo completes the documented manual-and-agent walkthrough and restores its expected workspace state after reload and local server restart."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Receipts for the complex asset, adversarial walkthrough, confirmed-defect fixes, versioned restoration, npm run check, and a final browser restart transcript with full_outcome_complete: true."
+  intake:
+    original_request: "Plan a more complex layered logo dogfood pass, fixes, and session restoration."
+    interpreted_outcome: "The canvas is proven and polished for complex SVG editing, with reliable workspace restoration."
+    input_shape: existing_plan
+    audience: "Lineage Logo users and logo-designer agents"
+    authority: approved
+    proof_type: demo
+    completion_proof: "Complex asset artifact, passing repository gate suite, and a successful adversarial browser walkthrough including save/reload and restart restoration."
+    likely_misfire: "Creating a complex-looking logo without exercising or fixing difficult editor behavior."
+    blind_spots_considered:
+      - "Decorative complexity instead of structurally meaningful hierarchy"
+      - "Unsupported defs, masks, clipping, transforms, or text behavior"
+      - "Selection or navigation accidentally dirtying the document"
+      - "Large layer-tree usability and performance"
+      - "Stale persisted documents or element identifiers"
+      - "Cross-tab agent ownership and restart behavior"
+      - "Persisting sensitive or unbounded SVG contents"
+    existing_plan_facts:
+      - "Create a complex Seatify stress logo first."
+      - "Run an adversarial editing session against it."
+      - "Fix concrete issues revealed by the stress test."
+      - "Add session restoration after editor behavior is stabilized."
+      - "Defer agent-driven insertion of entirely new SVG layers."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  exact_human_approval_can_terminal_wait: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/complex-logo-dogfood/"
+    command: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.4.3/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/complex-logo-dogfood"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map complex-SVG risk surfaces, existing fixtures and save paths, workspace persistence behavior, and verification seams without editing product files."
+    inputs:
+      - README.md
+      - package.json
+      - src
+      - tests
+      - docs/goals
+      - "/Users/neonwatty/Desktop/seatify-logo-dogfood/logos (read-only evidence only)"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation, tests, or asset files."
+      - "Keep searches inside the repository except for the explicitly named Seatify workspace evidence path."
+      - "Return concrete file-path evidence, current capability boundaries, and candidate QA scenarios."
+    expected_output:
+      - "Complex SVG capability and risk map"
+      - "Current fixture, save, reload, and restoration map"
+      - "Repository gate and targeted verification commands"
+      - "Proposed exact location and structure for the stress asset"
+      - "Recommended largest safe first Worker package"
+    receipt:
+      result: done
+      summary: "Current editor supports meaningful nested groups, basic geometry, bounded text/paint, sibling multi-selection, alignment, grouping, reorder, undo/redo, clean serialization, and numbered saves. Key stress risks are resource-backed shape handles, style-driven organization lockouts, hierarchy constraints, large-tree UX, and absent general workspace restoration. Only sidebar preferences and pending-agent recovery persist today. The safest first Worker package is a deterministic repository fixture, structural/round-trip assertions, and a versioned walkthrough—without product-code changes."
+      evidence:
+        - path: "src/client/canvas/editor.ts:79"
+          finding: "Editable nodes are limited to g, path, rect, circle, ellipse, polygon, polyline, line, and text; defs/resources and nested SVG content are excluded from selection."
+        - path: "src/client/canvas/editor.ts:618"
+          finding: "Any style element disables grouping, ungrouping, and reordering; group requires adjacent same-parent siblings, while alignment allows multiple same-parent siblings."
+        - path: "src/client/canvas/editor.ts:1010"
+          finding: "Direct resize/rotate/drag handles are withheld from non-group elements using url(#...) resources, making gradient/clip/mask-backed shapes an explicit QA boundary."
+        - path: "src/client/canvas/editor.ts:450"
+          finding: "Clean serialization clones the SVG, strips editor handles and reserved transient attributes, preserves ordinary source SVG, and removes legacy metadata#lineage-logo-edit."
+        - path: "src/client/main.ts:985"
+          finding: "Opening a file resets collapsed layer keys, search, zoom to 1, selection/history through editor.load, and current document state; no ordinary active-document restoration exists."
+        - path: "src/client/ui/layout.ts:18"
+          finding: "Only left/right collapsed preferences persist in localStorage under versioned v1 keys; responsive collapse is temporary."
+        - path: "src/client/main.ts:48"
+          finding: "sessionStorage persistence is narrowly scoped to pending-agent review recovery and includes SVG, session identity, revision, source path, and dirty state."
+        - path: "src/server/workspace.ts:74"
+          finding: "Saving validates a maximum 5 MiB SVG, verifies the source exists, creates a new iterations/iteration-N.svg atomically, and never overwrites the source."
+        - path: tests/fixtures/workspace/concepts/concept-1.svg
+          finding: "Existing workspace fixture covers a gradient, clipPath, mask, filter, transform, path, rect, and group, but has too few editable layers and shallow hierarchy for the oracle."
+        - path: /Users/neonwatty/Desktop/seatify-logo-dogfood/logos/concepts/concept-1.svg
+          finding: "Canonical Seatify concept is only 1.5 KiB with roughly 12 editable nodes and shallow logo/icon/seating/wordmark hierarchy; it is useful design evidence but insufficient as the destructive stress fixture."
+        - path: "tests/editor-serialization.test.ts:547"
+          finding: "Existing seams cover organization, resource/reference round trips, multi-selection alignment, ancestry, deterministic labels, and nearest-surviving-ancestor fallback."
+        - path: "tests/workspace.test.ts:15"
+          finding: "Existing server seams cover listing, byte-exact reads, traversal/symlink rejection, active/external content rejection, numbering, non-overwrite saves, and metadata preservation."
+      facts:
+        - category: capability_boundary
+          value: "Use source aria-label values for meaningful layer names; IDs remain reference identities. Avoid style elements in the primary stress asset because they intentionally disable organization operations."
+        - category: capability_boundary
+          value: "Use local defs resources—linear/radial gradients, clipPath, mask, and filter—but apply resource references selectively. Resource-backed leaf shapes remain selectable but do not receive direct transform handles; wrapping them in meaningful groups permits group transforms."
+        - category: capability_boundary
+          value: "Multi-selection grouping and reorder require adjacent siblings in one parent; alignment requires at least two siblings sharing one parent. The walkthrough must construct selections that meet and intentionally violate these rules."
+        - category: fixture_map
+          value: "Proposed asset: tests/fixtures/workspace/concepts/complex-seatify.svg. Target 36–44 selectable nodes, four or five hierarchy depths, deterministic local-only SVG, viewBox 0 0 1024 768, no external fonts/resources, no style element."
+        - category: fixture_structure
+          value: "Recommended hierarchy: logo > venue-mark > venue-shell/stage/seating-map; seating-map > table-clusters > four named table groups > table and seats; access-routes > aisles/entrance; ticket-accent > clipped/masked local shapes; wordmark > primary text/tagline. Include transforms, strokes, opacity, text, gradient paint, and meaningful adjacent siblings."
+        - category: save_reload_map
+          value: "Client POSTs editor.serializeClean() plus current sourcePath to /api/iterations; server validates and atomically writes the next numbered iteration; successful ordinary Save reloads the newly saved workspace file."
+        - category: restoration_map
+          value: "Currently persisted: sidebar preferences in localStorage and pending-agent review in sessionStorage. Not persisted generally: active file, ordinary selection/scope, zoom, preview background, layer disclosure/search, locks, undo/redo, or unsaved manual SVG."
+        - category: verification
+          value: "Targeted commands: npm test -- --run tests/workspace.test.ts tests/editor-serialization.test.ts tests/editor-interactions.test.ts; then npm run check."
+        - category: qa_scenarios
+          value: "Measure layer search/disclosure and exact nested selection; resource-backed leaf versus wrapper transforms; ten mixed edits and full undo/redo; group/reorder/alignment allowed and rejected cases; save/reopen structural equivalence; agent proposal accept/reject; stale selection fallback; reload/restart state restoration; console errors and unexpected dirty changes."
+        - category: first_worker_package
+          value: "Largest safe first package: add complex-seatify.svg, a focused complex fixture test asserting 30–50 selectable named layers, >=4 hierarchy depths, unique IDs/local references/no forbidden content, clean serialize/reparse structural fidelity, and a versioned walkthrough note. Do not edit src or external Seatify files."
+      contradictions:
+        - claim: "The final oracle expects active document, nested selection, zoom, background, and sidebar restoration."
+          evidence: "Only sidebar preferences and pending-agent recovery persist; normal open resets zoom, selection, layer disclosure, and search."
+          resolution: "This is planned product work for the later restoration phase, not a T003 asset requirement."
+        - claim: "The oracle asks to exercise clipped or masked regions if capability permits."
+          evidence: "Such leaf nodes can serialize and remain selectable, but direct transform handles are intentionally suppressed when url(#...) resources are present."
+          resolution: "Include bounded resources and test fidelity; transform their meaningful wrapper group or record the leaf-handle limitation explicitly."
+      ambiguity_requiring_judge:
+        - question: "Should the stress fixture deliberately include one style element to test the documented organization lockout, or omit style so the same primary asset can exercise grouping/reorder?"
+          recommendation: "Omit style from the primary fixture; cover the lockout in existing focused tests or a separate minimal fixture."
+        - question: "Should clip/mask references be placed on transform targets despite handles being unavailable?"
+          recommendation: "Place references on named leaf artwork inside transformable wrapper groups and document both behaviors in the walkthrough."
+      commands:
+        - "pwd && git rev-parse --show-toplevel && sed -n '1,240p' docs/goals/complex-logo-dogfood/state.yaml && sed -n '1,220p' docs/goals/complex-logo-dogfood/goal.md"
+        - "rg --files -g 'AGENTS.md' -g 'AGENTS.override.md' -g '!node_modules' && sed -n '1,220p' README.md && cat package.json"
+        - "rg -n \"localStorage|sessionStorage|persist|restore|serialize|save|iterations|workspace|fixture|clipPath|mask|linearGradient|radialGradient|defs|foreignObject|style\" src tests --glob '!**/*.snap'"
+        - "sed -n '1,190p' src/client/ui/layout.ts; sed -n '40,120p' src/client/main.ts; sed -n '860,1115p' src/client/main.ts; sed -n '1450,1585p' src/client/main.ts"
+        - "sed -n '1,210p' src/server/workspace.ts; sed -n '430,735p' src/client/canvas/editor.ts; sed -n '880,1165p' src/client/canvas/editor.ts"
+        - "rg --files tests/fixtures docs/oracle | sort; rg --files /Users/neonwatty/Desktop/seatify-logo-dogfood/logos | sort; summarize Seatify SVG byte sizes"
+        - "sed -n '1,220p' tests/fixtures/workspace/concepts/concept-1.svg; sed -n '1,220p' /Users/neonwatty/Desktop/seatify-logo-dogfood/logos/concepts/concept-1.svg; rg test names in targeted suites"
+        - "sed -n '1,125p' src/client/canvas/editor.ts; sed -n '592,785p' tests/editor-serialization.test.ts; sed -n '1,135p' tests/workspace.test.ts"
+      note_needed: false
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the existing plan and Scout evidence, then approve or revise the complex Seatify asset specification and first Worker package."
+    inputs:
+      - "T001 receipt"
+      - "Goal oracle walkthrough in goal.md"
+    constraints:
+      - "Read-only; do not create the SVG or edit tests."
+      - "Reject decorative complexity that does not exercise editor behavior."
+      - "Keep unsupported SVG features bounded or explicitly excluded."
+      - "Specify the largest safe useful Worker package, exact allowed_files, verify commands, and stop conditions."
+    expected_output:
+      - "Plan verdict and risks"
+      - "Approved stress-asset contract"
+      - "Exact T003 allowed_files"
+      - "Exact T003 verify commands"
+      - "Stop conditions and deferred features"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "The plan matches the oracle and the Scout evidence supports a meaningful vertical first slice. Approve T003 with a narrowed primary-fixture contract: omit style elements so organization workflows remain exercisable; place bounded local resource references on named leaf artwork inside transformable wrapper groups; test leaf selection and serialization while transforming wrappers. Decorative fragments, external resources, product-code changes, and restoration work are excluded. The package must deliver the asset, structural and round-trip proof, and a versioned walkthrough together."
+      evidence:
+        - path: docs/goals/complex-logo-dogfood/goal.md
+          finding: "The oracle requires 30–50 meaningful editable layers, four hierarchy depths, mixed editing, bounded defs resources, clean fidelity, agent review, save/reload, and later safe restoration."
+        - path: "docs/goals/complex-logo-dogfood/state.yaml#T001.receipt"
+          finding: "Editable SVG scope, hierarchy constraints, serialization seams, fixture location, verification commands, and restoration gaps are mapped with concrete repository evidence."
+        - path: "src/client/canvas/editor.ts:618"
+          finding: "Per the T001 receipt, any style element disables grouping, ungrouping, and reordering, so including style in the primary fixture would prevent core oracle operations."
+        - path: "src/client/canvas/editor.ts:1010"
+          finding: "Per the T001 receipt, resource-backed leaf shapes remain selectable but lack direct transform handles; meaningful wrapper groups provide the supported transformation boundary."
+        - path: "src/client/canvas/editor.ts:450"
+          finding: "Per the T001 receipt, clean serialization preserves ordinary source SVG while removing editor-only state, providing an appropriate round-trip verification seam."
+      worker_package:
+        task_id: T003
+        objective: "Create one deterministic 30–50-layer complex Seatify venue/event SVG with meaningful names and at least four hierarchy depths; add focused structural and clean-serialization round-trip assertions; and document a versioned adversarial manual-and-agent walkthrough that exercises supported hierarchy, resource, edit, undo/redo, save/reload, and limitation cases without changing product code."
+        approved_asset_contract:
+          location: tests/fixtures/workspace/concepts/complex-seatify.svg
+          editable_layers: "30–50 meaningfully named selectable nodes"
+          hierarchy: "At least four meaningful depths using venue, stage, seating, access-route, ticket-accent, and wordmark regions"
+          required_features:
+            - "Local linear or radial gradient"
+            - "Local clipPath or mask"
+            - "Paths and text"
+            - "Strokes and opacity"
+            - "Nested transforms"
+            - "Adjacent same-parent siblings suitable for grouping, reorder, and alignment"
+            - "Unique IDs and local-only references"
+            - "aria-label values for meaningful layer names"
+          style_element_resolution: "Do not include a style element in the primary fixture. Assert its absence. Existing focused coverage may retain the organization-lockout case; changing that product behavior is deferred."
+          resource_leaf_resolution: "Apply url(#...) resources only to named leaf artwork inside meaningful wrapper groups. The walkthrough must select and inspect the leaf, verify fidelity and visibility, record that direct leaf transform handles are intentionally unavailable, and move/rotate/resize the wrapper group instead."
+          excluded:
+            - "External fonts"
+            - "Network resources"
+            - foreignObject
+            - "Scripts or event handlers"
+            - "Meaningless fragments added only to reach the layer count"
+            - "Product implementation changes"
+        allowed_files:
+          - tests/fixtures/workspace/concepts/complex-seatify.svg
+          - tests/complex-seatify-fixture.test.ts
+          - docs/goals/complex-logo-dogfood/notes/complex-seatify-walkthrough-v1.md
+        verify:
+          - "npm test -- --run tests/complex-seatify-fixture.test.ts"
+          - "npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/workspace.test.ts"
+          - "npm run check"
+        stop_if:
+          - "Achieving 30–50 meaningful editable layers or four hierarchy depths requires editing src/**."
+          - "A required SVG feature is rejected, silently stripped, or changes reference identity during clean serialization."
+          - "The design requires an external font, network resource, script, event handler, or foreignObject."
+          - "Resource-backed artwork cannot remain selectable and structurally intact when placed inside a transformable wrapper group."
+          - "The approved files overlap uncommitted user changes that cannot be preserved."
+          - "The same verification failure recurs twice without a bounded fix inside the allowed files."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "T003 is one coherent fixture/test/walkthrough slice and the board permits only one write Worker. Splitting it would weaken contract-to-assertion consistency."
+      blocked_tasks: []
+      deferred_tasks:
+        - "Changing organization behavior for SVGs containing style elements"
+        - "Adding direct transform handles to resource-backed leaf shapes"
+        - "Any confirmed product-code defects found during browser QA"
+        - "Versioned active-document and UI-state restoration"
+        - "Agent-driven insertion of entirely new SVG layers"
+      missing_evidence:
+        - "The stress asset has not yet been created or structurally verified."
+        - "Rendered quality and real browser interaction behavior remain unproven until T005."
+        - "Reload and server-restart restoration remain unimplemented and unverified."
+      required_board_updates:
+        - "Record this receipt on T002 and mark T002 done."
+        - "Replace T003 provisional allowed_files, verify, and stop_if with this worker package."
+        - "Activate T003 as the sole active task."
+        - "Preserve T004 as the required milestone gate before browser QA."
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Create one deterministic 30–50-layer complex Seatify venue/event SVG with meaningful names and at least four hierarchy depths; add focused structural and clean-serialization round-trip assertions; and document a versioned adversarial manual-and-agent walkthrough that exercises supported hierarchy, resource, edit, undo/redo, save/reload, and limitation cases without changing product code."
+    inputs:
+      - "T001 receipt"
+      - "T002 receipt"
+      - "Goal oracle walkthrough in goal.md"
+    constraints:
+      - "Use meaningful layer names and hierarchy; do not inflate layer count with meaningless fragments."
+      - "Keep the asset deterministic, local, and free of external resources."
+      - "Do not change editor behavior in this task."
+      - "Judge or PM must replace the provisional paths below if Scout evidence selects a different fixture surface."
+    expected_output:
+      - "30–50-layer complex Seatify SVG artifact"
+      - "Automated structure and serialization assertions"
+      - "Versioned manual-and-agent walkthrough checklist"
+      - "Verification receipt"
+    allowed_files:
+      - "tests/fixtures/workspace/concepts/complex-seatify.svg"
+      - "tests/complex-seatify-fixture.test.ts"
+      - "docs/goals/complex-logo-dogfood/notes/complex-seatify-walkthrough-v1.md"
+    verify:
+      - "npm test -- --run tests/complex-seatify-fixture.test.ts"
+      - "npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/workspace.test.ts"
+      - "npm run check"
+    stop_if:
+      - "Achieving 30–50 meaningful editable layers or four hierarchy depths requires editing src/**."
+      - "A required SVG feature is rejected, silently stripped, or changes reference identity during clean serialization."
+      - "The design requires an external font, network resource, script, event handler, or foreignObject."
+      - "Resource-backed artwork cannot remain selectable and structurally intact when placed inside a transformable wrapper group."
+      - "The approved files overlap uncommitted user changes that cannot be preserved."
+      - "The same verification failure recurs twice without a bounded fix inside the allowed files."
+    receipt:
+      result: done
+      changed_files:
+        - tests/fixtures/workspace/concepts/complex-seatify.svg
+        - tests/complex-seatify-fixture.test.ts
+        - docs/goals/complex-logo-dogfood/notes/complex-seatify-walkthrough-v1.md
+      commands:
+        - cmd: "npm test -- --run tests/complex-seatify-fixture.test.ts"
+          status: pass
+        - cmd: "npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/workspace.test.ts"
+          status: pass
+        - cmd: "npm run check"
+          status: pass
+      summary: "Added a deterministic 42-node Seatify SVG with six meaningful hierarchy levels, named accessible layers, local gradients, clipPath and mask resources on selectable leaves inside transformable wrappers, mixed geometry/text/strokes/opacity, nested transforms, and useful sibling sets. Added structural, safety, local-reference, and deterministic clean-serialization round-trip assertions. Added the versioned adversarial manual-and-agent walkthrough covering navigation, resource limitations, 12 mixed edits, undo/redo, agent review, save/reload, and evidence rules. All required verification passes; no scope deviations."
+      deviations: []
+      remaining_blockers: []
+      verification_attempts: 3
+      stopped_because: null
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether the stress asset and walkthrough are structurally meaningful, deterministic, and strong enough to expose editor defects before browser QA begins."
+    inputs:
+      - "T003 receipt"
+      - "Stress asset diff"
+      - "Walkthrough contract"
+    constraints:
+      - "Read-only."
+      - "Reject the milestone if layer count, hierarchy, SVG feature coverage, naming, or assertions can pass without exercising the oracle."
+    expected_output:
+      - "Asset milestone pass or fail"
+      - "Missing coverage"
+      - "Exact QA focus areas"
+      - "Decision to activate T005 or return a corrective Worker task"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "T003 satisfies the approved asset milestone. The 42 selectable nodes form a semantically coherent six-level venue hierarchy rather than decorative count inflation. The fixture includes meaningful sibling sets, nested transforms, paths, text, paint, strokes, opacity, gradients, a visible mask boundary, and resource-backed leaves inside transformable groups. Tests enforce validation, naming, identity, references, exclusions, and deterministic clean round trips. The walkthrough covers the required complex-document behaviors and clearly distinguishes expected limitations. Remaining uncertainty is appropriately browser-level; no corrective Worker package is justified before T005."
+      evidence:
+        - path: tests/fixtures/workspace/concepts/complex-seatify.svg
+          finding: "The inspected fixture contains 42 selectable, uniquely labeled nodes across the six-level venue-logo/venue-mark/seating-map/table-clusters/table-cluster-west/west-seat-north chain."
+        - path: tests/fixtures/workspace/concepts/complex-seatify.svg
+          finding: "Stage, seating, access routes, ticket artwork, and wordmark are distinct functional regions; table and seat siblings provide meaningful grouping, alignment, reorder, and ancestry targets."
+        - path: tests/fixtures/workspace/concepts/complex-seatify.svg
+          finding: "Local gradients, clipPath, and mask references are bounded; ticket ribbon, ticket stub, and venue frame are selectable leaves inside named transformed wrappers. No style, script, foreignObject, external font, or network resource is present."
+        - path: tests/complex-seatify-fixture.test.ts
+          finding: "Assertions enforce exactly 42 selectable nodes, the 30–50 bound, at least four hierarchy depths, unique labels and IDs, required semantic regions, feature coverage, forbidden-content exclusions, local reference integrity, selectable resource leaves, transformed wrappers, and useful same-parent siblings."
+        - path: tests/complex-seatify-fixture.test.ts
+          finding: "The clean round-trip test verifies stable selectable order, labels, ancestry signatures, transforms, all resource references, stripping of editor metadata, workspace validation, and deterministic second serialization."
+        - path: docs/goals/complex-logo-dogfood/notes/complex-seatify-walkthrough-v1.md
+          finding: "The execution contract covers search, disclosure, visibility, exact selection, ancestry, allowed and rejected multi-selection, resource boundaries, twelve mixed operation categories, full history traversal, agent reject/accept/manual correction, save/reopen, rendered comparison, dirty-state evidence, and console evidence."
+        - path: "docs/goals/complex-logo-dogfood/state.yaml#T003.receipt"
+          finding: "All three approved verification commands passed with no deviations or remaining blockers."
+      missing_coverage:
+        - coverage: "Rendered correctness and visual usefulness"
+          status: "Pending T005"
+          reason: "Structural and serialization tests cannot prove gradients, mask notches, clipped artwork, nested transforms, or text render correctly in the live canvas."
+        - coverage: "Live layer-tree behavior and large-document interaction"
+          status: "Pending T005"
+          reason: "Search, disclosure, exact selection, ancestry, visibility, mixed-parent rejection, focus, and dirty-state behavior require browser evidence."
+        - coverage: "Actual history-entry count"
+          status: "Pending T005"
+          reason: "Walkthrough steps that group then rename or hide then show may create more history entries than the twelve numbered operation categories; QA must record actual checkpoints and prove return to both original and redone states."
+        - coverage: "Agent proposal transaction behavior"
+          status: "Pending T005"
+          reason: "Reject, accept, selection retention, dirty-state preservation, and manual correction are not exercised by the fixture tests."
+        - coverage: "Page reload, server restart, and stale-target restoration"
+          status: "Deferred to T009–T010"
+          reason: "The asset milestone intentionally does not implement or prove versioned session restoration."
+      browser_qa_focus_areas:
+        - "Copy the fixture to a disposable workspace and verify the source hash before destructive edits."
+        - "Confirm all 42 named layers appear and the exact six-level west-seat ancestry chain is navigable without dirtying the document."
+        - "Exercise seat, ticket, and aisle search plus venue, seating, ticket, and wordmark disclosure while monitoring selection and focus."
+        - "Verify same-parent west-seat alignment/grouping availability and mixed-parent rejection with no mutation or dirty-state change."
+        - "Select ticket-ribbon and ticket-stub directly; confirm their absent leaf transform handles are expected, then move, rotate, and resize their wrapper groups while watching clip, mask, and gradient fidelity."
+        - "Inspect the masked ticket notches and clipped ribbon visually at multiple zoom levels; record any clipping, bounding-box, or hit-target mismatch."
+        - "Perform every mixed edit in order and record the actual history-entry count, selected IDs, hierarchy, paint references, and dirty state after each atomic mutation."
+        - "Undo until the exact opening structure and rendering return, then redo until the exact post-edit checkpoint returns; do not assume the numbered categories equal history entries."
+        - "Stress the layer tree and canvas during nested selection, multi-selection, rotation, resize, duplication, reorder, group, ungroup, visibility, text, paint, and opacity changes; capture latency or selection drift."
+        - "Reject and then accept the bounded agent proposal; verify session identity, selection, hierarchy, dirty state, and subsequent manual correction."
+        - "Save a numbered iteration, reopen it, compare layer identities, ancestry, transforms, text, local references, and rendered regions, and verify no editor-only metadata remains."
+        - "Record console errors, unexpected dirty transitions, focus loss, inaccessible controls, and any unsupported action that appears enabled."
+      worker_package: null
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence:
+        - "No live-browser walkthrough has yet been executed against the fixture."
+        - "No rendered screenshots or interaction transcript exist yet."
+        - "Session restoration remains outside this completed milestone."
+      required_board_updates:
+        - "Record this receipt on T004 and mark T004 done."
+        - "Activate T005 as the sole active task."
+        - "Treat the actual atomic history-entry count as observed evidence rather than assuming it equals the twelve numbered operation categories."
+        - "Preserve T006 as the required triage gate before any product-code fix package."
+        - "Keep full_outcome_complete false until T009–T010 and the final audit prove reload, restart, stale-target fallback, and the complete oracle."
+  - id: T005
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Run the approved adversarial browser walkthrough against the complex asset and record a reproducible defect and UX-friction matrix."
+    inputs:
+      - "T003 walkthrough contract"
+      - "T004 receipt"
+      - "Complex Seatify stress asset"
+    constraints:
+      - "Use a descriptive `.localhost` URL."
+      - "Keep destructive QA on a copied fixture or disposable iteration."
+      - "Record exact reproduction steps, expected behavior, observed behavior, severity, and evidence for every finding."
+      - "Do not fix product code during this task."
+    expected_output:
+      - "Completed walkthrough transcript"
+      - "Defect and UX-friction matrix"
+      - "Console and performance observations"
+      - "Prioritized candidates for one or more coherent fix packages"
+    receipt:
+      result: done
+      summary: "Completed the adversarial complex-logo browser walkthrough on a disposable workspace. Geometry, paint, text, hierarchy, resource wrappers, 19-step undo/redo, save/reopen, clean serialization, and reload baselining were exercised. Found baseline dirty-state failure, unsafe agent-connection ownership recovery, and duplicate-label ambiguity. Agent reject/accept remained safely blocked because the owning tab contained unsaved user work. All findings have exact reproduction, expected/observed behavior, severity, evidence, and prioritized package candidates."
+      evidence:
+        - docs/goals/complex-logo-dogfood/notes/T005-browser-qa.md
+        - /tmp/lineage-logo-complex-qa.fZzN3e/iterations/iteration-1.svg
+      facts:
+        - "The disposable source hash still matches the canonical fixture hash."
+        - "Nineteen undo and redo checkpoints preserved all sampled SVG state and local resource references."
+        - "Undo-to-origin leaves Save and Reset edits enabled."
+        - "The agent boundary cannot be tested safely while an older unsaved tab owns the singleton connection."
+        - "Saved SVG contains unique IDs and no editor or agent transport metadata."
+        - "Reload currently preserves sidebar preferences only and loses the active document, selection, zoom, and background."
+      contradictions: []
+      ambiguity_requiring_judge:
+        - "Whether safe agent-connection ownership transfer belongs in the current restoration package or a follow-up slice."
+        - "Whether deterministic duplicate naming should share the dirty-state fix package or remain separate."
+      commands:
+        - command: "Adversarial in-app browser walkthrough at http://complex-seatify.localhost:5173/"
+          status: pass
+        - command: "shasum and metadata/ID/resource inspection of disposable source and iteration-1.svg"
+          status: pass
+      note_needed: false
+  - id: T006
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Triage the adversarial QA findings and specify the largest safe coherent confirmed-defect Worker package."
+    inputs:
+      - "T005 receipt and evidence"
+      - "Current repo state and tests"
+    constraints:
+      - "Read-only."
+      - "Reject speculative features and findings without reproducible evidence."
+      - "Separate goal-owned regressions from pre-existing or explicitly deferred behavior."
+      - "Define allowed_files, verification, and stop conditions for T007."
+    expected_output:
+      - "Confirmed finding set"
+      - "Prioritized coherent fix package"
+      - "Exact T007 allowed_files"
+      - "Exact T007 verify commands"
+      - "Deferred findings with rationale"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "D1 is a confirmed high-severity editor-state defect: reaching the history origin leaves Save and Reset enabled. D3 is confirmed, bounded UX friction on the same duplication/history surface and safely belongs in one coherent editor-integrity package. F1 requires only a walkthrough correction. D2 is not approved for T007: the singleton guard prevented unsafe takeover as designed, while ownership transfer is a speculative cross-tab persistence feature outside this package and explicitly excluded from restoration state. T007 must reproduce D1 in automation before changing behavior and preserve exact SVG, history, accessibility, and agent transaction semantics."
+      worker_package:
+        objective: "Implement one coherent editor-state integrity package: reproduce and fix baseline-aware dirty tracking so exact undo-to-origin clears dirty state and disables Save/Reset while redo-away restores dirty state; give duplicated named layers deterministic collision-safe clone labels without changing the source or descendant labels; add focused regressions; and correct the complex walkthrough to use the exact Scale field and actual atomic history checkpoint counts."
+        allowed_files:
+          - src/client/canvas/editor.ts
+          - src/client/history/history.ts
+          - src/client/main.ts
+          - tests/editor-interactions.test.ts
+          - tests/editor-serialization.test.ts
+          - tests/history.test.ts
+          - tests/client-ux.test.ts
+          - docs/goals/complex-logo-dogfood/notes/complex-seatify-walkthrough-v1.md
+        verify:
+          - "npm test -- --run tests/history.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+          - "npm test -- --run tests/complex-seatify-fixture.test.ts tests/workspace.test.ts tests/agent-history.test.ts tests/agent-transport.test.ts tests/agent-reconnect.test.ts"
+          - "npm run check"
+        stop_if:
+          - "D1 cannot be reproduced with a regression that reaches disabled Undo while checking exact clean serialization and dirty callbacks; do not guess at a fix."
+          - "The fix would clear dirty state while clean serialization still differs from the loaded baseline."
+          - "The fix requires weakening deterministic clean serialization, dropping history, or changing agent acceptance/recovery semantics."
+          - "Duplicate naming requires changing the original layer, renaming descendants, or synthesizing persisted author labels for an unnamed source."
+          - "Any safe fix requires ownership takeover, cross-tab state transfer, persisted unsaved SVG, or files outside allowed_files."
+          - "The same targeted or full verification failure recurs twice without a bounded cause inside allowed_files."
+      evidence:
+        - path: "docs/goals/complex-logo-dogfood/notes/T005-browser-qa.md#D1"
+          finding: "Undo restored sampled opening state and disabled Undo, but Save and Reset remained enabled."
+        - path: "src/client/canvas/editor.ts:2181"
+          finding: "Dirty state derives from clean serialization versus the loaded baseline and must be hardened at history restore."
+        - path: "src/client/main.ts:445"
+          finding: "Save and Reset availability is driven by the dirty callback."
+        - path: "docs/goals/complex-logo-dogfood/notes/T005-browser-qa.md#D3"
+          finding: "Duplicated star had a unique ID but an identical visible and accessible label."
+        - path: "src/client/canvas/editor.ts:1894"
+          finding: "Duplication remaps IDs and keys but not the cloned root aria-label."
+        - path: "src/server/agent-transport.ts:142"
+          finding: "Singleton ownership rejection is an intentional safety boundary, so cross-tab transfer is deferred."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence:
+        - "T007 must capture exact clean serialization and dirty callbacks at history origin."
+        - "Agent reject/accept/manual-correction proof remains pending a clean single-owner browser session."
+        - "Reload, restart, and stale-target restoration remain pending T009-T010."
+      required_board_updates:
+        - "Record this receipt on T006 and mark T006 done."
+        - "Activate T007 as the sole active task."
+        - "Defer D2 cross-tab ownership transfer."
+        - "Require T008 to audit undo-origin serialization and button state, redo-away behavior, duplicate labels, undo/redo labels, and the amended walkthrough."
+        - "Keep full_outcome_complete false."
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Implement one coherent editor-state integrity package: reproduce and fix baseline-aware dirty tracking so exact undo-to-origin clears dirty state and disables Save/Reset while redo-away restores dirty state; give duplicated named layers deterministic collision-safe clone labels without changing the source or descendant labels; add focused regressions; and correct the complex walkthrough to use the exact Scale field and actual atomic history checkpoint counts."
+    inputs:
+      - "T005 receipt"
+      - "T006 receipt"
+    constraints:
+      - "Implement only confirmed findings in the Judge-approved package."
+      - "Preserve SVG fidelity, existing shortcuts, accessibility, and agent transaction behavior."
+      - "Judge or PM must populate exact paths and commands before activation."
+    expected_output:
+      - "Working fixes for the approved package"
+      - "Focused regression coverage"
+      - "Targeted and full verification receipt"
+      - "Residual known limitations"
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "src/client/history/history.ts"
+      - "src/client/main.ts"
+      - "tests/editor-interactions.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/history.test.ts"
+      - "tests/client-ux.test.ts"
+      - "docs/goals/complex-logo-dogfood/notes/complex-seatify-walkthrough-v1.md"
+    verify:
+      - "npm test -- --run tests/history.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+      - "npm test -- --run tests/complex-seatify-fixture.test.ts tests/workspace.test.ts tests/agent-history.test.ts tests/agent-transport.test.ts tests/agent-reconnect.test.ts"
+      - "npm run check"
+    stop_if:
+      - "D1 cannot be reproduced with a regression that reaches disabled Undo while checking exact clean serialization and dirty callbacks; do not guess at a fix."
+      - "The fix would clear dirty state while clean serialization still differs from the loaded baseline."
+      - "The fix requires weakening deterministic clean serialization, dropping history, or changing agent acceptance/recovery semantics."
+      - "Duplicate naming requires changing the original layer, renaming descendants, or synthesizing persisted author labels for an unnamed source."
+      - "Any safe fix requires ownership takeover, cross-tab state transfer, persisted unsaved SVG, or files outside allowed_files."
+      - "The same targeted or full verification failure recurs twice without a bounded cause inside allowed_files."
+    receipt:
+      result: blocked
+      changed_files: []
+      commands:
+        - cmd: "npm test -- --run tests/editor-interactions.test.ts -t \"baseline-aware editor history\""
+          status: pass
+      summary: "Stopped at the explicit D1 reproduction boundary. A temporary focused regression performed three atomic edits—keyboard movement, exact Scale field change, and duplication—then undid until Undo was disabled. At origin, clean serialization exactly matched the loaded baseline and the final dirty callback was false; redo restored the edited serialization and dirty true. The regression therefore passed against current code instead of reproducing D1. Temporary diagnostic edits were removed, leaving no T007 changes. Required package verification was not run because the task’s stop condition required immediate termination rather than a speculative fix."
+      deviations:
+        - "No implementation, duplicate-label change, walkthrough amendment, or required verification suite was performed because the mandatory D1 regression did not reproduce."
+      remaining_blockers:
+        - "D1 needs a reproducing automated sequence or additional evidence distinguishing the browser QA sequence from the tested atomic movement, Scale, and duplication sequence."
+      verification_attempts: 1
+      stopped_because: "D1 cannot be reproduced with a regression that reaches disabled Undo while checking exact clean serialization and dirty callbacks; do not guess at a fix."
+  - id: T008
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the complex-document fix milestone against the QA evidence and decide whether another bounded fix package is required before restoration work."
+    inputs:
+      - "T005 finding matrix"
+      - "T006 decision"
+      - "T007 receipt and diff"
+    constraints:
+      - "Read-only."
+      - "Re-run or demand evidence for the affected oracle steps."
+      - "Do not advance with unresolved high-confidence corruption, selection, transform, undo, or serialization defects."
+    expected_output:
+      - "Milestone complete or not complete"
+      - "Residual defect assessment"
+      - "Next fix task if required"
+      - "Decision to activate restoration phase"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      rationale: "The milestone cannot advance to restoration. T005 observed a high-confidence dirty-control mismatch after the full 19-checkpoint sequence, while T007 tested only movement, Scale, and duplication. That narrower passing regression does not falsify failures involving rotate, paint, text, reorder, alignment, group/rename/ungroup, visibility, or resource-wrapper edits. T005 also lacks byte-exact origin serialization, so speculative dirty clearing remains forbidden. A corrective package should preserve a full-sequence regression, conditionally fix only a reproduced divergence, and independently complete confirmed duplicate naming and walkthrough corrections. Targeted browser re-QA remains mandatory before T009."
+      worker_package:
+        objective: "Create a permanent regression that mirrors the complete T005 mixed history sequence against the complex Seatify fixture and records exact clean serialization, dirty callbacks, Undo/Redo availability, and simulated Save/Reset availability at every checkpoint; fix dirty tracking only if that exact sequence reproduces a mismatch; independently implement deterministic collision-safe labels for duplicated named layers; and amend the walkthrough to use the exact Scale field and observed atomic history counts."
+        allowed_files:
+          - src/client/canvas/editor.ts
+          - src/client/history/history.ts
+          - src/client/main.ts
+          - tests/editor-interactions.test.ts
+          - tests/editor-serialization.test.ts
+          - tests/history.test.ts
+          - tests/client-ux.test.ts
+          - docs/goals/complex-logo-dogfood/notes/complex-seatify-walkthrough-v1.md
+        verify:
+          - "npm test -- --run tests/history.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+          - "npm test -- --run tests/complex-seatify-fixture.test.ts tests/workspace.test.ts tests/agent-history.test.ts tests/agent-transport.test.ts tests/agent-reconnect.test.ts"
+          - "npm run check"
+        stop_if:
+          - "The complete T005 operation sequence cannot be represented through existing supported editor actions without adding product-only test hooks."
+          - "A proposed dirty fix clears dirty state while clean serialization differs from the loaded baseline; identify the hidden mutation instead."
+          - "The fix requires weakening serialization fidelity, dropping history entries, coalescing gestures, or changing agent transaction behavior."
+          - "Duplicate naming would modify the source layer, rename descendants, or synthesize persisted author labels for an unnamed source."
+          - "Any implementation requires cross-tab ownership transfer, persisted unsaved SVG, or files outside allowed_files."
+          - "The same targeted or full verification failure recurs twice without a bounded cause inside allowed_files."
+      evidence:
+        - path: "docs/goals/complex-logo-dogfood/notes/T005-browser-qa.md#Undo-to-origin"
+          finding: "The full browser sequence reached disabled Undo after nineteen checkpoints while Save and Reset remained enabled."
+        - path: "docs/goals/complex-logo-dogfood/state.yaml#T007.receipt"
+          finding: "The temporary regression exercised only movement, exact Scale, and duplication and therefore did not falsify the full-sequence browser result."
+        - path: "docs/goals/complex-logo-dogfood/notes/T005-browser-qa.md#D3"
+          finding: "Duplicate IDs were unique but visible and accessible labels remained identical."
+        - path: "docs/goals/complex-logo-dogfood/notes/T005-browser-qa.md#F1"
+          finding: "The walkthrough still needs exact Scale-field and atomic checkpoint guidance."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - task_id: T009
+          reason: "Restoration must not begin while the full mixed-sequence dirty-state contradiction and confirmed D3/F1 work remain unresolved."
+      missing_evidence:
+        - "Byte-exact clean serialization at every undo checkpoint of the complete T005 sequence."
+        - "Dirty callback and Save/Reset state correlated with the complete sequence."
+        - "Targeted browser rerun after the corrective package in a clean single-owner session."
+        - "Deterministic duplicate-label collision behavior including undo/redo."
+        - "Amended walkthrough."
+      required_board_updates:
+        - "Record T008 done with decision not_complete."
+        - "Activate corrective Worker T011."
+        - "Then run PM browser re-QA T012 and Judge audit T013 before T009."
+        - "Keep D2 cross-tab ownership transfer deferred."
+        - "Keep full_outcome_complete false."
+  - id: T011
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Create a permanent regression that mirrors the complete T005 mixed history sequence against the complex Seatify fixture and records exact clean serialization, dirty callbacks, Undo/Redo availability, and simulated Save/Reset availability at every checkpoint; fix dirty tracking only if that exact sequence reproduces a mismatch; independently implement deterministic collision-safe labels for duplicated named layers; and amend the walkthrough to use the exact Scale field and observed atomic history counts."
+    inputs:
+      - "T005 browser QA evidence"
+      - "T007 blocked diagnostic receipt"
+      - "T008 not-complete Judge receipt"
+    constraints:
+      - "Implement only the Judge-approved corrective package."
+      - "Do not add product-only test hooks."
+      - "Preserve exact SVG serialization, history, accessibility, and agent transaction behavior."
+      - "Do not implement cross-tab ownership transfer or persist unsaved SVG."
+    expected_output:
+      - "Permanent full-sequence regression with checkpoint evidence"
+      - "Conditional dirty-state fix only if reproduced"
+      - "Deterministic duplicate-label behavior and regressions"
+      - "Amended adversarial walkthrough"
+      - "Targeted and full verification receipt"
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "src/client/history/history.ts"
+      - "src/client/main.ts"
+      - "tests/editor-interactions.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/history.test.ts"
+      - "tests/client-ux.test.ts"
+      - "docs/goals/complex-logo-dogfood/notes/complex-seatify-walkthrough-v1.md"
+    verify:
+      - "npm test -- --run tests/history.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+      - "npm test -- --run tests/complex-seatify-fixture.test.ts tests/workspace.test.ts tests/agent-history.test.ts tests/agent-transport.test.ts tests/agent-reconnect.test.ts"
+      - "npm run check"
+    stop_if:
+      - "The complete T005 operation sequence cannot be represented through existing supported editor actions without adding product-only test hooks."
+      - "A proposed dirty fix clears dirty state while clean serialization differs from the loaded baseline; identify the hidden mutation instead."
+      - "The fix requires weakening serialization fidelity, dropping history entries, coalescing gestures, or changing agent transaction behavior."
+      - "Duplicate naming would modify the source layer, rename descendants, or synthesize persisted author labels for an unnamed source."
+      - "Any implementation requires cross-tab ownership transfer, persisted unsaved SVG, or files outside allowed_files."
+      - "The same targeted or full verification failure recurs twice without a bounded cause inside allowed_files."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - tests/editor-interactions.test.ts
+        - tests/editor-serialization.test.ts
+        - docs/goals/complex-logo-dogfood/notes/complex-seatify-walkthrough-v1.md
+      commands:
+        - cmd: "npm test -- --run tests/history.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+          status: pass
+        - cmd: "npm test -- --run tests/complex-seatify-fixture.test.ts tests/workspace.test.ts tests/agent-history.test.ts tests/agent-transport.test.ts tests/agent-reconnect.test.ts"
+          status: pass
+        - cmd: "npm run check"
+          status: pass
+      summary: "Added a permanent fixture-backed regression covering the complete 18-checkpoint T005 sequence, every undo/redo state, exact clean serialization, dirty callbacks, and simulated Save/Reset availability. It proved current dirty tracking correct at baseline and away from baseline, so no speculative dirty fix was applied. Duplicates now receive deterministic collision-safe root labels while preserving source labels, descendant labels, and unnamed sources; focused tests cover collisions and repeated copies. Updated the walkthrough to use Geometry Scale exactly and reconcile all atomic checkpoint counts. All required suites and the 317-test full gate pass."
+      deviations:
+        - "No dirty-tracking product change was made because the complete supported sequence did not reproduce a mismatch. The enumerated sequence reproducibly contains 18, not 19, atomic checkpoints."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T012
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Repeat the complete complex-logo history sequence in the browser after T011, capture exact origin serialization and Save/Reset state, verify deterministic duplicate labels, and complete the agent reject/accept/manual-correction boundary in a clean single-owner session."
+    inputs:
+      - "T005 browser transcript"
+      - "T008 Judge receipt"
+      - "T011 implementation receipt"
+    constraints:
+      - "Use a descriptive `.localhost` URL and disposable workspace."
+      - "Do not close or overwrite a user tab with unsaved work."
+      - "Capture exact serialized origin equality, dirty/button state, duplicate labels, undo/redo labels, and console output."
+      - "Do not change product code during this task."
+    expected_output:
+      - "Targeted full-sequence browser transcript"
+      - "Dirty-state and button-state evidence at every undo/redo boundary"
+      - "Duplicate-label and agent review proof"
+      - "Residual defect matrix"
+    receipt:
+      result: done
+      summary: "Repeated all 18 browser checkpoints on a fresh 5174 disposable editor with a clean agent owner. Duplicate labels and undo/redo of the copy passed; agent proposal revert, accept, and manual text correction passed with no console errors. The dirty defect reproduced and is now isolated: real-browser history restoration moves root xmlns:xlink attribute order. Origin and baseline are both 7,077 characters and become exactly equal when only that declaration order is normalized, yet Save/Reset remain enabled after Undo disables. Restoration must remain blocked until this deterministic serialization mismatch is fixed and rechecked."
+      evidence:
+        - docs/goals/complex-logo-dogfood/notes/T012-browser-reqa.md
+        - "http://complex-seatify-qa.localhost:5174/"
+      facts:
+        - "The supported mixed sequence contains exactly 18 atomic history checkpoints."
+        - "All intermediate dirty/button states and every redo state behaved correctly."
+        - "At undo origin, only root xmlns:xlink attribute order differs from the opening live SVG."
+        - "Duplicate label Ticket accent star copy survives redo with a stable unique ID and leaves the source label unchanged."
+        - "Agent transactions qa-reject-1 and qa-accept-1 completed as reverted and accepted in one clean-owner session."
+        - "Manual correction retained accepted fill #33245f while restoring text EVERY SEAT CONNECTS."
+        - "Browser warning/error log was empty."
+      contradictions:
+        - "T011's happy-dom full-sequence regression reports exact origin serialization, but the real browser reparses and reorders xmlns:xlink during history restore."
+      ambiguity_requiring_judge:
+        - "Choose the narrow deterministic fix boundary: preserve root namespace declaration order during restore or normalize only semantically irrelevant namespace declaration ordering in baseline comparison."
+      commands:
+        - command: "Complete 18-checkpoint in-app browser undo/redo walkthrough at complex-seatify-qa.localhost:5174"
+          status: pass-with-confirmed-defect
+        - command: "Public adapter qa-reject-1 revert and qa-accept-1 accept flows"
+          status: pass
+        - command: "Browser console warning/error audit"
+          status: pass
+      note_needed: false
+  - id: T013
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the corrective implementation and targeted browser re-QA, then decide whether the complex-document milestone is safe to advance into versioned restoration."
+    inputs:
+      - "T008 not-complete receipt"
+      - "T011 Worker receipt and diff"
+      - "T012 browser evidence"
+    constraints:
+      - "Read-only."
+      - "Reject advancement if the full history sequence, dirty controls, duplicate labels, or agent review boundary remains unproven or defective."
+      - "Keep cross-tab ownership transfer deferred without a new approved contract."
+    expected_output:
+      - "Milestone complete or not complete"
+      - "Oracle evidence map for history, serialization, duplicate labels, and agent review"
+      - "Decision to activate T009 restoration"
+      - "Next bounded package if still incomplete"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      rationale: "Advancement is unsafe until the deterministic namespace-order defect is fixed. T012 isolates D1 to one semantically irrelevant root xmlns:xlink declaration-order change introduced by real-browser history restore; all 18 checkpoints, SVG values, duplicate naming, agent reject/accept/manual correction, and console behavior otherwise pass. T011's happy-dom regression could not expose browser namespace reordering, so it does not contradict the live proof. The safe fix is a dirty-comparison normalization limited strictly to root namespace declaration order, with saved serialization unchanged, followed by the exact browser recheck. Duplicate naming and cross-tab ownership require no further work here."
+      worker_package:
+        objective: "Make editor dirty comparison insensitive only to ordering among root xmlns and xmlns:* declarations while preserving namespace names and values, every non-namespace attribute order, descendant markup, and public clean-save serialization byte behavior; add focused comparator and full-history regressions proving namespace-order-only equivalence and rejecting all meaningful differences; then pass targeted and full verification."
+        allowed_files:
+          - src/client/canvas/editor.ts
+          - tests/editor-serialization.test.ts
+          - tests/editor-interactions.test.ts
+          - tests/client-ux.test.ts
+        verify:
+          - "npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/client-ux.test.ts"
+          - "npm test -- --run tests/complex-seatify-fixture.test.ts tests/fidelity.test.ts tests/agent-history.test.ts tests/agent-transport.test.ts tests/agent-reconnect.test.ts"
+          - "npm run check"
+        stop_if:
+          - "The implementation would normalize or ignore ordering of any non-namespace root attribute or any descendant attribute."
+          - "A namespace prefix, namespace URI, declaration presence, or declaration count change would compare equal."
+          - "The fix changes serializeClean output, saved SVG bytes, snapshot contents, resource references, or editor metadata stripping."
+          - "The focused regression cannot independently demonstrate that root namespace-order-only strings compare clean while namespace-value and ordinary SVG differences remain dirty."
+          - "The implementation requires history coalescing, DOM mutation during comparison, cross-tab ownership changes, or files outside allowed_files."
+          - "The same targeted or full verification failure recurs twice without a bounded cause inside allowed_files."
+      evidence:
+        - path: "docs/goals/complex-logo-dogfood/notes/T012-browser-reqa.md#Undo-redo-and-dirty-controls"
+          finding: "Real browser completed 18 undos; Undo disabled while Save and Reset remained enabled."
+        - path: "docs/goals/complex-logo-dogfood/notes/T012-browser-reqa.md#Namespace-divergence"
+          finding: "Equal-length origin and baseline strings become exact when only root xmlns:xlink position is normalized."
+        - path: "docs/goals/complex-logo-dogfood/state.yaml#T011.receipt"
+          finding: "Happy-dom full-history coverage cannot expose browser namespace reparsing."
+        - path: "docs/goals/complex-logo-dogfood/notes/T012-browser-reqa.md#Duplicate-label-proof"
+          finding: "Duplicate labels and undo/redo passed."
+        - path: "docs/goals/complex-logo-dogfood/notes/T012-browser-reqa.md#Agent-review-proof"
+          finding: "Agent revert, accept, manual correction, and console audit passed."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - task_id: T009
+          reason: "Restoration cannot begin while history-origin dirty state is defective."
+      missing_evidence:
+        - "Focused namespace-order-only comparator safety proof."
+        - "Full verification after narrow fix."
+        - "Real-browser 18-checkpoint origin cleanliness after fix."
+        - "Final restoration evidence remains pending."
+      required_board_updates:
+        - "Record T013 done with decision not_complete."
+        - "Activate T014 narrow corrective Worker."
+        - "Then run T015 browser recheck and T016 Judge gate before T009."
+        - "Keep cross-tab ownership deferred."
+        - "Keep full_outcome_complete false."
+  - id: T014
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Make editor dirty comparison insensitive only to ordering among root xmlns and xmlns:* declarations while preserving namespace names and values, every non-namespace attribute order, descendant markup, and public clean-save serialization byte behavior; add focused comparator and full-history regressions proving namespace-order-only equivalence and rejecting all meaningful differences; then pass targeted and full verification."
+    inputs:
+      - "T012 real-browser namespace-order root cause"
+      - "T013 Judge receipt"
+      - "T011 full-history regression"
+    constraints:
+      - "Normalize only root namespace declaration ordering for dirty comparison."
+      - "Do not change public clean serialization or saved bytes."
+      - "Do not mutate the DOM during comparison."
+      - "Do not change history, agent, or cross-tab behavior."
+    expected_output:
+      - "Narrow namespace-order dirty comparator fix"
+      - "Positive and negative comparator regressions"
+      - "Updated full-history regression"
+      - "Targeted and full verification receipt"
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/editor-interactions.test.ts"
+      - "tests/client-ux.test.ts"
+    verify:
+      - "npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/client-ux.test.ts"
+      - "npm test -- --run tests/complex-seatify-fixture.test.ts tests/fidelity.test.ts tests/agent-history.test.ts tests/agent-transport.test.ts tests/agent-reconnect.test.ts"
+      - "npm run check"
+    stop_if:
+      - "The implementation would normalize or ignore ordering of any non-namespace root attribute or any descendant attribute."
+      - "A namespace prefix, namespace URI, declaration presence, or declaration count change would compare equal."
+      - "The fix changes serializeClean output, saved SVG bytes, snapshot contents, resource references, or editor metadata stripping."
+      - "The focused regression cannot independently demonstrate that root namespace-order-only strings compare clean while namespace-value and ordinary SVG differences remain dirty."
+      - "The implementation requires history coalescing, DOM mutation during comparison, cross-tab ownership changes, or files outside allowed_files."
+      - "The same targeted or full verification failure recurs twice without a bounded cause inside allowed_files."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - tests/editor-serialization.test.ts
+        - tests/editor-interactions.test.ts
+      commands:
+        - cmd: "npm test -- --run tests/editor-serialization.test.ts tests/editor-interactions.test.ts tests/client-ux.test.ts"
+          status: pass
+        - cmd: "npm test -- --run tests/complex-seatify-fixture.test.ts tests/fidelity.test.ts tests/agent-history.test.ts tests/agent-transport.test.ts tests/agent-reconnect.test.ts"
+          status: pass
+        - cmd: "npm run check"
+          status: pass
+      summary: "Added a pure dirty comparator that normalizes only the ordering of complete root xmlns/xmlns:* declaration tokens. Ordinary root attribute token order, namespace names/values/count, descendants, and all other bytes remain significant. Dirty checks and Reset baseline detection use the comparator without DOM mutation; serializeClean, snapshots, and saved bytes are unchanged. Added positive namespace-order equivalence coverage, negative prefix/URI/presence/count/root-order/descendant cases, public serialization proof, and a synthetic namespace-reordered version of the full 18-checkpoint history regression. All targeted suites and the 327-test full gate pass."
+      deviations: []
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T015
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Repeat the exact T012 18-checkpoint real-browser sequence after T014 and prove baseline/origin comparison plus Undo, Save, Reset, and Redo state."
+    inputs:
+      - "T012 browser root-cause transcript"
+      - "T014 Worker receipt and current bundle"
+    constraints:
+      - "Use a descriptive `.localhost` URL and disposable workspace."
+      - "Capture all 18 undo and redo button boundaries."
+      - "Do not change product code."
+      - "Do not disturb user tabs with unsaved work."
+    expected_output:
+      - "Exact real-browser 18-checkpoint transcript"
+      - "Clean origin and redo-away dirty-control proof"
+      - "Console and serialization evidence"
+      - "Residual findings"
+    receipt:
+      result: done
+      summary: "Repeated the exact 18-checkpoint workflow in a fresh real-browser session. Every edit, undo, and redo boundary had the expected controls. At origin Undo, Reset, and Save were disabled while Redo remained enabled. Opening and origin bodies and ordinary root attributes were byte-identical; only xmlns:xlink declaration position differed, and the repaired comparator correctly treated it as clean. Redo restored the captured edited state exactly. No warning/error console entries or residual regressions were found."
+      evidence:
+        - docs/goals/complex-logo-dogfood/notes/T015-browser-recheck.md
+        - "http://complex-seatify-fix.localhost:5175/"
+        - /tmp/lineage-logo-complex-fix.Y6eMkW
+      facts:
+        - "All 18 edit checkpoints: Undo/Reset/Save enabled and Redo disabled."
+        - "Undo origin: Undo/Reset/Save disabled and Redo enabled."
+        - "Redo endpoint: Undo/Reset/Save enabled and Redo disabled."
+        - "Opening and origin normalized SVGs were both 7077 bytes; only root namespace declaration position differed."
+        - "Browser warning/error log was empty."
+      contradictions: []
+      ambiguity_requiring_judge: []
+      commands: []
+      note_needed: false
+  - id: T016
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the narrow namespace-order fix and real-browser recheck, then decide whether the complex-document milestone can activate versioned restoration."
+    inputs:
+      - "T013 not-complete receipt"
+      - "T014 Worker receipt and diff"
+      - "T015 browser evidence"
+    constraints:
+      - "Read-only."
+      - "Reject advancement if namespace values or ordinary markup can compare equal incorrectly."
+      - "Reject advancement if the real browser remains dirty at exact history origin."
+      - "Keep cross-tab ownership transfer deferred."
+    expected_output:
+      - "Milestone complete or not complete"
+      - "Narrow comparator safety audit"
+      - "Browser oracle evidence map"
+      - "Decision to activate T009"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "The complex-document milestone is safe to advance. T014 limits normalization to complete root xmlns/xmlns:* declaration tokens: namespace names, values, presence, and count remain significant; ordinary root attributes retain order and exact tokens; descendants and remaining bytes remain exact. Negative tests cover prefix, URI, presence, count, ordinary root order/value, and descendant differences, while public clean serialization remains unchanged. T015 repeats the full 18-checkpoint real-browser flow and proves clean origin controls, exact redo, intact resources, and no console errors. Duplicate naming and agent review were already proven. Activate T009; cross-tab transfer remains deferred."
+      worker_package: null
+      evidence:
+        - path: "src/client/canvas/editor.ts:484"
+          finding: "dirtyComparisonKey tokenizes only the root start tag, preserves ordinary attributes in original order, sorts only complete xmlns/xmlns:* tokens, and retains the untouched remainder."
+        - path: "tests/editor-serialization.test.ts:121"
+          finding: "Positive and negative comparator cases plus unchanged public serialization are covered."
+        - path: "tests/editor-interactions.test.ts:705"
+          finding: "The fixture-backed regression runs all 18 edits and proves every undo/redo dirty boundary."
+        - path: docs/goals/complex-logo-dogfood/notes/T015-browser-recheck.md
+          finding: "Real-browser origin is clean, redo exact, resources intact, and console clean."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence:
+        - "Versioned restoration and defensive fallback remain unimplemented and unverified."
+        - "Reload and clean local-server restart restoration remain pending."
+        - "Final npm run check and full-outcome audit remain pending."
+      required_board_updates:
+        - "Record T016 done and activate T009 as the sole active task."
+        - "Keep cross-tab ownership transfer deferred."
+        - "After T009 activate T010, then T999."
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement versioned, defensive session restoration for the active document and safe UI state, with reload and stale-state regression coverage."
+    inputs:
+      - "T001 persistence map"
+      - "T008 restoration-phase approval"
+      - "Goal oracle restoration steps"
+    constraints:
+      - "Persist active document identity, safe selection identity or ancestry, zoom, preview background, and left/right sidebar state."
+      - "Do not persist editor overlays, agent ownership, transient reviews, or unbounded unsaved SVG contents."
+      - "Use a versioned schema and bounded validation."
+      - "Missing documents, missing elements, invalid values, and schema mismatch must fall back safely."
+      - "Restoration must not mark the document dirty or steal focus unexpectedly."
+    expected_output:
+      - "Versioned persistence module or bounded equivalent"
+      - "Startup and document-load restoration wiring"
+      - "Unit and UX regression coverage"
+      - "Documented fallback behavior"
+      - "Full verification receipt"
+    allowed_files:
+      - "src/client/**"
+      - "tests/**"
+      - "docs/goals/complex-logo-dogfood/notes/**"
+    verify:
+      - "npm run typecheck"
+      - "npm run test"
+      - "npm run build"
+    stop_if:
+      - "Implementation requires persisting unsaved SVG content."
+      - "State cannot be bounded to the current workspace."
+      - "A reload path would discard user changes without an existing confirmation flow."
+      - "Verification fails twice for the same reason."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/session-restoration.ts
+        - src/client/main.ts
+        - src/client/ui/layout.ts
+        - tests/session-restoration.test.ts
+        - tests/client-ux.test.ts
+        - docs/goals/complex-logo-dogfood/notes/session-restoration-v1.md
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npm run test"
+          status: pass
+        - cmd: "npm run build"
+          status: pass
+      summary: "Implemented bounded local versioned restoration for workspace-matched active files, selectable ancestry, 25–400% zoom, preview background, and preferred sidebar states. Startup validates the active path against the current workspace; missing leaves fall back to the nearest surviving selectable ancestor, while invalid JSON, schema versions, fields, paths, values, storage, files, and elements fail safely. Restoration suppresses intermediate persistence, does not focus controls, mutate SVG, or dirty documents, and leaves pending-agent recovery authoritative. Added schema, bounds, corruption, workspace, stale-selection, storage, and responsive-layout tests plus fallback documentation. Typecheck, all 341 tests, and production build pass."
+      deviations: []
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T010
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Run the complete oracle walkthrough on the final implementation surface, including page reload and a clean local-server restart, and capture final evidence."
+    inputs:
+      - "All completed task receipts"
+      - "Complex stress asset and walkthrough"
+      - "Latest verified implementation"
+    constraints:
+      - "Use the descriptive Seatify `.localhost` subdomain."
+      - "Verify a clean browser session as well as restoration in the existing session."
+      - "Record any mismatch as a new task rather than hand-waving it in the receipt."
+      - "Run npm run check after the final code state."
+    expected_output:
+      - "Completed ten-step oracle transcript"
+      - "Reload and server-restart restoration evidence"
+      - "Final npm run check result"
+      - "Console-error and dirty-state audit"
+      - "Remaining limitations"
+    receipt:
+      result: done
+      summary: "Completed the final ten-step oracle on the current bundle. A fresh origin was clean; the 42-layer document passed structure, search, selection, 18 mixed edits, full undo/redo, resource fidelity, agent rejection, and a clean 43-layer save. The saved iteration, nested selection, 125% zoom, Dark background, and both sidebar states restored after reload and a real server stop/start. Removing the selected leaf fell back to its nearest surviving ancestor without dirtying. Browser warnings/errors were empty, the source stayed byte-identical, and npm run check passed all 341 tests, typecheck, and build."
+      evidence:
+        - docs/goals/complex-logo-dogfood/notes/T010-final-oracle.md
+        - docs/goals/complex-logo-dogfood/notes/T015-browser-recheck.md
+        - docs/goals/complex-logo-dogfood/notes/session-restoration-v1.md
+        - "http://complex-seatify-final.localhost:5175/"
+      facts:
+        - "All ten oracle steps passed on the final implementation."
+        - "Page reload and clean server restart restored the saved document and safe UI state without dirtying."
+        - "A missing selected leaf fell back to the nearest surviving selectable ancestor."
+        - "No browser warning/error entries appeared."
+        - "npm run check passed 341 tests, typecheck, and production build."
+      contradictions: []
+      ambiguity_requiring_judge: []
+      commands:
+        - "npm run check"
+      note_needed: false
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether the full complex-logo dogfood and session-restoration owner outcome is complete."
+    inputs:
+      - "All done task receipts"
+      - "T010 oracle transcript"
+      - "Last verification"
+      - "Current dirty diff"
+    constraints:
+      - "Read-only."
+      - "Reject completion if required Worker work is queued, active, or missing evidence."
+      - "Reject completion if the complex asset can pass without the meaningful hierarchy and feature coverage in goal.md."
+      - "Reject completion if reload or server restart restoration remains unproven."
+      - "Reject completion if a reproducible high-confidence goal-owned defect remains safely fixable."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Oracle-to-receipt evidence map"
+      - "Missing evidence or next task if not complete"
+      - "Publishing or PR handoff recommendation"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      rationale: "The full owner outcome is complete. The 42-layer, six-level Seatify fixture meaningfully exercises hierarchy, geometry, text, resources, organization, history, agent review, save fidelity, and large-tree UX. Confirmed dirty-state and duplicate-label defects were fixed and re-proven in a real browser. Versioned bounded restoration passed reload, actual server stop/start, and stale-selection fallback without dirtying or console errors. T010 passed the complete ten-step oracle and current npm run check with 341 tests, typecheck, and build. T007 is historical and fully superseded by T011–T016; no required Worker work remains. Deferred cross-tab transfer and layer insertion are outside this goal."
+      worker_package: null
+      evidence:
+        - oracle_step: "1 and 5"
+          path: tests/complex-seatify-fixture.test.ts
+          finding: "The 42-layer six-level fixture and SVG feature contract are enforced."
+        - oracle_step: "2 through 7"
+          path: docs/goals/complex-logo-dogfood/notes/T010-final-oracle.md
+          finding: "Navigation, 18 edits, history, resources, agent review, and save/reopen passed."
+        - oracle_step: "8 and 9"
+          path: docs/goals/complex-logo-dogfood/notes/T010-final-oracle.md
+          finding: "Reload, actual server restart, and stale-selection fallback passed cleanly."
+        - oracle_step: 10
+          path: docs/goals/complex-logo-dogfood/notes/T010-final-oracle.md
+          finding: "No browser errors; npm run check passed 341 tests, typecheck, and build."
+        - oracle_step: "Board completion safety"
+          path: docs/goals/complex-logo-dogfood/state.yaml
+          finding: "No required Worker work remains; T007 is superseded historical evidence."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence: []
+      required_board_updates:
+        - "Mark T999 done and goal complete; clear active task."
+        - "Record the passing T010 npm run check as last verification."
+        - "Keep cross-tab transfer and new-layer insertion deferred."
+      pr_handoff_recommendation: "Ready for external handoff. Commit the intended diff, run the PR review toolkit, fix high-confidence findings, and open a PR when the operator authorizes it."
+checks:
+  dirty_fingerprint: "intended goal diff; audited by T999"
+  last_verification:
+    result: pass
+    task: T010
+    commands:
+      - "npm run check (341 tests, typecheck, production build)"

@@ -1,0 +1,126 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T010",
+    "board_path": "docs/goals/marquee-selection-preferences/state.yaml",
+    "decision": "approved",
+    "full_outcome_complete": false,
+    "rationale": "T009 plus T011 close every T004 rejection. Handle-ineligible primaries now receive an editor-only fallback marker with visible styling, and both snapshot and clean serialization remove it. Active marquee and precise-pointer Escape handling precedes focus/modal guards, while cancellation arms successor-click suppression. Main now delegates gesture classification and state transitions to the behaviorally tested StageGestureController. Focused-control, modal, drag-suppression, lock, serialization, threshold, pan, commit, and cancellation tests are substantive. Fresh typecheck, 164 targeted tests, and production build pass. T005 browser QA may begin.",
+    "worker_package": null,
+    "evidence": [
+      {
+        "finding": "Handle-ineligible primary feedback",
+        "status": "closed",
+        "paths": [
+          "src/client/canvas/editor.ts:1080",
+          "src/client/canvas/editor.ts:1161",
+          "src/client/styles.css:120"
+        ],
+        "proof": "SvgEditor computes canInstallHandles and applies data-lineage-primary-fallback when locked, agent-blocked, hidden-by-attribute, or resource-heavy selections cannot receive svg.js handles. Blue fallback styles are distinct from purple secondary feedback. Behavioral tests cover locked and complex-resource primaries while confirming ordinary unlocked handles return."
+      },
+      {
+        "finding": "Serialization stripping",
+        "status": "closed",
+        "paths": [
+          "src/client/canvas/editor.ts:470",
+          "tests/editor-serialization.test.ts:92"
+        ],
+        "proof": "serializeSvg removes data-lineage-primary-fallback and data-lineage-secondary before both clean exports and snapshots. Tests assert exact clean markup and absence under stripEditorState false."
+      },
+      {
+        "finding": "Escape before focus/modal guards",
+        "status": "closed",
+        "paths": [
+          "src/client/canvas/editor.ts:2139",
+          "tests/editor-interactions.test.ts:832"
+        ],
+        "proof": "Active marquee or precise-pointer Escape is handled before dialog and editable-target early returns. Connected, focused inspector controls and an open dialog are exercised behaviorally."
+      },
+      {
+        "finding": "Successor-click suppression",
+        "status": "closed",
+        "paths": [
+          "src/client/canvas/editor.ts:1278",
+          "src/client/canvas/editor.ts:2233",
+          "src/client/canvas/editor.ts:2241",
+          "tests/editor-interactions.test.ts:832",
+          "tests/editor-interactions.test.ts:855"
+        ],
+        "proof": "cancelMarquee and cancelPrecisePointer arm the shared 250ms canvas-click suppression window before releasing capture. Immediate successor clicks after Escape and pointercancel are proven unable to clear or toggle restored selection."
+      },
+      {
+        "finding": "Behavioral gesture controller and tests",
+        "status": "closed",
+        "paths": [
+          "src/client/canvas/marquee-selection.ts:19",
+          "src/client/canvas/marquee-selection.ts:46",
+          "src/client/main.ts:1434",
+          "src/client/main.ts:1503",
+          "tests/client-ux.test.ts:159"
+        ],
+        "proof": "Main uses StageGestureController as the source of pan/marquee state transitions. Tests execute middle and Space pan precedence, object and modified-pointer exclusion, 3px pending, 4px activation, additive below-threshold commit semantics, pointerup commit, pointercancel, lost-capture cancellation, and stale-pointer rejection. Editor tests separately prove Shift below-threshold no-op and unmodified clear."
+      },
+      {
+        "finding": "Precise-click drag suppression",
+        "status": "closed",
+        "paths": [
+          "src/client/canvas/editor.ts:1545",
+          "tests/editor-interactions.test.ts:797"
+        ],
+        "proof": "Capture-phase exact-pointer handling stops immediate propagation. A simulated object pointerdown listener receives zero events, while moved precise sequences preserve SVG bytes, selection, and history."
+      },
+      {
+        "finding": "Latest verification",
+        "status": "closed",
+        "commands": [
+          {
+            "cmd": "npm run typecheck",
+            "status": "pass"
+          },
+          {
+            "cmd": "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts",
+            "status": "pass",
+            "detail": "3 files, 164 tests"
+          },
+          {
+            "cmd": "npm run build",
+            "status": "pass"
+          }
+        ]
+      },
+      {
+        "type": "browser_qa_focus",
+        "items": [
+          "Confirm locked and resource-heavy primary fallback styling is visibly clear on the real Seatify SVG.",
+          "Exercise stage-padding and blank-SVG marquee at 100% and non-default zoom.",
+          "Exercise Space-primary and middle-button pan, ordinary object drag, and precise-modifier drag suppression with real pointer events.",
+          "Cancel an active marquee while inspector focus is retained, release the pointer, and confirm no successor selection change.",
+          "Probe pointer departure/lost capture, clipped or masked geometry, dirty state, undo availability, exported SVG, and browser console."
+        ]
+      }
+    ],
+    "subgoal_contract": null,
+    "parallel_safety": null,
+    "blocked_tasks": [],
+    "missing_evidence": [
+      "Real-browser marquee QA at 100% and non-default zoom remains required by T005."
+    ],
+    "required_board_updates": [
+      {
+        "task_id": "T010",
+        "status": "done",
+        "action": "Record this approved remediation review."
+      },
+      {
+        "task_id": "T009",
+        "status": "done",
+        "action": "Reconcile the historical blocked receipt with T011: retain its failed-attempt evidence, record that T011 resolved its sole typing blocker, and treat the combined remediation package as completed."
+      },
+      {
+        "task_id": "T005",
+        "status": "active",
+        "action": "Clear the T004 block and begin hands-on browser QA using the listed focus areas."
+      }
+    ]
+  }
+}

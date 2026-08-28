@@ -1,0 +1,2003 @@
+version: 2
+
+goal:
+  title: "Marquee selection and preferences"
+  slug: marquee-selection-preferences
+  kind: specific
+  tranche: "Implement and battle-test marquee multi-selection, precise object toggling, individual selection feedback, and bounded persistent preferences."
+  status: done
+  oracle:
+    signal: "A live complex Seatify walkthrough at 100% and non-default zoom proves correct marquee, additive and precise selection, pan coexistence, visible highlights, preference persistence, and clean history/serialization."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Automated interaction, serialization, accessibility, and persistence checks; browser QA transcript on the complex Seatify example; npm run check; final Judge audit."
+  intake:
+    original_request: "Plan drag selection, multi-object highlighting, precise-selection hotkeys, and settings."
+    interpreted_outcome: "The canvas gains predictable professional selection mechanics and a small preferences surface without destabilizing existing editing gestures."
+    input_shape: specific
+    audience: "Lineage Logo users editing layered SVG marks"
+    authority: requested
+    proof_type: demo
+    completion_proof: "The complete selection workflow passes automated verification and real-browser QA against the complex Seatify example."
+    likely_misfire: "A marquee that appears to work at 100% zoom but selects incorrect nested nodes, steals pan, or dirties the document."
+    blind_spots_considered:
+      - "Zoom, viewBox, nested transforms, and screen-to-SVG coordinate conversion"
+      - "Ancestor/descendant normalization and visual bounds"
+      - "Platform-specific modifiers and legacy exact-selection behavior"
+      - "Drag threshold, pointer capture/cancellation, focus, and reduced motion"
+      - "Locked/hidden layers and canvas/layer-tree parity"
+      - "Preference versioning, migration, and malformed local storage"
+      - "Selection-only dirty state, undo history, and SVG serialization"
+    existing_plan_facts:
+      - "Shift-click already toggles selection."
+      - "Alt-click and double-click already exact-select."
+      - "Space-drag and middle-drag must remain pan gestures."
+      - "Selection overlays must never serialize into the SVG."
+      - "Use a compact Preferences & shortcuts dialog, not a full settings page."
+      - "General multi-object transform is deferred from this goal."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  exact_human_approval_can_terminal_wait: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/marquee-selection-preferences/"
+    command: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.4.3/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/marquee-selection-preferences"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map the exact selection, pointer-gesture, pan, coordinate-conversion, overlay, persistence, and test seams required by the goal."
+    inputs:
+      - "src/client/canvas/editor.ts"
+      - "src/client/main.ts"
+      - "src/client/ui/layout.ts"
+      - "src/client/session-restoration.ts"
+      - "src/client/styles.css"
+      - "tests/editor-interactions.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/client-ux.test.ts"
+      - "tests/session-restoration.test.ts"
+      - "examples/seatify-constellation.svg"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation or control files."
+      - "Trace existing gesture precedence and coordinate spaces with file-path evidence."
+      - "Identify how to avoid selecting both an ancestor and descendant."
+      - "Identify the smallest durable preference boundary separate from workspace state."
+    expected_output:
+      - "Evidence map with exact file and symbol references"
+      - "Gesture precedence and selection-normalization recommendation"
+      - "Risks and test seams"
+      - "Candidate allowed_files and verification commands for T003 and T006"
+    receipt:
+      result: done
+      summary: "Selection is scope-based and already supports sibling multi-selection, exact Alt/double-click selection, primary plugin handles, secondary highlighting, and clean serialization. Marquee should operate in client coordinates against rendered bounds of direct selectable children of the active scope, which inherently avoids ancestor/descendant co-selection and handles zoom/nested transforms. Gesture arbitration must move empty-canvas bare-drag from stage pan to marquee while retaining Space+primary and middle-button pan. Preferences should live in a new strict, versioned global module independent of workspace-session state. Existing interaction, serialization, UX, and storage tests provide suitable seams."
+      evidence:
+        - path: src/client/canvas/editor.ts
+          lines: "973-1058, 1146-1153"
+          finding: "selectNode, #setSelection, and #toggleNode own selection. Extend selection is constrained to direct siblings in the active scope; the last added node becomes primary."
+        - path: src/client/canvas/editor.ts
+          lines: 538-604
+          finding: "isSelectableNode excludes roots, resources, handles, and nested SVGs. getScopedSelectionTarget climbs to the direct child of a supplied scope; getDirectSelectionTarget returns the deepest selectable hit."
+        - path: src/client/canvas/editor.ts
+          lines: 1470-1510
+          finding: "Canvas click precedence is currently handle exclusion, Alt exact selection, Shift scoped toggle, ordinary scoped replacement, empty-click clear; double-click exact-selects and resets scope to the candidate parent."
+        - path: src/client/main.ts
+          lines: 1428-1504
+          finding: "Stage currently pans on middle-button, Space+primary, or bare primary drag whose target is the stage. It captures the pointer and terminates on pointerup, pointercancel, or lostpointercapture."
+        - path: src/client/main.ts
+          lines: 928-940
+          finding: "Zoom is a CSS transform on the artboard, so SVG user-space deltas are not equivalent to pointer client-space deltas."
+        - path: src/client/canvas/editor.ts
+          lines: "1035-1145; 2068-2074"
+          finding: "Only the primary receives svg.js select/resize/drag handles. Secondary nodes receive data-lineage-secondary and are cleared by #deselect."
+        - path: src/client/styles.css
+          lines: 108-135
+          finding: "Secondary selection currently uses purple filter/outline styling, while primary selection uses svg.js blue bounds and handles. Stage pan states disable descendant pointer events."
+        - path: src/client/canvas/editor.ts
+          lines: 450-480
+          finding: "serializeSvg removes svg.js handles and all hover, secondary-selection, and review-highlight attributes from both clean exports and snapshots."
+        - path: src/client/session-restoration.ts
+          lines: 1-84
+          finding: "Workspace restoration is a strict exact-key v1 schema tied to workspace/file, selection path, zoom, preview background, and sidebars; selection preferences do not belong in this schema."
+        - path: src/client/ui/layout.ts
+          lines: "1-52, 128-138"
+          finding: "Layout preferences demonstrate safe localStorage acquisition and bounded independent versioned keys, but their controller is sidebar-specific."
+        - path: tests/editor-serialization.test.ts
+          lines: "784-835; 80-95"
+          finding: "Existing tests directly cover scoped/direct target resolution, selectable exclusions, and stripping selection affordances."
+        - path: examples/seatify-constellation.svg
+          lines: 14-67
+          finding: "The dogfood SVG contains nested groups, transformed seat groups, overlapping circular geometry, gradients, lines, rectangles, and text—appropriate for zoom, nesting, and normalization probes."
+      facts:
+        - topic: gesture_precedence
+          value: "Recommended precedence: active transform handles/object drag first; middle-button or Space+primary pan second; primary drag beginning on empty SVG/artboard content enters pending marquee; cross a small client-pixel threshold to activate; click below threshold preserves empty-click clear; pointerup commits; Escape, pointercancel, lost capture, load, or review lock cancel without selection/history mutation."
+        - topic: coordinate_space
+          value: "Represent the marquee and candidate boxes in viewport client coordinates. Use PointerEvent.clientX/clientY and each candidate's getBoundingClientRect(); this naturally includes CSS zoom, viewBox mapping, and nested transforms. Render the rectangle as an HTML overlay positioned relative to a fixed stage overlay host by subtracting its bounding rect."
+        - topic: selection_normalization
+          value: "Enumerate only selectable nodes whose getSelectableParent(node, root) equals the active scope. Never recursively collect descendants for the same marquee. This guarantees no selected ancestor/descendant pair and preserves existing scope semantics. Order matches DOM paint order and use the last matched node as primary."
+        - topic: visibility_and_locking
+          value: "Exclude display:none/non-rendered candidates and editor handles. Locked visible layers may be selected for inspection because existing mutation gates already block unsafe edits; hiding should remain a separate mutation."
+        - topic: modifier_compatibility
+          value: "Retain Alt-click and double-click exact selection. Add platform primary accelerator click as exact toggle, but do not consume accelerator combinations used by browser/application shortcuts. Shift-marquee should union with the existing selection only when candidates share the current scope."
+        - topic: preference_boundary
+          value: "Create selection-preferences.ts with a strict v1 exact-key schema, one global localStorage key, validation, safe read/write, defaults, reset, and an in-memory fallback. Keep it separate from WorkspaceSessionV1 because these preferences apply across workspaces and must not be restored per document."
+        - topic: T003_allowed_files
+          value: "src/client/canvas/editor.ts,src/client/canvas/marquee-selection.ts,src/client/main.ts,src/client/styles.css,tests/editor-interactions.test.ts,tests/editor-serialization.test.ts,tests/client-ux.test.ts"
+        - topic: T003_verification
+          value: "npm run typecheck,npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts,npm run build"
+        - topic: T006_allowed_files
+          value: "src/client/selection-preferences.ts,src/client/main.ts,src/client/ui/layout.ts,src/client/canvas/editor.ts,src/client/styles.css,tests/selection-preferences.test.ts,tests/client-ux.test.ts,tests/editor-interactions.test.ts"
+        - topic: T006_verification
+          value: "npm run typecheck,npm run test -- --run tests/selection-preferences.test.ts tests/client-ux.test.ts tests/editor-interactions.test.ts,npm run build"
+        - topic: test_seams
+          value: "Add pure rectangle normalization/containment/intersection tests; editor integration tests for scope normalization, union/toggle, cancellation, hidden/locked nodes, and unchanged clean SVG/history; serialization tests for all new overlay markers; UX source/DOM tests for accessible dialog controls, defaults/reset, focus, reduced motion, and pan/marquee CSS."
+      contradictions:
+        - issue: "Bare empty-stage primary drag currently means pan, while the goal requires it to mean marquee."
+          resolution_needed: "T002 must lock Space+primary and middle-button as the retained pan gestures and reassign unmodified empty-canvas drag to marquee."
+        - issue: "Existing extend selection rejects nodes outside the active scope, while global exact accelerator selection could target a descendant in another scope."
+          resolution_needed: "Exact accelerator replacement may reset scope like Alt-click; exact accelerator toggle should only extend when the target shares the current scope, otherwise replace and reset scope."
+        - issue: "The goal mentions click-depth preferences, but current scoped and direct target semantics are tightly coupled to active scope."
+          resolution_needed: "Default-click-depth changes should choose scoped versus direct replacement only; it must not weaken active-scope normalization for additive or marquee selection."
+      ambiguity_requiring_judge:
+        - question: "Should a drag beginning on blank pixels inside the SVG root marquee, while a drag beginning in stage padding also marquee, or should stage padding retain bare-drag pan?"
+          recommendation: "Marquee both blank SVG and artboard/stage canvas content; require Space or middle-button for pan consistently."
+        - question: "Should Cmd/Ctrl-click exact selection replace or toggle when the exact target is outside the current active scope?"
+          recommendation: "Replace and reset scope outside the active scope; toggle only among direct siblings within the current scope."
+        - question: "Should visually clipped elements use their unclipped getBoundingClientRect bounds for containment?"
+          recommendation: "Accept rendered DOM bounds for the first slice and browser-probe clip/mask cases; defer pixel-perfect painted-region hit testing."
+      commands:
+        - "git rev-parse --show-toplevel && sed -n '1,220p' docs/goals/marquee-selection-preferences/state.yaml"
+        - "rg -n \"pointer|selection|selected|pan|zoom|screen|client|overlay|serialize|localStorage|session|shortcut|keydown|dblclick|altKey|shiftKey|metaKey|ctrlKey|locked|hidden\" <named inputs>"
+        - "rg -n \"class SvgEditor|#on|onPointer|mousedown|touchstart|click|dblclick|wheel|pan|clientTo|screenCTM|getScreenCTM|getBoundingClientRect|selectionContext|select|highlight|overlay|serializeSvg|data-lineage|setZoom|zoom\" src/client/canvas/editor.ts"
+        - "sed -n targeted editor selection and interaction ranges"
+        - "rg -n targeted stage, pan, zoom, shortcut, and layer symbols in src/client/main.ts and src/client/styles.css"
+        - "sed -n targeted pan, storage, layout, and editor helper ranges"
+        - "rg -n targeted selection helpers and test seams; sed -n targeted test ranges"
+        - "sed -n targeted selectable, serialization, package script, fixture, style, and git-status ranges"
+      note_needed: false
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Adversarially validate the interaction contract and choose the largest safe marquee-selection Worker slice."
+    inputs:
+      - "Goal charter"
+      - "T001 receipt"
+      - "Current dirty diff"
+    constraints:
+      - "Read-only; do not implement."
+      - "Resolve gesture precedence, selection normalization, locked/hidden behavior, and modifier compatibility before authorizing writes."
+      - "Keep generalized multi-object transformation out of scope."
+      - "Preserve unrelated user changes."
+    expected_output:
+      - "go | revise | blocked"
+      - "Locked interaction contract"
+      - "Exact T003 objective, allowed_files, verify commands, and stop conditions"
+      - "Deferred risks and browser probes"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "The interaction contract is sufficiently bounded for one vertical marquee-selection slice. Client-coordinate geometry and direct-child active-scope enumeration address zoom, transforms, and ancestor/descendant normalization without changing SVG data. The existing dirty diff overlaps five allowed files but is unrelated and can be preserved. T003 must retain Space/middle pan, object drag, Alt/double-click replacement, and clean history/serialization. Preferences, pixel-painted clip/mask hit testing, and generalized multi-object transforms remain outside this package."
+      worker_package:
+        objective: "Implement one complete marquee-selection vertical slice: client-coordinate rectangle geometry for containment and touching rules; stage pointer arbitration; direct-child active-scope candidate normalization; replace and Shift-union marquee selection; platform-accelerator exact toggle with cross-scope replacement; defensive cancellation and focus-aware Escape; visible secondary-selection feedback with only the primary receiving handles; and behavioral regression coverage proving pan, object drag, locks, visibility, layer synchronization, history, dirty state, and serialization remain correct."
+        allowed_files:
+          - src/client/canvas/editor.ts
+          - src/client/canvas/marquee-selection.ts
+          - src/client/main.ts
+          - src/client/styles.css
+          - tests/editor-interactions.test.ts
+          - tests/editor-serialization.test.ts
+          - tests/client-ux.test.ts
+        verify:
+          - "npm run typecheck"
+          - "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+          - "npm run build"
+        stop_if:
+          - "Any required implementation file is outside allowed_files."
+          - "Existing dirty hunks cannot be preserved without semantic conflict."
+          - "The implementation requires selection preferences, workspace/session persistence, or exported SVG format changes."
+          - "Correctness would require cross-parent selection or generalized multi-object movement, resize, or rotation."
+          - "The worker cannot prevent a precise-modifier click from initiating object mutation within the allowed files."
+          - "The same verification failure remains unexplained after two attempts."
+      evidence:
+        - type: interaction_contract
+          gesture_precedence: "Transform handles and ordinary primary-button object drag retain existing behavior.,Middle-button drag or Space+primary drag pans from any stage location and never starts marquee.,Primary-button drag beginning on a non-selectable stage, artboard, or SVG-root pixel enters pending marquee; this includes surrounding stage padding.,Activate marquee after 4 CSS pixels of movement measured in client coordinates. Before activation, unmodified pointerup performs background-clear; Shift-pointerup is a no-op.,After activation, pointerup commits selection and suppresses the subsequent click. Escape, pointercancel, lostpointercapture, document replacement, or review lock cancels and restores the pre-gesture selection.,Configured exact-modifier primary pointer sequences over selectable objects are selection-only: they must not initiate drag or transform. Commit only below the movement threshold; cancel after movement."
+          selection_contract: "Freeze the active scope at marquee start and enumerate only selectable direct children whose selectable parent equals that scope.,Never select both an ancestor and descendant. Preserve DOM paint order and make the last matched candidate primary.,Unmodified marquee replaces selection; no matches clear selection. Shift-marquee unions matches with the existing same-scope selection; no matches preserve it.,Use getBoundingClientRect for both marquee and candidates. Fully-enclosed uses inclusive rectangle containment; touching support uses inclusive rectangle intersection for later preference wiring.,Use browser client bounds as transformed geometric bounds. Do not attempt pixel-painted clip-path or mask geometry in T003."
+          visibility_and_lock_contract: "Exclude editor handles, roots, resources, nested SVGs, display:none, visibility:hidden/collapse, effectively zero-opacity nodes, and candidates without a usable client rect.,Do not reject a line merely because one client-rect dimension is zero; reject only non-rendered or wholly zero-area candidates.,Locked visible objects remain selectable for inspection, while existing mutation guards must continue preventing movement or transformation."
+          modifier_contract: "Default precise toggle is Meta-click on macOS and Ctrl-click elsewhere, only for an otherwise unmodified primary click.,Within the active scope, exact modifier-click toggles the direct target. Outside that scope, it replaces selection and resets scope to the target's selectable parent; cross-parent additive selection is forbidden.,Alt-click and double-click retain exact replacement/drill-in behavior. Shift-click retains scoped additive behavior.,Do not consume modified combinations such as Cmd/Ctrl+Shift, Cmd/Ctrl+Alt, secondary clicks, or accelerator clicks with no selectable target."
+          escape_and_focus_contract: "Escape always cancels an active marquee.,With no active marquee, Escape clears canvas selection only when no modal is open and focus is not in an editable control or contenteditable region."
+        - type: dirty_diff_assessment
+          finding: "Current unrelated work modifies src/client/canvas/editor.ts, src/client/main.ts, tests/editor-interactions.test.ts, tests/editor-serialization.test.ts, and tests/client-ux.test.ts. The changes concern dirty comparison, duplicate labels, complex history coverage, and workspace restoration."
+          requirement: "T003 must preserve every pre-existing hunk and must not edit src/client/ui/layout.ts, src/client/session-restoration.ts, README.md, examples, fixtures, or goal-control files."
+        - type: worker_package
+          task_id: T003
+          objective: "Implement one complete marquee-selection vertical slice: client-coordinate rectangle geometry for containment and touching rules; stage pointer arbitration; direct-child active-scope candidate normalization; replace and Shift-union marquee selection; platform-accelerator exact toggle with cross-scope replacement; defensive cancellation and focus-aware Escape; visible secondary-selection feedback with only the primary receiving handles; and behavioral regression coverage proving pan, object drag, locks, visibility, layer synchronization, history, dirty state, and serialization remain correct."
+          allowed_files: "src/client/canvas/editor.ts,src/client/canvas/marquee-selection.ts,src/client/main.ts,src/client/styles.css,tests/editor-interactions.test.ts,tests/editor-serialization.test.ts,tests/client-ux.test.ts"
+          verify: "npm run typecheck,npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts,npm run build"
+          stop_if: "Any required implementation file is outside allowed_files.,Existing dirty hunks cannot be preserved without semantic conflict.,The implementation requires selection preferences, workspace/session persistence, or exported SVG format changes.,Correctness would require cross-parent selection or generalized multi-object movement, resize, or rotation.,The worker cannot prevent a precise-modifier click from initiating object mutation within the allowed files.,The same verification failure remains unexplained after two attempts."
+        - type: deferred_risks_and_browser_probes
+          items: "Probe marquee start from stage padding and blank SVG pixels at 100% and non-default zoom.,Probe transformed nested groups, axis-aligned SVG lines, hidden descendants, effectively transparent ancestors, and locked visible nodes.,Probe clipped and masked elements, documenting that T003 uses browser geometric client bounds rather than pixel-painted regions.,Probe exact toggling inside and outside active scope, including drag suppression and platform modifier behavior.,Probe pointer departure, cancellation, lost capture, Escape, review lock, and document reload for stuck overlays or selection loss.,Probe that all selected objects remain legible while only the primary shows handles, including collapsed sidebars and reduced motion."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence: []
+      required_board_updates:
+        - task_id: T002
+          status: done
+          action: "Record this receipt."
+        - task_id: T003
+          status: active
+          action: "Replace its objective, allowed_files, verify, and stop_if fields with the approved worker_package and dispatch exactly one write Worker."
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement one complete marquee-selection vertical slice: client-coordinate rectangle geometry for containment and touching rules; stage pointer arbitration; direct-child active-scope candidate normalization; replace and Shift-union marquee selection; platform-accelerator exact toggle with cross-scope replacement; defensive cancellation and focus-aware Escape; visible secondary-selection feedback with only the primary receiving handles; and behavioral regression coverage proving pan, object drag, locks, visibility, layer synchronization, history, dirty state, and serialization remain correct."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "src/client/canvas/marquee-selection.ts"
+      - "src/client/main.ts"
+      - "src/client/styles.css"
+      - "tests/editor-interactions.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/client-ux.test.ts"
+    verify:
+      - "npm run typecheck"
+      - "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+      - "npm run build"
+    stop_if:
+      - "Any required implementation file is outside allowed_files."
+      - "Existing dirty hunks cannot be preserved without semantic conflict."
+      - "The implementation requires selection preferences, workspace/session persistence, or exported SVG format changes."
+      - "Correctness would require cross-parent selection or generalized multi-object movement, resize, or rotation."
+      - "The worker cannot prevent a precise-modifier click from initiating object mutation within the allowed files."
+      - "The same verification failure remains unexplained after two attempts."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - src/client/canvas/marquee-selection.ts
+        - src/client/main.ts
+        - src/client/styles.css
+        - tests/editor-interactions.test.ts
+        - tests/editor-serialization.test.ts
+        - tests/client-ux.test.ts
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+          status: pass
+        - cmd: "npm run build"
+          status: pass
+      summary: "Implemented the complete marquee-selection slice with client-coordinate geometry, 4px activation, explicit Space/middle pan precedence, direct-scope candidate normalization, replace and Shift-union behavior, visibility filtering, locked-object inspection, precise platform-accelerator toggling with drag suppression, defensive cancellation, focus-aware Escape, pointer-capture cleanup, and visible selection feedback. Selection-only actions preserve SVG bytes and history. Added behavioral geometry, interaction, serialization, gesture-wiring, and styling coverage. Final verification passed: typecheck, 160 targeted tests, and production build."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+      deviations: []
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the marquee-selection slice for correctness before browser dogfooding."
+    inputs:
+      - "T002 and T003 receipts"
+      - "T003 diff"
+      - "T003 verification output"
+    constraints:
+      - "Read-only; do not implement."
+      - "Audit zoom/nested-transform math, gesture conflicts, ancestor/descendant normalization, dirty/history behavior, accessibility, and serialization."
+      - "Reject weak tests that only assert DOM presence."
+    expected_output:
+      - "accept | remediate"
+      - "High-confidence findings only"
+      - "Exact remediation task if required"
+      - "Browser QA focus areas"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "Client-coordinate geometry, direct-scope normalization, modifier arbitration, serialization stripping, and targeted verification are sound, but acceptance is premature. A locked, blocked, or complex-resource primary receives neither handles nor a fallback highlight, violating visible-selection requirements. Escape can fail to cancel an active marquee when focus is editable or a dialog is open, and cancellation does not suppress the later synthesized click that can overwrite restored selection. Stage gesture coverage is source-text inspection rather than behavioral proof. One coherent remediation should close these gaps before browser QA."
+      worker_package:
+        objective: "Remediate the marquee slice as one coherent reliability package: provide visible primary fallback feedback when transform handles are unavailable; make active marquee and precise-pointer Escape cancellation precede focus/modal guards; suppress successor clicks after every explicit cancellation; extract stage gesture classification and state transitions into a testable controller used by main.ts; and add behavioral coverage for pan precedence, thresholds, Shift no-op, commit, pointercancel/lost capture, precise drag suppression, locked-primary feedback, clean history, and serialization."
+        allowed_files:
+          - src/client/canvas/editor.ts
+          - src/client/canvas/marquee-selection.ts
+          - src/client/main.ts
+          - src/client/styles.css
+          - tests/editor-interactions.test.ts
+          - tests/editor-serialization.test.ts
+          - tests/client-ux.test.ts
+        verify:
+          - "npm run typecheck"
+          - "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+          - "npm run build"
+        stop_if:
+          - "Any required implementation file is outside allowed_files."
+          - "Existing unrelated dirty hunks cannot be preserved without semantic conflict."
+          - "The remediation requires preference persistence, workspace/session schema changes, exported SVG format changes, or generalized multi-object transforms."
+          - "The testable gesture controller would require a broad application bootstrap rewrite rather than a bounded extraction."
+          - "The same verification failure remains unexplained after two attempts."
+      evidence:
+        - type: verified_strengths
+          items: "src/client/canvas/marquee-selection.ts uses finite viewport client rectangles, inclusive containment/intersection, and a 4 CSS-pixel Euclidean threshold, so CSS zoom, viewBox mapping, and nested transforms do not require SVG-space conversion.,src/client/canvas/editor.ts commitMarquee freezes the active scope, enumerates only direct selectable children, preserves DOM order, unions Shift selections, and prevents ancestor/descendant co-selection.,Precise accelerator pointer handling runs in capture phase, stops propagation before draggable handlers, cancels moved sequences, toggles only within scope, and replaces across scope.,Hidden and effectively transparent ancestors are filtered while zero-thickness lines and locked visible nodes remain candidates.,Selection-only editor tests prove unchanged clean SVG bytes and no history checkpoint; serialization strips data-lineage-secondary and marquee UI remains outside SVG."
+        - type: finding
+          severity: high
+          path: src/client/canvas/editor.ts
+          lines: 1047-1155
+          finding: "Only non-primary nodes receive data-lineage-secondary. The primary receives visible feedback solely when svg.js handles are enabled, but handles are skipped for locked nodes, agent-blocked state, display:none nodes, and complex-resource nodes. Such a primary can be selected with no canvas-visible indicator."
+          required_fix: "Add an editor-only primary fallback marker and visible blue treatment whenever handles cannot be installed; remove it during deselection and strip it from all clean serialization and snapshots."
+        - type: finding
+          severity: high
+          path: src/client/canvas/editor.ts
+          lines: "1271-1278, 2128-2168, 2221-2227"
+          finding: "Editable-focus and open-dialog guards return before active marquee cancellation. cancelMarquee and cancelPrecisePointer also release state/capture without arming click suppression, so a subsequent synthesized click can clear or toggle the restored selection."
+          required_fix: "Handle Escape for an active marquee or precise pointer before ordinary focus/modal guards, restore the pre-gesture selection, and suppress the successor click on every explicit cancellation path."
+        - type: finding
+          severity: medium
+          path: tests/client-ux.test.ts
+          lines: 159-176
+          finding: "Pan-versus-marquee coverage reads main.ts and asserts source substrings. It does not execute pointer precedence, threshold transitions, commit, cancellation, lost capture, or additive below-threshold behavior."
+          required_fix: "Move gesture classification/state transitions into a testable controller used by main.ts and replace the source-string interaction assertions with event/state behavioral tests."
+        - type: verification
+          commands: "[object Object],[object Object],[object Object]"
+          assessment: "Green verification confirms current code compiles and existing assertions pass; it does not cover the rejected behaviors."
+        - type: worker_package
+          task_id: T004R
+          objective: "Remediate the marquee slice as one coherent reliability package: provide visible primary fallback feedback when transform handles are unavailable; make active marquee and precise-pointer Escape cancellation precede focus/modal guards; suppress successor clicks after every explicit cancellation; extract stage gesture classification and state transitions into a testable controller used by main.ts; and add behavioral coverage for pan precedence, thresholds, Shift no-op, commit, pointercancel/lost capture, precise drag suppression, locked-primary feedback, clean history, and serialization."
+          allowed_files: "src/client/canvas/editor.ts,src/client/canvas/marquee-selection.ts,src/client/main.ts,src/client/styles.css,tests/editor-interactions.test.ts,tests/editor-serialization.test.ts,tests/client-ux.test.ts"
+          verify: "npm run typecheck,npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts,npm run build"
+          stop_if: "Any required implementation file is outside allowed_files.,Existing unrelated dirty hunks cannot be preserved without semantic conflict.,The remediation requires preference persistence, workspace/session schema changes, exported SVG format changes, or generalized multi-object transforms.,The testable gesture controller would require a broad application bootstrap rewrite rather than a bounded extraction.,The same verification failure remains unexplained after two attempts."
+          acceptance_checks: "A locked or otherwise handle-ineligible primary has a visible blue fallback marker; ordinary handle-enabled primary behavior remains unchanged.,Fallback primary and secondary markers are absent from clean serialization and snapshots.,Escape cancels an active marquee or precise pointer even when an input is focused or a dialog is open, and an immediate successor click cannot change restored selection.,Behavior-level tests execute middle/Space pan precedence, blank-primary marquee, object-primary non-marquee, 3px pending, 4px activation, unmodified below-threshold clear, Shift below-threshold no-op, commit, pointercancel, and lost-capture cancellation.,A precise-modifier pointerdown cannot reach a simulated object-drag listener, and moved or cancelled precise sequences neither select nor mutate."
+        - type: browser_qa_focus_after_remediation
+          items: "Verify fallback highlight on locked and filter/resource-heavy primary layers.,Verify Escape while an inspector control retained focus, then release the pointer and confirm selection is restored.,Verify stage-padding marquee, blank-SVG marquee, Space/middle pan, and object drag at 100% and non-default zoom.,Probe clip-path and mask cases as geometric-client-bound behavior rather than pixel-painted hit testing.,Inspect console, dirty indicator, undo state, and exported SVG after cancellations and precise toggles."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - T005
+      missing_evidence:
+        - "Visible primary feedback when handles are unavailable"
+        - "Cancellation-safe successor-click behavior"
+        - "Behavioral stage gesture arbitration tests"
+        - "Real-browser QA at multiple zoom levels"
+      required_board_updates:
+        - task_id: T004
+          status: done
+          action: "Record this rejected milestone receipt."
+        - task_id: T004R
+          status: active
+          action: "Insert and dispatch exactly one Worker using the worker_package above."
+        - task_id: T005
+          status: queued
+          action: "Do not begin browser QA until T004R passes verification and a read-only remediation review."
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Remediate the marquee slice as one coherent reliability package: provide visible primary fallback feedback when transform handles are unavailable; make active marquee and precise-pointer Escape cancellation precede focus/modal guards; suppress successor clicks after every explicit cancellation; extract stage gesture classification and state transitions into a testable controller used by main.ts; and add behavioral coverage for pan precedence, thresholds, Shift no-op, commit, pointercancel/lost capture, precise drag suppression, locked-primary feedback, clean history, and serialization."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "src/client/canvas/marquee-selection.ts"
+      - "src/client/main.ts"
+      - "src/client/styles.css"
+      - "tests/editor-interactions.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/client-ux.test.ts"
+    verify:
+      - "npm run typecheck"
+      - "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+      - "npm run build"
+    stop_if:
+      - "Any required implementation file is outside allowed_files."
+      - "Existing unrelated dirty hunks cannot be preserved without semantic conflict."
+      - "The remediation requires preference persistence, workspace/session schema changes, exported SVG format changes, or generalized multi-object transforms."
+      - "The testable gesture controller would require a broad application bootstrap rewrite rather than a bounded extraction."
+      - "The same verification failure remains unexplained after two attempts."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - src/client/canvas/marquee-selection.ts
+        - src/client/main.ts
+        - src/client/styles.css
+        - tests/editor-interactions.test.ts
+        - tests/editor-serialization.test.ts
+        - tests/client-ux.test.ts
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+          status: pass
+        - cmd: "npm run build"
+          status: pass
+      summary: "T009 implemented the reliability package; its bounded first verification attempt is preserved in notes/T009-blocked-attempt.json. T011 then resolved the two test-only Happy DOM typing mismatches without changing product behavior and completed T009 verification: typecheck, all 164 targeted tests, and the production build passed."
+      note: "notes/T009-blocked-attempt.json"
+      remaining_blockers: []
+      verification_attempts: 3
+      stopped_because: null
+      deviations: []
+  - id: T011
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Resolve the bounded Happy DOM/global DOM node typing mismatch in the new gesture tests without weakening their behavioral assertions, then run the complete T009 verification suite."
+    allowed_files:
+      - "tests/editor-interactions.test.ts"
+    verify:
+      - "npm run typecheck"
+      - "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+      - "npm run build"
+    stop_if:
+      - "The correction requires product-code changes or files outside allowed_files."
+      - "The correction would remove or weaken the focused-control Escape coverage."
+      - "The same verification failure remains unexplained after two attempts."
+    receipt:
+      result: done
+      changed_files:
+        - tests/editor-interactions.test.ts
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+          status: pass
+        - cmd: "npm run build"
+          status: pass
+      summary: "Resolved both Happy DOM/global DOM typing errors by attaching each inspector control through its own typed ownerDocument. The controls remain genuinely connected and focusable, preserving the focused-control Escape behavioral coverage without weakening assertions or changing product code. Typecheck, all 164 targeted tests, and the production build pass."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+      deviations: []
+  - id: T010
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Verify that T009 closes every rejected milestone finding and that browser QA may begin."
+    inputs:
+      - "T004 and T009 receipts"
+      - "Remediation diff"
+      - "Latest verification"
+    constraints:
+      - "Read-only; do not implement."
+      - "Require visible handle-ineligible primary feedback, cancellation-safe click suppression, and behavioral gesture-controller tests."
+      - "Do not begin preferences review or generalized transform design."
+    expected_output:
+      - "accept | remediate"
+      - "Finding-by-finding closure evidence"
+      - "Browser QA focus areas"
+      - "Exact remediation task if any finding remains"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "T009 plus T011 close every T004 rejection. Handle-ineligible primaries now receive an editor-only fallback marker with visible styling, and both snapshot and clean serialization remove it. Active marquee and precise-pointer Escape handling precedes focus/modal guards, while cancellation arms successor-click suppression. Main now delegates gesture classification and state transitions to the behaviorally tested StageGestureController. Focused-control, modal, drag-suppression, lock, serialization, threshold, pan, commit, and cancellation tests are substantive. Fresh typecheck, 164 targeted tests, and production build pass. T005 browser QA may begin."
+      worker_package: null
+      evidence:
+        - finding: "Handle-ineligible primary feedback"
+          status: closed
+          paths: "src/client/canvas/editor.ts:1080,src/client/canvas/editor.ts:1161,src/client/styles.css:120"
+          proof: "SvgEditor computes canInstallHandles and applies data-lineage-primary-fallback when locked, agent-blocked, hidden-by-attribute, or resource-heavy selections cannot receive svg.js handles. Blue fallback styles are distinct from purple secondary feedback. Behavioral tests cover locked and complex-resource primaries while confirming ordinary unlocked handles return."
+        - finding: "Serialization stripping"
+          status: closed
+          paths: "src/client/canvas/editor.ts:470,tests/editor-serialization.test.ts:92"
+          proof: "serializeSvg removes data-lineage-primary-fallback and data-lineage-secondary before both clean exports and snapshots. Tests assert exact clean markup and absence under stripEditorState false."
+        - finding: "Escape before focus/modal guards"
+          status: closed
+          paths: "src/client/canvas/editor.ts:2139,tests/editor-interactions.test.ts:832"
+          proof: "Active marquee or precise-pointer Escape is handled before dialog and editable-target early returns. Connected, focused inspector controls and an open dialog are exercised behaviorally."
+        - finding: "Successor-click suppression"
+          status: closed
+          paths: "src/client/canvas/editor.ts:1278,src/client/canvas/editor.ts:2233,src/client/canvas/editor.ts:2241,tests/editor-interactions.test.ts:832,tests/editor-interactions.test.ts:855"
+          proof: "cancelMarquee and cancelPrecisePointer arm the shared 250ms canvas-click suppression window before releasing capture. Immediate successor clicks after Escape and pointercancel are proven unable to clear or toggle restored selection."
+        - finding: "Behavioral gesture controller and tests"
+          status: closed
+          paths: "src/client/canvas/marquee-selection.ts:19,src/client/canvas/marquee-selection.ts:46,src/client/main.ts:1434,src/client/main.ts:1503,tests/client-ux.test.ts:159"
+          proof: "Main uses StageGestureController as the source of pan/marquee state transitions. Tests execute middle and Space pan precedence, object and modified-pointer exclusion, 3px pending, 4px activation, additive below-threshold commit semantics, pointerup commit, pointercancel, lost-capture cancellation, and stale-pointer rejection. Editor tests separately prove Shift below-threshold no-op and unmodified clear."
+        - finding: "Precise-click drag suppression"
+          status: closed
+          paths: "src/client/canvas/editor.ts:1545,tests/editor-interactions.test.ts:797"
+          proof: "Capture-phase exact-pointer handling stops immediate propagation. A simulated object pointerdown listener receives zero events, while moved precise sequences preserve SVG bytes, selection, and history."
+        - finding: "Latest verification"
+          status: closed
+          commands: "[object Object],[object Object],[object Object]"
+        - type: browser_qa_focus
+          items: "Confirm locked and resource-heavy primary fallback styling is visibly clear on the real Seatify SVG.,Exercise stage-padding and blank-SVG marquee at 100% and non-default zoom.,Exercise Space-primary and middle-button pan, ordinary object drag, and precise-modifier drag suppression with real pointer events.,Cancel an active marquee while inspector focus is retained, release the pointer, and confirm no successor selection change.,Probe pointer departure/lost capture, clipped or masked geometry, dirty state, undo availability, exported SVG, and browser console."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence:
+        - "Real-browser marquee QA at 100% and non-default zoom remains required by T005."
+      required_board_updates:
+        - task_id: T010
+          status: done
+          action: "Record this approved remediation review."
+        - task_id: T009
+          status: done
+          action: "Reconcile the historical blocked receipt with T011: retain its failed-attempt evidence, record that T011 resolved its sole typing blocker, and treat the combined remediation package as completed."
+        - task_id: T005
+          status: active
+          action: "Clear the T004 block and begin hands-on browser QA using the listed focus areas."
+  - id: T005
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Run hands-on browser QA of the marquee interaction on the complex Seatify constellation before preferences are layered on top."
+    inputs:
+      - "Goal Browser QA Matrix"
+      - "T004 receipt"
+      - "examples/seatify-constellation.svg"
+    constraints:
+      - "Use a descriptive localhost subdomain."
+      - "Exercise the real pointer and keyboard paths, not only scripted DOM calls."
+      - "Check the console, dirty indicator, history, and SVG output after selection-only actions."
+      - "Record reproducible steps for every defect."
+    expected_output:
+      - "Browser QA transcript at 100% and non-default zoom"
+      - "Screenshots or observable evidence for selection feedback"
+      - "Pass/fail matrix and ranked defects"
+      - "Decision whether T006 may proceed or remediation is required first"
+    receipt:
+      result: done
+      summary: "Hands-on QA passed root and nested marquee selection, Shift-union, cross-scope Meta exact selection, 149% zoom geometry, layer-tree synchronization, locked-primary fallback, Escape clearing, clean dirty/history state, and a clean console. It uncovered one reproducible mutation bug: Meta-dragging an already selected object from the svg.js .svg_select_shape overlay bypasses the precise-selection guard and moves the object. The QA mutation was undone and clean state restored. Preferences are blocked until a bounded overlay-path fix, review, and browser recheck complete."
+      note: notes/T005-browser-qa.md
+      decision: remediate
+      evidence:
+        - "Root marquee selected the fully enclosed top-level group at 99% zoom."
+        - "Nested stage-padding marquee selected all three direct Circular table children without ancestors."
+        - "Meta exact toggle and Shift-union behaved correctly away from the handle overlay."
+        - "The same nested marquee worked at 149% zoom with sidebars collapsed."
+        - "Locked Optimized center point showed data-lineage-primary-fallback with no handles; unlock restored handles."
+        - "Selection-only actions kept Undo and Save disabled; console warnings/errors were empty."
+        - "Meta-drag over selected Seatify title's .svg_select_shape moved it about 30x25px and enabled Undo/Save; Undo restored the exact prior position and clean controls."
+      spawned_tasks:
+        - T012
+        - T013
+        - T014
+  - id: T012
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Prevent precise-modifier drags that begin on the svg.js selection bounding shape from reaching object-drag mutation, while retaining ordinary drag and actual resize/rotate handle behavior; add a behavioral regression that reproduces the browser finding."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "tests/editor-interactions.test.ts"
+    verify:
+      - "npm run typecheck"
+      - "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+      - "npm run build"
+    stop_if:
+      - "The fix requires files outside allowed_files."
+      - "The fix disables ordinary object drag or resize/rotate handles."
+      - "The regression cannot reproduce pointer capture through .svg_select_shape without weakening the assertion."
+      - "The same verification failure remains unexplained after two attempts."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - tests/editor-interactions.test.ts
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts"
+          status: pass
+        - cmd: "npm run build"
+          status: pass
+      summary: "Fixed precise-modifier capture for svg.js selection bounding shapes by resolving .svg_select_shape and .svg_select_shape_pointSelect to the current selected object. Meta-drag on the overlay is now intercepted before mutation, while ordinary overlay drag and Meta-modified resize/rotation handles remain available. Added a behavioral regression reproducing the browser coordinates and overlay mutation path, with clean serialization and history assertions. Typecheck, all 165 targeted tests, and production build pass."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+      deviations: []
+  - id: T013
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Verify that T012 closes the real-browser selection-overlay drag defect without regressing normal transforms or precise selection."
+    inputs:
+      - "T005 browser QA note"
+      - "T012 receipt and diff"
+      - "Latest verification"
+    constraints:
+      - "Read-only; do not implement."
+      - "Require a behavioral regression covering .svg_select_shape rather than a source-string assertion."
+    expected_output:
+      - "accept | remediate"
+      - "Finding closure evidence"
+      - "Targeted browser recheck instructions"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "T012 closes the browser-confirmed overlay drag defect without broadening transform scope. Both selection bounding-shape classes resolve through one capture-phase branch to the current selected object, so Meta movement is intercepted before svg.js drag mutation. Resize and rotation handles are deliberately excluded and remain reachable, while unmodified bounding-shape drag still propagates. The behavioral regression reproduces the reported coordinates, proves the mutation listener is blocked only for Meta, and verifies unchanged selection, serialization, and undo history. Fresh typecheck, 165 targeted tests, and production build pass. T014 browser recheck may begin."
+      worker_package: null
+      evidence:
+        - finding: "Browser defect reproduction boundary"
+          status: closed_in_code
+          source: docs/goals/marquee-selection-preferences/notes/T005-browser-qa.md
+          proof: "The note identifies Meta-drag beginning on .svg_select_shape at approximately (620,535) to (650,560) as the sole failed path. T012's regression uses the same class, modifier, movement, and coordinates."
+        - finding: ".svg_select_shape resolution"
+          status: closed
+          paths: "src/client/canvas/editor.ts:82,src/client/canvas/editor.ts:1558"
+          proof: "SELECTION_BOUNDING_SHAPE_SELECTOR includes .svg_select_shape. Capture-phase pointerdown resolves any closest matching overlay to this.selectedNode before ordinary direct-target resolution, establishing the selected SVG object as the precise-toggle candidate."
+        - finding: ".svg_select_shape_pointSelect resolution"
+          status: closed
+          paths: "src/client/canvas/editor.ts:82,src/client/canvas/editor.ts:1558"
+          proof: "The pointSelect class is in the same selector and executes the identical closest-overlay-to-selectedNode branch. There is no separate conditional or fallback path that could resolve it differently."
+        - finding: "Precise Meta capture prevents mutation"
+          status: closed
+          paths: "src/client/canvas/editor.ts:1555,src/client/canvas/editor.ts:1570,tests/editor-interactions.test.ts:815"
+          proof: "A valid Meta primary press on the bounding overlay creates the precise pointer session, captures the pointer, prevents default, and stops immediate propagation. The behavioral test installs a mutation-producing overlay pointerdown listener; the listener receives zero Meta events after a 30x25 drag, clean SVG bytes remain exact, the selected object remains unchanged, and editor.undo() remains false."
+        - finding: "Ordinary overlay drag remains"
+          status: closed
+          paths: "src/client/canvas/editor.ts:1555,tests/editor-interactions.test.ts:844"
+          proof: "Without Meta, the exact-toggle predicate returns false and the capture guard does not consume the event. The same overlay listener receives the ordinary pointerdown exactly once and can perform its simulated transform."
+        - finding: "True resize and rotation handles remain"
+          status: closed
+          paths: "src/client/canvas/editor.ts:82,tests/editor-interactions.test.ts:818,tests/editor-interactions.test.ts:850"
+          proof: "SELECTION_BOUNDING_SHAPE_SELECTOR excludes .svg_select_handle and .svg_select_handle_rot. Meta pointerdown on real resize and rotation handles therefore bypasses the overlay capture branch; both behavioral listeners receive their events exactly once."
+        - finding: "Mutation, history, and serialization regression"
+          status: closed
+          paths: "tests/editor-interactions.test.ts:815"
+          proof: "The test's overlay listener would synchronously write translate(30 25) if propagation reached it. Meta capture prevents that write, serializeClean remains byte-identical, the primary selection remains the original group, and no undo entry exists."
+        - finding: "Latest verification"
+          status: closed
+          commands: "[object Object],[object Object],[object Object]"
+        - type: T014_browser_recheck
+          instructions: "At non-default zoom, select Seatify title and repeat the exact Meta-drag from approximately (620,535) to (650,560) over .svg_select_shape.,Confirm the title position is unchanged and Undo and Save remain disabled.,Repeat an ordinary drag from the selection bounding shape and confirm movement still works; immediately undo and restore clean state.,Exercise one genuine resize handle and the rotation handle, confirming both remain interactive.,Repeat one root or nested marquee and one precise Meta toggle away from the overlay.,Confirm clean console, restored dirty/history state, and unchanged exported SVG after selection-only actions."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - T006
+      missing_evidence:
+        - "The real-browser overlay path must pass T014 before preferences implementation begins."
+      required_board_updates:
+        - task_id: T013
+          status: done
+          action: "Record this approved overlay-remediation review."
+        - task_id: T014
+          status: active
+          action: "Begin the targeted live-browser recheck using the exact instructions above."
+        - task_id: T006
+          status: queued
+          action: "Keep preferences work queued until T014 confirms the overlay path in the real browser."
+  - id: T014
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Repeat the confirmed Meta-drag overlay reproduction in the live browser and recheck marquee, exact toggle, dirty/history, and console behavior before preferences work begins."
+    inputs:
+      - "T005 browser QA note"
+      - "T013 receipt"
+    constraints:
+      - "Use the complex Seatify example at non-default zoom."
+      - "Undo any accidental mutation immediately and record exact evidence."
+      - "Do not activate T006 unless the overlay path is fixed in the real browser."
+    expected_output:
+      - "Targeted browser transcript"
+      - "Pass/fail decision for T006"
+      - "Dirty/history and console evidence"
+    receipt:
+      result: done
+      summary: "Targeted live-browser recheck confirmed ordinary selection-box drag, rotation, resize, root/nested marquee, exact Meta-click, clean dirty/history restoration, and a clean console after T012. The in-app browser drag helper did not carry Meta through pointer movement under any supported spelling, so the precise Meta-drag itself remains a required human final-QA check rather than a falsely claimed pass. T012's behavioral regression and T013 review directly prove the fixed overlay path. Preferences may proceed, but final completion remains gated on human Cmd-drag confirmation."
+      note: notes/T014-browser-recheck.md
+      decision: proceed_with_manual_final_gate
+      evidence:
+        - "Reloaded updated app at 149% zoom; Meta-click selected Seatify title precisely with clean controls."
+        - "Ordinary overlay drag, rotation handle, and resize handle each mutated correctly and were individually undone back to exact clean markup."
+        - "Post-fix 100% marquee selected all three Seatify wordmark children; Meta-click removed one exact child; Undo and Save stayed disabled."
+        - "Browser console warnings/errors were empty."
+        - "Browser drag helper failed to deliver Meta during drag; final human Cmd-drag confirmation is required."
+      spawned_tasks: []
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement the compact Preferences & shortcuts surface, versioned global preference storage, modifier/marquee/click-depth/outline controls, restore-defaults behavior, and automated coverage."
+    allowed_files:
+      - "src/client/selection-preferences.ts"
+      - "src/client/main.ts"
+      - "src/client/ui/layout.ts"
+      - "src/client/canvas/editor.ts"
+      - "src/client/styles.css"
+      - "tests/selection-preferences.test.ts"
+      - "tests/client-ux.test.ts"
+      - "tests/editor-interactions.test.ts"
+    verify:
+      - "npm run typecheck"
+      - "npm run test -- --run tests/selection-preferences.test.ts tests/client-ux.test.ts tests/editor-interactions.test.ts"
+      - "npm run build"
+    stop_if:
+      - "T005 reports a marquee correctness defect that should be fixed before preferences integration."
+      - "The feature needs a full settings page, arbitrary keybinding system, or workspace schema change."
+      - "Accessible focus management cannot be preserved within the existing UI shell."
+      - "Verification fails twice for the same unexplained cause."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/selection-preferences.ts
+        - src/client/main.ts
+        - src/client/ui/layout.ts
+        - src/client/canvas/editor.ts
+        - src/client/styles.css
+        - tests/selection-preferences.test.ts
+        - tests/client-ux.test.ts
+        - tests/editor-interactions.test.ts
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npm run test -- --run tests/selection-preferences.test.ts tests/client-ux.test.ts tests/editor-interactions.test.ts"
+          status: pass
+        - cmd: "npm run build"
+          status: pass
+      summary: "Implemented the compact accessible Preferences & shortcuts dialog with focus trapping/return, Escape, restore defaults, and reduced-motion support. Added strict global v1 storage with atomic malformed/future-version fallback and tab-local failure resilience, separate from workspace state. Wired precise modifier, marquee containment/touching, logical/exact click depth, and individual outlines into the editor while preserving Alt/double-click, gestures, serialization, and history. Added meaningful storage, UX, and interaction coverage. Typecheck, 81 targeted tests, and production build pass."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+      deviations: []
+  - id: T007
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the integrated selection and preferences feature before final browser QA."
+    inputs:
+      - "All prior receipts"
+      - "Integrated diff"
+      - "Latest verification"
+    constraints:
+      - "Read-only; do not implement."
+      - "Audit defaults, persistence corruption/future-version fallback, shortcut conflicts, accessibility, migration boundaries, and all earlier interaction risks."
+      - "Create one coherent remediation task when findings share a cause."
+    expected_output:
+      - "accept | remediate"
+      - "High-confidence findings"
+      - "Final browser QA probes"
+      - "Any required remediation task specification"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "The integrated feature is ready for final browser QA. Defaults match the charter; storage is strict, versioned, global, and independent of workspace restoration; malformed, future, acquisition-failure, and write-failure paths fall back safely. Modifier, marquee, click-depth, and outline preferences are wired into existing normalized selection paths without adding document history. The accessible modal and earlier gesture, serialization, and transform safeguards remain intact. Full npm run check passes 20 files and 371 tests. Completion still requires the T008 browser oracle and human Cmd-drag confirmation."
+      worker_package: null
+      evidence:
+        - finding: "Integrated verification"
+          status: closed
+          proof: "npm run check passed 20 test files and 371 tests, typecheck, and production build."
+        - finding: "Persistence boundary"
+          status: closed
+          proof: "Strict five-key global v1 record safely defaults on malformed, future, acquisition-failure, and write-failure cases, separately from workspace restoration."
+        - finding: "Accessible preferences"
+          status: closed
+          proof: "Labelled native modal, labelled controls, initial focus, forward/reverse focus containment, Escape/backdrop closure, and actual-invoker focus return are implemented and tested."
+        - finding: "Interaction integration"
+          status: closed
+          proof: "Precise modifier, marquee match, click depth, and outline preferences preserve normalized selection, Alt/double-click, clean serialization, history, and prior gesture safeguards."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence:
+        - "T008 must execute the complete integrated browser oracle."
+        - "A real human-modified Cmd/Ctrl drag over .svg_select_shape remains mandatory because the browser automation helper could not carry the modifier through drag."
+      required_board_updates:
+        - "Record T007 done and activate T008."
+        - "Keep T999 queued until browser QA and final npm run check."
+  - id: T008
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Run the full Browser QA Matrix against the integrated feature and execute the complete goal oracle."
+    inputs:
+      - "Goal oracle"
+      - "Browser QA Matrix"
+      - "T007 receipt"
+    constraints:
+      - "Use the saved complex Seatify example on a descriptive localhost subdomain."
+      - "Verify every preference before and after reload, including restore defaults and malformed-storage fallback."
+      - "Verify selection-only actions do not dirty the document, add undo history, or alter exported SVG."
+      - "If any requirement fails, add a bounded remediation task before T999."
+    expected_output:
+      - "Complete pass/fail transcript mapped to the goal oracle"
+      - "Console, persistence, dirty/history, and serialization evidence"
+      - "Any reproducible defects and bounded remediation task"
+      - "Final npm run check result"
+    receipt:
+      result: done
+      summary: "Integrated live QA on the 44-layer Seatify constellation passed preference defaults, alternate values, reload persistence, restore defaults, logical/exact click depth, contain/touch marquee behavior at 100% and 150%, synchronized multi-selection, outline hiding/restoration, clean history/dirty state, and an empty console. Strict malformed/future storage fallback, serialization stripping, focus-loop variants, reduced motion, and gesture regressions pass automated coverage and independent review. Final npm run check passes 20 files and 371 tests. The only remaining oracle item is a real human Command-drag over the selected overlay because the browser helper cannot carry Command through drag."
+      evidence:
+        - notes/T008-browser-qa.md
+        - "Alternate preference values and restored defaults each survived full reload."
+        - "Logical and exact clicks selected different expected hierarchy levels on identical nested geometry."
+        - "Contain versus touch marquee diverged correctly at 100%, and touching passed again at 150%."
+        - "Two-layer selection remained intact while individual markers were hidden and restored."
+        - "Undo, Redo, and Save stayed disabled; browser console warnings/errors were empty."
+        - "npm run check passed 20 files, 371 tests, typecheck, and build."
+      facts:
+        - "Browser security policy forbids direct local-storage inspection or mutation; strict corruption/future-version behavior is proven by focused tests instead."
+        - "T005/T014 and current automated coverage provide the gesture, serialization, and cancellation regression evidence not reliably repeatable with the current browser driver."
+        - "A real human Command-drag over .svg_select_shape is still mandatory before completion."
+      contradictions: []
+      ambiguity_requiring_judge: []
+      commands:
+        - "npm run check"
+      note_needed: true
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether the delivered feature fully satisfies the original owner outcome and goal oracle."
+    inputs:
+      - "All done task receipts"
+      - "Latest npm run check output"
+      - "T008 browser QA evidence"
+      - "Current dirty diff"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject completion if required Worker work remains queued, active, or unverified."
+      - "Reject completion if the complex-example oracle, persistence, accessibility, gesture coexistence, or clean serialization lacks evidence."
+      - "Reject accidental expansion into generalized multi-object transformation."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Evidence mapped to every oracle clause"
+      - "Missing evidence and exact next task when incomplete"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      rationale: "The revised owner outcome is fully proven. The saved 44-layer Seatify example, current implementation reviews, live QA at 100% and 125–150%, strict preference tests, and fresh 384-test check cover the complete oracle. The owner supplied the required physical-key confirmation, exactly: Control-left marquee QA passed. Control start-over-artwork, Shift-add, feedback, ordinary drag, and context-menu suppression therefore have real hardware evidence. Automated and reviewed paths cover empty-canvas arbitration, exact click, cancellation, persistence corruption, accessibility, serialization, history, and gesture coexistence. No required Worker remains; T009 is a historical failed attempt fully superseded by T011 and T010 approval."
+      evidence:
+        - oracle_clause: "Saved complex product example"
+          status: proven
+          proof: "examples/seatify-constellation.svg contains the saved 44-layer Seatify constellation, README links it as the complex example, and tests/complex-seatify-fixture.test.ts participates in the green full suite."
+        - oracle_clause: "Physical left-Control start-over-artwork marquee"
+          status: proven
+          proof: "T030 records the owner's exact physical-key pass phrase: Control-left marquee QA passed. The required walkthrough began over artwork and confirmed enclosed-object selection, violet halos, one primary handle set, matching badge count, ordinary drag preservation, and no native context menu."
+        - oracle_clause: "Shift-Control additive selection"
+          status: proven
+          proof: "The T030 owner walkthrough included a physical Shift-add marquee. T024 locked Shift at pointerdown, T025/T028 implemented it, and T029 approved irreversible threshold and full-union normalization coverage."
+        - oracle_clause: "Control click-versus-drag and empty-canvas behavior"
+          status: proven
+          proof: "StageGestureController behaviorally proves below-4px exact Control toggle, at-or-above-4px irreversible marquee, frozen candidate and Shift, start over artwork or empty canvas, and no object mutation. T029 independently reviewed stage-capture wiring; T030 proves the physical ControlLeft activation identity."
+        - oracle_clause: "Physical identity, right Control, and macOS context menu"
+          status: proven
+          proof: "KeyboardEvent.code ControlLeft is the sole default arming identity; ControlRight tests and source review prove it cannot arm. The one-shot causal context-menu controller is behaviorally tested at click origins and distant drag endpoints, invalidates on later pointerdown, excludes non-canvas and non-Control events, and T030 confirms no native menu during real Control gestures."
+        - oracle_clause: "Deepest visible selection and normalization"
+          status: proven
+          proof: "Editor interaction tests cover visible leaf-most descendants across nested parents, DOM ordering, full additive ancestor/descendant normalization, locked-visible inclusion, hidden exclusion, contain/touch geometry, and frozen scope. T005 and T027 live evidence confirms nested complex artwork and multi-object feedback."
+        - oracle_clause: "100% and non-default zoom geometry"
+          status: proven
+          proof: "T027 live QA passed synchronized three-object halos, Layers rows, primary handles, and badge at 100% and 125% with collapsed sidebars. T005/T008 additionally exercised transformed nested geometry and contain/touch selection at 149–150%."
+        - oracle_clause: "Canvas, count badge, and Layers synchronization"
+          status: proven
+          proof: "T027 observed three independent violet halos, three aria-pressed Layers rows, one stronger primary row and handle set, and a 3 objects selected badge. The same state remained synchronized with both sidebars collapsed and at 125% zoom. Source and tests cover all-selected ancestry expansion and filter clearing."
+        - oracle_clause: "Filter-safe and zero-extent selection feedback"
+          status: proven
+          proof: "Per-object halos are separate editor overlays that never alter authored filters. T027 visibly confirmed axis-aligned line feedback and minimum halos with Enhanced outlines off; T028/T029 prove scale-aware nonzero geometry and clean serialization/history."
+        - oracle_clause: "Primary-only transform boundary"
+          status: proven
+          proof: "Every selected object receives an individual halo, while only the primary receives the blue svg.js selection box and handles. Multi-selection mutation controls remain gated; no union box, numbering, shared handle set, collective movement, cross-parent resize, or cross-parent rotation was introduced."
+        - oracle_clause: "Gesture coexistence"
+          status: proven
+          proof: "Behavioral controller and editor tests cover Space-primary and middle-button pan precedence, ordinary object drag, handle resize/rotation, Alt-click, double-click, configured precise selection, unmodified background drag, wheel/zoom retention, and successor-click suppression. T014 and T030 provide live ordinary drag, resize/rotation, exact selection, and physical Control coexistence evidence."
+        - oracle_clause: "Escape and defensive cancellation"
+          status: proven
+          proof: "Reviewed and green tests cover keyup, Escape before focus/modal guards, blur, hidden visibility, editable/modal focus, pointercancel, lost capture, review lock, document replacement, selection restoration, click suppression, pointer release, and fresh-key requirements. T005 live QA confirmed Escape clearing without dirtying."
+        - oracle_clause: "Bounded preferences and reload"
+          status: proven
+          proof: "The compact Preferences & shortcuts dialog implements precise modifier, Left Control/M activation, contain/touch mode, logical/exact click depth, Enhanced outlines, and Restore defaults. T008 live-tested the original four values and reload; T027 live-tested activation, enhanced minimum feedback, Restore defaults, and reloaded Left Control state."
+        - oracle_clause: "Versioned persistence and safe fallback"
+          status: proven
+          proof: "The strict global v2 record defaults to Left Control, migrates an exact v1 record only when v2 is absent, rejects malformed, partial, extra-key, and future records atomically, survives storage acquisition/write failure, and remains independent of workspace/session restoration. Current focused tests and T029 review verify the boundary."
+        - oracle_clause: "Accessibility and reduced motion"
+          status: proven
+          proof: "The labelled native dialog has initial focus, forward/reverse focus containment, Escape/backdrop closure, and invoker focus return. The count badge uses role=status, aria-live=polite, and aria-atomic=true outside both sidebars; selected Layers rows expose aria-pressed. Reduced-motion behavior is covered by the approved UX suite."
+        - oracle_clause: "Clean SVG, dirty state, history, and console"
+          status: proven
+          proof: "Selection rectangles, halos, handles, fallback markers, and editor attributes are stripped from clean and snapshot serialization. Interaction tests prove byte stability and no undo checkpoints. T027 observed Undo and Save disabled after selection-only work and no browser warnings/errors; T008 provides matching live dirty/history evidence."
+        - oracle_clause: "Current verification"
+          status: proven
+          command: "npm run check"
+          proof: "The final Judge's fresh run passed TypeScript checking, all 20 test files and 384 tests, and the production Vite build."
+        - oracle_clause: "Current dirty-diff scope"
+          status: proven
+          proof: "The working tree contains the expected reversible feature, example, goal, preference, UI, editor, style, and test changes while preserving pre-existing session/layout work. Inspection found no dependency modification, exported editor state, union selection box, or generalized multi-object transform expansion."
+        - oracle_clause: "Required task closure"
+          status: proven
+          proof: "T025 and T028 are done; T024, T026, and T029 provide contract and implementation gates; T027 and T030 provide live and physical-owner proof. No queued or active Worker remains. T009's blocked receipt records an earlier verification attempt whose sole typing blocker was resolved by T011 and explicitly accepted by T010."
+        - oracle_clause: "Goal-state integrity"
+          status: proven
+          proof: "The GoalBuddy state checker reports ok=true with no errors or warnings and T999 as the sole active final task."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence: []
+      required_board_updates:
+        - task_id: T009
+          status: done
+          action: "Normalize the historical status to match T010's explicit reconciliation: retain the blocked attempt receipt and record T011 as its successful verification completion."
+        - task_id: T999
+          status: done
+          action: "Record this final completion receipt."
+        - goal_status: complete
+          action: "Mark the marquee-selection-preferences goal complete."
+        - checks: last_verification
+          action: "Record the final fresh npm run check: 20 files, 384 tests, typecheck, and production build passed."
+  - id: T015
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Record the exact human Command-drag overlay confirmation that browser automation cannot produce faithfully."
+    inputs:
+      - "T014 browser recheck"
+      - "T008 integrated browser QA"
+    constraints:
+      - "Use the live Seatify title at the descriptive localhost subdomain."
+      - "Hold Command continuously while dragging from inside the selected blue bounding box."
+      - "Do not mark complete unless the title position, selection, Undo, and Save remain unchanged."
+    expected_output:
+      - "Human pass or reproducible failure"
+      - "Title movement result"
+      - "Undo, Save, and selection result"
+    receipt:
+      result: done
+      summary: "Superseded by the owner's revised interaction contract: marquee now requires a hotkey and must select all deepest matching objects rather than direct scope wrappers. The old Command-drag confirmation is no longer the final gate; it will be rechecked within the revised integrated QA."
+      decision: superseded_by_owner_revision
+
+  - id: T016
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map the smallest correct change for hotkey-gated marquee activation and deepest matching multi-object selection across nested groups."
+    inputs:
+      - "Owner revision"
+      - "Current gesture controller and editor selection engine"
+      - "Current preferences and interaction tests"
+      - "Complex Seatify example"
+    constraints:
+      - "Read-only; do not implement."
+      - "Trace shortcut conflicts and key lifecycle, including blur and lost keyup."
+      - "Define descendant normalization that never co-selects ancestors and descendants."
+      - "Preserve ordinary object drag, Space/middle pan, dirty/history, and serialization."
+    expected_output:
+      - "Evidence map"
+      - "Locked candidate semantics and hotkey lifecycle"
+      - "Allowed files and verification for one Worker slice"
+    receipt:
+      result: done
+      summary: "The smallest correct revision adds an explicit M-held input to the existing stage gesture controller and replaces direct-scope matching with deepest-match normalization over all visible selectable descendants of the frozen scope. Shift remains additive at pointerdown. M is ignored in editable/modal/composing contexts and cleared on keyup, blur, or hidden visibility, cancelling an active marquee. Deep normalization must cover the additive union so an old ancestor cannot coexist with a new descendant. Existing highlighting, operation gates, dirty/history, and serialization support cross-parent inspection."
+      evidence:
+        - path: src/client/canvas/marquee-selection.ts
+          finding: "The gesture controller currently starts marquee for every eligible ordinary empty press and has no M input."
+        - path: src/client/main.ts
+          finding: "No M shortcut exists; global lifecycle already centralizes Space, dialogs, editable targets, and stage cancellation."
+        - path: src/client/canvas/editor.ts
+          finding: "commitMarquee currently filters to direct children of the frozen scope, which collapses nested artwork to wrapper groups."
+        - path: tests/editor-interactions.test.ts
+          finding: "Focused direct-child assertions must become deepest-match, cross-parent, additive-normalization, hidden/locked, history, and byte-stability proofs."
+      facts:
+        - topic: hotkey
+          value: "Hold physical KeyM to arm; Shift+M is additive; Cmd/Ctrl/Alt, composing, editable, and modal contexts do not arm."
+        - topic: lifecycle
+          value: "M keyup, window blur, or hidden visibility disarms and cancels pending/active marquee without touching Space/middle pan."
+        - topic: deep_match
+          value: "Match all selectable descendants in DOM order, then remove any matched ancestor containing another matched node."
+        - topic: additive
+          value: "Normalize the complete frozen-selection plus new-match union so ancestors and descendants never coexist."
+        - topic: allowed_files
+          value: "src/client/canvas/marquee-selection.ts,src/client/canvas/editor.ts,src/client/main.ts,tests/client-ux.test.ts,tests/editor-interactions.test.ts,tests/editor-serialization.test.ts,README.md"
+        - topic: verification
+          value: "npm run typecheck,npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts,npm run build"
+      contradictions: []
+      ambiguity_requiring_judge:
+        - question: "Must M remain held through pointerup?"
+          recommendation: "Yes; release cancels for deterministic hold-to-activate behavior."
+        - question: "Search current scope or whole SVG?"
+          recommendation: "Respect the frozen active scope; root scope reaches all nested artwork."
+      commands: []
+      note_needed: false
+  - id: T017
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Adversarially approve or revise the hotkey and all-object marquee contract before implementation."
+    inputs:
+      - "T016 receipt"
+      - "Updated goal charter"
+      - "Current diff"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject shortcut conflicts, stuck-key states, ancestor/descendant duplication, or accidental multi-object transform expansion."
+    expected_output:
+      - "approved | rejected"
+      - "Exact Worker package"
+      - "Browser probes and stop conditions"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "The revision is safe as one vertical slice with two tightened rules: candidates are visible leaf-most selectable descendants, and ordinary unarmed background movement above 4px preserves selection while suppressing its successor click. Hold-M activation, Shift captured at pointerdown, release/blur/hidden cancellation, frozen-scope search, full-union normalization, and cross-parent inspection fit existing seams. Modified M, editable/modal/composing/repeated keys never arm. Same-parent operation gates and primary-only handles prevent generalized multi-object transforms."
+      worker_package:
+        objective: "Implement hold-KeyM empty-background marquee activation, Shift+M additivity, inert ordinary background drags above 4px, complete disarm/cancellation lifecycle, visible leaf-most descendant matching, full-union ancestor normalization, one primary handle, updated guidance, and behavioral regressions without generalized transforms."
+        allowed_files:
+          - src/client/canvas/marquee-selection.ts
+          - src/client/canvas/editor.ts
+          - src/client/main.ts
+          - src/client/styles.css
+          - tests/client-ux.test.ts
+          - tests/editor-interactions.test.ts
+          - tests/editor-serialization.test.ts
+          - README.md
+        verify:
+          - "npm run typecheck"
+          - "npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+          - "npm run build"
+          - "npm run check"
+        stop_if:
+          - "Required files fall outside ownership."
+          - "Unrelated dirty hunks cannot be preserved."
+          - "Storage/session/export formats must change."
+          - "Correctness requires lasso, painted-pixel, auto-scroll, nested-SVG editing, or generalized cross-parent transforms."
+          - "Modified M, editable/modal/composing/repeat can arm."
+          - "Cancellation can leave key, pointer, overlay, cursor, or selection state behind."
+          - "The same verification failure remains unexplained after two attempts."
+      evidence:
+        - finding: "Hotkey lifecycle"
+          status: locked
+          proof: "Arm only fresh physical KeyM with no Cmd/Ctrl/Alt outside editable, modal, or composing contexts; Shift allowed; M remains held through commit."
+        - finding: "Ordinary drag"
+          status: locked
+          proof: "Below 4px remains background click; at or above 4px is inert and suppresses successor click."
+        - finding: "Deep candidates"
+          status: locked
+          proof: "Eligibility is visible leaf-most descendants before viewport hit testing; locked visible leaves remain eligible."
+        - finding: "Union normalization"
+          status: locked
+          proof: "Normalize the full prior-plus-new selection and drop every selected ancestor containing another selected node."
+        - finding: "Transform boundary"
+          status: locked
+          proof: "One primary handle; mutation controls and same-parent operations remain gated; no collective transforms."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - T019
+        - T020
+        - T999
+      missing_evidence:
+        - "T018 implementation"
+        - "T019 review"
+        - "T020 live QA"
+      required_board_updates:
+        - "Record T017 done, configure and activate T018."
+  - id: T018
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement the approved hotkey-gated, deepest-match marquee selection slice with regression coverage."
+    allowed_files:
+      - "src/client/canvas/marquee-selection.ts"
+      - "src/client/canvas/editor.ts"
+      - "src/client/main.ts"
+      - "src/client/styles.css"
+      - "tests/client-ux.test.ts"
+      - "tests/editor-interactions.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "README.md"
+    verify:
+      - "npm run typecheck"
+      - "npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+      - "npm run build"
+      - "npm run check"
+    stop_if:
+      - "Any required implementation file is outside allowed_files."
+      - "Existing unrelated dirty hunks cannot be preserved without semantic conflict."
+      - "The revision requires preference storage, workspace/session schema, or exported SVG changes."
+      - "Correctness requires generalized cross-parent transforms or out-of-scope geometry."
+      - "Modified M, editable/modal/composing/repeat can arm the selector."
+      - "Cancellation can leave key, pointer, overlay, cursor, or changed selection state behind."
+      - "The same verification failure remains unexplained after two attempts."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/marquee-selection.ts
+        - src/client/canvas/editor.ts
+        - src/client/main.ts
+        - src/client/styles.css
+        - tests/client-ux.test.ts
+        - tests/editor-interactions.test.ts
+        - README.md
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+          status: pass
+        - cmd: "npm run build"
+          status: pass
+        - cmd: "npm run check"
+          status: pass
+      summary: "Implemented hold-physical-KeyM marquee activation with frozen Shift additivity, strict arming guards, complete disarm/cancellation lifecycle, and preserved Space/middle pan precedence. Unarmed short background presses clear selection; drags at or above 4px are inert and suppress successor clicks. Marquee now selects visible leaf-most descendants within the frozen scope, normalizes full additive unions against ancestor coexistence, preserves DOM order and one primary handle, and keeps cross-parent operations gated. Updated cursor guidance and README. Targeted verification passed 176 tests; full check passed 376 tests, typecheck, and build."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+      deviations: []
+  - id: T019
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the revised marquee implementation and its interaction regressions before live QA."
+    inputs:
+      - "T018 receipt and diff"
+      - "Updated goal oracle"
+    constraints:
+      - "Read-only; do not implement."
+    expected_output:
+      - "approved | rejected"
+      - "Finding closure and live QA probes"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "Most locked behaviors are correct and 176 targeted tests pass, but one explicit rule regressed: an unarmed Shift gesture below 4px must preserve selection. The controller discarded additivity for background gestures and main unconditionally cleared. Existing tests missed this case. T020 must wait for bounded remediation and re-review."
+      worker_package:
+        objective: "Preserve frozen Shift through unarmed background gestures so sub-threshold Shift pointerup is a no-op with successor-click suppression, unmodified sub-threshold pointerup still clears, and every >=4px drag remains inert."
+        allowed_files:
+          - src/client/canvas/marquee-selection.ts
+          - src/client/canvas/editor.ts
+          - src/client/main.ts
+          - tests/client-ux.test.ts
+          - tests/editor-interactions.test.ts
+        verify:
+          - "npm run typecheck"
+          - "npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+          - "npm run build"
+          - "npm run check"
+        stop_if:
+          - "Fix requires persistence, export, session, or transform changes."
+          - "Unmodified clicks stop clearing."
+          - ">=4px drags can clear or mutate."
+          - "Shift is sampled after pointerdown."
+          - "Successor suppression is lost."
+          - "Unrelated hunks cannot be preserved."
+          - "Same failure remains unexplained after two attempts."
+      evidence:
+        - finding: "Shift background click"
+          status: open
+          proof: "Background gesture state loses additive and background-click unconditionally clears."
+        - finding: "Other revised behaviors"
+          status: closed_by_inspection
+          proof: "KeyM lifecycle, pan/object precedence, leaf-most matching, union normalization, operation gates, serialization, and guidance are substantively covered."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - T020
+      missing_evidence:
+        - "Shift background regression proof"
+        - "Fresh full verification"
+        - "T020 live QA"
+      required_board_updates:
+        - "Record T019 rejected; create T021 Worker remediation and T022 Judge re-review; keep T020 queued."
+  - id: T020
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Run live complex-logo QA for hotkey activation and all-object selection, then execute the final oracle."
+    inputs:
+      - "T019 receipt"
+      - "Updated Browser QA Matrix"
+    constraints:
+      - "Use the descriptive constellation localhost subdomain."
+      - "Prove ordinary drag is inert and M-drag selects every expected deepest object at 100% and non-default zoom."
+      - "Verify clean history, serialization, console, and all retained gestures."
+    expected_output:
+      - "Browser transcript"
+      - "Final npm run check"
+      - "Any remediation task"
+    receipt:
+      result: done
+      summary: "Owner live QA exposed a real interaction failure: the attempted M-drag committed zero selected objects. The salmon aura was hover-only, not selection feedback. Source inspection confirmed two coupled causes: M is an awkward activation key and marquee start is rejected when pointerdown originates over artwork. Existing multi-selection feedback is also too easy to miss when sidebars are collapsed, and only the primary selection's ancestor chain is expanded in Layers. The owner approved physical left Control as the default activation, start-over-artwork behavior, violet per-object selection feedback, a persistent selection-count badge, and complete Layers-panel parity."
+      evidence:
+        - "Live selection state after the failed gesture contained zero selected objects and no primary or secondary selection markers."
+        - "src/client/canvas/editor.ts canStartMarquee rejects any direct selection target, so a drag beginning over artwork cannot start a marquee."
+        - "src/client/main.ts arms only KeyM and reports 'drag empty canvas while holding M'."
+        - "src/client/styles.css uses salmon for hover, violet for secondary selection, and blue for primary selection."
+        - "renderSelectionContext expands ancestors only for the primary selection, leaving secondary rows potentially hidden."
+      spawned_tasks:
+        - T023
+        - T024
+        - T025
+        - T026
+        - T027
+
+  - id: T021
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Preserve frozen Shift through sub-threshold unarmed background gestures without changing ordinary click or inert-drag behavior."
+    allowed_files:
+      - "src/client/canvas/marquee-selection.ts"
+      - "src/client/canvas/editor.ts"
+      - "src/client/main.ts"
+      - "tests/client-ux.test.ts"
+      - "tests/editor-interactions.test.ts"
+    verify:
+      - "npm run typecheck"
+      - "npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+      - "npm run build"
+      - "npm run check"
+    stop_if:
+      - "The fix requires persistence, export, session, or transform changes."
+      - "Unmodified background clicks stop clearing selection."
+      - "Background drags at or above 4px can clear or mutate selection."
+      - "Shift must be sampled after pointerdown."
+      - "Successor-click suppression cannot be retained."
+      - "The same verification failure remains unexplained after two attempts."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/marquee-selection.ts
+        - src/client/canvas/editor.ts
+        - src/client/main.ts
+        - tests/client-ux.test.ts
+        - tests/editor-interactions.test.ts
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+          status: pass
+        - cmd: "npm run build"
+          status: pass
+        - cmd: "npm run check"
+          status: pass
+      summary: "Fixed the T019 defect by freezing Shift/additivity in unarmed background gesture state at pointerdown. Sub-threshold Shift pointerup now preserves selection while suppressing its successor click; unmodified sub-threshold pointerup still clears. Background drags at or above 4px remain inert with or without Shift and suppress successor clicks. Added controller, editor, and main-wiring regressions covering all four paths. Targeted verification passed 176 tests; full check passed 376 tests, typecheck, and build."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+      deviations: []
+  - id: T022
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Verify the Shift background-gesture remediation before live QA."
+    inputs:
+      - "T019 rejected review"
+      - "T021 receipt and diff"
+    constraints:
+      - "Read-only; do not implement."
+    expected_output:
+      - "approved | rejected"
+      - "Finding closure and final browser probes"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "T021 closes the sole T019 defect. Shift is frozen at pointerdown and carried only by sub-threshold background-click. Suppression is armed before preserving or clearing. Unmodified short gestures clear; Shift-short preserves; both shifted and unshifted >=4px drags remain inert. Controller and editor tests cover all outcomes. M activation, pan/object precedence, and cancellation lifecycle are unchanged. Fresh targeted verification passes 176 tests; full check passes 376."
+      worker_package: null
+      evidence:
+        - finding: "Frozen Shift"
+          status: closed
+          proof: "Background state stores pointerdown additive and returns it on short completion without resampling."
+        - finding: "Shift-short preservation"
+          status: closed
+          proof: "Editor arms click suppression and clears only when neither inert nor additive; behavioral test includes successor click."
+        - finding: "Other four paths"
+          status: closed
+          proof: "Unmodified short clears; shifted and unshifted >=4px drags preserve and suppress successor clicks."
+        - finding: Verification
+          status: pass
+          proof: "176 targeted tests; T021 records full 376-test check, typecheck, and build."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence:
+        - "T020 live browser QA and final oracle."
+      required_board_updates:
+        - "Record T022 done and activate T020."
+  - id: T023
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map the smallest safe implementation surface for left-Control start-anywhere marquee arbitration and unmistakable multi-selection feedback."
+    inputs:
+      - "Owner-approved revised gesture and feedback contract in goal.md"
+      - "T020 failed live-QA receipt"
+      - "Current dirty implementation and tests"
+    constraints:
+      - "Read-only; do not edit files."
+      - "Trace capture/bubble precedence for Control-click, object drag, handles, contextmenu, pan, and marquee."
+      - "Trace preference schema impact and feedback behavior for filtered SVG elements, collapsed sidebars, and nested Layers rows."
+      - "Preserve unrelated dirty work and existing passing behavior."
+    expected_output:
+      - "Exact symbols and files requiring change"
+      - "Gesture state-machine recommendation"
+      - "Feedback and accessibility recommendation"
+      - "Regression matrix, allowed_files, verify, and stop_if for the largest safe Worker slice"
+    receipt:
+      result: done
+      summary: "The safe slice is a coordinated gesture, preference, and feedback update. A stage capture listener must arbitrate armed left-Control before SVG exact-toggle capture and svg.js dragging, while passing handles and ordinary object drags through. The state machine should freeze the exact candidate at pointerdown, toggle it below 4px, and marquee at or above 4px. Feedback should use editor-only per-object violet halo overlays rather than target CSS filters, plus a stage-level accessible count badge and expansion of every selected Layers ancestry path. Add a versioned Left Control/M activation preference. Existing clean serialization and history boundaries can be preserved."
+      evidence:
+        - path: src/client/canvas/editor.ts
+          lines: 1580-1620
+          finding: "The SVG pointerdown capture listener consumes platform exact-toggle presses with preventDefault and stopImmediatePropagation before the current stage bubble listener can arbitrate them."
+        - path: src/client/main.ts
+          lines: 1690-1712
+          finding: "Stage pointerdown is currently bubble-phase. It passes ctrlKey into StageGestureController, where Control is rejected, and editor.canStartMarquee rejects artwork."
+        - path: src/client/canvas/editor.ts
+          lines: 1243-1250
+          finding: "canStartMarquee excludes handles and every direct artwork target. The revised contract needs two distinct predicates: region-start eligibility over artwork/empty canvas, and unarmed background-click eligibility."
+        - path: src/client/canvas/marquee-selection.ts
+          lines: 17-54
+          finding: "MarqueeActivationController is hard-coded to unmodified KeyM and cannot distinguish ControlLeft from ControlRight or switch activation modes."
+        - path: src/client/canvas/marquee-selection.ts
+          lines: 56-151
+          finding: "StageGestureController already owns pan-first arbitration, the 4px threshold, background click/inert behavior, additive freezing, and cancellation. Its marquee sub-threshold result currently has no exact-candidate semantics."
+        - path: src/client/main.ts
+          lines: 1540-1640
+          finding: "M lifecycle already disarms on keyup, Escape, blur, hidden visibility, and editable/modal focus. This wiring can be generalized to the configured ControlLeft or M activation and reused for cancellation."
+        - path: src/client/selection-preferences.ts
+          lines: 1-88
+          finding: "Selection preferences are a strict exact-key global v1 record. Adding activation requires a schema version change, default Left Control, validation, reset, and safe legacy handling."
+        - path: src/client/styles.css
+          lines: 116-124
+          finding: "Current violet feedback exists only on secondary nodes. It writes a CSS filter on nodes without a filter attribute and uses CSS outline for direct [filter] nodes, missing primary violet feedback and CSS/inherited filter cases."
+        - path: src/client/canvas/editor.ts
+          lines: "1050-1170, 2240-2255"
+          finding: "#setSelection marks only secondary nodes violet and gives primary blue handles/fallback. #deselect centrally clears editor markers, making it the correct lifecycle seam for non-serializing per-object halos."
+        - path: src/client/main.ts
+          lines: 886-955
+          finding: "renderSelectionContext expands only the primary ancestry and scrolls only to its row. Secondary rows can remain inside collapsed ancestors."
+        - path: src/client/main.ts
+          lines: "1247-1255; src/client/styles.css:155-162"
+          finding: "All rendered rows already receive aria-pressed and distinct primary/secondary classes, but the right sidebar can collapse and there is no selection count outside it."
+        - path: src/client/canvas/editor.ts
+          lines: "454-478; tests/editor-serialization.test.ts:80-100"
+          finding: "Serialization already removes handle nodes and editor selection attributes. A new halo selector must join the handle/editor-overlay stripping contract and receive explicit clean/snapshot tests."
+      facts:
+        - topic: gesture_state_machine
+          value: "Generalize activation to configured mode left-control|m. ControlLeft keydown arms even though ctrlKey is true; ControlRight never arms. Shift is allowed. Repeat is idempotent. Keyup for the active physical code, Escape, blur, hidden visibility, editable/modal focus, pointercancel, and lost capture disarm/cancel."
+        - topic: capture_precedence
+          value: "Add stage pointerdown arbitration in capture phase. Precedence: middle-button or Space+primary pan; armed activation plus primary over any non-handle canvas target starts a region candidate; transform handles pass through; all other object presses pass through to editor/svg.js; unarmed empty-background presses retain existing background click/inert handling. Only a handled capture path calls preventDefault and stopPropagation."
+        - topic: control_click_vs_drag
+          value: "Freeze the deepest exact selectable candidate and Shift state at ControlLeft pointerdown. Movement below 4 CSS pixels completes as an exact toggle of that frozen candidate, or preserves/clears according to empty-background semantics. Movement at or above 4px becomes marquee and must never move the object. M mode may retain its existing sub-threshold background behavior unless T024 explicitly aligns it with Control."
+        - topic: contextmenu
+          value: "Install a stage contextmenu capture listener that prevents default only while, or immediately after, an accepted ControlLeft canvas gesture. Do not suppress ordinary right-click, ControlRight-click, ControlLeft over transform handles, or context menus outside the canvas."
+        - topic: pan_and_object_drag
+          value: "Pan remains first for Space+primary and middle-button even if ControlLeft is held. Ordinary unmodified object presses never enter stage region state and continue to svg.js drag. Resize/rotation handles are excluded before region capture."
+        - topic: preference_schema
+          value: "Add regionActivation: 'left-control'|'m', default 'left-control'. Prefer a v2 storage key/record with strict exact keys. Safely migrate a valid v1 record by preserving its four values and adding left-control; malformed or future records fall atomically to defaults. The dialog gets one bounded select and updated shortcut copy."
+        - topic: selection_feedback
+          value: "Render one noninteractive violet halo per selected object, including the primary, in a dedicated editor-only SVG overlay group. Compute each individual root-space box from the selected node geometry/transform, use vector-effect='non-scaling-stroke', no resize handles/corners, and refresh on selection and interactive geometry sync. Keep the primary blue svg.js box/handles above the violet halo. This avoids overwriting or depending on SVG/CSS filters."
+        - topic: serialization_feedback
+          value: "Add the halo group and descendants to the editor overlay/handle exclusion and serializeSvg stripping paths. Halos must not be selectable, appear in Layers, affect dirty comparison, or create history."
+        - topic: badge_accessibility
+          value: "Add a stage/statusbar-level badge outside both sidebars, hidden for zero/one and reading 'N objects selected' for multi-selection. Use role='status', aria-live='polite', aria-atomic='true', and a high-contrast violet pill. Update only when the count changes to avoid repeated announcements."
+        - topic: layers_parity
+          value: "In renderSelectionContext, expand the ancestry path of every selected node before the single renderLayers refresh, then reapply primary/secondary row classes and aria-pressed. If a layer search would hide any selected node, clear the query so every selected row is observable. Preserve stronger primary styling and scroll only the primary into view."
+        - topic: candidate_allowed_files
+          value: "src/client/canvas/marquee-selection.ts,src/client/canvas/editor.ts,src/client/main.ts,src/client/selection-preferences.ts,src/client/styles.css,tests/client-ux.test.ts,tests/editor-interactions.test.ts,tests/editor-serialization.test.ts,tests/selection-preferences.test.ts,README.md"
+        - topic: verify
+          value: "npm run typecheck,npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/selection-preferences.test.ts,npm run build,npm run check"
+        - topic: stop_if
+          value: "Correct Control arbitration requires changing svg.js or dependency code rather than intercepting at the stage capture boundary.,Ordinary unmodified object drag, resize, rotation, Space-pan, or middle-pan no longer reaches its existing owner.,ControlRight arms marquee or ordinary right-click/context menus are suppressed.,The implementation introduces a collective transform box or mutates more than the primary object.,Feedback requires changing source SVG filter attributes, exported SVG, workspace-session schema, or undo history.,A selected filtered object cannot receive independent feedback without altering its authored filter.,The same verification failure remains unexplained after two attempts."
+      contradictions:
+        - issue: "Current StageGestureController rejects ctrlKey before marquee activation, while the new default activation itself is ControlLeft."
+          required_change: "Pass activation identity separately from modifier booleans and permit ctrlKey only for an armed ControlLeft region path."
+        - issue: "Current start predicate uses 'no direct artwork target' for both marquee and unarmed background gestures."
+          required_change: "Separate region-start eligibility from background-click eligibility so Control can start over artwork without stealing ordinary object drag."
+        - issue: "Current SVG capture exact-toggle owns Control-click before stage bubble."
+          required_change: "Stage capture must preempt only accepted ControlLeft region candidates and reproduce precise toggle below threshold."
+        - issue: "Current individualOutlines=false can hide secondary canvas feedback, but the revised feedback contract says every selected object receives unmistakable feedback."
+          required_change: "T024 must decide whether the preference now controls halo intensity/visibility or is superseded by the non-negotiable always-visible feedback contract."
+        - issue: "Current primary selection is blue-only while the revised contract requires violet feedback on every selected object plus blue primary handles."
+          required_change: "Add violet halo rendering for primary and secondary selections independently of svg.js handles."
+      ambiguity_requiring_judge:
+        - question: "How should the existing 'Show individual selection outlines' off preference coexist with mandatory feedback for every selected object?"
+          recommendation: "Keep an always-visible minimal violet halo for every selected object; let the preference control enhanced halo strength rather than eliminate selection visibility. Rename the label if necessary."
+        - question: "Should legacy M mode use exact-toggle semantics below threshold when starting over artwork?"
+          recommendation: "Keep the exact-toggle-below-threshold rule specific to ControlLeft, because M is not the configured precise modifier. M below threshold should cancel/no-op rather than toggle."
+        - question: "Should ControlLeft over a blue selection bounding shape count as artwork or a transform handle?"
+          recommendation: "Treat the noninteractive bounding shape as artwork and freeze the primary exact candidate; exclude only actual resize and rotation handles."
+      commands:
+        - "sed -n goal charter and T023 board task"
+        - "rg and sed T020-T022 receipts"
+        - "sed current marquee controller, editor marquee, and main gesture wiring"
+        - "sed preference schema/dialog and rg feedback/layer symbols"
+        - "sed styles, renderSelectionContext, renderLayers, and #setSelection"
+        - "sed focused preference, gesture, editor, serialization tests and git status"
+      note_needed: false
+  - id: T024
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Adversarially lock the revised Control gesture, feedback, preference, and accessibility contract before implementation."
+    inputs:
+      - "T023 receipt"
+      - "Revised goal.md"
+      - "Current diff and passing baseline"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject ambiguity around click-versus-drag threshold, start-over-object precedence, macOS contextmenu, cancellation, or physical left/right Control identity."
+      - "Reject feedback that implies collective transforms or becomes invisible with collapsed sidebars or SVG filters."
+    expected_output:
+      - "approved | rejected"
+      - "Locked interaction and feedback rules"
+      - "One complete Worker package with allowed_files, verify, and stop_if"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "The revised feature is safe as one coordinated vertical slice once activation identity, threshold latching, M behavior, context-menu suppression, cancellation, and mandatory feedback are explicit. Left Control owns start-anywhere click-versus-marquee arbitration before object drag; Space, middle-button pan, and genuine handles retain precedence. M remains a region-only alternative without exact-toggle semantics. Every selection keeps a minimal filter-independent violet halo, while the existing preference controls emphasis rather than visibility. Per-object overlays, a sidebar-independent live count badge, Layers parity, strict v2 preferences, and primary-only handles avoid misleading collective transforms."
+      worker_package:
+        objective: "Implement the complete revised selection slice: physical ControlLeft start-anywhere click-versus-marquee arbitration; Shift-additivity; scoped macOS context-menu suppression; deterministic cancellation; bounded Left Control/M preference migration; filter-independent per-object violet feedback; primary-only blue handles; an accessible selection-count badge outside both sidebars; all-selected Layers expansion; updated guidance; and behavioral regressions proving selection-only actions remain clean."
+        allowed_files:
+          - src/client/canvas/marquee-selection.ts
+          - src/client/canvas/editor.ts
+          - src/client/main.ts
+          - src/client/styles.css
+          - src/client/selection-preferences.ts
+          - tests/client-ux.test.ts
+          - tests/editor-interactions.test.ts
+          - tests/editor-serialization.test.ts
+          - tests/selection-preferences.test.ts
+          - README.md
+        verify:
+          - "npm run typecheck"
+          - "npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/selection-preferences.test.ts"
+          - "npm run build"
+          - "npm run check"
+        stop_if:
+          - "Any required implementation file is outside allowed_files."
+          - "Physical ControlLeft and ControlRight cannot be distinguished using KeyboardEvent.code at the existing capture boundary."
+          - "Correct arbitration requires modifying svg.js or dependency code."
+          - "Control click-versus-drag cannot be latched at the existing 4 CSS-pixel threshold without allowing object mutation."
+          - "Space-primary pan, middle-button pan, ordinary unmodified object drag, resize, rotation, wheel zoom, Alt-click, or double-click no longer reaches its existing owner."
+          - "Ordinary right-click, ControlRight-click, transform-handle context menus, or context menus outside the stage can be suppressed."
+          - "Key release, Escape, blur, hidden visibility, editable or modal focus, pointercancel, or lost capture can leave activation, pointer capture, overlay, hover, cursor, or changed selection state behind."
+          - "Filtered selected objects cannot receive independent feedback without altering authored filter attributes or CSS."
+          - "Feedback serializes into SVG, enters Layers or hit testing, changes dirty comparison, creates history, or implies a collective transform."
+          - "Preference migration requires changing workspace or session-restoration schemas."
+          - "Existing unrelated dirty hunks cannot be preserved without semantic conflict."
+          - "The same verification failure remains unexplained after two attempts."
+        acceptance_checks:
+          - "ControlLeft plus primary pointerdown freezes the deepest exact candidate, Shift state, scope, origin, and activation identity."
+          - "Movement below 4 CSS pixels completes as a Control exact toggle over artwork; at or above 4 pixels irreversibly becomes marquee even if the pointer later returns inside the threshold."
+          - "A below-threshold Control gesture on empty canvas clears without Shift and preserves with Shift; all terminal paths suppress the successor click."
+          - "Control marquee begins over ordinary artwork, the noninteractive selection bounding shape, SVG-root pixels, artboard, or stage padding, but not over genuine resize or rotation handles."
+          - "No object movement occurs during an accepted Control gesture."
+          - "Every selected object receives a noninteractive violet halo, including the primary and filtered objects; only the primary receives the blue selection box and handles."
+          - "The count badge, Layers rows, dirty state, history, and clean serialization remain synchronized."
+      evidence:
+        - finding: "Click-versus-drag threshold"
+          status: locked
+          rule: "Measure Euclidean movement from pointerdown in client CSS pixels. Less than 4 pixels is a click result. The first movement at or above 4 pixels permanently latches marquee for that pointer sequence; returning toward the origin cannot turn it back into a click."
+        - finding: "Control start and precedence"
+          status: locked
+          rule: "Capture accepted ControlLeft primary presses at the stage before editor exact-toggle and svg.js drag handlers. Space plus primary and middle-button pan have first precedence. Genuine resize and rotation handles pass through. ControlLeft then owns every other canvas target, including ordinary artwork, empty canvas, and the blue noninteractive bounding shape. Unarmed object presses retain ordinary drag."
+        - finding: "Control sub-threshold behavior"
+          status: locked
+          rule: "Freeze the deepest exact selectable candidate at pointerdown; the blue bounding shape resolves to the current primary. Below threshold, toggle that candidate using the established exact-selection scope rules. Shift does not change object-toggle semantics. With no candidate, frozen Shift preserves selection and no Shift clears it. Suppress the successor click in every case."
+        - finding: "Control marquee behavior"
+          status: locked
+          rule: "At threshold, clear salmon hover and select visible leaf-most matches in the frozen scope. Frozen Shift unions and normalizes the complete prior-plus-new selection; no Shift replaces it. Ancestors and descendants never coexist. Locked visible objects remain eligible and hidden objects remain excluded."
+        - finding: "Physical key identity"
+          status: locked
+          rule: "Only KeyboardEvent.code ControlLeft arms left-control activation. ControlRight never arms, even though ctrlKey is true. Shift is allowed; Meta and Alt are not. Repeats are idempotent and cannot create a second activation. Editable, contenteditable, composing, and open-modal contexts cannot arm."
+        - finding: "macOS context menu"
+          status: locked
+          rule: "Prevent contextmenu only when it is causally associated with an active or just-completed accepted ControlLeft primary canvas gesture. Use a one-shot bounded token matched by stage containment, Control state, target or coordinates, and time. Consume or expire it. Never suppress ordinary right-click, ControlRight, genuine handles, or events outside the stage."
+        - finding: "Cancellation lifecycle"
+          status: locked
+          rule: "ControlLeft keyup before pointerup, Escape, blur, hidden visibility, editable or modal focus, pointercancel, lost capture, review lock, or document replacement cancels without toggling or selecting, restores the frozen scope and selection, suppresses successor click/contextmenu, releases capture, removes overlay/hover/cursor state, and disarms until a fresh physical keydown. Escape while merely armed disarms without clearing; a later unarmed Escape retains ordinary clear behavior."
+        - finding: "M legacy semantics"
+          status: locked
+          rule: "M is a region-only activation alternative, not an exact-selection modifier. When configured, fresh physical KeyM with optional Shift may start the same non-handle start-anywhere marquee. Below threshold it is a selection-preserving no-op over artwork or empty canvas and suppresses the successor click. It never toggles, clears, or moves an object. At threshold it uses the same replace or Shift-add marquee rules and cancellation lifecycle. Legacy refers to the activation key, not empty-canvas-only behavior."
+        - finding: "Individual-outlines preference contradiction"
+          status: resolved
+          rule: "Selection visibility is non-negotiable. Rename the visible control to describe emphasis, such as Enhanced selection outlines. On and off both retain a crisp minimum violet halo around every selected object; on increases halo emphasis without adding handles or a union box. Preserve the bounded boolean during migration."
+        - finding: "Filtered SVG feedback"
+          status: locked
+          rule: "Render one editor-only, pointer-events-none, aria-hidden violet halo per selected object in a dedicated overlay group using root-space geometry and non-scaling stroke. Never write, replace, or depend on the selected object's filter attribute or computed CSS filter. Refresh halos after selection and interactive geometry synchronization; keep primary blue handles above them."
+        - finding: "Serialization and transform boundary"
+          status: locked
+          rule: "Strip the halo group and descendants from snapshots and clean SVG, exclude them from selection candidates and Layers, and keep them outside dirty/history state. No union bounding box, numbering, shared handles, or collective movement is permitted. Secondary objects never receive handles; any retained primary manipulation affects only the primary."
+        - finding: "Collapsed-sidebar accessibility"
+          status: locked
+          rule: "Place the multi-selection badge outside both collapsible sidebars. Hide it for zero or one selection; otherwise expose exactly N objects selected with role=status, aria-live=polite, and aria-atomic=true. Announce only count changes. Keep it visible and high-contrast with both sidebars collapsed and respect reduced-motion settings."
+        - finding: "Layers parity"
+          status: locked
+          rule: "Before one Layers render, expand the ancestry of every selected object. If the active filter would hide any selected row, clear and visibly synchronize the query. Mark every selected row aria-pressed=true, retain stronger primary styling, secondary styling for all others, and scroll only the primary into view."
+        - finding: "Preference persistence"
+          status: locked
+          rule: "Add regionActivation with left-control or m and default left-control in a strict version-2 global record. Read v2 first. Only when v2 is absent may a valid exact-key v1 record migrate its four values and add left-control. Malformed, partial, extra-key, or future v2 data falls atomically to defaults and must not resurrect v1. Changing activation while armed or active cancels and requires a fresh matching keydown."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - T026
+        - T027
+        - T999
+      missing_evidence:
+        - "T025 implementation and behavioral regression receipt."
+        - "T026 adversarial implementation review."
+        - "T027 live browser QA at 100% and non-default zoom."
+        - "Final full-oracle audit."
+      required_board_updates:
+        - task_id: T024
+          status: done
+          action: "Record this approved contract and locked rules."
+        - task_id: T025
+          status: active
+          action: "Apply this complete Worker package without splitting it into helper-only tasks."
+  - id: T025
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement the complete revised selection slice: physical ControlLeft start-anywhere click-versus-marquee arbitration; Shift-additivity; scoped macOS context-menu suppression; deterministic cancellation; bounded Left Control/M preference migration; filter-independent per-object violet feedback; primary-only blue handles; an accessible selection-count badge outside both sidebars; all-selected Layers expansion; updated guidance; and behavioral regressions proving selection-only actions remain clean."
+    constraints:
+      - "ControlLeft plus primary pointerdown freezes the deepest exact candidate, Shift state, scope, origin, and activation identity."
+      - "Movement below 4 CSS pixels completes as a Control exact toggle over artwork; at or above 4 pixels irreversibly becomes marquee even if the pointer later returns inside the threshold."
+      - "A below-threshold Control gesture on empty canvas clears without Shift and preserves with Shift; all terminal paths suppress the successor click."
+      - "Control marquee begins over ordinary artwork, the noninteractive selection bounding shape, SVG-root pixels, artboard, or stage padding, but not over genuine resize or rotation handles."
+      - "No object movement occurs during an accepted Control gesture."
+      - "Every selected object receives a noninteractive violet halo, including the primary and filtered objects; only the primary receives the blue selection box and handles."
+      - "The count badge, Layers rows, dirty state, history, and clean serialization remain synchronized."
+    allowed_files:
+      - "src/client/canvas/marquee-selection.ts"
+      - "src/client/canvas/editor.ts"
+      - "src/client/main.ts"
+      - "src/client/styles.css"
+      - "src/client/selection-preferences.ts"
+      - "tests/client-ux.test.ts"
+      - "tests/editor-interactions.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/selection-preferences.test.ts"
+      - "README.md"
+    verify:
+      - "npm run typecheck"
+      - "npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/selection-preferences.test.ts"
+      - "npm run build"
+      - "npm run check"
+    stop_if:
+      - "Any required implementation file is outside allowed_files."
+      - "Physical ControlLeft and ControlRight cannot be distinguished using KeyboardEvent.code at the existing capture boundary."
+      - "Correct arbitration requires modifying svg.js or dependency code."
+      - "Control click-versus-drag cannot be latched at the existing 4 CSS-pixel threshold without allowing object mutation."
+      - "Space-primary pan, middle-button pan, ordinary unmodified object drag, resize, rotation, wheel zoom, Alt-click, or double-click no longer reaches its existing owner."
+      - "Ordinary right-click, ControlRight-click, transform-handle context menus, or context menus outside the stage can be suppressed."
+      - "Key release, Escape, blur, hidden visibility, editable or modal focus, pointercancel, or lost capture can leave activation, pointer capture, overlay, hover, cursor, or changed selection state behind."
+      - "Filtered selected objects cannot receive independent feedback without altering authored filter attributes or CSS."
+      - "Feedback serializes into SVG, enters Layers or hit testing, changes dirty comparison, creates history, or implies a collective transform."
+      - "Preference migration requires changing workspace or session-restoration schemas."
+      - "Existing unrelated dirty hunks cannot be preserved without semantic conflict."
+      - "The same verification failure remains unexplained after two attempts."
+    receipt:
+      result: done
+      changed_files:
+        - README.md
+        - src/client/canvas/editor.ts
+        - src/client/canvas/marquee-selection.ts
+        - src/client/main.ts
+        - src/client/selection-preferences.ts
+        - src/client/styles.css
+        - tests/client-ux.test.ts
+        - tests/editor-interactions.test.ts
+        - tests/editor-serialization.test.ts
+        - tests/selection-preferences.test.ts
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/selection-preferences.test.ts"
+          status: pass
+        - cmd: "npm run build"
+          status: pass
+        - cmd: "npm run check"
+          status: pass
+      summary: "Implemented physical ControlLeft click-versus-marquee arbitration with irreversible 4px latching, Shift semantics, scoped context-menu suppression, deterministic cancellation, and optional legacy M activation. Added strict global v2 preference migration, clean per-object violet halo overlays, primary-only handles, accessible selection-count status, all-selected Layers expansion/filter clearing, updated guidance, and behavioral/storage/serialization regressions. Targeted tests pass 190/190; full check passes 380/380."
+      deviations: []
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T026
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the implemented Control gesture and feedback slice against the locked contract and regression matrix."
+    inputs:
+      - "T024 decision"
+      - "T025 receipt and diff"
+      - "Revised goal oracle"
+    constraints:
+      - "Read-only; do not implement."
+      - "Require fresh targeted and full verification."
+    expected_output:
+      - "approved | rejected"
+      - "Finding closure"
+      - "Exact browser QA probes"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "Fresh targeted and full checks pass, but T025 is not ready for browser QA. Restore defaults changes persisted/form state without reconfiguring or cancelling the live activation controller. Context-menu suppression keeps stale tokens across later unaccepted primary presses and matches only the initial coordinate, so Control-drag completion can leak a menu while a rapid ControlRight or handle click can be wrongly suppressed. Zero-width or zero-height SVG objects receive non-rendering halo rectangles. The default inspector hint still teaches obsolete M-empty-canvas behavior. Canvas-target and hover-feedback boundaries also need tightening."
+      worker_package:
+        objective: "Close the remaining Control-selection integration gaps as one bounded remediation: route Restore defaults through live activation reconfiguration and cancellation; implement behaviorally tested causal context-menu suppression for accepted clicks and drags without stale-token leakage; restrict region capture to actual canvas targets; make halos visible for axis-aligned zero-extent objects; synchronize hover clearing when a region begins; and make inline guidance follow the configured activation."
+        allowed_files:
+          - src/client/canvas/marquee-selection.ts
+          - src/client/canvas/editor.ts
+          - src/client/main.ts
+          - tests/client-ux.test.ts
+          - tests/editor-interactions.test.ts
+        verify:
+          - "npm run typecheck"
+          - "npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/selection-preferences.test.ts"
+          - "npm run build"
+          - "npm run check"
+        stop_if:
+          - "Any required implementation file is outside allowed_files."
+          - "Restore defaults cannot use the same activation-change cancellation path as an ordinary preference change."
+          - "Context-menu suppression cannot be represented as a behaviorally tested, one-shot causal interaction state."
+          - "Ordinary right-click, ControlRight, genuine handles, disconnected-banner controls, or events outside the canvas can be suppressed or captured."
+          - "Control-click or Control-drag can show a native context menu on macOS."
+          - "Minimum halo visibility requires changing authored geometry, filters, exported SVG, dirty state, or history."
+          - "The remediation changes preference storage, workspace/session schemas, or generalized transform behavior."
+          - "Space/middle pan, ordinary object drag, handles, exact selection, M behavior, or cancellation regresses."
+          - "Existing unrelated dirty hunks cannot be preserved."
+          - "The same verification failure remains unexplained after two attempts."
+        acceptance_checks:
+          - "Resetting from M to defaults while merely armed or actively dragging cancels cleanly, configures Left Control immediately, removes ready/overlay state, and requires a fresh ControlLeft keydown."
+          - "An accepted Control click and a Control drag ending far from its origin suppress their causally associated contextmenu event."
+          - "Every later pointerdown invalidates an older context-menu token before optionally creating a new accepted token."
+          - "ControlRight, actual transform handles, ordinary right-click, connection-banner controls, and outside-stage events never consume or create suppression."
+          - "Horizontal and vertical line selections receive visibly nonzero individual halo geometry without changing clean SVG or history."
+          - "Beginning a region clears canvas hover and publishes hover-free selection context so Layers cannot retain stale salmon prediction."
+          - "The persistent inspector hint and shortcut help both describe the currently configured Left Control or M behavior."
+      evidence:
+        - finding: "Restore-default activation synchronization"
+          status: open
+          paths: "src/client/main.ts:1470,src/client/main.ts:1495"
+          proof: "Ordinary preference changes detect regionActivation changes, cancel the gesture, and call marqueeActivation.configure. Restore defaults bypasses that path: it resets storage, updates the editor and form, but leaves the live activation controller unchanged. After restoring from M, the UI says Left Control while M still arms."
+        - finding: "Context-menu drag endpoint"
+          status: open
+          paths: "src/client/main.ts:1750,src/client/main.ts:1758"
+          proof: "The token stores only pointerdown coordinates. A Control drag ending more than 8 pixels away will not suppress a contextmenu delivered at the terminal coordinate, despite being causally associated with the accepted gesture."
+        - finding: "Stale context-menu token"
+          status: open
+          paths: "src/client/main.ts:1732,src/client/main.ts:1758"
+          proof: "Only a non-primary pointerdown clears the prior token. A later unaccepted primary ControlRight press or ControlLeft press on a real handle can inherit the previous accepted token and have its context menu incorrectly suppressed when close in time and coordinates."
+        - finding: "Canvas-only capture boundary"
+          status: open
+          paths: "src/client/canvas/editor.ts:1247,src/client/main.ts:1732"
+          proof: "canStartRegionSelection accepts every Element except real handles. Because arbitration is stage-capture, interactive HTML overlays inside the stage, including the disconnected-preview banner and retry control, are treated as region candidates rather than non-canvas UI."
+        - finding: "Zero-extent selection feedback"
+          status: open
+          paths: "src/client/canvas/editor.ts:2585"
+          proof: "Halo rectangles copy rbox width and height exactly. An axis-aligned SVG line has a zero dimension; an SVG rect with zero width or height does not render, violating mandatory visible feedback for every selected object."
+        - finding: "Hover-to-region synchronization"
+          status: open
+          paths: "src/client/canvas/editor.ts:1261"
+          proof: "beginMarquee removes the hover marker through #clearHover but does not publish selection context. The canvas salmon marker disappears, while the Layers row can retain its stale predicted class until commit or cancellation."
+        - finding: "Configured guidance"
+          status: open
+          paths: "src/client/main.ts:282,src/client/main.ts:1455"
+          proof: "Shortcut-dialog copy follows the preference, but the persistent inspector hint still always says to hold M and drag empty canvas, contradicting the default Left Control start-anywhere contract."
+        - finding: "Gesture arbitration and threshold"
+          status: closed
+          proof: "ControlLeft identity, ControlRight exclusion, capture-before-object precedence, actual-handle exclusion, frozen candidate and Shift, irreversible 4px latching, Control exact toggle, M no-op, Space/middle precedence, and successor-click suppression are implemented with substantive controller/editor coverage."
+        - finding: "Cancellation lifecycle"
+          status: closed_except_restore_path
+          proof: "Keyup, Escape, blur, hidden visibility, editable/modal focus, pointercancel, lost capture, review cancellation, and marquee completion converge through gesture cancellation and editor restoration. Restore defaults is the remaining bypass."
+        - finding: "Preference migration"
+          status: closed
+          proof: "The strict v2 record defaults to left-control, migrates exact v1 only when v2 is absent, rejects malformed/extra/future v2 atomically, preserves the four legacy values, and remains independent of workspace/session state."
+        - finding: "Halo serialization and transform boundary"
+          status: closed_except_zero_extent
+          proof: "Halos are editor-only, pointer-events-none, aria-hidden, filter-independent, stripped from clean and snapshot serialization, and excluded from hit testing and Layers. Every ordinary nonzero selected object gets an individual halo; only the primary gets blue svg.js handles, with no union box or shared transform."
+        - finding: "Count badge and Layers parity"
+          status: closed
+          proof: "The statusbar badge remains outside both sidebars, is hidden below two selections, exposes role=status with polite atomic announcements, and updates only when count text changes. Selection rendering expands every selected ancestry, clears a hiding filter, marks all rows aria-pressed, strengthens the primary, and scrolls only it."
+        - finding: "Fresh targeted verification"
+          status: pass_but_incomplete
+          command: "npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/selection-preferences.test.ts"
+          proof: "Four files and 190 tests passed. The open findings are absent from the current regression matrix."
+        - finding: "Fresh full verification"
+          status: pass_but_incomplete
+          command: "npm run check"
+          proof: "Typecheck, all 380 tests, and production build passed. Green verification does not cover the identified integration boundaries."
+        - type: post_remediation_browser_qa_probes
+          items: "Choose M activation, hold M and begin a region gesture, then activate Restore defaults; verify cancellation, cleared overlay/cursor, Left Control UI, M no longer arming, and a fresh ControlLeft press being required.,On macOS, ControlLeft-click artwork and ControlLeft-drag more than 8 pixels from artwork and empty canvas; neither accepted gesture may open a context menu.,Immediately after an accepted Control gesture, ControlRight-click and ControlLeft-click a real resize or rotation handle at the same location; their context-menu behavior must remain native and the handles must remain interactive.,While disconnected-preview UI is visible, ControlLeft-click its retry button and banner; no region gesture may start and the control must remain operable.,Select horizontal and vertical SVG lines at 100% and non-default zoom with enhanced outlines both on and off; each must retain a crisp violet marker.,Hover artwork until canvas and Layers show salmon prediction, then start a Control or M region; both salmon indicators must disappear before commit.,Switch repeatedly between Left Control and M and confirm the persistent inspector hint, shortcut dialog, ready status, click behavior, and drag behavior always agree.,Repeat start-over-artwork and empty-canvas replace/add marquee, ordinary object drag, Space/middle pan, handle resize/rotation, cancellation paths, collapsed-sidebar badge, all-selected Layers rows, clean Save/Undo state, unchanged export, and empty console."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - T027
+        - T999
+      missing_evidence:
+        - "Behavioral regression coverage and fresh verification for the bounded remediation."
+        - "Judge re-review of the remediation."
+        - "T027 live browser QA and final oracle."
+      required_board_updates:
+        - task_id: T026
+          status: done
+          action: "Record this rejected implementation review."
+        - task_id: T027
+          status: queued
+          action: "Keep browser QA blocked pending one remediation Worker and one Judge re-review."
+        - action: "Create one coherent remediation Worker task from this worker_package, followed by a Judge milestone review."
+  - id: T027
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Run live complex-logo QA for the revised Control gesture and unmistakable multi-selection feedback, then execute the full oracle."
+    inputs:
+      - "T026 receipt"
+      - "Revised Browser QA Matrix"
+    constraints:
+      - "Use the descriptive constellation localhost subdomain."
+      - "Test Control-drag from artwork and empty canvas at 100% and non-default zoom, including Shift-add, Control-click, right Control, ordinary drag, pan, handles, and cancellation."
+      - "Verify violet canvas markers, primary blue handles, all selected Layers rows, the persistent count badge with collapsed sidebars, clean history/serialization, and an empty console."
+    expected_output:
+      - "Browser transcript mapped to every revised oracle clause"
+      - "Final npm run check"
+      - "Any bounded remediation task"
+    receipt:
+      result: done
+      summary: "Live QA passed synchronized three-object halo, Layers, primary-handle, and count-badge feedback at 100% and 125%, including collapsed sidebars; enhanced-outline minimum visibility; M/Left-Control guidance; Restore defaults; reload persistence; clean Save/Undo state; zero-extent line feedback; and an error-free console. Final npm run check passes 384 tests, typecheck, and build. The browser driver cannot emit physical KeyboardEvent.code ControlLeft, so one real owner gesture remains the sole completion gate."
+      evidence:
+        - notes/T027-browser-qa.md
+        - "Three selected connection lines produced three halos, three aria-pressed Layers rows, one primary handle set, and a visible 3 objects selected badge."
+        - "The same feedback remained synchronized at 125% with both sidebars collapsed."
+        - "Enhanced outlines off retained minimal halos; M and Restore-default copy/state were synchronized."
+        - "Browser logs contained no warnings or errors."
+      commands:
+        - cmd: "npm run check"
+          status: pass
+      spawned_tasks:
+        - T030
+  - id: T028
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Close the remaining Control-selection integration gaps as one bounded remediation: route Restore defaults through live activation reconfiguration and cancellation; implement behaviorally tested causal context-menu suppression for accepted clicks and drags without stale-token leakage; restrict region capture to actual canvas targets; make halos visible for axis-aligned zero-extent objects; synchronize hover clearing when a region begins; and make inline guidance follow the configured activation."
+    constraints:
+      - "Resetting from M to defaults while merely armed or actively dragging cancels cleanly, configures Left Control immediately, removes ready/overlay state, and requires a fresh ControlLeft keydown."
+      - "An accepted Control click and a Control drag ending far from its origin suppress their causally associated contextmenu event."
+      - "Every later pointerdown invalidates an older context-menu token before optionally creating a new accepted token."
+      - "ControlRight, actual transform handles, ordinary right-click, connection-banner controls, and outside-stage events never consume or create suppression."
+      - "Horizontal and vertical line selections receive visibly nonzero individual halo geometry without changing clean SVG or history."
+      - "Beginning a region clears canvas hover and publishes hover-free selection context so Layers cannot retain stale salmon prediction."
+      - "The persistent inspector hint and shortcut help both describe the currently configured Left Control or M behavior."
+    allowed_files:
+      - "src/client/canvas/marquee-selection.ts"
+      - "src/client/canvas/editor.ts"
+      - "src/client/main.ts"
+      - "tests/client-ux.test.ts"
+      - "tests/editor-interactions.test.ts"
+    verify:
+      - "npm run typecheck"
+      - "npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/selection-preferences.test.ts"
+      - "npm run build"
+      - "npm run check"
+    stop_if:
+      - "Any required implementation file is outside allowed_files."
+      - "Restore defaults cannot use the same activation-change cancellation path as an ordinary preference change."
+      - "Context-menu suppression cannot be represented as a behaviorally tested, one-shot causal interaction state."
+      - "Ordinary right-click, ControlRight, genuine handles, disconnected-banner controls, or events outside the canvas can be suppressed or captured."
+      - "Control-click or Control-drag can show a native context menu on macOS."
+      - "Minimum halo visibility requires changing authored geometry, filters, exported SVG, dirty state, or history."
+      - "The remediation changes preference storage, workspace/session schemas, or generalized transform behavior."
+      - "Space/middle pan, ordinary object drag, handles, exact selection, M behavior, or cancellation regresses."
+      - "Existing unrelated dirty hunks cannot be preserved."
+      - "The same verification failure remains unexplained after two attempts."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/marquee-selection.ts
+        - src/client/canvas/editor.ts
+        - src/client/main.ts
+        - tests/client-ux.test.ts
+        - tests/editor-interactions.test.ts
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/selection-preferences.test.ts"
+          status: pass
+        - cmd: "npm run build"
+          status: pass
+        - cmd: "npm run check"
+          status: pass
+      summary: "Closed all seven T026 findings. Restore defaults now uses live activation cancellation/reconfiguration. A tested one-shot causal controller suppresses Control context menus at click origins or distant drag endpoints while invalidating stale tokens. Region capture excludes non-artboard UI, zero-extent objects receive nonzero clean halos, region start publishes hover-free context immediately, and persistent guidance follows Left Control/M configuration. Targeted tests pass 194/194; full check passes 384/384."
+      deviations: []
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T029
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Verify the bounded Control-selection integration remediation before live browser QA."
+    inputs:
+      - "T026 rejected review"
+      - "T028 receipt and diff"
+      - "Revised goal oracle"
+    constraints:
+      - "Read-only; do not implement."
+      - "Require fresh targeted and full verification and close every T026 finding."
+    expected_output:
+      - "approved | rejected"
+      - "Finding closure"
+      - "Exact browser QA probes"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "T028 closes every T026 finding within the approved boundary. Restore defaults now uses live preference application, cancelling and reconfiguring activation. A behaviorally tested one-shot controller tracks both Control gesture origin and moving terminal position, while every later pointerdown invalidates stale suppression. Region capture is limited to stage padding or the real artboard. Zero-extent objects receive scale-aware nonzero halos, region start publishes hover-free context, and persistent guidance follows the activation preference. Fresh targeted verification passes 194 tests; full typecheck, all 384 tests, and production build pass. T027 browser QA may begin."
+      worker_package: null
+      evidence:
+        - finding: "Restore-default activation synchronization"
+          status: closed
+          paths: "src/client/main.ts:1468,src/client/main.ts:1499,tests/client-ux.test.ts:253"
+          proof: "Restore defaults now passes the reset value through applySelectionPreferences, which detects activation changes, cancels the active gesture, configures the live controller, removes ready state, and updates editor/UI state. Controller coverage proves configuring M to Left Control disarms M and requires a fresh ControlLeft keydown."
+        - finding: "Context-menu drag endpoint"
+          status: closed
+          paths: "src/client/canvas/marquee-selection.ts:72,src/client/main.ts:1549,src/client/main.ts:1754,src/client/main.ts:1772,tests/client-ux.test.ts:277"
+          proof: "ContextMenuSuppressionController records the accepted origin and continuously updates the terminal point for the matching pointer. It consumes one matching Control contextmenu near either coordinate. Behavioral coverage moves from (10,20) to (110,90) and proves terminal suppression."
+        - finding: "Stale context-menu token"
+          status: closed
+          paths: "src/client/canvas/marquee-selection.ts:82,src/client/main.ts:1550,tests/client-ux.test.ts:290"
+          proof: "A document-capture pointerdown invalidates any prior token before stage capture can optionally accept the new gesture. Tests prove invalidation and exclusion of non-canvas, non-Control, expired, and already-consumed events. ControlRight, handles, and ordinary right-click therefore cannot inherit a prior accepted token."
+        - finding: "Canvas-only capture boundary"
+          status: closed
+          paths: "src/client/canvas/editor.ts:1247,src/client/main.ts:1736,tests/editor-interactions.test.ts:815"
+          proof: "Region eligibility now requires the target to be contained by the real artboard and not be a resize or rotation handle; main separately admits the stage element for padding starts. Behavioral coverage accepts artwork and rejects a non-artboard button, preserving disconnected-banner controls and other stage UI."
+        - finding: "Zero-extent selection feedback"
+          status: closed
+          paths: "src/client/canvas/editor.ts:2601,tests/editor-interactions.test.ts:1089"
+          proof: "Halo geometry applies a scale-aware two-screen-pixel minimum independently to width and height and centers the expansion around the authored bounds. Horizontal and vertical line regressions prove both halo dimensions remain positive while clean SVG and undo history remain unchanged."
+        - finding: "Hover-to-region synchronization"
+          status: closed
+          paths: "src/client/canvas/editor.ts:1261,tests/editor-interactions.test.ts:815"
+          proof: "beginMarquee clears hover and immediately publishes selection context. Behavioral coverage first establishes a hovered object, begins the region gesture, and proves the latest context has no hovered node, allowing Layers to remove stale salmon prediction before commit."
+        - finding: "Configured guidance"
+          status: closed
+          paths: "src/client/main.ts:282,src/client/main.ts:1447,src/client/main.ts:1455,tests/client-ux.test.ts:350"
+          proof: "The persistent inspector hint now has a dedicated target updated alongside shortcut-dialog copy. Left Control describes start-anywhere drag plus exact Control-click; M describes start-anywhere region drag without claiming exact-toggle behavior."
+        - finding: "Retained gesture and cancellation contract"
+          status: closed
+          proof: "T028 does not alter threshold latching, candidate/Shift freezing, ControlLeft identity, ControlRight exclusion, M no-op semantics, exact toggle, pan precedence, ordinary object drag, actual handles, or editor cancellation restoration. Existing substantive gesture tests remain green."
+        - finding: "Retained feedback, accessibility, and transform boundary"
+          status: closed
+          proof: "Per-object halos remain filter-independent, noninteractive, aria-hidden, serialization-free, and history-free. The statusbar count remains outside collapsed sidebars; Layers expands and marks every selection. Only the primary receives blue handles, with no union box or collective transform introduced."
+        - finding: "Fresh targeted verification"
+          status: pass
+          command: "npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/selection-preferences.test.ts"
+          proof: "Four files and 194 tests passed in the Judge's fresh run."
+        - finding: "Fresh full verification"
+          status: pass
+          command: "npm run check"
+          proof: "Typecheck passed, all 20 test files and 384 tests passed, and the production build completed successfully."
+        - type: T027_browser_qa_probes
+          items: "At 100% zoom, hold physical ControlLeft and press ordinary artwork. Release below 4px to exact-toggle it; repeat after crossing 4px and returning near the origin to prove the sequence remains a marquee and never moves the object.,ControlLeft-drag from artwork, white artboard, SVG-root pixels, and stage padding. Repeat with Shift frozen at pointerdown and verify replace/add behavior selects every expected visible leaf-most object without ancestors.,At non-default zoom with both sidebars collapsed, repeat start-over-artwork and empty-canvas marquee; verify transformed geometry, violet markers, primary blue handles, and the persistent N objects selected badge.,On macOS, ControlLeft-click and ControlLeft-drag far from the origin; neither may open a context menu. Immediately test ordinary right-click, ControlRight-click, and ControlLeft interaction with resize and rotation handles; native/handle behavior must remain available.,If the disconnected-preview banner can be shown, ControlLeft-click its banner and retry control; no region gesture may start and the control must remain operable.,Choose M activation and verify start-anywhere drag, Shift-add, and sub-threshold no-op. While M is armed or a gesture is active, use Restore defaults and confirm clean cancellation, Left Control copy/state, M no longer arming, and a fresh ControlLeft press being required.,Hover artwork until canvas and Layers show salmon prediction, then begin a Control and an M region; both salmon indicators must disappear immediately before commit.,Select filtered artwork plus horizontal and vertical lines with enhanced outlines on and off at both zoom levels; every object must retain an individual crisp violet halo, while only the primary shows blue handles.,With a Layers search and collapsed ancestors, create a multi-selection spanning branches; verify the filter clears when necessary, every ancestry expands, all selected rows are marked, the primary is stronger, and only the primary scrolls into view.,Cancel via ControlLeft/M keyup, Escape, blur, hidden-tab transition, pointercancel, and lost capture; confirm restored selection, no stuck cursor/overlay/capture, and a fresh activation key requirement.,Recheck ordinary object drag, Alt/double-click, configured precise modifier, Space-drag, middle-drag, wheel zoom, resize, rotation, locked and hidden layers, contain/touch modes, dialog keyboard/focus behavior, and reduced motion.,After all selection-only probes, confirm Save and Undo remain disabled, exported SVG is byte-clean of halos/handles/settings, Layers and badge match canvas selection, and the browser console is empty."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence:
+        - "T027 live browser QA at 100% and non-default zoom."
+        - "Final full-oracle completion audit."
+      required_board_updates:
+        - task_id: T029
+          status: done
+          action: "Record this approved remediation review."
+        - task_id: T027
+          status: active
+          action: "Clear the T026 remediation block and execute the listed live browser probes."
+  - id: T030
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Record the owner's physical left-Control click/drag confirmation that browser automation cannot emit faithfully."
+    inputs:
+      - "T027 browser transcript"
+      - "Live constellation canvas at 100%"
+    constraints:
+      - "Require a physical left Control key, not generic Control automation."
+      - "Begin one marquee over artwork and one Shift-add marquee, then verify halos, primary handles, badge count, ordinary drag, and context-menu suppression."
+      - "Do not mark complete from automated tests alone."
+    expected_output:
+      - "Exact owner pass phrase or reproducible defect"
+    receipt:
+      result: done
+      summary: "The owner performed the required physical left-Control start-over-artwork marquee and Shift-add walkthrough and replied with the exact pass phrase: Control-left marquee QA passed. This closes the only evidence gap that browser automation could not produce."
+      evidence:
+        - "Exact owner reply: Control-left marquee QA passed"
+        - "notes/T027-browser-qa.md"
+        - "T029 approved source and test review"
+        - "npm run check: 384 tests, typecheck, and build passed"
+  - id: T031
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Finalize board truth after the completed T999 audit."
+    inputs:
+      - "T999 completion receipt"
+      - "Final npm run check"
+    constraints:
+      - "Control files only."
+      - "Do not alter product implementation."
+    expected_output:
+      - "Goal status complete"
+      - "Final verification recorded"
+      - "Stop checker passes"
+    receipt:
+      result: done
+      full_outcome_complete: true
+      summary: "Recorded the T999 complete audit, normalized T009 with its historical blocked attempt preserved and T011 verification attached, marked the goal complete, and recorded the final 384-test verification."
+      evidence:
+        - "T999 decision: complete"
+        - "T999 full_outcome_complete: true"
+        - "Exact owner reply: Control-left marquee QA passed"
+        - "notes/T009-blocked-attempt.json"
+        - "notes/T027-browser-qa.md"
+      commands:
+        - cmd: "npm run check"
+          status: pass
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: pass
+    task: T999
+    commands:
+      - "npm run check: typecheck passed; 20 test files and 384 tests passed; production build passed"

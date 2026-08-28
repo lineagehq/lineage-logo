@@ -1,0 +1,129 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T002",
+    "board_path": "docs/goals/marquee-selection-preferences/state.yaml",
+    "decision": "approved",
+    "full_outcome_complete": false,
+    "rationale": "The interaction contract is sufficiently bounded for one vertical marquee-selection slice. Client-coordinate geometry and direct-child active-scope enumeration address zoom, transforms, and ancestor/descendant normalization without changing SVG data. The existing dirty diff overlaps five allowed files but is unrelated and can be preserved. T003 must retain Space/middle pan, object drag, Alt/double-click replacement, and clean history/serialization. Preferences, pixel-painted clip/mask hit testing, and generalized multi-object transforms remain outside this package.",
+    "worker_package": {
+      "objective": "Implement one complete marquee-selection vertical slice: client-coordinate rectangle geometry for containment and touching rules; stage pointer arbitration; direct-child active-scope candidate normalization; replace and Shift-union marquee selection; platform-accelerator exact toggle with cross-scope replacement; defensive cancellation and focus-aware Escape; visible secondary-selection feedback with only the primary receiving handles; and behavioral regression coverage proving pan, object drag, locks, visibility, layer synchronization, history, dirty state, and serialization remain correct.",
+      "allowed_files": [
+        "src/client/canvas/editor.ts",
+        "src/client/canvas/marquee-selection.ts",
+        "src/client/main.ts",
+        "src/client/styles.css",
+        "tests/editor-interactions.test.ts",
+        "tests/editor-serialization.test.ts",
+        "tests/client-ux.test.ts"
+      ],
+      "verify": [
+        "npm run typecheck",
+        "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts",
+        "npm run build"
+      ],
+      "stop_if": [
+        "Any required implementation file is outside allowed_files.",
+        "Existing dirty hunks cannot be preserved without semantic conflict.",
+        "The implementation requires selection preferences, workspace/session persistence, or exported SVG format changes.",
+        "Correctness would require cross-parent selection or generalized multi-object movement, resize, or rotation.",
+        "The worker cannot prevent a precise-modifier click from initiating object mutation within the allowed files.",
+        "The same verification failure remains unexplained after two attempts."
+      ]
+    },
+    "evidence": [
+      {
+        "type": "interaction_contract",
+        "gesture_precedence": [
+          "Transform handles and ordinary primary-button object drag retain existing behavior.",
+          "Middle-button drag or Space+primary drag pans from any stage location and never starts marquee.",
+          "Primary-button drag beginning on a non-selectable stage, artboard, or SVG-root pixel enters pending marquee; this includes surrounding stage padding.",
+          "Activate marquee after 4 CSS pixels of movement measured in client coordinates. Before activation, unmodified pointerup performs background-clear; Shift-pointerup is a no-op.",
+          "After activation, pointerup commits selection and suppresses the subsequent click. Escape, pointercancel, lostpointercapture, document replacement, or review lock cancels and restores the pre-gesture selection.",
+          "Configured exact-modifier primary pointer sequences over selectable objects are selection-only: they must not initiate drag or transform. Commit only below the movement threshold; cancel after movement."
+        ],
+        "selection_contract": [
+          "Freeze the active scope at marquee start and enumerate only selectable direct children whose selectable parent equals that scope.",
+          "Never select both an ancestor and descendant. Preserve DOM paint order and make the last matched candidate primary.",
+          "Unmodified marquee replaces selection; no matches clear selection. Shift-marquee unions matches with the existing same-scope selection; no matches preserve it.",
+          "Use getBoundingClientRect for both marquee and candidates. Fully-enclosed uses inclusive rectangle containment; touching support uses inclusive rectangle intersection for later preference wiring.",
+          "Use browser client bounds as transformed geometric bounds. Do not attempt pixel-painted clip-path or mask geometry in T003."
+        ],
+        "visibility_and_lock_contract": [
+          "Exclude editor handles, roots, resources, nested SVGs, display:none, visibility:hidden/collapse, effectively zero-opacity nodes, and candidates without a usable client rect.",
+          "Do not reject a line merely because one client-rect dimension is zero; reject only non-rendered or wholly zero-area candidates.",
+          "Locked visible objects remain selectable for inspection, while existing mutation guards must continue preventing movement or transformation."
+        ],
+        "modifier_contract": [
+          "Default precise toggle is Meta-click on macOS and Ctrl-click elsewhere, only for an otherwise unmodified primary click.",
+          "Within the active scope, exact modifier-click toggles the direct target. Outside that scope, it replaces selection and resets scope to the target's selectable parent; cross-parent additive selection is forbidden.",
+          "Alt-click and double-click retain exact replacement/drill-in behavior. Shift-click retains scoped additive behavior.",
+          "Do not consume modified combinations such as Cmd/Ctrl+Shift, Cmd/Ctrl+Alt, secondary clicks, or accelerator clicks with no selectable target."
+        ],
+        "escape_and_focus_contract": [
+          "Escape always cancels an active marquee.",
+          "With no active marquee, Escape clears canvas selection only when no modal is open and focus is not in an editable control or contenteditable region."
+        ]
+      },
+      {
+        "type": "dirty_diff_assessment",
+        "finding": "Current unrelated work modifies src/client/canvas/editor.ts, src/client/main.ts, tests/editor-interactions.test.ts, tests/editor-serialization.test.ts, and tests/client-ux.test.ts. The changes concern dirty comparison, duplicate labels, complex history coverage, and workspace restoration.",
+        "requirement": "T003 must preserve every pre-existing hunk and must not edit src/client/ui/layout.ts, src/client/session-restoration.ts, README.md, examples, fixtures, or goal-control files."
+      },
+      {
+        "type": "worker_package",
+        "task_id": "T003",
+        "objective": "Implement one complete marquee-selection vertical slice: client-coordinate rectangle geometry for containment and touching rules; stage pointer arbitration; direct-child active-scope candidate normalization; replace and Shift-union marquee selection; platform-accelerator exact toggle with cross-scope replacement; defensive cancellation and focus-aware Escape; visible secondary-selection feedback with only the primary receiving handles; and behavioral regression coverage proving pan, object drag, locks, visibility, layer synchronization, history, dirty state, and serialization remain correct.",
+        "allowed_files": [
+          "src/client/canvas/editor.ts",
+          "src/client/canvas/marquee-selection.ts",
+          "src/client/main.ts",
+          "src/client/styles.css",
+          "tests/editor-interactions.test.ts",
+          "tests/editor-serialization.test.ts",
+          "tests/client-ux.test.ts"
+        ],
+        "verify": [
+          "npm run typecheck",
+          "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts",
+          "npm run build"
+        ],
+        "stop_if": [
+          "Any required implementation file is outside allowed_files.",
+          "Existing dirty hunks cannot be preserved without semantic conflict.",
+          "The implementation requires selection preferences, workspace/session persistence, or exported SVG format changes.",
+          "Correctness would require cross-parent selection or generalized multi-object movement, resize, or rotation.",
+          "The worker cannot prevent a precise-modifier click from initiating object mutation within the allowed files.",
+          "The same verification failure remains unexplained after two attempts."
+        ]
+      },
+      {
+        "type": "deferred_risks_and_browser_probes",
+        "items": [
+          "Probe marquee start from stage padding and blank SVG pixels at 100% and non-default zoom.",
+          "Probe transformed nested groups, axis-aligned SVG lines, hidden descendants, effectively transparent ancestors, and locked visible nodes.",
+          "Probe clipped and masked elements, documenting that T003 uses browser geometric client bounds rather than pixel-painted regions.",
+          "Probe exact toggling inside and outside active scope, including drag suppression and platform modifier behavior.",
+          "Probe pointer departure, cancellation, lost capture, Escape, review lock, and document reload for stuck overlays or selection loss.",
+          "Probe that all selected objects remain legible while only the primary shows handles, including collapsed sidebars and reduced motion."
+        ]
+      }
+    ],
+    "subgoal_contract": null,
+    "parallel_safety": null,
+    "blocked_tasks": [],
+    "missing_evidence": [],
+    "required_board_updates": [
+      {
+        "task_id": "T002",
+        "status": "done",
+        "action": "Record this receipt."
+      },
+      {
+        "task_id": "T003",
+        "status": "active",
+        "action": "Replace its objective, allowed_files, verify, and stop_if fields with the approved worker_package and dispatch exactly one write Worker."
+      }
+    ]
+  }
+}

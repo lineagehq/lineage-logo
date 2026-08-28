@@ -2,6 +2,10 @@
 
 An experimental visual correction canvas for AI-generated SVG logos.
 
+## Examples
+
+- [`examples/seatify-constellation.svg`](examples/seatify-constellation.svg) — a 44-layer Seatify concept built from six abstract seats arranged as an optimized constellation around a circular table.
+
 The project explores a hybrid workflow: AI generates structured SVG concepts,
 a person makes precise visual corrections in a browser, and the corrected SVG
 returns to the AI iteration loop without being converted into a proprietary
@@ -126,6 +130,12 @@ Use `Edit inside` to make a selected group the active scope, `Back to group` to
 move out one level, or the selection breadcrumb to return to an ancestor.
 Double-click or hold Alt while clicking to select the exact element under the
 pointer. The canvas, breadcrumb, and Layers panel share the same selection.
+Hold physical left `Control` while dragging from artwork or empty canvas to
+region-select visible leaf-most objects in the current scope; hold Shift at
+pointerdown to add them. A sub-threshold Control-click toggles the exact object;
+on empty canvas it clears without Shift and preserves with Shift. Preferences
+can switch activation to `M`, where a sub-threshold gesture is a no-op. Releasing
+the activation key cancels unfinished selection. Middle-drag or Space-drag pans.
 Groups in Layers can be collapsed, hidden layers are visibly marked and can be
 shown again from the layer row, and a canvas selection automatically reveals
 its corresponding layer. Use Search layers to filter larger documents by SVG
@@ -163,8 +173,8 @@ selection; Cmd/Ctrl+D duplicates, Cmd/Ctrl+G groups, Cmd/Ctrl+Shift+G ungroups,
 F fits the artboard, Shift+F fits the selected layer, and Escape clears the
 selection or leaves the current group scope. The `?` control lists every
 shortcut without changing the current selection. Standard
-Undo and Redo shortcuts restore the selection context as well as the SVG. Drag the
-canvas background, middle-drag, or hold Space while dragging to pan.
+Undo and Redo shortcuts restore the selection context as well as the SVG.
+Middle-drag or hold Space while dragging to pan.
 
 The Workspace and Inspector sidebars collapse independently into visible rails.
 Use their named rail controls or unmodified `[` and `]` when focus is outside a

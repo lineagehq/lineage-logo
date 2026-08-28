@@ -1,0 +1,9 @@
+{
+  "result":"done",
+  "task_id":"T027",
+  "board_path":"docs/goals/marquee-selection-preferences/state.yaml",
+  "summary":"Live QA passed synchronized three-object halo, Layers, primary-handle, and count-badge feedback at 100% and 125%, including collapsed sidebars; enhanced-outline minimum visibility; M/Left-Control guidance; Restore defaults; reload persistence; clean Save/Undo state; zero-extent line feedback; and an error-free console. Final npm run check passes 384 tests, typecheck, and build. The browser driver cannot emit physical KeyboardEvent.code ControlLeft, so one real owner gesture remains the sole completion gate.",
+  "evidence":["notes/T027-browser-qa.md","Three selected connection lines produced three halos, three aria-pressed Layers rows, one primary handle set, and a visible 3 objects selected badge.","The same feedback remained synchronized at 125% with both sidebars collapsed.","Enhanced outlines off retained minimal halos; M and Restore-default copy/state were synchronized.","Browser logs contained no warnings or errors."],
+  "commands":[{"cmd":"npm run check","status":"pass"}],
+  "spawned_tasks":["T030"]
+}

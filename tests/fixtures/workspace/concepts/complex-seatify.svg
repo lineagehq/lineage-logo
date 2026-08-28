@@ -1,0 +1,80 @@
+<svg viewBox="0 0 1024 768" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Complex Seatify venue logo">
+  <title>Complex Seatify venue and event mark</title>
+  <desc>A layered venue plan with a stage, table seating, access routes, ticket accents, and wordmark.</desc>
+  <defs>
+    <linearGradient id="venue-gradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff7657"/>
+      <stop offset="0.55" stop-color="#f05b78"/>
+      <stop offset="1" stop-color="#7b4dff"/>
+    </linearGradient>
+    <linearGradient id="ticket-gradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffd166"/>
+      <stop offset="1" stop-color="#ff9f1c"/>
+    </linearGradient>
+    <clipPath id="ticket-ribbon-clip">
+      <path d="M0 0H176L156 40 176 80H0L20 40Z"/>
+    </clipPath>
+    <mask id="ticket-stub-mask">
+      <rect width="116" height="72" rx="12" fill="#fff"/>
+      <circle cx="0" cy="36" r="9" fill="#000"/>
+      <circle cx="116" cy="36" r="9" fill="#000"/>
+    </mask>
+  </defs>
+  <g id="venue-logo" aria-label="Venue logo" transform="translate(42 34)">
+    <g id="venue-mark" aria-label="Venue mark" transform="rotate(-1 352 350)">
+      <g id="venue-shell" aria-label="Venue shell" transform="translate(8 6)">
+        <rect id="venue-shell-frame" aria-label="Venue shell frame" x="44" y="46" width="604" height="592" rx="84" fill="url(#venue-gradient)" stroke="#33245f" stroke-width="12"/>
+        <path id="venue-shell-floor" aria-label="Venue shell floor" d="M112 518Q346 454 580 518V574Q346 518 112 574Z" fill="#fff" opacity="0.18" stroke="#fff" stroke-width="4"/>
+      </g>
+      <g id="stage-zone" aria-label="Stage zone" transform="translate(154 100)">
+        <rect id="stage-platform" aria-label="Stage platform" x="0" y="0" width="388" height="92" rx="28" fill="#21183e" stroke="#fff" stroke-width="5"/>
+        <rect id="stage-screen" aria-label="Stage screen" x="34" y="24" width="320" height="44" rx="12" fill="#fff" opacity="0.9"/>
+        <g id="stage-lighting" aria-label="Stage lighting" transform="translate(0 2)">
+          <circle id="stage-light-left" aria-label="Stage light left" cx="18" cy="44" r="10" fill="#ffd166" stroke="#fff" stroke-width="3"/>
+          <circle id="stage-light-right" aria-label="Stage light right" cx="370" cy="44" r="10" fill="#ffd166" stroke="#fff" stroke-width="3"/>
+        </g>
+      </g>
+      <g id="seating-map" aria-label="Seating map" transform="translate(0 8)">
+        <g id="table-clusters" aria-label="Table clusters" transform="rotate(1 350 360)">
+          <g id="table-cluster-west" aria-label="West table cluster" transform="translate(226 334)">
+            <circle id="west-table" aria-label="West table" cx="0" cy="0" r="48" fill="#fff" opacity="0.94" stroke="#33245f" stroke-width="7"/>
+            <circle id="west-seat-north" aria-label="West north seat" cx="0" cy="-76" r="18" fill="#21183e" stroke="#fff" stroke-width="4"/>
+            <circle id="west-seat-east" aria-label="West east seat" cx="76" cy="0" r="18" fill="#21183e" stroke="#fff" stroke-width="4"/>
+            <circle id="west-seat-south" aria-label="West south seat" cx="0" cy="76" r="18" fill="#21183e" stroke="#fff" stroke-width="4"/>
+            <circle id="west-seat-west" aria-label="West west seat" cx="-76" cy="0" r="18" fill="#21183e" stroke="#fff" stroke-width="4"/>
+          </g>
+          <g id="table-cluster-east" aria-label="East table cluster" transform="translate(470 334)">
+            <circle id="east-table" aria-label="East table" cx="0" cy="0" r="48" fill="#fff" opacity="0.94" stroke="#33245f" stroke-width="7"/>
+            <circle id="east-seat-north" aria-label="East north seat" cx="0" cy="-76" r="18" fill="#21183e" stroke="#fff" stroke-width="4"/>
+            <circle id="east-seat-east" aria-label="East east seat" cx="76" cy="0" r="18" fill="#21183e" stroke="#fff" stroke-width="4"/>
+            <circle id="east-seat-south" aria-label="East south seat" cx="0" cy="76" r="18" fill="#21183e" stroke="#fff" stroke-width="4"/>
+            <circle id="east-seat-west" aria-label="East west seat" cx="-76" cy="0" r="18" fill="#21183e" stroke="#fff" stroke-width="4"/>
+          </g>
+        </g>
+      </g>
+      <g id="access-routes" aria-label="Access routes" transform="translate(0 4)">
+        <path id="aisle-west" aria-label="West aisle" d="M142 236V494" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" opacity="0.72"/>
+        <path id="aisle-center" aria-label="Center aisle" d="M350 216V508" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" opacity="0.72"/>
+        <path id="aisle-east" aria-label="East aisle" d="M558 236V494" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" opacity="0.72"/>
+        <g id="entrance-zone" aria-label="Entrance zone" transform="translate(0 2)">
+          <line id="entrance-left" aria-label="Entrance left marker" x1="304" y1="574" x2="334" y2="608" stroke="#fff" stroke-width="10" stroke-linecap="round"/>
+          <line id="entrance-right" aria-label="Entrance right marker" x1="396" y1="574" x2="366" y2="608" stroke="#fff" stroke-width="10" stroke-linecap="round"/>
+        </g>
+      </g>
+      <g id="ticket-accent" aria-label="Ticket accent" transform="translate(526 478) rotate(5 88 40)">
+        <g id="ticket-ribbon-wrapper" aria-label="Ticket ribbon wrapper" transform="translate(0 0) rotate(-2 88 40)">
+          <path id="ticket-ribbon" aria-label="Clipped ticket ribbon" d="M0 0H176L156 40 176 80H0L20 40Z" fill="url(#ticket-gradient)" clip-path="url(#ticket-ribbon-clip)" stroke="#fff" stroke-width="5"/>
+        </g>
+        <g id="ticket-stub-wrapper" aria-label="Ticket stub wrapper" transform="translate(30 92) rotate(3 58 36)">
+          <rect id="ticket-stub" aria-label="Masked ticket stub" x="0" y="0" width="116" height="72" rx="12" fill="#fff" mask="url(#ticket-stub-mask)" stroke="#33245f" stroke-width="4"/>
+        </g>
+        <path id="accent-star" aria-label="Ticket accent star" d="M88 18 96 34 114 36 101 49 104 67 88 59 72 67 75 49 62 36 80 34Z" fill="#33245f" opacity="0.82"/>
+      </g>
+    </g>
+    <g id="wordmark" aria-label="Seatify wordmark" transform="translate(712 228)">
+      <text id="seatify-title" aria-label="Seatify title" x="0" y="0" fill="#21183e" font-family="sans-serif" font-size="92" font-weight="700" letter-spacing="-3">Seatify</text>
+      <text id="seatify-tagline" aria-label="Seatify tagline" x="4" y="64" fill="#5f547b" font-family="sans-serif" font-size="28" font-weight="600" letter-spacing="3">EVERY SEAT CONNECTS</text>
+      <text id="venue-caption" aria-label="Venue caption" x="4" y="116" fill="#7b4dff" font-family="sans-serif" font-size="24" font-weight="500">Venue plan · doors 7 PM</text>
+    </g>
+  </g>
+</svg>

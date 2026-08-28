@@ -1,8 +1,9 @@
+import { readFileSync } from "node:fs";
 import { Window } from "happy-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { registerWindow, SVG } from "@svgdotjs/svg.js";
 import { History } from "../src/client/history/history";
-import { matrixRotationDegrees, rotationHandleRadii, serializeSvg, SvgEditor } from "../src/client/canvas/editor";
+import { cleanSvgsEqualForDirtyComparison, matrixRotationDegrees, rotationHandleRadii, serializeSvg, SvgEditor, type SelectionContext } from "../src/client/canvas/editor";
 import {
   composeGroupDrag,
   composeGroupResize,
@@ -11,6 +12,7 @@ import {
   GroupTransformGesture,
   type MatrixCoefficients,
 } from "../src/client/canvas/transform";
+import { DEFAULT_SELECTION_PREFERENCES } from "../src/client/selection-preferences";
 
 const IDENTITY: MatrixCoefficients = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
 
@@ -60,7 +62,7 @@ function installWindow(window: Window): void {
   graphicsPrototype.getScreenCTM = svgPrototype.getScreenCTM;
 }
 
-function editorHarness(): EditorHarness {
+function editorHarness(onSelectionContextChange: (context: SelectionContext) => void = () => undefined): EditorHarness {
   const window = new Window({ url: "http://localhost/" });
   installWindow(window);
   const artboard = window.document.createElement("div");
@@ -83,7 +85,7 @@ function editorHarness(): EditorHarness {
     onDirtyChange: () => undefined,
     onHistoryChange: () => undefined,
     onSelectionChange: () => undefined,
-    onSelectionContextChange: () => undefined,
+    onSelectionContextChange,
     onStatus: (message) => statuses.push(message),
   });
   const root = artboard.querySelector("svg") as unknown as SVGSVGElement;
@@ -699,5 +701,572 @@ describe("SvgEditor plugin cancellation teardown", () => {
     expect(editor.undo()).toBe(false);
     expect(editor.redo()).toBe(true);
     expect(editor.serializeClean()).toBe(after);
+  });
+});
+
+describe("marquee and precise selection interactions", () => {
+  const platformAccelerator = /^(?:Mac|iPhone|iPad|iPod)/.test(navigator.platform)
+    ? { metaKey: true }
+    : { ctrlKey: true };
+
+  function setClientRect(node: SVGGraphicsElement, left: number, top: number, width: number, height: number): void {
+    Object.defineProperty(node, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({
+        bottom: top + height, height, left, right: left + width, top, width,
+        x: left, y: top, toJSON: () => ({}),
+      }),
+    });
+  }
+
+  it("selects visible leaf-most descendants across parents in DOM order without changing SVG bytes or history", () => {
+    const { editor, root } = editorHarness();
+    const logo = root.querySelector("#logo") as unknown as SVGGraphicsElement;
+    const top = root.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "path") as unknown as SVGGraphicsElement;
+    top.id = "top";
+    root.append(top);
+    const hidden = root.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "path") as unknown as SVGGraphicsElement;
+    hidden.id = "hidden";
+    hidden.setAttribute("display", "none");
+    root.append(hidden);
+    setClientRect(logo, 10, 10, 20, 20);
+    const icon = root.querySelector("#icon") as unknown as SVGGraphicsElement;
+    const waveform = root.querySelector("#waveform") as unknown as SVGGraphicsElement;
+    const wordmark = root.querySelector("#wordmark") as unknown as SVGGraphicsElement;
+    setClientRect(icon, 10, 10, 20, 20);
+    setClientRect(waveform, 10, 10, 10, 10);
+    setClientRect(wordmark, 22, 10, 8, 10);
+    setClientRect(top, 35, 10, 20, 20);
+    setClientRect(hidden, 60, 10, 20, 20);
+    const before = editor.serializeClean();
+
+    expect(editor.beginMarquee()).toBe(true);
+    editor.commitMarquee({ bottom: 40, height: 40, left: 0, right: 90, top: 0, width: 90 }, false);
+    expect(editorContext(editor)).toEqual({ primary: "top", scope: undefined, selected: ["waveform", "wordmark", "top"] });
+    expect(editor.serializeClean()).toBe(before);
+    expect(editor.undo()).toBe(false);
+    expect(logo.getAttribute("data-lineage-secondary")).toBeNull();
+    expect(icon.getAttribute("data-lineage-secondary")).toBeNull();
+    expect(waveform.getAttribute("data-lineage-secondary")).toBeNull();
+    expect(wordmark.getAttribute("data-lineage-secondary")).toBeNull();
+    expect(top.getAttribute("data-lineage-secondary")).toBeNull();
+    expect(root.querySelectorAll("[data-lineage-selection-halos] .lineage-selection-halo")).toHaveLength(3);
+    expect(root.querySelectorAll(".svg_select_shape")).toHaveLength(1);
+    expect(editor.operationState().group.allowed).toBe(false);
+    expect(editor.operationState().align.allowed).toBe(false);
+  });
+
+  it("freezes a nested scope and normalizes the full additive union against ancestor coexistence", () => {
+    const { editor, root } = editorHarness();
+    const logo = root.querySelector("#logo") as unknown as SVGGraphicsElement;
+    const icon = root.querySelector("#icon") as unknown as SVGGraphicsElement;
+    const waveform = root.querySelector("#waveform") as unknown as SVGGraphicsElement;
+    const wordmark = root.querySelector("#wordmark") as unknown as SVGGraphicsElement;
+    editor.selectNode(logo);
+    editor.editInside();
+    editor.selectNode(icon);
+    setClientRect(icon, 10, 10, 20, 20);
+    setClientRect(waveform, 10, 10, 20, 20);
+    setClientRect(wordmark, 40, 10, 20, 20);
+
+    editor.beginMarquee();
+    editor.commitMarquee({ bottom: 35, height: 30, left: 5, right: 35, top: 5, width: 30 }, true);
+    expect(editorContext(editor)).toEqual({ primary: "waveform", scope: "logo", selected: ["waveform"] });
+    expect(editor.selectedNodes).not.toContain(icon);
+
+    editor.beginMarquee();
+    editor.commitMarquee({ bottom: 35, height: 30, left: 35, right: 65, top: 5, width: 30 }, true);
+    expect(editorContext(editor)).toEqual({ primary: "wordmark", scope: "logo", selected: ["waveform", "wordmark"] });
+  });
+
+  it("includes locked visible leaves, excludes hidden leaves, and keeps exactly one primary handle", () => {
+    const { editor, root } = editorHarness();
+    const logo = root.querySelector("#logo") as unknown as SVGGraphicsElement;
+    const waveform = root.querySelector("#waveform") as unknown as SVGGraphicsElement;
+    const wordmark = root.querySelector("#wordmark") as unknown as SVGGraphicsElement;
+    editor.selectNode(logo);
+    editor.editInside();
+    editor.selectNode(waveform);
+    editor.toggleLock();
+    editor.selectNode(logo);
+    wordmark.setAttribute("visibility", "hidden");
+    setClientRect(logo, 0, 0, 50, 50);
+    setClientRect(root.querySelector("#icon") as unknown as SVGGraphicsElement, 5, 5, 20, 20);
+    setClientRect(waveform, 5, 5, 20, 20);
+    setClientRect(wordmark, 30, 5, 15, 20);
+    editor.beginMarquee();
+    editor.commitMarquee({ bottom: 60, height: 60, left: 0, right: 60, top: 0, width: 60 }, false);
+    expect(editor.selectedNodes).toEqual([waveform]);
+    expect(root.querySelectorAll("[data-lineage-selection-halos] .lineage-selection-halo")).toHaveLength(1);
+    expect(root.querySelectorAll(".svg_select_shape")).toHaveLength(0);
+    expect(editor.undo()).toBe(false);
+  });
+
+  it("restores the pre-gesture selection on cancellation and treats a pending Shift drag as a no-op", () => {
+    const { editor } = editorHarness();
+    const before = editorContext(editor);
+    editor.beginMarquee();
+    expect(editor.cancelMarquee()).toBe(true);
+    expect(editorContext(editor)).toEqual(before);
+    editor.beginMarquee();
+    editor.commitMarquee(undefined, true);
+    expect(editorContext(editor)).toEqual(before);
+    editor.beginMarquee();
+    editor.commitMarquee(undefined, false);
+    expect(editor.selectedNodes).toEqual([]);
+  });
+
+  it("publishes hover-free context as soon as a region begins and rejects non-artboard UI targets", () => {
+    const contexts: SelectionContext[] = [];
+    const { editor, root, window } = editorHarness((context) => contexts.push(context));
+    const wordmark = root.querySelector("#wordmark") as unknown as SVGGraphicsElement;
+    editor.setSelectionPreferences({ ...DEFAULT_SELECTION_PREFERENCES, clickDepth: "exact" });
+    dispatch(wordmark, new window.PointerEvent("pointermove", { bubbles: true }));
+    expect(contexts.at(-1)?.hovered).toBe(wordmark);
+    expect(editor.beginMarquee()).toBe(true);
+    expect(contexts.at(-1)?.hovered).toBeUndefined();
+    expect(editor.canStartRegionSelection(wordmark)).toBe(true);
+    const bannerButton = window.document.createElement("button");
+    window.document.body.append(bannerButton);
+    expect(editor.canStartRegionSelection(bannerButton as unknown as EventTarget)).toBe(false);
+  });
+
+  it("clears on an unarmed short background gesture but keeps selection and suppresses clicks after an inert drag", () => {
+    const inert = editorHarness();
+    const before = inert.editor.serializeClean();
+    const context = editorContext(inert.editor);
+    inert.editor.completeBackgroundGesture(true);
+    dispatch(inert.root.querySelector("#wordmark"), new inert.window.MouseEvent("click", { bubbles: true }));
+    expect(editorContext(inert.editor)).toEqual(context);
+    expect(inert.editor.serializeClean()).toBe(before);
+    expect(inert.editor.undo()).toBe(false);
+
+    const click = editorHarness();
+    click.editor.completeBackgroundGesture(false);
+    expect(click.editor.selectedNodes).toEqual([]);
+    expect(click.editor.undo()).toBe(false);
+
+    const additiveClick = editorHarness();
+    const additiveContext = editorContext(additiveClick.editor);
+    additiveClick.editor.completeBackgroundGesture(false, true);
+    dispatch(additiveClick.root.querySelector("#wordmark"), new additiveClick.window.MouseEvent("click", { bubbles: true }));
+    expect(editorContext(additiveClick.editor)).toEqual(additiveContext);
+    expect(additiveClick.editor.undo()).toBe(false);
+
+    const additiveInert = editorHarness();
+    const additiveInertContext = editorContext(additiveInert.editor);
+    additiveInert.editor.completeBackgroundGesture(true, true);
+    dispatch(additiveInert.root.querySelector("#wordmark"), new additiveInert.window.MouseEvent("click", { bubbles: true }));
+    expect(editorContext(additiveInert.editor)).toEqual(additiveInertContext);
+    expect(additiveInert.editor.undo()).toBe(false);
+  });
+
+  it("uses exact accelerator toggle within scope, replaces across scope, and ignores modified combinations", () => {
+    const { editor, root, window } = editorHarness();
+    const logo = root.querySelector("#logo") as unknown as SVGGraphicsElement;
+    const icon = root.querySelector("#icon") as unknown as SVGGraphicsElement;
+    const waveform = root.querySelector("#waveform") as unknown as SVGGraphicsElement;
+    editor.selectNode(logo);
+    editor.editInside();
+    editor.selectNode(icon);
+    dispatch(waveform, new window.MouseEvent("click", { bubbles: true, button: 0, ...platformAccelerator }));
+    expect(editorContext(editor)).toEqual({ primary: "waveform", scope: "icon", selected: ["waveform"] });
+    dispatch(icon, new window.MouseEvent("click", { bubbles: true, button: 0, ...platformAccelerator }));
+    expect(editorContext(editor)).toEqual({ primary: "icon", scope: "logo", selected: ["icon"] });
+    dispatch(root.querySelector("#wordmark"), new window.MouseEvent("click", { bubbles: true, button: 0, ...platformAccelerator }));
+    expect(editorContext(editor)).toEqual({ primary: "wordmark", scope: "logo", selected: ["icon", "wordmark"] });
+    dispatch(icon, new window.MouseEvent("click", { bubbles: true, button: 0, shiftKey: true, ...platformAccelerator }));
+    expect(editorContext(editor)).toEqual({ primary: "wordmark", scope: "logo", selected: ["icon", "wordmark"] });
+  });
+
+  it("completes Control click arbitration as a clean exact toggle while Shift-empty preserves selection", () => {
+    const { editor, root } = editorHarness();
+    const first = root.querySelector("#wordmark") as unknown as SVGGraphicsElement;
+    const second = root.querySelector("#icon") as unknown as SVGGraphicsElement;
+    editor.selectNode(first);
+    const clean = editor.serializeClean();
+    expect(editor.beginMarquee()).toBe(true);
+    editor.completeControlGesture(second, false);
+    expect(editor.marqueeActive).toBe(false);
+    expect(editor.selectedNodes).toEqual([first, second]);
+    expect(editor.beginMarquee()).toBe(true);
+    editor.completeControlGesture(second, true);
+    expect(editor.marqueeActive).toBe(false);
+    expect(editor.selectedNodes).toEqual([first]);
+    expect(editor.beginMarquee()).toBe(true);
+    editor.completeControlGesture(undefined, true);
+    expect(editor.marqueeActive).toBe(false);
+    expect(editor.selectedNodes).toEqual([first]);
+    expect(editor.beginMarquee()).toBe(true);
+    editor.suppressCanvasClick();
+    expect(editor.marqueeActive).toBe(false);
+    expect(editor.selectedNodes).toEqual([first]);
+    expect(editor.beginMarquee()).toBe(true);
+    editor.completeControlGesture(undefined, false);
+    expect(editor.marqueeActive).toBe(false);
+    expect(editor.selectedNodes).toEqual([]);
+    expect(editor.serializeClean()).toBe(clean);
+    expect(editor.undo()).toBe(false);
+  });
+
+  it("cancels moved precise pointer sequences before object mutation", () => {
+    const { editor, group, window } = editorHarness();
+    const before = editor.serializeClean();
+    let objectPointerDowns = 0;
+    group.addEventListener("pointerdown", () => { objectPointerDowns += 1; });
+    const pointer = (type: string, x: number, y: number) => {
+      const event = new window.PointerEvent(type, { bubbles: true, button: 0, clientX: x, clientY: y, pointerId: 17, ...platformAccelerator });
+      dispatch(group, event);
+    };
+    pointer("pointerdown", 10, 10);
+    pointer("pointermove", 20, 10);
+    pointer("pointerup", 20, 10);
+    expect(editor.serializeClean()).toBe(before);
+    expect(editor.selectedNode).toBe(group);
+    expect(editor.undo()).toBe(false);
+    expect(objectPointerDowns).toBe(0);
+  });
+
+  it("captures precise drags from the selection bounding shape without disabling ordinary drag or transform handles", () => {
+    const { editor, group, root, window } = editorHarness();
+    const shape = root.querySelector(".svg_select_shape") as unknown as SVGGraphicsElement;
+    const resizeHandle = root.querySelector(".svg_select_handle:not(.svg_select_handle_rot)") as unknown as SVGGraphicsElement;
+    const rotationHandle = root.querySelector(".svg_select_handle_rot") as unknown as SVGGraphicsElement;
+    expect(shape).toBeTruthy();
+    expect(resizeHandle).toBeTruthy();
+    expect(rotationHandle).toBeTruthy();
+    const before = editor.serializeClean();
+    let overlayDragStarts = 0;
+    let resizeStarts = 0;
+    let rotationStarts = 0;
+    shape.addEventListener("pointerdown", () => {
+      overlayDragStarts += 1;
+      group.setAttribute("transform", "translate(30 25)");
+    });
+    resizeHandle.addEventListener("pointerdown", () => { resizeStarts += 1; });
+    rotationHandle.addEventListener("pointerdown", () => { rotationStarts += 1; });
+    const pointer = (target: SVGGraphicsElement, type: string, x: number, y: number, accelerator: boolean, pointerId: number) => {
+      dispatch(target, new window.PointerEvent(type, {
+        bubbles: true, button: 0, clientX: x, clientY: y, pointerId,
+        ...(accelerator ? platformAccelerator : {}),
+      }));
+    };
+
+    pointer(shape, "pointerdown", 620, 535, true, 31);
+    pointer(shape, "pointermove", 650, 560, true, 31);
+    pointer(shape, "pointerup", 650, 560, true, 31);
+    expect(overlayDragStarts).toBe(0);
+    expect(editor.serializeClean()).toBe(before);
+    expect(editor.selectedNode).toBe(group);
+    expect(editor.undo()).toBe(false);
+
+    pointer(shape, "pointerdown", 620, 535, false, 32);
+    expect(overlayDragStarts).toBe(1);
+    group.setAttribute("transform", "translate(4 5)");
+    pointer(resizeHandle, "pointerdown", 0, 0, true, 33);
+    pointer(rotationHandle, "pointerdown", 0, 0, true, 34);
+    expect(resizeStarts).toBe(1);
+    expect(rotationStarts).toBe(1);
+  });
+
+  it("shows a clean, editor-only violet halo for locked and handle-ineligible selections", () => {
+    const { editor, group, root } = editorHarness();
+    const clean = editor.serializeClean();
+    editor.toggleLock();
+    expect(root.querySelectorAll("[data-lineage-selection-halos] .lineage-selection-halo")).toHaveLength(1);
+    expect(root.querySelector(".lineage-selection-halo")?.getAttribute("data-lineage-primary-fallback")).toBe("true");
+    expect(group.getAttribute("data-lineage-primary-fallback")).toBe("true");
+    expect(root.querySelectorAll(".svg_select_shape")).toHaveLength(0);
+    expect(editor.serializeClean()).toBe(clean);
+    expect(editor.undo()).toBe(false);
+
+    editor.toggleLock();
+    expect(group.getAttribute("data-lineage-primary-fallback")).toBeNull();
+    expect(root.querySelectorAll(".svg_select_shape")).toHaveLength(1);
+    editor.toggleVisibility();
+    expect(group.getAttribute("data-lineage-primary-fallback")).toBe("true");
+    expect(root.querySelector(".lineage-selection-halo")?.getAttribute("data-lineage-primary-fallback")).toBe("true");
+    editor.toggleVisibility();
+    expect(group.getAttribute("data-lineage-primary-fallback")).toBeNull();
+    editor.selectNode(root.querySelector("#waveform") as unknown as SVGGraphicsElement);
+    expect(root.querySelectorAll("[data-lineage-selection-halos] .lineage-selection-halo")).toHaveLength(1);
+    expect(root.querySelector(".lineage-selection-halo")?.getAttribute("data-lineage-primary-fallback")).toBe("true");
+    expect(editor.serializeClean()).toBe(clean);
+  });
+
+  it("cancels marquee before editable/modal Escape guards and suppresses the successor click", () => {
+    const { controls, editor, group, root, window } = editorHarness();
+    const original = editorContext(editor);
+    expect(editor.beginMarquee()).toBe(true);
+    controls.name.ownerDocument.body.append(controls.name);
+    controls.name.focus();
+    dispatch(controls.name, new window.KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    expect(editor.marqueeActive).toBe(false);
+    dispatch(root.querySelector("#wordmark"), new window.MouseEvent("click", { bubbles: true }));
+    expect(editorContext(editor)).toEqual(original);
+
+    const dialog = window.document.createElement("dialog");
+    dialog.setAttribute("open", "");
+    const modalButton = window.document.createElement("button");
+    dialog.append(modalButton);
+    window.document.body.append(dialog);
+    expect(editor.beginMarquee()).toBe(true);
+    dispatch(modalButton, new window.KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    expect(editor.marqueeActive).toBe(false);
+    dispatch(group, new window.MouseEvent("click", { bubbles: true }));
+    expect(editorContext(editor)).toEqual(original);
+  });
+
+  it("suppresses successor clicks after precise Escape and pointer cancellation", () => {
+    const { controls, editor, root, window } = editorHarness();
+    const logo = root.querySelector("#logo") as unknown as SVGGraphicsElement;
+    const wordmark = root.querySelector("#wordmark") as unknown as SVGGraphicsElement;
+    editor.selectNode(logo);
+    editor.editInside();
+    editor.selectNode(wordmark);
+    const original = editorContext(editor);
+    controls.name.ownerDocument.body.append(controls.name);
+    const preciseDown = (pointerId: number) => dispatch(root.querySelector("#icon"), new window.PointerEvent("pointerdown", {
+      bubbles: true, button: 0, pointerId, ...platformAccelerator,
+    }));
+
+    preciseDown(21);
+    controls.name.focus();
+    dispatch(controls.name, new window.KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    dispatch(root.querySelector("#icon"), new window.MouseEvent("click", { bubbles: true }));
+    expect(editorContext(editor)).toEqual(original);
+
+    preciseDown(22);
+    dispatch(root.querySelector("#icon"), new window.PointerEvent("pointercancel", { bubbles: true, pointerId: 22 }));
+    dispatch(root.querySelector("#icon"), new window.MouseEvent("click", { bubbles: true }));
+    expect(editorContext(editor)).toEqual(original);
+  });
+
+  it("applies logical versus exact default click depth while preserving Alt and double-click exact replacement", () => {
+    const { editor, group, root, window } = editorHarness();
+    const waveform = root.querySelector("#waveform") as unknown as SVGGraphicsElement;
+    dispatch(waveform, new window.MouseEvent("click", { bubbles: true }));
+    expect(editor.selectedNode).toBe(group);
+
+    editor.setSelectionPreferences({ ...DEFAULT_SELECTION_PREFERENCES, clickDepth: "exact" });
+    dispatch(waveform, new window.MouseEvent("click", { bubbles: true }));
+    expect(editorContext(editor)).toEqual({ primary: "waveform", scope: "icon", selected: ["waveform"] });
+
+    editor.selectNode(group);
+    editor.setSelectionPreferences({ ...DEFAULT_SELECTION_PREFERENCES });
+    dispatch(waveform, new window.MouseEvent("click", { altKey: true, bubbles: true }));
+    expect(editorContext(editor)).toEqual({ primary: "waveform", scope: "icon", selected: ["waveform"] });
+    editor.selectNode(group);
+    dispatch(waveform, new window.MouseEvent("dblclick", { bubbles: true }));
+    expect(editorContext(editor)).toEqual({ primary: "waveform", scope: "icon", selected: ["waveform"] });
+  });
+
+  it("switches the configured precise toggle to Alt without consuming platform-modified combinations", () => {
+    const { editor, root, window } = editorHarness();
+    const logo = root.querySelector("#logo") as unknown as SVGGraphicsElement;
+    const icon = root.querySelector("#icon") as unknown as SVGGraphicsElement;
+    const wordmark = root.querySelector("#wordmark") as unknown as SVGGraphicsElement;
+    editor.selectNode(logo);
+    editor.editInside();
+    editor.selectNode(icon);
+    editor.setSelectionPreferences({ ...DEFAULT_SELECTION_PREFERENCES, preciseModifier: "alt" });
+    dispatch(wordmark, new window.MouseEvent("click", { altKey: true, bubbles: true }));
+    expect(editorContext(editor)).toEqual({ primary: "wordmark", scope: "logo", selected: ["icon", "wordmark"] });
+    dispatch(icon, new window.MouseEvent("click", { bubbles: true, ...platformAccelerator }));
+    expect(editorContext(editor)).toEqual({ primary: "wordmark", scope: "logo", selected: ["icon", "wordmark"] });
+    expect(editor.undo()).toBe(false);
+  });
+
+  it("uses fully enclosed or touching marquee geometry from preferences without dirtying history", () => {
+    const { editor, group } = editorHarness();
+    setClientRect(group, 10, 10, 20, 20);
+    const partial = { bottom: 35, height: 20, left: 25, right: 45, top: 15, width: 20 };
+    editor.beginMarquee();
+    editor.commitMarquee(partial, false);
+    expect(editor.selectedNodes).toEqual([]);
+
+    editor.selectNode(group);
+    editor.setSelectionPreferences({ ...DEFAULT_SELECTION_PREFERENCES, marqueeMode: "touch" });
+    editor.beginMarquee();
+    editor.commitMarquee(partial, false);
+    expect(editor.selectedNodes).toEqual([group]);
+    expect(editor.undo()).toBe(false);
+  });
+
+  it("renders filter-independent halos for every selected object without changing clean SVG, history, or primary handles", () => {
+    const { editor, root } = editorHarness();
+    const clean = editor.serializeClean();
+    const primary = selectNestedMulti(editor);
+    expect(root.querySelectorAll("[data-lineage-selection-halos] .lineage-selection-halo")).toHaveLength(2);
+    expect(root.querySelector("[data-lineage-selection-halos]")?.getAttribute("pointer-events")).toBe("none");
+    editor.setSelectionPreferences({ ...DEFAULT_SELECTION_PREFERENCES, individualOutlines: false });
+    expect(editorContext(editor).selected).toEqual(["wordmark", "icon"]);
+    expect(root.querySelectorAll('.lineage-selection-halo[data-enhanced="false"]')).toHaveLength(2);
+    expect(root.querySelectorAll(".svg_select_shape")).toHaveLength(1);
+    editor.selectNode(root.querySelector("#waveform") as unknown as SVGGraphicsElement);
+    editor.setSelectionPreferences({ ...DEFAULT_SELECTION_PREFERENCES, individualOutlines: true });
+    expect(root.querySelectorAll('.lineage-selection-halo[data-enhanced="true"]')).toHaveLength(1);
+    expect(editor.serializeClean()).toBe(clean);
+    expect(primary.isConnected).toBe(true);
+    expect(editor.undo()).toBe(false);
+  });
+
+  it("gives horizontal and vertical zero-extent objects visibly nonzero clean halo geometry", () => {
+    const { editor, root, window } = editorHarness();
+    const horizontal = window.document.createElementNS("http://www.w3.org/2000/svg", "line") as unknown as SVGGraphicsElement;
+    horizontal.setAttribute("x1", "0"); horizontal.setAttribute("x2", "20"); horizontal.setAttribute("y1", "5"); horizontal.setAttribute("y2", "5");
+    const vertical = horizontal.cloneNode() as SVGGraphicsElement;
+    vertical.setAttribute("x1", "5"); vertical.setAttribute("x2", "5"); vertical.setAttribute("y1", "0"); vertical.setAttribute("y2", "20");
+    root.append(horizontal, vertical);
+    Object.defineProperty(horizontal, "getBBox", { value: () => ({ x: 0, y: 5, width: 20, height: 0 }) });
+    Object.defineProperty(vertical, "getBBox", { value: () => ({ x: 5, y: 0, width: 0, height: 20 }) });
+    const clean = editor.serializeClean();
+    for (const line of [horizontal, vertical]) {
+      editor.selectNode(line);
+      const halo = root.querySelector(".lineage-selection-halo") as SVGRectElement;
+      expect(Number(halo.getAttribute("width"))).toBeGreaterThan(0);
+      expect(Number(halo.getAttribute("height"))).toBeGreaterThan(0);
+    }
+    expect(editor.serializeClean()).toBe(clean);
+    expect(editor.undo()).toBe(false);
+  });
+});
+
+describe("complete complex Seatify history sequence", () => {
+  it("tracks exact serialization, dirty state, history, and Save/Reset availability across all 18 undo and redo checkpoints", () => {
+    const window = new Window({ url: "http://localhost/" });
+    installWindow(window);
+    const artboard = window.document.createElement("div");
+    const fixture = readFileSync("tests/fixtures/workspace/concepts/complex-seatify.svg", "utf8");
+    const savedBaselineMarkup = fixture.replace(
+      '<svg viewBox="0 0 1024 768" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Complex Seatify venue logo">',
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 768" role="img" aria-label="Complex Seatify venue logo" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink">',
+    );
+    const baselineContainer = window.document.createElement("div");
+    baselineContainer.innerHTML = savedBaselineMarkup;
+    const savedBaseline = (baselineContainer.querySelector("svg") as unknown as SVGSVGElement).outerHTML;
+    const xlinkDeclaration = ' xmlns:xlink="http://www.w3.org/1999/xlink"';
+    const restoredOrder = savedBaseline
+      .replace(xlinkDeclaration, "")
+      .replace('xmlns="http://www.w3.org/2000/svg"', `xmlns="http://www.w3.org/2000/svg"${xlinkDeclaration}`);
+    artboard.innerHTML = restoredOrder;
+    window.document.body.append(artboard);
+    const controls = Object.fromEntries(Object.entries(CONTROL_TAGS).map(([name, tag]) => {
+      const control = window.document.createElement(tag);
+      if (control instanceof window.HTMLInputElement) control.value = name === "opacity" || name === "scale" ? "100" : "0";
+      return [name, control];
+    })) as unknown as ConstructorParameters<typeof SvgEditor>[1];
+    const dirtyStates: boolean[] = [];
+    const historyStates: Array<{ canRedo: boolean; canUndo: boolean }> = [];
+    const editor = new SvgEditor(artboard as unknown as HTMLElement, controls, {
+      onDocumentChange: () => undefined,
+      onDirtyChange: (dirty) => dirtyStates.push(dirty),
+      onHistoryChange: (canUndo, canRedo) => historyStates.push({ canRedo, canUndo }),
+      onSelectionChange: () => undefined,
+      onSelectionContextChange: () => undefined,
+      onStatus: () => undefined,
+    });
+    editor.load(artboard.querySelector("svg") as unknown as SVGSVGElement, savedBaseline);
+    const baseline = savedBaseline;
+    const origin = editor.serializeClean();
+    expect(origin).not.toBe(baseline);
+    expect(cleanSvgsEqualForDirtyComparison(origin, baseline)).toBe(true);
+    expect(dirtyStates.at(-1)).toBe(false);
+    const snapshots = [origin];
+    const checkpoint = () => {
+      const clean = editor.serializeClean();
+      expect(clean).not.toBe(snapshots.at(-1));
+      snapshots.push(clean);
+      expect(dirtyStates.at(-1)).toBe(!cleanSvgsEqualForDirtyComparison(clean, baseline));
+      expect(historyStates.at(-1)).toEqual({ canRedo: false, canUndo: true });
+      expect({ resetDisabled: !dirtyStates.at(-1), saveDisabled: !dirtyStates.at(-1) }).toEqual({ resetDisabled: false, saveDisabled: false });
+    };
+    const select = (id: string) => {
+      const node = editor.svgNode?.querySelector(`#${id}`) as unknown as SVGGraphicsElement;
+      expect(node).toBeTruthy();
+      editor.selectNode(node);
+      return node;
+    };
+    const key = (keyValue: string, shiftKey = false) => document.dispatchEvent(new KeyboardEvent("keydown", { key: keyValue, shiftKey }));
+
+    select("ticket-ribbon-wrapper"); key("ArrowRight"); checkpoint();
+    select("ticket-stub-wrapper"); key("ArrowRight"); checkpoint();
+    select("table-cluster-west"); key("ArrowRight", true); checkpoint(); key("ArrowRight"); checkpoint(); key("ArrowRight"); checkpoint();
+
+    select("table-cluster-east");
+    controls.rotation.dispatchEvent(new Event("focus"));
+    controls.rotation.value = "4";
+    controls.rotation.dispatchEvent(new Event("input"));
+    controls.rotation.dispatchEvent(new Event("change"));
+    checkpoint();
+
+    select("stage-zone");
+    controls.scale.dispatchEvent(new Event("focus"));
+    controls.scale.value = "96";
+    controls.scale.dispatchEvent(new Event("input"));
+    controls.scale.dispatchEvent(new Event("change"));
+    checkpoint();
+
+    select("stage-light-left");
+    controls.fill.dispatchEvent(new Event("focus"));
+    controls.fill.value = "#ff9f1c";
+    controls.fill.dispatchEvent(new Event("input"));
+    checkpoint();
+
+    select("aisle-center");
+    controls.opacity.dispatchEvent(new Event("focus"));
+    controls.opacity.value = "0.55";
+    controls.opacity.dispatchEvent(new Event("input"));
+    checkpoint();
+
+    select("venue-caption");
+    controls.textContent.value = "Venue plan · doors 7:30 PM";
+    controls.textContent.dispatchEvent(new Event("change"));
+    checkpoint();
+
+    select("accent-star"); controls.duplicateButton.click(); checkpoint();
+    editor.reorder("earlier"); checkpoint();
+
+    const north = select("west-seat-north");
+    const east = editor.svgNode?.querySelector("#west-seat-east") as unknown as SVGGraphicsElement;
+    const south = editor.svgNode?.querySelector("#west-seat-south") as unknown as SVGGraphicsElement;
+    Object.defineProperty(north, "getBBox", { configurable: true, value: () => ({ height: 36, width: 36, x: -18, y: -94 }) });
+    Object.defineProperty(east, "getBBox", { configurable: true, value: () => ({ height: 36, width: 36, x: 58, y: -18 }) });
+    Object.defineProperty(south, "getBBox", { configurable: true, value: () => ({ height: 36, width: 36, x: -18, y: 58 }) });
+    editor.selectNode(east, true);
+    editor.selectNode(south, true);
+    editor.align("middle"); checkpoint();
+    editor.group(); checkpoint();
+    editor.renameSelection("West priority seats"); checkpoint();
+    editor.ungroup(); checkpoint();
+
+    select("entrance-left"); editor.toggleVisibility(); checkpoint(); editor.toggleVisibility(); checkpoint();
+    expect(snapshots).toHaveLength(19);
+
+    for (let index = 17; index >= 0; index -= 1) {
+      expect(editor.undo()).toBe(true);
+      const clean = editor.serializeClean();
+      expect(clean).toBe(snapshots[index]);
+      const dirty = !cleanSvgsEqualForDirtyComparison(clean, baseline);
+      expect(dirtyStates.at(-1)).toBe(dirty);
+      expect(historyStates.at(-1)).toEqual({ canRedo: true, canUndo: index > 0 });
+      expect({ resetDisabled: !dirty, saveDisabled: !dirty }).toEqual({
+        resetDisabled: index === 0,
+        saveDisabled: index === 0,
+      });
+    }
+    expect(editor.undo()).toBe(false);
+    expect(editor.serializeClean()).toBe(origin);
+    expect(cleanSvgsEqualForDirtyComparison(editor.serializeClean(), baseline)).toBe(true);
+
+    for (let index = 1; index <= 18; index += 1) {
+      expect(editor.redo()).toBe(true);
+      const clean = editor.serializeClean();
+      expect(clean).toBe(snapshots[index]);
+      expect(dirtyStates.at(-1)).toBe(true);
+      expect(historyStates.at(-1)).toEqual({ canRedo: index < 18, canUndo: true });
+      expect({ resetDisabled: !dirtyStates.at(-1), saveDisabled: !dirtyStates.at(-1) }).toEqual({ resetDisabled: false, saveDisabled: false });
+    }
+    expect(editor.redo()).toBe(false);
   });
 });

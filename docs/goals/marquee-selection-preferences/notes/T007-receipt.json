@@ -1,0 +1,28 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T007",
+    "board_path": "docs/goals/marquee-selection-preferences/state.yaml",
+    "decision": "approved",
+    "full_outcome_complete": false,
+    "rationale": "The integrated feature is ready for final browser QA. Defaults match the charter; storage is strict, versioned, global, and independent of workspace restoration; malformed, future, acquisition-failure, and write-failure paths fall back safely. Modifier, marquee, click-depth, and outline preferences are wired into existing normalized selection paths without adding document history. The accessible modal and earlier gesture, serialization, and transform safeguards remain intact. Full npm run check passes 20 files and 371 tests. Completion still requires the T008 browser oracle and human Cmd-drag confirmation.",
+    "worker_package": null,
+    "evidence": [
+      {"finding":"Integrated verification","status":"closed","proof":"npm run check passed 20 test files and 371 tests, typecheck, and production build."},
+      {"finding":"Persistence boundary","status":"closed","proof":"Strict five-key global v1 record safely defaults on malformed, future, acquisition-failure, and write-failure cases, separately from workspace restoration."},
+      {"finding":"Accessible preferences","status":"closed","proof":"Labelled native modal, labelled controls, initial focus, forward/reverse focus containment, Escape/backdrop closure, and actual-invoker focus return are implemented and tested."},
+      {"finding":"Interaction integration","status":"closed","proof":"Precise modifier, marquee match, click depth, and outline preferences preserve normalized selection, Alt/double-click, clean serialization, history, and prior gesture safeguards."}
+    ],
+    "subgoal_contract": null,
+    "parallel_safety": null,
+    "blocked_tasks": [],
+    "missing_evidence": [
+      "T008 must execute the complete integrated browser oracle.",
+      "A real human-modified Cmd/Ctrl drag over .svg_select_shape remains mandatory because the browser automation helper could not carry the modifier through drag."
+    ],
+    "required_board_updates": [
+      "Record T007 done and activate T008.",
+      "Keep T999 queued until browser QA and final npm run check."
+    ]
+  }
+}

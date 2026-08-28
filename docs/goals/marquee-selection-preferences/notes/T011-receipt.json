@@ -1,0 +1,29 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T011",
+    "board_path": "/Users/neonwatty/Desktop/lineage-logo/docs/goals/marquee-selection-preferences/state.yaml",
+    "changed_files": [
+      "tests/editor-interactions.test.ts"
+    ],
+    "commands": [
+      {
+        "cmd": "npm run typecheck",
+        "status": "pass"
+      },
+      {
+        "cmd": "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts",
+        "status": "pass"
+      },
+      {
+        "cmd": "npm run build",
+        "status": "pass"
+      }
+    ],
+    "summary": "Resolved both Happy DOM/global DOM typing errors by attaching each inspector control through its own typed ownerDocument. The controls remain genuinely connected and focusable, preserving the focused-control Escape behavioral coverage without weakening assertions or changing product code. Typecheck, all 164 targeted tests, and the production build pass.",
+    "remaining_blockers": [],
+    "verification_attempts": 1,
+    "stopped_because": null,
+    "deviations": []
+  }
+}

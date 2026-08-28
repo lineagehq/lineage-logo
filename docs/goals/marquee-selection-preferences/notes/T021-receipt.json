@@ -1,0 +1,19 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T021",
+    "board_path": "/Users/neonwatty/Desktop/lineage-logo/docs/goals/marquee-selection-preferences/state.yaml",
+    "changed_files": ["src/client/canvas/marquee-selection.ts","src/client/canvas/editor.ts","src/client/main.ts","tests/client-ux.test.ts","tests/editor-interactions.test.ts"],
+    "commands": [
+      {"cmd":"npm run typecheck","status":"pass"},
+      {"cmd":"npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts","status":"pass"},
+      {"cmd":"npm run build","status":"pass"},
+      {"cmd":"npm run check","status":"pass"}
+    ],
+    "summary": "Fixed the T019 defect by freezing Shift/additivity in unarmed background gesture state at pointerdown. Sub-threshold Shift pointerup now preserves selection while suppressing its successor click; unmodified sub-threshold pointerup still clears. Background drags at or above 4px remain inert with or without Shift and suppress successor clicks. Added controller, editor, and main-wiring regressions covering all four paths. Targeted verification passed 176 tests; full check passed 376 tests, typecheck, and build.",
+    "remaining_blockers": [],
+    "verification_attempts": 1,
+    "stopped_because": null,
+    "deviations": []
+  }
+}

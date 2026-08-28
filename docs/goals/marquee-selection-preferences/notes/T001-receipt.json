@@ -1,0 +1,180 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T001",
+    "board_path": "/Users/neonwatty/Desktop/lineage-logo/docs/goals/marquee-selection-preferences/state.yaml",
+    "summary": "Selection is scope-based and already supports sibling multi-selection, exact Alt/double-click selection, primary plugin handles, secondary highlighting, and clean serialization. Marquee should operate in client coordinates against rendered bounds of direct selectable children of the active scope, which inherently avoids ancestor/descendant co-selection and handles zoom/nested transforms. Gesture arbitration must move empty-canvas bare-drag from stage pan to marquee while retaining Space+primary and middle-button pan. Preferences should live in a new strict, versioned global module independent of workspace-session state. Existing interaction, serialization, UX, and storage tests provide suitable seams.",
+    "evidence": [
+      {
+        "path": "src/client/canvas/editor.ts",
+        "lines": "973-1058, 1146-1153",
+        "finding": "selectNode, #setSelection, and #toggleNode own selection. Extend selection is constrained to direct siblings in the active scope; the last added node becomes primary."
+      },
+      {
+        "path": "src/client/canvas/editor.ts",
+        "lines": "538-604",
+        "finding": "isSelectableNode excludes roots, resources, handles, and nested SVGs. getScopedSelectionTarget climbs to the direct child of a supplied scope; getDirectSelectionTarget returns the deepest selectable hit."
+      },
+      {
+        "path": "src/client/canvas/editor.ts",
+        "lines": "1470-1510",
+        "finding": "Canvas click precedence is currently handle exclusion, Alt exact selection, Shift scoped toggle, ordinary scoped replacement, empty-click clear; double-click exact-selects and resets scope to the candidate parent."
+      },
+      {
+        "path": "src/client/main.ts",
+        "lines": "1428-1504",
+        "finding": "Stage currently pans on middle-button, Space+primary, or bare primary drag whose target is the stage. It captures the pointer and terminates on pointerup, pointercancel, or lostpointercapture."
+      },
+      {
+        "path": "src/client/main.ts",
+        "lines": "928-940",
+        "finding": "Zoom is a CSS transform on the artboard, so SVG user-space deltas are not equivalent to pointer client-space deltas."
+      },
+      {
+        "path": "src/client/canvas/editor.ts",
+        "lines": "1035-1145; 2068-2074",
+        "finding": "Only the primary receives svg.js select/resize/drag handles. Secondary nodes receive data-lineage-secondary and are cleared by #deselect."
+      },
+      {
+        "path": "src/client/styles.css",
+        "lines": "108-135",
+        "finding": "Secondary selection currently uses purple filter/outline styling, while primary selection uses svg.js blue bounds and handles. Stage pan states disable descendant pointer events."
+      },
+      {
+        "path": "src/client/canvas/editor.ts",
+        "lines": "450-480",
+        "finding": "serializeSvg removes svg.js handles and all hover, secondary-selection, and review-highlight attributes from both clean exports and snapshots."
+      },
+      {
+        "path": "src/client/session-restoration.ts",
+        "lines": "1-84",
+        "finding": "Workspace restoration is a strict exact-key v1 schema tied to workspace/file, selection path, zoom, preview background, and sidebars; selection preferences do not belong in this schema."
+      },
+      {
+        "path": "src/client/ui/layout.ts",
+        "lines": "1-52, 128-138",
+        "finding": "Layout preferences demonstrate safe localStorage acquisition and bounded independent versioned keys, but their controller is sidebar-specific."
+      },
+      {
+        "path": "tests/editor-serialization.test.ts",
+        "lines": "784-835; 80-95",
+        "finding": "Existing tests directly cover scoped/direct target resolution, selectable exclusions, and stripping selection affordances."
+      },
+      {
+        "path": "examples/seatify-constellation.svg",
+        "lines": "14-67",
+        "finding": "The dogfood SVG contains nested groups, transformed seat groups, overlapping circular geometry, gradients, lines, rectangles, and text—appropriate for zoom, nesting, and normalization probes."
+      }
+    ],
+    "facts": [
+      {
+        "topic": "gesture_precedence",
+        "value": "Recommended precedence: active transform handles/object drag first; middle-button or Space+primary pan second; primary drag beginning on empty SVG/artboard content enters pending marquee; cross a small client-pixel threshold to activate; click below threshold preserves empty-click clear; pointerup commits; Escape, pointercancel, lost capture, load, or review lock cancel without selection/history mutation."
+      },
+      {
+        "topic": "coordinate_space",
+        "value": "Represent the marquee and candidate boxes in viewport client coordinates. Use PointerEvent.clientX/clientY and each candidate's getBoundingClientRect(); this naturally includes CSS zoom, viewBox mapping, and nested transforms. Render the rectangle as an HTML overlay positioned relative to a fixed stage overlay host by subtracting its bounding rect."
+      },
+      {
+        "topic": "selection_normalization",
+        "value": "Enumerate only selectable nodes whose getSelectableParent(node, root) equals the active scope. Never recursively collect descendants for the same marquee. This guarantees no selected ancestor/descendant pair and preserves existing scope semantics. Order matches DOM paint order and use the last matched node as primary."
+      },
+      {
+        "topic": "visibility_and_locking",
+        "value": "Exclude display:none/non-rendered candidates and editor handles. Locked visible layers may be selected for inspection because existing mutation gates already block unsafe edits; hiding should remain a separate mutation."
+      },
+      {
+        "topic": "modifier_compatibility",
+        "value": "Retain Alt-click and double-click exact selection. Add platform primary accelerator click as exact toggle, but do not consume accelerator combinations used by browser/application shortcuts. Shift-marquee should union with the existing selection only when candidates share the current scope."
+      },
+      {
+        "topic": "preference_boundary",
+        "value": "Create selection-preferences.ts with a strict v1 exact-key schema, one global localStorage key, validation, safe read/write, defaults, reset, and an in-memory fallback. Keep it separate from WorkspaceSessionV1 because these preferences apply across workspaces and must not be restored per document."
+      },
+      {
+        "topic": "T003_allowed_files",
+        "value": [
+          "src/client/canvas/editor.ts",
+          "src/client/canvas/marquee-selection.ts",
+          "src/client/main.ts",
+          "src/client/styles.css",
+          "tests/editor-interactions.test.ts",
+          "tests/editor-serialization.test.ts",
+          "tests/client-ux.test.ts"
+        ]
+      },
+      {
+        "topic": "T003_verification",
+        "value": [
+          "npm run typecheck",
+          "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts",
+          "npm run build"
+        ]
+      },
+      {
+        "topic": "T006_allowed_files",
+        "value": [
+          "src/client/selection-preferences.ts",
+          "src/client/main.ts",
+          "src/client/ui/layout.ts",
+          "src/client/canvas/editor.ts",
+          "src/client/styles.css",
+          "tests/selection-preferences.test.ts",
+          "tests/client-ux.test.ts",
+          "tests/editor-interactions.test.ts"
+        ]
+      },
+      {
+        "topic": "T006_verification",
+        "value": [
+          "npm run typecheck",
+          "npm run test -- --run tests/selection-preferences.test.ts tests/client-ux.test.ts tests/editor-interactions.test.ts",
+          "npm run build"
+        ]
+      },
+      {
+        "topic": "test_seams",
+        "value": "Add pure rectangle normalization/containment/intersection tests; editor integration tests for scope normalization, union/toggle, cancellation, hidden/locked nodes, and unchanged clean SVG/history; serialization tests for all new overlay markers; UX source/DOM tests for accessible dialog controls, defaults/reset, focus, reduced motion, and pan/marquee CSS."
+      }
+    ],
+    "contradictions": [
+      {
+        "issue": "Bare empty-stage primary drag currently means pan, while the goal requires it to mean marquee.",
+        "resolution_needed": "T002 must lock Space+primary and middle-button as the retained pan gestures and reassign unmodified empty-canvas drag to marquee."
+      },
+      {
+        "issue": "Existing extend selection rejects nodes outside the active scope, while global exact accelerator selection could target a descendant in another scope.",
+        "resolution_needed": "Exact accelerator replacement may reset scope like Alt-click; exact accelerator toggle should only extend when the target shares the current scope, otherwise replace and reset scope."
+      },
+      {
+        "issue": "The goal mentions click-depth preferences, but current scoped and direct target semantics are tightly coupled to active scope.",
+        "resolution_needed": "Default-click-depth changes should choose scoped versus direct replacement only; it must not weaken active-scope normalization for additive or marquee selection."
+      }
+    ],
+    "ambiguity_requiring_judge": [
+      {
+        "question": "Should a drag beginning on blank pixels inside the SVG root marquee, while a drag beginning in stage padding also marquee, or should stage padding retain bare-drag pan?",
+        "recommendation": "Marquee both blank SVG and artboard/stage canvas content; require Space or middle-button for pan consistently."
+      },
+      {
+        "question": "Should Cmd/Ctrl-click exact selection replace or toggle when the exact target is outside the current active scope?",
+        "recommendation": "Replace and reset scope outside the active scope; toggle only among direct siblings within the current scope."
+      },
+      {
+        "question": "Should visually clipped elements use their unclipped getBoundingClientRect bounds for containment?",
+        "recommendation": "Accept rendered DOM bounds for the first slice and browser-probe clip/mask cases; defer pixel-perfect painted-region hit testing."
+      }
+    ],
+    "commands": [
+      "git rev-parse --show-toplevel && sed -n '1,220p' docs/goals/marquee-selection-preferences/state.yaml",
+      "rg -n \"pointer|selection|selected|pan|zoom|screen|client|overlay|serialize|localStorage|session|shortcut|keydown|dblclick|altKey|shiftKey|metaKey|ctrlKey|locked|hidden\" <named inputs>",
+      "rg -n \"class SvgEditor|#on|onPointer|mousedown|touchstart|click|dblclick|wheel|pan|clientTo|screenCTM|getScreenCTM|getBoundingClientRect|selectionContext|select|highlight|overlay|serializeSvg|data-lineage|setZoom|zoom\" src/client/canvas/editor.ts",
+      "sed -n targeted editor selection and interaction ranges",
+      "rg -n targeted stage, pan, zoom, shortcut, and layer symbols in src/client/main.ts and src/client/styles.css",
+      "sed -n targeted pan, storage, layout, and editor helper ranges",
+      "rg -n targeted selection helpers and test seams; sed -n targeted test ranges",
+      "sed -n targeted selectable, serialization, package script, fixture, style, and git-status ranges"
+    ],
+    "note_needed": false
+  }
+}
