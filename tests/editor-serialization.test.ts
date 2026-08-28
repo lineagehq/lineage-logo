@@ -6,6 +6,7 @@ import {
   alignmentAvailability,
   alignmentOffsets,
   cleanSvgsEqualForDirtyComparison,
+  distributionOffsets,
   findSelectableByKeys,
   groupAvailability,
   groupSelection,
@@ -794,6 +795,55 @@ describe("multi-selection alignment", () => {
     expect(alignmentAvailability([node("a")], root).allowed).toBe(false);
     expect(alignmentAvailability([node("a"), node("inside")], root).reason).toContain("same parent");
     expect(alignmentAvailability([node("a"), node("b")], root, (candidate) => candidate === node("a")).reason).toContain("Unlock");
+  });
+});
+
+describe("multi-selection distribution", () => {
+  it("distributes horizontal and vertical centers with deterministic fixed outer anchors", () => {
+    const boxes = [
+      { x: 0, y: 100, width: 10, height: 20 },
+      { x: 100, y: 0, width: 10, height: 10 },
+      { x: 30, y: 30, width: 10, height: 10 },
+    ];
+    expect(distributionOffsets(boxes, "horizontal-centers")).toEqual([
+      { dx: 0, dy: 0 },
+      { dx: 0, dy: 0 },
+      { dx: 20, dy: 0 },
+    ]);
+    expect(distributionOffsets(boxes, "vertical-centers")).toEqual([
+      { dx: 0, dy: 0 },
+      { dx: 0, dy: 0 },
+      { dx: 0, dy: 22.5 },
+    ]);
+  });
+
+  it("equalizes edge gaps with mixed and zero sizes while allowing deterministic overlap", () => {
+    expect(distributionOffsets([
+      { x: 0, y: 0, width: 10, height: 10 },
+      { x: 30, y: 20, width: 20, height: 0 },
+      { x: 100, y: 80, width: 10, height: 20 },
+    ], "horizontal-gaps")).toEqual([
+      { dx: 0, dy: 0 },
+      { dx: 15, dy: 0 },
+      { dx: 0, dy: 0 },
+    ]);
+    expect(distributionOffsets([
+      { x: 0, y: 0, width: 40, height: 10 },
+      { x: 20, y: 20, width: 40, height: 10 },
+      { x: 50, y: 50, width: 40, height: 10 },
+    ], "horizontal-gaps")[1]).toEqual({ dx: 5, dy: 0 });
+    expect(distributionOffsets([
+      { x: 0, y: 0, width: 10, height: 0 },
+      { x: 0, y: 20, width: 10, height: 0 },
+      { x: 0, y: 100, width: 10, height: 0 },
+    ], "vertical-gaps")[1]).toEqual({ dx: 0, dy: 30 });
+  });
+
+  it("is a no-op below the three-object contract", () => {
+    expect(distributionOffsets([
+      { x: 0, y: 0, width: 10, height: 10 },
+      { x: 20, y: 0, width: 10, height: 10 },
+    ], "horizontal-centers")).toEqual([{ dx: 0, dy: 0 }, { dx: 0, dy: 0 }]);
   });
 });
 

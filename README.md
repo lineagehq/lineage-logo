@@ -142,7 +142,11 @@ its corresponding layer. Use Search layers to filter larger documents by SVG
 element type or layer name.
 Shift-click adjacent siblings in the canvas or Layers panel to build a selection
 for grouping or block reordering; the most recently selected layer is primary
-and drives the inspector. Layer names are stored as standard `aria-label`
+and drives the inspector. Drag any selected object or use Arrow/Shift+Arrow to
+move the entire selection by one shared visual SVG delta, including selections
+that span transformed parents. A locked, hidden, disconnected, or Agent-blocked
+member prevents the whole move instead of allowing a partial edit. Resize and
+rotation handles remain primary-only. Layer names are stored as standard `aria-label`
 attributes and can be cleared; pressing Enter commits a name and Escape cancels
 the field edit. Locks are session-only. The organization controls send a layer
 or adjacent block one position backward or forward in SVG paint order, create a
@@ -153,7 +157,10 @@ why the unsafe operation is unavailable.
 With two or more sibling layers selected, use Left, Center, Right, Top, Middle,
 or Bottom to align their geometric bounding boxes within their shared parent.
 Alignment preserves hierarchy and source attributes, and each action can be
-undone, redone, or cleared with Reset edits.
+undone, redone, or cleared with Reset edits. With three or more eligible layers,
+use Distribute H/V to space visual centers evenly or Space H/V to equalize edge
+gaps. These cross-parent operations keep the two outer visual anchors fixed and
+commit as one undoable edit.
 Fill and stroke accept standard SVG paint values, including `none`, CSS colors,
 `currentColor`, and paint references such as `url(#gradient)`. An empty value
 removes the presentation attribute so the paint is inherited. Invalid values

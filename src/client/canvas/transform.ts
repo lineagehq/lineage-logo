@@ -37,6 +37,29 @@ function multiply(left: MatrixCoefficients, right: MatrixCoefficients): MatrixCo
   };
 }
 
+function determinant(matrix: MatrixCoefficients): number {
+  return matrix.a * matrix.d - matrix.b * matrix.c;
+}
+
+function inverse(matrix: MatrixCoefficients): MatrixCoefficients {
+  const value = determinant(matrix);
+  if (!Number.isFinite(value) || value === 0) {
+    throw new RangeError("The selected layer has a singular parent transform.");
+  }
+  const result = {
+    a: matrix.d / value,
+    b: -matrix.b / value,
+    c: -matrix.c / value,
+    d: matrix.a / value,
+    e: (matrix.c * matrix.f - matrix.d * matrix.e) / value,
+    f: (matrix.b * matrix.e - matrix.a * matrix.f) / value,
+  };
+  if (Object.values(result).some((coefficient) => !Number.isFinite(coefficient) || Math.abs(coefficient) > MAX_COEFFICIENT)) {
+    throw new RangeError("The selected layer's parent transform exceeds the supported numeric range.");
+  }
+  return result;
+}
+
 function normalized(matrix: MatrixCoefficients): MatrixCoefficients {
   return {
     a: bounded(matrix.a),
@@ -57,6 +80,109 @@ function finiteBox(box: TransformBox): boolean {
 export function formatMatrix(matrix: MatrixCoefficients): string {
   const value = normalized(matrix);
   return `matrix(${[value.a, value.b, value.c, value.d, value.e, value.f].join(",")})`;
+}
+
+export function relativeMatrix(
+  rootToScreen: MatrixCoefficients,
+  localToScreen: MatrixCoefficients,
+): MatrixCoefficients {
+  return normalized(multiply(inverse(rootToScreen), localToScreen));
+}
+
+export function transformVectorToLocal(
+  localToRoot: MatrixCoefficients,
+  dx: number,
+  dy: number,
+): { dx: number; dy: number } {
+  if (!Number.isFinite(dx) || !Number.isFinite(dy)) {
+    throw new RangeError("The selection translation contains a non-finite offset.");
+  }
+  const local = inverse(localToRoot);
+  return {
+    dx: bounded(local.a * dx + local.c * dy),
+    dy: bounded(local.b * dx + local.d * dy),
+  };
+}
+
+export function composeRootTranslation(
+  initial: MatrixCoefficients,
+  parentToRoot: MatrixCoefficients,
+  dx: number,
+  dy: number,
+): MatrixCoefficients {
+  const local = transformVectorToLocal(parentToRoot, dx, dy);
+  return normalized({
+    ...initial,
+    e: initial.e + local.dx,
+    f: initial.f + local.dy,
+  });
+}
+
+export interface SelectionTranslationTarget {
+  element: SVGGraphicsElement;
+  initial: MatrixCoefficients;
+  parentToRoot: MatrixCoefficients;
+}
+
+export class SelectionTranslationGesture {
+  readonly #targets: Array<SelectionTranslationTarget & { originalTransform: string | null }>;
+  #currentDx = 0;
+  #currentDy = 0;
+
+  constructor(targets: SelectionTranslationTarget[]) {
+    if (targets.length === 0 || new Set(targets.map((target) => target.element)).size !== targets.length) {
+      throw new RangeError("Selection translation requires distinct connected layers.");
+    }
+    this.#targets = targets.map((target) => ({
+      ...target,
+      initial: normalized(target.initial),
+      parentToRoot: normalized(target.parentToRoot),
+      originalTransform: target.element.getAttribute("transform"),
+    }));
+    for (const target of this.#targets) {
+      transformVectorToLocal(target.parentToRoot, 0, 0);
+      const horizontal = transformVectorToLocal(target.parentToRoot, 1, 0);
+      const vertical = transformVectorToLocal(target.parentToRoot, 0, 1);
+      if ((horizontal.dx === 0 && horizontal.dy === 0) || (vertical.dx === 0 && vertical.dy === 0)) {
+        throw new RangeError("The selected layer's coordinate space exceeds the supported translation precision.");
+      }
+    }
+  }
+
+  move(dx: number, dy: number): boolean {
+    const next = this.#targets.map((target) => formatMatrix(composeRootTranslation(
+      target.initial,
+      target.parentToRoot,
+      dx,
+      dy,
+    )));
+    const changed = next.some((value, index) => value !== this.#targets[index].element.getAttribute("transform"));
+    next.forEach((value, index) => this.#targets[index].element.setAttribute("transform", value));
+    this.#currentDx = bounded(dx);
+    this.#currentDy = bounded(dy);
+    return changed;
+  }
+
+  cancel(): void {
+    this.#restoreOriginal();
+  }
+
+  complete(): boolean {
+    if (this.#currentDx === 0 && this.#currentDy === 0) {
+      this.#restoreOriginal();
+      return false;
+    }
+    return true;
+  }
+
+  #restoreOriginal(): void {
+    for (const target of this.#targets) {
+      if (target.originalTransform === null) target.element.removeAttribute("transform");
+      else target.element.setAttribute("transform", target.originalTransform);
+    }
+    this.#currentDx = 0;
+    this.#currentDy = 0;
+  }
 }
 
 export function composeGroupDrag(
