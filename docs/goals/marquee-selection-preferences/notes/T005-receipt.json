@@ -1,0 +1,24 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T005",
+    "board_path": "docs/goals/marquee-selection-preferences/state.yaml",
+    "summary": "Hands-on QA passed root and nested marquee selection, Shift-union, cross-scope Meta exact selection, 149% zoom geometry, layer-tree synchronization, locked-primary fallback, Escape clearing, clean dirty/history state, and a clean console. It uncovered one reproducible mutation bug: Meta-dragging an already selected object from the svg.js .svg_select_shape overlay bypasses the precise-selection guard and moves the object. The QA mutation was undone and clean state restored. Preferences are blocked until a bounded overlay-path fix, review, and browser recheck complete.",
+    "note": "notes/T005-browser-qa.md",
+    "decision": "remediate",
+    "evidence": [
+      "Root marquee selected the fully enclosed top-level group at 99% zoom.",
+      "Nested stage-padding marquee selected all three direct Circular table children without ancestors.",
+      "Meta exact toggle and Shift-union behaved correctly away from the handle overlay.",
+      "The same nested marquee worked at 149% zoom with sidebars collapsed.",
+      "Locked Optimized center point showed data-lineage-primary-fallback with no handles; unlock restored handles.",
+      "Selection-only actions kept Undo and Save disabled; console warnings/errors were empty.",
+      "Meta-drag over selected Seatify title's .svg_select_shape moved it about 30x25px and enabled Undo/Save; Undo restored the exact prior position and clean controls."
+    ],
+    "spawned_tasks": [
+      "T012",
+      "T013",
+      "T014"
+    ]
+  }
+}

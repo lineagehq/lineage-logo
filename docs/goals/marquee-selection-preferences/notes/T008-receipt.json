@@ -1,0 +1,28 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T008",
+    "board_path": "docs/goals/marquee-selection-preferences/state.yaml",
+    "summary": "Integrated live QA on the 44-layer Seatify constellation passed preference defaults, alternate values, reload persistence, restore defaults, logical/exact click depth, contain/touch marquee behavior at 100% and 150%, synchronized multi-selection, outline hiding/restoration, clean history/dirty state, and an empty console. Strict malformed/future storage fallback, serialization stripping, focus-loop variants, reduced motion, and gesture regressions pass automated coverage and independent review. Final npm run check passes 20 files and 371 tests. The only remaining oracle item is a real human Command-drag over the selected overlay because the browser helper cannot carry Command through drag.",
+    "evidence": [
+      "notes/T008-browser-qa.md",
+      "Alternate preference values and restored defaults each survived full reload.",
+      "Logical and exact clicks selected different expected hierarchy levels on identical nested geometry.",
+      "Contain versus touch marquee diverged correctly at 100%, and touching passed again at 150%.",
+      "Two-layer selection remained intact while individual markers were hidden and restored.",
+      "Undo, Redo, and Save stayed disabled; browser console warnings/errors were empty.",
+      "npm run check passed 20 files, 371 tests, typecheck, and build."
+    ],
+    "facts": [
+      "Browser security policy forbids direct local-storage inspection or mutation; strict corruption/future-version behavior is proven by focused tests instead.",
+      "T005/T014 and current automated coverage provide the gesture, serialization, and cancellation regression evidence not reliably repeatable with the current browser driver.",
+      "A real human Command-drag over .svg_select_shape is still mandatory before completion."
+    ],
+    "contradictions": [],
+    "ambiguity_requiring_judge": [],
+    "commands": [
+      "npm run check"
+    ],
+    "note_needed": true
+  }
+}

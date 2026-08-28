@@ -1,0 +1,129 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T013",
+    "board_path": "docs/goals/marquee-selection-preferences/state.yaml",
+    "decision": "approved",
+    "full_outcome_complete": false,
+    "rationale": "T012 closes the browser-confirmed overlay drag defect without broadening transform scope. Both selection bounding-shape classes resolve through one capture-phase branch to the current selected object, so Meta movement is intercepted before svg.js drag mutation. Resize and rotation handles are deliberately excluded and remain reachable, while unmodified bounding-shape drag still propagates. The behavioral regression reproduces the reported coordinates, proves the mutation listener is blocked only for Meta, and verifies unchanged selection, serialization, and undo history. Fresh typecheck, 165 targeted tests, and production build pass. T014 browser recheck may begin.",
+    "worker_package": null,
+    "evidence": [
+      {
+        "finding": "Browser defect reproduction boundary",
+        "status": "closed_in_code",
+        "source": "docs/goals/marquee-selection-preferences/notes/T005-browser-qa.md",
+        "proof": "The note identifies Meta-drag beginning on .svg_select_shape at approximately (620,535) to (650,560) as the sole failed path. T012's regression uses the same class, modifier, movement, and coordinates."
+      },
+      {
+        "finding": ".svg_select_shape resolution",
+        "status": "closed",
+        "paths": [
+          "src/client/canvas/editor.ts:82",
+          "src/client/canvas/editor.ts:1558"
+        ],
+        "proof": "SELECTION_BOUNDING_SHAPE_SELECTOR includes .svg_select_shape. Capture-phase pointerdown resolves any closest matching overlay to this.selectedNode before ordinary direct-target resolution, establishing the selected SVG object as the precise-toggle candidate."
+      },
+      {
+        "finding": ".svg_select_shape_pointSelect resolution",
+        "status": "closed",
+        "paths": [
+          "src/client/canvas/editor.ts:82",
+          "src/client/canvas/editor.ts:1558"
+        ],
+        "proof": "The pointSelect class is in the same selector and executes the identical closest-overlay-to-selectedNode branch. There is no separate conditional or fallback path that could resolve it differently."
+      },
+      {
+        "finding": "Precise Meta capture prevents mutation",
+        "status": "closed",
+        "paths": [
+          "src/client/canvas/editor.ts:1555",
+          "src/client/canvas/editor.ts:1570",
+          "tests/editor-interactions.test.ts:815"
+        ],
+        "proof": "A valid Meta primary press on the bounding overlay creates the precise pointer session, captures the pointer, prevents default, and stops immediate propagation. The behavioral test installs a mutation-producing overlay pointerdown listener; the listener receives zero Meta events after a 30x25 drag, clean SVG bytes remain exact, the selected object remains unchanged, and editor.undo() remains false."
+      },
+      {
+        "finding": "Ordinary overlay drag remains",
+        "status": "closed",
+        "paths": [
+          "src/client/canvas/editor.ts:1555",
+          "tests/editor-interactions.test.ts:844"
+        ],
+        "proof": "Without Meta, the exact-toggle predicate returns false and the capture guard does not consume the event. The same overlay listener receives the ordinary pointerdown exactly once and can perform its simulated transform."
+      },
+      {
+        "finding": "True resize and rotation handles remain",
+        "status": "closed",
+        "paths": [
+          "src/client/canvas/editor.ts:82",
+          "tests/editor-interactions.test.ts:818",
+          "tests/editor-interactions.test.ts:850"
+        ],
+        "proof": "SELECTION_BOUNDING_SHAPE_SELECTOR excludes .svg_select_handle and .svg_select_handle_rot. Meta pointerdown on real resize and rotation handles therefore bypasses the overlay capture branch; both behavioral listeners receive their events exactly once."
+      },
+      {
+        "finding": "Mutation, history, and serialization regression",
+        "status": "closed",
+        "paths": [
+          "tests/editor-interactions.test.ts:815"
+        ],
+        "proof": "The test's overlay listener would synchronously write translate(30 25) if propagation reached it. Meta capture prevents that write, serializeClean remains byte-identical, the primary selection remains the original group, and no undo entry exists."
+      },
+      {
+        "finding": "Latest verification",
+        "status": "closed",
+        "commands": [
+          {
+            "cmd": "npm run typecheck",
+            "status": "pass"
+          },
+          {
+            "cmd": "npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts",
+            "status": "pass",
+            "detail": "3 files, 165 tests"
+          },
+          {
+            "cmd": "npm run build",
+            "status": "pass"
+          }
+        ]
+      },
+      {
+        "type": "T014_browser_recheck",
+        "instructions": [
+          "At non-default zoom, select Seatify title and repeat the exact Meta-drag from approximately (620,535) to (650,560) over .svg_select_shape.",
+          "Confirm the title position is unchanged and Undo and Save remain disabled.",
+          "Repeat an ordinary drag from the selection bounding shape and confirm movement still works; immediately undo and restore clean state.",
+          "Exercise one genuine resize handle and the rotation handle, confirming both remain interactive.",
+          "Repeat one root or nested marquee and one precise Meta toggle away from the overlay.",
+          "Confirm clean console, restored dirty/history state, and unchanged exported SVG after selection-only actions."
+        ]
+      }
+    ],
+    "subgoal_contract": null,
+    "parallel_safety": null,
+    "blocked_tasks": [
+      "T006"
+    ],
+    "missing_evidence": [
+      "The real-browser overlay path must pass T014 before preferences implementation begins."
+    ],
+    "required_board_updates": [
+      {
+        "task_id": "T013",
+        "status": "done",
+        "action": "Record this approved overlay-remediation review."
+      },
+      {
+        "task_id": "T014",
+        "status": "active",
+        "action": "Begin the targeted live-browser recheck using the exact instructions above."
+      },
+      {
+        "task_id": "T006",
+        "status": "queued",
+        "action": "Keep preferences work queued until T014 confirms the overlay path in the real browser."
+      }
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T006",
+    "board_path": "/Users/neonwatty/Desktop/lineage-logo/docs/goals/marquee-selection-preferences/state.yaml",
+    "changed_files": [
+      "src/client/selection-preferences.ts",
+      "src/client/main.ts",
+      "src/client/ui/layout.ts",
+      "src/client/canvas/editor.ts",
+      "src/client/styles.css",
+      "tests/selection-preferences.test.ts",
+      "tests/client-ux.test.ts",
+      "tests/editor-interactions.test.ts"
+    ],
+    "commands": [
+      {
+        "cmd": "npm run typecheck",
+        "status": "pass"
+      },
+      {
+        "cmd": "npm run test -- --run tests/selection-preferences.test.ts tests/client-ux.test.ts tests/editor-interactions.test.ts",
+        "status": "pass"
+      },
+      {
+        "cmd": "npm run build",
+        "status": "pass"
+      }
+    ],
+    "summary": "Implemented the compact accessible Preferences & shortcuts dialog with focus trapping/return, Escape, restore defaults, and reduced-motion support. Added strict global v1 storage with atomic malformed/future-version fallback and tab-local failure resilience, separate from workspace state. Wired precise modifier, marquee containment/touching, logical/exact click depth, and individual outlines into the editor while preserving Alt/double-click, gestures, serialization, and history. Added meaningful storage, UX, and interaction coverage. Typecheck, 81 targeted tests, and production build pass.",
+    "remaining_blockers": [],
+    "verification_attempts": 2,
+    "stopped_because": null,
+    "deviations": []
+  }
+}

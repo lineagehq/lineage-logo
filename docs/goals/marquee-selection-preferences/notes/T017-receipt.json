@@ -1,0 +1,28 @@
+{
+  "goalbuddy_receipt_v1": {
+    "result": "done",
+    "task_id": "T017",
+    "board_path": "docs/goals/marquee-selection-preferences/state.yaml",
+    "decision": "approved",
+    "full_outcome_complete": false,
+    "rationale": "The revision is safe as one vertical slice with two tightened rules: candidates are visible leaf-most selectable descendants, and ordinary unarmed background movement above 4px preserves selection while suppressing its successor click. Hold-M activation, Shift captured at pointerdown, release/blur/hidden cancellation, frozen-scope search, full-union normalization, and cross-parent inspection fit existing seams. Modified M, editable/modal/composing/repeated keys never arm. Same-parent operation gates and primary-only handles prevent generalized multi-object transforms.",
+    "worker_package": {
+      "objective": "Implement hold-KeyM empty-background marquee activation, Shift+M additivity, inert ordinary background drags above 4px, complete disarm/cancellation lifecycle, visible leaf-most descendant matching, full-union ancestor normalization, one primary handle, updated guidance, and behavioral regressions without generalized transforms.",
+      "allowed_files": ["src/client/canvas/marquee-selection.ts","src/client/canvas/editor.ts","src/client/main.ts","src/client/styles.css","tests/client-ux.test.ts","tests/editor-interactions.test.ts","tests/editor-serialization.test.ts","README.md"],
+      "verify": ["npm run typecheck","npm run test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts","npm run build","npm run check"],
+      "stop_if": ["Required files fall outside ownership.","Unrelated dirty hunks cannot be preserved.","Storage/session/export formats must change.","Correctness requires lasso, painted-pixel, auto-scroll, nested-SVG editing, or generalized cross-parent transforms.","Modified M, editable/modal/composing/repeat can arm.","Cancellation can leave key, pointer, overlay, cursor, or selection state behind.","The same verification failure remains unexplained after two attempts."]
+    },
+    "evidence": [
+      {"finding":"Hotkey lifecycle","status":"locked","proof":"Arm only fresh physical KeyM with no Cmd/Ctrl/Alt outside editable, modal, or composing contexts; Shift allowed; M remains held through commit."},
+      {"finding":"Ordinary drag","status":"locked","proof":"Below 4px remains background click; at or above 4px is inert and suppresses successor click."},
+      {"finding":"Deep candidates","status":"locked","proof":"Eligibility is visible leaf-most descendants before viewport hit testing; locked visible leaves remain eligible."},
+      {"finding":"Union normalization","status":"locked","proof":"Normalize the full prior-plus-new selection and drop every selected ancestor containing another selected node."},
+      {"finding":"Transform boundary","status":"locked","proof":"One primary handle; mutation controls and same-parent operations remain gated; no collective transforms."}
+    ],
+    "subgoal_contract": null,
+    "parallel_safety": null,
+    "blocked_tasks": ["T019","T020","T999"],
+    "missing_evidence": ["T018 implementation","T019 review","T020 live QA"],
+    "required_board_updates": ["Record T017 done, configure and activate T018."]
+  }
+}

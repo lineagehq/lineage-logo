@@ -1,0 +1,10 @@
+{
+  "result":"blocked",
+  "task_id":"T030",
+  "board_path":"docs/goals/marquee-selection-preferences/state.yaml",
+  "blocked_reason":"The in-app browser driver cannot emit the physical ControlLeft keyboard code required by the interaction contract; only the owner can supply the remaining real-key proof.",
+  "waiting_for_user_approval":true,
+  "required_reply":"Control-left marquee QA passed",
+  "summary":"All safe automated, review, and browser work is complete. The live canvas is reset to 100% with both sidebars collapsed and no selection. The owner must perform one physical left-Control start-over-artwork marquee, one Shift-add marquee, and verify halos, primary handles, badge count, ordinary drag, and absence of a native context menu.",
+  "evidence":["notes/T027-browser-qa.md","T029 approved source and test review","npm run check: 384 tests, typecheck, and build passed"]
+}

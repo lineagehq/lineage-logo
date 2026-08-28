@@ -1,10 +1,11 @@
 import { Window } from "happy-dom";
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CanvasLayoutController, isLayoutShortcutTarget, safeLayoutStorage } from "../src/client/ui/layout";
+import { CanvasLayoutController, isLayoutShortcutTarget, PreferencesDialogController, safeLayoutStorage } from "../src/client/ui/layout";
 import { UnsavedDialogController } from "../src/client/ui/unsaved-dialog";
 import { INSPECTOR_SUMMARY_IDS, renderInspectorSummaries } from "../src/client/ui/inspector";
 import type { SelectionContext } from "../src/client/canvas/editor";
+import { ContextMenuSuppressionController, MarqueeActivationController, StageGestureController } from "../src/client/canvas/marquee-selection";
 
 function layoutFixture(stored: Record<string, string> = {}) {
   const window = new Window();
@@ -123,6 +124,21 @@ describe("responsive canvas layout", () => {
     expect(documentState).toEqual(before);
   });
 
+  it("restores bounded sidebar preferences without treating responsive collapse as a preference", () => {
+    const { controller } = layoutFixture();
+    controller.responsive(800);
+    controller.restorePreferences(true, false);
+    expect(controller.preferences).toEqual({ leftCollapsed: true, rightCollapsed: false });
+    expect(controller.snapshot).toMatchObject({
+      leftCollapsed: true,
+      rightCollapsed: true,
+      leftAutoCollapsed: true,
+      rightAutoCollapsed: true,
+    });
+    controller.responsive(1400);
+    expect(controller.snapshot).toMatchObject({ leftCollapsed: true, rightCollapsed: false });
+  });
+
   it("suppresses bracket shortcuts in every editable or modal context", () => {
     const window = new Window();
     window.document.body.innerHTML = `<input><textarea></textarea><select></select><div contenteditable="true"></div><button></button><dialog open><button id="modal"></button></dialog>`;
@@ -138,6 +154,216 @@ describe("responsive canvas layout", () => {
     } finally {
       Object.defineProperty(globalThis, "Element", { configurable: true, value: previous });
     }
+  });
+});
+
+describe("canvas gesture wiring", () => {
+  const down = (controller: StageGestureController, overrides: Partial<Parameters<StageGestureController["pointerDown"]>[0]> = {}) => controller.pointerDown({
+    additive: false, altKey: false, button: 0, canMarquee: true, ctrlKey: false, metaKey: false,
+    marqueeArmed: true, point: { x: 10, y: 20 }, pointerId: 7, spacePressed: false, ...overrides,
+  });
+
+  it("gives middle and Space-primary pan precedence without turning object-primary or modified presses into marquee", () => {
+    const middle = new StageGestureController();
+    expect(down(middle, { button: 1, canMarquee: false })).toEqual({ type: "pan-start", pointerId: 7 });
+    expect(middle.pointerMove(7, { x: 14, y: 27 })).toEqual({ type: "pan-move", dx: 4, dy: 7 });
+    expect(middle.pointerUp(7)).toEqual({ type: "pan-end" });
+
+    const space = new StageGestureController();
+    expect(down(space, { canMarquee: false, spacePressed: true })).toEqual({ type: "pan-start", pointerId: 7 });
+    expect(space.cancel(7)).toEqual({ type: "pan-end" });
+    expect(down(new StageGestureController(), { canMarquee: false })).toEqual({ type: "none" });
+    expect(down(new StageGestureController(), { metaKey: true })).toEqual({ type: "none" });
+    expect(down(new StageGestureController(), { altKey: true })).toEqual({ type: "none" });
+  });
+
+  it("executes pending, threshold, Shift no-op, commit, pointercancel, and lost-capture transitions", () => {
+    const pending = new StageGestureController();
+    expect(down(pending)).toEqual({ type: "marquee-start", additive: false, pointerId: 7 });
+    expect(pending.pointerMove(7, { x: 13, y: 20 })).toEqual({ type: "marquee-pending" });
+    expect(pending.pointerUp(7)).toEqual({ type: "region-noop" });
+
+    const additive = new StageGestureController();
+    down(additive, { additive: true });
+    additive.pointerMove(7, { x: 13, y: 20 });
+    expect(additive.pointerUp(7)).toEqual({ type: "region-noop" });
+
+    const active = new StageGestureController();
+    down(active);
+    expect(active.pointerMove(7, { x: 14, y: 20 })).toEqual({
+      type: "marquee-active",
+      rect: { bottom: 20, height: 0, left: 10, right: 14, top: 20, width: 4 },
+    });
+    expect(active.pointerUp(7)).toEqual({
+      type: "marquee-commit", additive: false,
+      rect: { bottom: 20, height: 0, left: 10, right: 14, top: 20, width: 4 },
+    });
+
+    const pointerCancel = new StageGestureController();
+    down(pointerCancel);
+    expect(pointerCancel.cancel(7)).toEqual({ type: "marquee-cancel" });
+    const lostCapture = new StageGestureController();
+    down(lostCapture);
+    expect(lostCapture.cancel(7)).toEqual({ type: "marquee-cancel" });
+    expect(lostCapture.pointerUp(7)).toEqual({ type: "none" });
+  });
+
+  it("treats unarmed short background presses as clicks and longer drags as inert", () => {
+    const click = new StageGestureController();
+    expect(down(click, { marqueeArmed: false })).toEqual({ type: "background-start", pointerId: 7 });
+    expect(click.pointerMove(7, { x: 13, y: 20 })).toEqual({ type: "background-pending" });
+    expect(click.pointerUp(7)).toEqual({ type: "background-click", additive: false });
+
+    const additiveClick = new StageGestureController();
+    expect(down(additiveClick, { additive: true, marqueeArmed: false })).toEqual({ type: "background-start", pointerId: 7 });
+    expect(additiveClick.pointerMove(7, { x: 13, y: 20 })).toEqual({ type: "background-pending" });
+    expect(additiveClick.pointerUp(7)).toEqual({ type: "background-click", additive: true });
+
+    const inert = new StageGestureController();
+    down(inert, { marqueeArmed: false });
+    expect(inert.pointerMove(7, { x: 14, y: 20 })).toEqual({ type: "background-inert" });
+    expect(inert.pointerUp(7)).toEqual({ type: "background-inert-end" });
+    const additiveInert = new StageGestureController();
+    down(additiveInert, { additive: true, marqueeArmed: false });
+    additiveInert.pointerMove(7, { x: 14, y: 20 });
+    expect(additiveInert.pointerUp(7)).toEqual({ type: "background-inert-end" });
+    const canceled = new StageGestureController();
+    down(canceled, { marqueeArmed: false });
+    expect(canceled.cancel(7)).toEqual({ type: "background-cancel" });
+  });
+
+  it("arms only a fresh unmodified physical KeyM outside editable, modal, repeat, and composition contexts", () => {
+    const valid = { altKey: false, code: "KeyM", composing: false, ctrlKey: false, editableOrModal: false, metaKey: false, repeat: false };
+    const activation = new MarqueeActivationController();
+    expect(activation.keyDown(valid)).toBe(true);
+    expect(activation.held).toBe(true);
+    expect(activation.keyDown(valid)).toBe(false);
+    expect(activation.keyUp("KeyA")).toBe(false);
+    expect(activation.keyUp("KeyM")).toBe(true);
+    expect(activation.held).toBe(false);
+    for (const invalid of [
+      { ...valid, code: "KeyN" }, { ...valid, repeat: true }, { ...valid, composing: true },
+      { ...valid, editableOrModal: true }, { ...valid, metaKey: true }, { ...valid, ctrlKey: true }, { ...valid, altKey: true },
+    ]) expect(new MarqueeActivationController().keyDown(invalid)).toBe(false);
+    activation.keyDown(valid);
+    expect(activation.disarm()).toBe(true);
+    expect(activation.held).toBe(false);
+  });
+
+  it("arms only physical ControlLeft and irreversibly arbitrates exact click versus marquee", () => {
+    const activation = new MarqueeActivationController("left-control");
+    const key = { altKey: false, code: "ControlLeft", composing: false, ctrlKey: true, editableOrModal: false, metaKey: false, repeat: false };
+    expect(activation.keyDown(key)).toBe(true);
+    expect(new MarqueeActivationController("left-control").keyDown({ ...key, code: "ControlRight" })).toBe(false);
+    const candidate = { id: "leaf" };
+    const click = new StageGestureController<typeof candidate>();
+    down(click as StageGestureController, { activation: "left-control", candidate, ctrlKey: true });
+    expect(click.pointerUp(7)).toEqual({ type: "control-click", additive: false, candidate });
+    const drag = new StageGestureController<typeof candidate>();
+    drag.pointerDown({ activation: "left-control", additive: true, altKey: false, button: 0, canMarquee: true, candidate,
+      ctrlKey: true, marqueeArmed: true, metaKey: false, point: { x: 10, y: 20 }, pointerId: 7, spacePressed: false });
+    expect(drag.pointerMove(7, { x: 14, y: 20 }).type).toBe("marquee-active");
+    expect(drag.pointerMove(7, { x: 11, y: 20 }).type).toBe("marquee-active");
+    expect(drag.pointerUp(7)).toEqual({ type: "marquee-commit", additive: true,
+      rect: { bottom: 20, height: 0, left: 10, right: 11, top: 20, width: 1 } });
+    const reset = new MarqueeActivationController("m");
+    expect(reset.keyDown({ ...key, code: "KeyM", ctrlKey: false })).toBe(true);
+    expect(reset.configure("left-control")).toBe(true);
+    expect(reset.held).toBe(false);
+    expect(reset.keyDown({ ...key, code: "KeyM", ctrlKey: false })).toBe(false);
+    expect(reset.keyDown(key)).toBe(true);
+  });
+
+  it("suppresses only one causal Control context menu at either click or drag endpoint", () => {
+    const menus = new ContextMenuSuppressionController();
+    menus.pointerDown();
+    menus.accept(7, { x: 10, y: 20 }, 100);
+    expect(menus.consume({ canvasTarget: true, ctrlKey: true, point: { x: 10, y: 20 }, time: 110 })).toBe(true);
+    expect(menus.consume({ canvasTarget: true, ctrlKey: true, point: { x: 10, y: 20 }, time: 111 })).toBe(false);
+
+    menus.pointerDown();
+    menus.accept(8, { x: 10, y: 20 }, 200);
+    menus.pointerMove(8, { x: 110, y: 90 });
+    expect(menus.consume({ canvasTarget: true, ctrlKey: true, point: { x: 110, y: 90 }, time: 250 })).toBe(true);
+  });
+
+  it("invalidates stale suppression on every pointerdown and excludes non-canvas or non-Control menus", () => {
+    const menus = new ContextMenuSuppressionController();
+    menus.accept(7, { x: 10, y: 20 }, 100);
+    menus.pointerDown();
+    expect(menus.consume({ canvasTarget: true, ctrlKey: true, point: { x: 10, y: 20 }, time: 110 })).toBe(false);
+    menus.accept(8, { x: 10, y: 20 }, 200);
+    expect(menus.consume({ canvasTarget: false, ctrlKey: true, point: { x: 10, y: 20 }, time: 210 })).toBe(false);
+    expect(menus.consume({ canvasTarget: true, ctrlKey: false, point: { x: 10, y: 20 }, time: 211 })).toBe(false);
+    expect(menus.consume({ canvasTarget: true, ctrlKey: true, point: { x: 10, y: 20 }, time: 951 })).toBe(false);
+  });
+
+  it("wires disarm to keyup, Escape, blur, hidden visibility, and editable/modal focus", () => {
+    const source = readFileSync("src/client/main.ts", "utf8");
+    expect(source).toContain('event.code === "KeyM"');
+    expect(source).toContain('event.code === "ControlLeft"');
+    expect(source).toContain('event.key === "Escape" && marqueeActivation.held');
+    expect(source).toContain('window.addEventListener("blur", disarmMarquee)');
+    expect(source).toContain('document.addEventListener("visibilitychange"');
+    expect(source).toContain('document.addEventListener("focusin"');
+    expect(source).toContain("isLayoutShortcutTarget(event.target)");
+    expect(source).toContain("editor.completeBackgroundGesture(false, transition.additive)");
+    expect(source).toContain('stage.addEventListener("contextmenu"');
+    expect(source).toContain('document.addEventListener("pointerdown", () => contextMenuSuppression.pointerDown(), true)');
+  });
+
+  it("provides a non-interactive viewport overlay and pan/marquee cursor states", () => {
+    const styles = readFileSync("src/client/styles.css", "utf8");
+    expect(styles).toMatch(/\.stage\.pan-ready\s*\{[^}]*cursor:\s*grab/);
+    expect(styles).toMatch(/\.stage\.panning\s*\{[^}]*cursor:\s*grabbing/);
+    expect(styles).toMatch(/\.stage\.marquee-ready\s*\{[^}]*cursor:\s*crosshair/);
+    expect(styles).toMatch(/\.stage\.marquee-active\s*\{[^}]*cursor:\s*crosshair/);
+    expect(styles).toMatch(/\.marquee-selection\s*\{[^}]*pointer-events:\s*none/);
+  });
+});
+
+describe("preferences and shortcuts dialog", () => {
+  it("focuses the first preference, traps focus, closes on Escape, and returns focus to its invoker", async () => {
+    const window = new Window();
+    window.document.body.innerHTML = `
+      <button id="invoker">Preferences</button>
+      <dialog id="preferences"><select id="first"><option>Default</option></select><button id="restore">Restore defaults</button><button id="close">Close</button></dialog>`;
+    const dialog = window.document.querySelector("#preferences") as unknown as HTMLDialogElement;
+    const invoker = window.document.querySelector("#invoker") as unknown as HTMLButtonElement;
+    const first = window.document.querySelector("#first") as unknown as HTMLSelectElement;
+    const close = window.document.querySelector("#close") as unknown as HTMLButtonElement;
+    const controller = new PreferencesDialogController({ dialog, closeButton: close, initialFocus: first });
+    invoker.focus();
+    controller.open(invoker);
+    await Promise.resolve();
+    expect(dialog.open).toBe(true);
+    expect(window.document.activeElement).toBe(first);
+    close.focus();
+    close.dispatchEvent(new window.KeyboardEvent("keydown", { bubbles: true, key: "Tab" }) as unknown as Event);
+    expect(window.document.activeElement).toBe(first);
+    dialog.dispatchEvent(new window.Event("cancel", { cancelable: true }) as unknown as Event);
+    expect(dialog.open).toBe(false);
+    await Promise.resolve();
+    expect(window.document.activeElement).toBe(invoker);
+  });
+
+  it("ships the five chartered controls, selection badge, current shortcut copy, and reduced-motion fallback", () => {
+    const source = readFileSync("src/client/main.ts", "utf8");
+    const styles = readFileSync("src/client/styles.css", "utf8");
+    for (const id of [
+      "preference-precise-modifier", "preference-marquee-mode", "preference-click-depth",
+      "preference-individual-outlines", "preference-region-activation", "restore-selection-preferences",
+    ]) expect(source).toContain(`id="${id}"`);
+    expect(source).toContain("Preferences &amp; shortcuts");
+    expect(source).toContain("Option/Alt-click toggles");
+    expect(source).toContain('id="selection-count-badge"');
+    expect(source).toContain('aria-live="polite" aria-atomic="true"');
+    expect(source).toContain("objects selected");
+    expect(source).toContain("for (const selectedNode of context.selectedNodes)");
+    expect(source).toContain("applySelectionPreferences(selectionPreferencesStore.reset())");
+    expect(source).toContain('id="region-selection-hint"');
+    expect(styles).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(styles).toContain(".artboard { transition: none; }");
   });
 });
 

@@ -35,6 +35,7 @@ export class CanvasLayoutController {
   readonly #rightToggle: HTMLButtonElement;
   readonly #pendingBadge: HTMLElement;
   readonly #storage: LayoutStorage;
+  readonly #onPreferenceChange?: () => void;
   #leftPreferred: boolean;
   #rightPreferred: boolean;
   #leftAuto = false;
@@ -50,12 +51,14 @@ export class CanvasLayoutController {
     rightToggle: HTMLButtonElement;
     pendingBadge: HTMLElement;
     storage: LayoutStorage;
+    onPreferenceChange?: () => void;
   }) {
     this.#shell = options.shell;
     this.#leftToggle = options.leftToggle;
     this.#rightToggle = options.rightToggle;
     this.#pendingBadge = options.pendingBadge;
     this.#storage = options.storage;
+    this.#onPreferenceChange = options.onPreferenceChange;
     this.#leftPreferred = storedBoolean(this.#storage, LEFT_KEY);
     this.#rightPreferred = storedBoolean(this.#storage, RIGHT_KEY);
     this.#leftToggle.addEventListener("click", () => this.toggle("left"));
@@ -88,6 +91,15 @@ export class CanvasLayoutController {
       this.persist(RIGHT_KEY, this.#rightPreferred);
     }
     this.render();
+    this.#onPreferenceChange?.();
+  }
+
+  restorePreferences(leftCollapsed: boolean, rightCollapsed: boolean): void {
+    this.#leftPreferred = leftCollapsed;
+    this.#rightPreferred = rightCollapsed;
+    this.#leftReveal = false;
+    this.#rightReveal = false;
+    this.render();
   }
 
   setPendingReview(pending: boolean): void {
@@ -119,6 +131,10 @@ export class CanvasLayoutController {
     };
   }
 
+  get preferences(): { leftCollapsed: boolean; rightCollapsed: boolean } {
+    return { leftCollapsed: this.#leftPreferred, rightCollapsed: this.#rightPreferred };
+  }
+
   private persist(key: string, value: boolean): void {
     try { this.#storage.setItem(key, String(value)); } catch { /* preferences remain usable for this tab */ }
   }
@@ -140,4 +156,58 @@ export class CanvasLayoutController {
 export function isLayoutShortcutTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   return Boolean(target.closest("input, textarea, select, [contenteditable]:not([contenteditable='false']), dialog[open]"));
+}
+
+export class PreferencesDialogController {
+  readonly #dialog: HTMLDialogElement;
+  readonly #closeButton: HTMLButtonElement;
+  readonly #initialFocus: HTMLElement;
+  #invoker?: HTMLElement;
+
+  constructor(options: { dialog: HTMLDialogElement; closeButton: HTMLButtonElement; initialFocus: HTMLElement }) {
+    this.#dialog = options.dialog;
+    this.#closeButton = options.closeButton;
+    this.#initialFocus = options.initialFocus;
+    this.#closeButton.addEventListener("click", () => this.close());
+    this.#dialog.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      this.close();
+    });
+    this.#dialog.addEventListener("click", (event) => {
+      if (event.target === this.#dialog) this.close();
+    });
+    this.#dialog.addEventListener("keydown", (event) => this.#trapFocus(event));
+  }
+
+  open(invoker: HTMLElement): void {
+    if (this.#dialog.open) return;
+    this.#invoker = invoker;
+    this.#dialog.showModal();
+    queueMicrotask(() => this.#initialFocus.focus());
+  }
+
+  close(): void {
+    if (!this.#dialog.open) return;
+    this.#dialog.close();
+    const invoker = this.#invoker;
+    this.#invoker = undefined;
+    queueMicrotask(() => invoker?.focus());
+  }
+
+  #trapFocus(event: KeyboardEvent): void {
+    if (event.key !== "Tab") return;
+    const focusable = Array.from(this.#dialog.querySelectorAll<HTMLElement>(
+      "button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex='-1'])",
+    )).filter((node) => !node.hidden);
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable.at(-1) as HTMLElement;
+    if (event.shiftKey && this.#dialog.ownerDocument.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && this.#dialog.ownerDocument.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 }

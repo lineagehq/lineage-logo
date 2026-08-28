@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 640" role="img" aria-label="Seatify constellation logo">
+  <title>Seatify optimized seating constellation</title>
+  <desc>Six abstract seats form a precise constellation around one circular table.</desc>
+  <defs>
+    <linearGradient id="constellation-seat-gradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2FC4B2"/>
+      <stop offset="1" stop-color="#3F6DE0"/>
+    </linearGradient>
+    <radialGradient id="constellation-table-gradient" cx="35%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#29365F"/>
+      <stop offset="1" stop-color="#111A33"/>
+    </radialGradient>
+  </defs>
+  <g id="constellation-logo" aria-label="Seatify constellation combination mark">
+    <g id="constellation-mark" aria-label="Optimized seating constellation">
+      <circle id="alignment-halo" aria-label="Alignment halo" cx="320" cy="320" r="188" fill="none" stroke="#DCE7EE" stroke-width="2" stroke-dasharray="2 12" opacity="0.9"/>
+      <circle id="seat-orbit" aria-label="Seat orbit" cx="320" cy="320" r="160" fill="#F7FBFC" stroke="#B9D4DD" stroke-width="3"/>
+      <g id="constellation-connections" aria-label="Optimized radial connections" fill="none" stroke="#8DB5C2" stroke-width="5" stroke-linecap="round">
+        <line id="connection-north" aria-label="North seat connection" x1="320" y1="248" x2="320" y2="180"/>
+        <line id="connection-northeast" aria-label="Northeast seat connection" x1="382" y1="284" x2="442" y2="249"/>
+        <line id="connection-southeast" aria-label="Southeast seat connection" x1="382" y1="356" x2="442" y2="391"/>
+        <line id="connection-south" aria-label="South seat connection" x1="320" y1="392" x2="320" y2="460"/>
+        <line id="connection-southwest" aria-label="Southwest seat connection" x1="258" y1="356" x2="198" y2="391"/>
+        <line id="connection-northwest" aria-label="Northwest seat connection" x1="258" y1="284" x2="198" y2="249"/>
+      </g>
+      <g id="constellation-nodes" aria-label="Constellation alignment nodes">
+        <circle id="node-north" aria-label="North alignment node" cx="320" cy="214" r="7" fill="#FFFFFF" stroke="#3F6DE0" stroke-width="4"/>
+        <circle id="node-northeast" aria-label="Northeast alignment node" cx="412" cy="267" r="7" fill="#FFFFFF" stroke="#2FC4B2" stroke-width="4"/>
+        <circle id="node-southeast" aria-label="Southeast alignment node" cx="412" cy="373" r="7" fill="#FFFFFF" stroke="#3F6DE0" stroke-width="4"/>
+        <circle id="node-south" aria-label="South alignment node" cx="320" cy="426" r="7" fill="#FFFFFF" stroke="#2FC4B2" stroke-width="4"/>
+        <circle id="node-southwest" aria-label="Southwest alignment node" cx="228" cy="373" r="7" fill="#FFFFFF" stroke="#3F6DE0" stroke-width="4"/>
+        <circle id="node-northwest" aria-label="Northwest alignment node" cx="228" cy="267" r="7" fill="#FFFFFF" stroke="#2FC4B2" stroke-width="4"/>
+      </g>
+      <g id="circular-table" aria-label="Circular table">
+        <circle id="table-aura" aria-label="Table aura" cx="320" cy="320" r="88" fill="#FFFFFF" stroke="#DCE7EE" stroke-width="3"/>
+        <circle id="table-surface" aria-label="Table surface" cx="320" cy="320" r="70" fill="url(#constellation-table-gradient)"/>
+        <circle id="table-center" aria-label="Optimized center point" cx="320" cy="320" r="10" fill="#FFC857"/>
+      </g>
+      <g id="seat-north" aria-label="North seat" transform="translate(320 150)">
+        <rect id="seat-north-back" aria-label="North seat back" x="-30" y="-31" width="60" height="21" rx="10.5" fill="#111A33"/>
+        <rect id="seat-north-base" aria-label="North seat base" x="-22" y="-7" width="44" height="31" rx="13" fill="url(#constellation-seat-gradient)" stroke="#FFFFFF" stroke-width="4"/>
+      </g>
+      <g id="seat-northeast" aria-label="Northeast seat" transform="translate(467 235) rotate(60)">
+        <rect id="seat-northeast-back" aria-label="Northeast seat back" x="-30" y="-31" width="60" height="21" rx="10.5" fill="#111A33"/>
+        <rect id="seat-northeast-base" aria-label="Northeast seat base" x="-22" y="-7" width="44" height="31" rx="13" fill="url(#constellation-seat-gradient)" stroke="#FFFFFF" stroke-width="4"/>
+      </g>
+      <g id="seat-southeast" aria-label="Southeast seat" transform="translate(467 405) rotate(120)">
+        <rect id="seat-southeast-back" aria-label="Southeast seat back" x="-30" y="-31" width="60" height="21" rx="10.5" fill="#111A33"/>
+        <rect id="seat-southeast-base" aria-label="Southeast seat base" x="-22" y="-7" width="44" height="31" rx="13" fill="url(#constellation-seat-gradient)" stroke="#FFFFFF" stroke-width="4"/>
+      </g>
+      <g id="seat-south" aria-label="South seat" transform="translate(320 490) rotate(180)">
+        <rect id="seat-south-back" aria-label="South seat back" x="-30" y="-31" width="60" height="21" rx="10.5" fill="#111A33"/>
+        <rect id="seat-south-base" aria-label="South seat base" x="-22" y="-7" width="44" height="31" rx="13" fill="url(#constellation-seat-gradient)" stroke="#FFFFFF" stroke-width="4"/>
+      </g>
+      <g id="seat-southwest" aria-label="Southwest seat" transform="translate(173 405) rotate(240)">
+        <rect id="seat-southwest-back" aria-label="Southwest seat back" x="-30" y="-31" width="60" height="21" rx="10.5" fill="#111A33"/>
+        <rect id="seat-southwest-base" aria-label="Southwest seat base" x="-22" y="-7" width="44" height="31" rx="13" fill="url(#constellation-seat-gradient)" stroke="#FFFFFF" stroke-width="4"/>
+      </g>
+      <g id="seat-northwest" aria-label="Northwest seat" transform="translate(173 235) rotate(300)">
+        <rect id="seat-northwest-back" aria-label="Northwest seat back" x="-30" y="-31" width="60" height="21" rx="10.5" fill="#111A33"/>
+        <rect id="seat-northwest-base" aria-label="Northwest seat base" x="-22" y="-7" width="44" height="31" rx="13" fill="url(#constellation-seat-gradient)" stroke="#FFFFFF" stroke-width="4"/>
+      </g>
+    </g>
+    <g id="constellation-wordmark" aria-label="Seatify wordmark" transform="translate(586 270)">
+      <text id="constellation-title" aria-label="Seatify title" x="0" y="0" fill="#111A33" font-family="Arial, sans-serif" font-size="92" font-weight="700" letter-spacing="-4">seatify</text>
+      <text id="constellation-tagline" aria-label="Seatify tagline" x="5" y="55" fill="#3F6DE0" font-family="Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="4">EVERY SEAT CONNECTS</text>
+      <text id="constellation-descriptor" aria-label="Optimized seating descriptor" x="5" y="98" fill="#66808D" font-family="Arial, sans-serif" font-size="18" font-weight="500" letter-spacing="1">A PERFECTLY PLACED CONSTELLATION</text>
+    </g>
+  </g>
+</svg>

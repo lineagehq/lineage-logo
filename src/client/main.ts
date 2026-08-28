@@ -18,11 +18,24 @@ import {
   FileOpenCoordinator,
   type FileSwitchAuthority,
 } from "./file-open";
-import { CanvasLayoutController, isLayoutShortcutTarget, safeLayoutStorage } from "./ui/layout";
+import { CanvasLayoutController, isLayoutShortcutTarget, PreferencesDialogController, safeLayoutStorage } from "./ui/layout";
 import { UnsavedDialogController } from "./ui/unsaved-dialog";
 import { createSvgPreview, eligiblePreviewTargetIds } from "./preview";
 import { renderInspectorSummaries } from "./ui/inspector";
 import { waitForWorkspaceAdvance } from "./workspace-refresh";
+import {
+  readWorkspaceSession,
+  resolveSelectionPath,
+  writeWorkspaceSession,
+  type PreviewBackground,
+  type WorkspaceSessionV1,
+} from "./session-restoration";
+import { ContextMenuSuppressionController, MarqueeActivationController, StageGestureController, type ClientRect, type StageGestureTransition } from "./canvas/marquee-selection";
+import {
+  SelectionPreferencesStore,
+  safeSelectionPreferencesStorage,
+  type SelectionPreferences,
+} from "./selection-preferences";
 
 const favicon = document.createElement("link");
 favicon.rel = "icon";
@@ -121,7 +134,7 @@ app.innerHTML = `
           <button type="button" id="zoom-reset" aria-label="Reset zoom">100%</button>
           <button type="button" id="zoom-fit" title="Fit the artboard in the available space">Fit</button>
           <button type="button" id="zoom-selection" title="Fit the selected layer in the available space" disabled>Fit selection</button>
-          <button type="button" id="shortcut-help" aria-label="Keyboard shortcuts" title="Keyboard shortcuts">?</button>
+          <button type="button" id="shortcut-help" aria-label="Preferences and shortcuts" title="Preferences and shortcuts">⚙</button>
         </div>
         <div class="toolbar-group" aria-label="Preview background">
           <button type="button" id="save-iteration" class="primary-action" disabled>Save iteration</button>
@@ -145,6 +158,7 @@ app.innerHTML = `
       </div>
       <footer class="statusbar">
         <span id="status">Ready</span>
+        <span id="selection-count-badge" class="selection-count-badge" role="status" aria-live="polite" aria-atomic="true" hidden></span>
         <span id="document-size">No document loaded</span>
       </footer>
     </section>
@@ -265,7 +279,7 @@ app.innerHTML = `
             <label>Rotation °<input id="rotation" type="number" step="1" /></label>
           </div>
           </details>
-          <p class="inspector-hint">Hover previews a normal click. Double-click or Alt-click selects the exact element. Press <button type="button" id="inline-shortcut-help">?</button> for shortcuts.</p>
+          <p class="inspector-hint"><span id="region-selection-hint">Hold left Control and drag from artwork or empty canvas to region-select; hold Shift too to add.</span> Double-click or Alt-click selects exactly. Open <button type="button" id="inline-shortcut-help">preferences &amp; shortcuts</button>.</p>
         </div>
       </section>
       <section class="preview-section">
@@ -280,9 +294,39 @@ app.innerHTML = `
   </main>
   <dialog id="shortcut-dialog" class="shortcut-dialog" aria-labelledby="shortcut-title">
     <div class="dialog-heading">
-      <h2 id="shortcut-title">Keyboard shortcuts</h2>
-      <button type="button" id="close-shortcut-help" aria-label="Close keyboard shortcuts">×</button>
+      <h2 id="shortcut-title">Preferences &amp; shortcuts</h2>
+      <button type="button" id="close-shortcut-help" aria-label="Close preferences and shortcuts">×</button>
     </div>
+    <fieldset class="selection-preferences">
+      <legend>Selection</legend>
+      <label>Precise-selection modifier
+        <select id="preference-precise-modifier">
+          <option value="platform">Command / Control</option>
+          <option value="alt">Option / Alt</option>
+        </select>
+      </label>
+      <label>Marquee selects
+        <select id="preference-marquee-mode">
+          <option value="contain">Fully enclosed layers</option>
+          <option value="touch">Touching layers</option>
+        </select>
+      </label>
+      <label>Region-selection activation
+        <select id="preference-region-activation">
+          <option value="left-control">Hold left Control</option>
+          <option value="m">Hold M</option>
+        </select>
+      </label>
+      <label>Default click selects
+        <select id="preference-click-depth">
+          <option value="logical">Logical group</option>
+          <option value="exact">Exact object</option>
+        </select>
+      </label>
+      <label class="preference-check"><input id="preference-individual-outlines" type="checkbox" /> Enhanced selection outlines</label>
+      <button type="button" id="restore-selection-preferences">Restore defaults</button>
+    </fieldset>
+    <h3>Keyboard shortcuts</h3>
     <dl>
       <div><dt>Undo / Redo</dt><dd>⌘/Ctrl+Z · ⌘/Ctrl+Shift+Z</dd></div>
       <div><dt>Duplicate</dt><dd>⌘/Ctrl+D</dd></div>
@@ -291,7 +335,8 @@ app.innerHTML = `
       <div><dt>Delete</dt><dd>Delete or Backspace</dd></div>
       <div><dt>Fit artboard / selection</dt><dd>F · Shift+F</dd></div>
       <div><dt>Workspace / Inspector panels</dt><dd>[ · ]</dd></div>
-      <div><dt>Exact selection</dt><dd>Alt-click or double-click</dd></div>
+      <div><dt>Region-select visible objects</dt><dd id="region-selection-shortcut">Hold left Control and drag · add Shift</dd></div>
+      <div><dt>Exact selection</dt><dd id="exact-selection-shortcut">⌘/Ctrl-click toggles · Alt-click or double-click replaces</dd></div>
       <div><dt>Leave group / clear selection</dt><dd>Escape</dd></div>
     </dl>
   </dialog>
@@ -338,12 +383,20 @@ const agentImpactList = getElement("agent-impact-list");
 const agentAcceptButton = getInput<HTMLButtonElement>("agent-accept");
 const agentRevertButton = getInput<HTMLButtonElement>("agent-revert");
 const agentReviewConsequence = getElement("agent-review-consequence");
+const workspaceSessionStorage = (() => {
+  try { return localStorage; } catch {
+    return { getItem: () => null, setItem: () => undefined, removeItem: () => undefined };
+  }
+})();
+const selectionPreferencesStore = new SelectionPreferencesStore(safeSelectionPreferencesStorage(() => localStorage));
+let selectionPreferences = selectionPreferencesStore.value;
 const layout = new CanvasLayoutController({
   shell: getElement("canvas-shell"),
   leftToggle: getInput("toggle-left-sidebar"),
   rightToggle: getInput("toggle-right-sidebar"),
   pendingBadge: getElement("pending-review-badge"),
   storage: safeLayoutStorage(() => localStorage),
+  onPreferenceChange: () => persistWorkspaceSession(),
 });
 const unsavedDialog = new UnsavedDialogController({
   dialog: getInput("unsaved-dialog"),
@@ -356,9 +409,13 @@ const unsavedDialog = new UnsavedDialogController({
 const fileButtons = new Map<string, HTMLButtonElement>();
 const collapsedLayerKeys = new Set<string>();
 let currentFile: SvgFileEntry | undefined;
+let currentWorkspaceName: string | undefined;
+let workspaceSessionInitialized = false;
+let restoringWorkspaceSession = false;
 let dirty = false;
 let nextIterationPath = "iterations/iteration-1.svg";
 let zoom = 1;
+let previewBackground: PreviewBackground = "checker";
 let currentObjectUrl: string | undefined;
 let layerQuery = "";
 let agentSession: AgentSession | undefined;
@@ -375,6 +432,28 @@ let workspaceRefreshGeneration = 0;
 const agentTerminalReconciliationInFlight = new Set<string>();
 const fileOpenCoordinator = new FileOpenCoordinator();
 const fileSwitchCoordinator = new FileOpenCoordinator();
+
+function selectionIdentityPath(): string[] {
+  const root = editor.svgNode;
+  const selected = editor.selectionContext.selected;
+  if (!root || !selected) return [];
+  return getSelectionAncestry(selected, root).map((node) => node.id).filter(Boolean).slice(-16);
+}
+
+function persistWorkspaceSession(): void {
+  if (restoringWorkspaceSession || !currentWorkspaceName || !currentFile) return;
+  const preferences = layout.preferences;
+  writeWorkspaceSession(workspaceSessionStorage, {
+    version: 1,
+    workspace: currentWorkspaceName,
+    activePath: currentFile.path,
+    selectionPath: selectionIdentityPath(),
+    zoom,
+    previewBackground,
+    leftCollapsed: preferences.leftCollapsed,
+    rightCollapsed: preferences.rightCollapsed,
+  });
+}
 
 function getElement(id: string): HTMLElement {
   const element = document.getElementById(id);
@@ -462,6 +541,7 @@ const editor = new SvgEditor(
         renderLayers(root);
       }
       highlightLayers(editor.selectedNodes, element);
+      persistWorkspaceSession();
     },
     onSelectionContextChange: (context) => {
       renderSelectionContext(context);
@@ -470,6 +550,7 @@ const editor = new SvgEditor(
     onStatus: setStatus,
   },
 );
+editor.setSelectionPreferences(selectionPreferences);
 
 function publishAgentDocument(): void {
   const root = editor.svgNode;
@@ -815,6 +896,10 @@ function renderSelectionContext(context: SelectionContext): void {
   editInsideButton.disabled = !context.canEditInside;
   const root = editor.svgNode;
   const selected = context.selected;
+  const countBadge = getElement("selection-count-badge");
+  const nextCountText = context.selectedNodes.length > 1 ? `${context.selectedNodes.length} objects selected` : "";
+  if (countBadge.textContent !== nextCountText) countBadge.textContent = nextCountText;
+  countBadge.hidden = context.selectedNodes.length <= 1;
   renderInspectorSummaries(context);
   const selectedBox = context.selected?.getBoundingClientRect();
   const canFitSelection = Boolean(
@@ -830,11 +915,19 @@ function renderSelectionContext(context: SelectionContext): void {
     : context.selected
       ? "Show the selected layer before fitting it"
       : "Select a visible layer to fit it";
-  if (root && context.selected) {
+  if (root && context.selectedNodes.length > 0) {
     let expanded = false;
-    for (const ancestor of getSelectionAncestry(context.selected, root).slice(0, -1)) {
-      const key = ancestor.dataset.lineageKey;
-      if (key && collapsedLayerKeys.delete(key)) expanded = true;
+    if (layerQuery && context.selectedNodes.some((node) => !layerList.querySelector(`.layer-button[data-key="${CSS.escape(node.dataset.lineageKey ?? "")}"]`))) {
+      layerSearch.value = "";
+      layerQuery = "";
+      clearLayerSearchButton.disabled = true;
+      expanded = true;
+    }
+    for (const selectedNode of context.selectedNodes) {
+      for (const ancestor of getSelectionAncestry(selectedNode, root).slice(0, -1)) {
+        const key = ancestor.dataset.lineageKey;
+        if (key && collapsedLayerKeys.delete(key)) expanded = true;
+      }
     }
     if (expanded) renderLayers(root);
   }
@@ -902,6 +995,7 @@ function setZoom(nextZoom: number, center?: Element): void {
     window.requestAnimationFrame(centerTarget);
     window.setTimeout(centerTarget, 170);
   }
+  persistWorkspaceSession();
 }
 
 function fittedZoom(
@@ -986,7 +1080,7 @@ async function requestFileSwitch(file: SvgFileEntry, button: HTMLButtonElement):
   });
 }
 
-async function openSvg(file: SvgFileEntry, button: HTMLButtonElement): Promise<void> {
+async function openSvg(file: SvgFileEntry, button: HTMLButtonElement, restoration?: WorkspaceSessionV1): Promise<void> {
   if (agentSession?.pending) return;
   let recovery = readPendingReviewRecovery();
   if (recovery?.sourcePath !== file.path) recovery = undefined;
@@ -1073,8 +1167,22 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement): Promise<v
       }
       emptyState.hidden = true;
       artboard.hidden = false;
-      setZoom(1);
-      editor.load(renderedSvg, recovery?.dirty ? savedBaseline : undefined);
+      const restoreUi = restoration?.activePath === file.path && !recovery ? restoration : undefined;
+      restoringWorkspaceSession = Boolean(restoreUi);
+      try {
+        setZoom(restoreUi?.zoom ?? 1);
+        editor.load(renderedSvg, recovery?.dirty ? savedBaseline : undefined);
+        if (restoreUi) {
+          applyPreviewBackground(restoreUi.previewBackground);
+          const root = editor.svgNode;
+          const selected = root
+            ? resolveSelectionPath(root, restoreUi.selectionPath, (element): element is SVGGraphicsElement => isSelectableNode(element, root))
+            : undefined;
+          if (selected) editor.selectNode(selected);
+        }
+      } finally {
+        restoringWorkspaceSession = false;
+      }
       if (recovery && recovered && "state" in recovered) {
         if (recovered.state.status === "pending_review") restoreRecoveredPending(recovered);
         else reconcileRecoveredTerminal(recovered);
@@ -1085,6 +1193,7 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement): Promise<v
       renderLayers(activeSvg);
       renderFavicons(editor.serializeClean());
       getElement("document-size").textContent = activeSvg.getAttribute("viewBox") ?? "No viewBox";
+      persistWorkspaceSession();
       if (!recovered) setStatus(`${file.collection} / ${file.name}`);
       if (recovered && "status" in recovered) queueMicrotask(() => layerSearch.focus());
     },
@@ -1330,16 +1439,77 @@ redoButton.addEventListener("click", () => editor.redo());
 resetEditsButton.addEventListener("click", () => editor.reset());
 saveButton.addEventListener("click", () => void saveIteration());
 
-function openShortcutHelp(): void {
-  if (!shortcutDialog.open) shortcutDialog.showModal();
+const preciseModifierPreference = getInput<HTMLSelectElement>("preference-precise-modifier");
+const marqueeModePreference = getInput<HTMLSelectElement>("preference-marquee-mode");
+const clickDepthPreference = getInput<HTMLSelectElement>("preference-click-depth");
+const individualOutlinesPreference = getInput<HTMLInputElement>("preference-individual-outlines");
+const regionActivationPreference = getInput<HTMLSelectElement>("preference-region-activation");
+const regionSelectionShortcut = getElement("region-selection-shortcut");
+const regionSelectionHint = getElement("region-selection-hint");
+const exactSelectionShortcut = getElement("exact-selection-shortcut");
+const preferencesDialog = new PreferencesDialogController({
+  dialog: shortcutDialog,
+  closeButton: getInput("close-shortcut-help"),
+  initialFocus: preciseModifierPreference,
+});
+
+function renderSelectionPreferences(): void {
+  preciseModifierPreference.value = selectionPreferences.preciseModifier;
+  marqueeModePreference.value = selectionPreferences.marqueeMode;
+  clickDepthPreference.value = selectionPreferences.clickDepth;
+  individualOutlinesPreference.checked = selectionPreferences.individualOutlines;
+  regionActivationPreference.value = selectionPreferences.regionActivation;
+  regionSelectionShortcut.textContent = selectionPreferences.regionActivation === "m"
+    ? "Hold M and drag · add Shift"
+    : "Hold left Control and drag · add Shift; click to toggle exact object";
+  regionSelectionHint.textContent = selectionPreferences.regionActivation === "m"
+    ? "Hold M and drag from artwork or empty canvas to region-select; hold Shift too to add."
+    : "Hold left Control and drag from artwork or empty canvas to region-select; hold Shift too to add; Control-click toggles an exact object.";
+  exactSelectionShortcut.textContent = selectionPreferences.preciseModifier === "alt"
+    ? "Option/Alt-click toggles · double-click replaces"
+    : "⌘/Ctrl-click toggles · Alt-click or double-click replaces";
+}
+
+function applySelectionPreferences(next: SelectionPreferences): void {
+  const activationChanged = next.regionActivation !== selectionPreferences.regionActivation;
+  selectionPreferences = selectionPreferencesStore.update(next);
+  if (activationChanged) {
+    applyStageGesture(stageGestures.cancel());
+    marqueeActivation.configure(selectionPreferences.regionActivation);
+    cancelMarqueeForDisarm();
+  }
+  editor.setSelectionPreferences(selectionPreferences);
+  renderSelectionPreferences();
+  setStatus("Selection preferences updated");
+}
+
+function readSelectionPreferencesForm(): SelectionPreferences {
+  return {
+    preciseModifier: preciseModifierPreference.value === "alt" ? "alt" : "platform",
+    marqueeMode: marqueeModePreference.value === "touch" ? "touch" : "contain",
+    clickDepth: clickDepthPreference.value === "exact" ? "exact" : "logical",
+    individualOutlines: individualOutlinesPreference.checked,
+    regionActivation: regionActivationPreference.value === "m" ? "m" : "left-control",
+  };
+}
+
+for (const control of [preciseModifierPreference, marqueeModePreference, clickDepthPreference, individualOutlinesPreference, regionActivationPreference]) {
+  control.addEventListener("change", () => applySelectionPreferences(readSelectionPreferencesForm()));
+}
+getElement("restore-selection-preferences").addEventListener("click", () => {
+  applySelectionPreferences(selectionPreferencesStore.reset());
+  preciseModifierPreference.focus();
+  setStatus("Restored default selection preferences");
+});
+renderSelectionPreferences();
+
+function openShortcutHelp(event?: Event): void {
+  const invoker = event?.currentTarget instanceof HTMLElement ? event.currentTarget : getElement("shortcut-help");
+  preferencesDialog.open(invoker);
 }
 
 getElement("shortcut-help").addEventListener("click", openShortcutHelp);
 getElement("inline-shortcut-help").addEventListener("click", openShortcutHelp);
-getElement("close-shortcut-help").addEventListener("click", () => shortcutDialog.close());
-shortcutDialog.addEventListener("click", (event) => {
-  if (event.target === shortcutDialog) shortcutDialog.close();
-});
 
 const connectionBanner = getElement("connection-banner");
 const retryPreviewButton = getInput<HTMLButtonElement>("retry-preview");
@@ -1370,14 +1540,67 @@ retryPreviewButton.addEventListener("click", async () => {
 });
 
 let spacePressed = false;
-let panPointerId: number | undefined;
-let panStartX = 0;
-let panStartY = 0;
 let panStartLeft = 0;
 let panStartTop = 0;
+let capturedStagePointer: number | undefined;
+let marqueeOverlay: HTMLDivElement | undefined;
+const stageGestures = new StageGestureController<SVGGraphicsElement>();
+const marqueeActivation = new MarqueeActivationController(selectionPreferences.regionActivation);
+const contextMenuSuppression = new ContextMenuSuppressionController();
+document.addEventListener("pointerdown", () => contextMenuSuppression.pointerDown(), true);
+
+function removeMarqueeOverlay(): void {
+  const capturedPointer = capturedStagePointer;
+  marqueeOverlay?.remove();
+  marqueeOverlay = undefined;
+  capturedStagePointer = undefined;
+  stage.classList.remove("marquee-active");
+  if (capturedPointer !== undefined && stage.hasPointerCapture(capturedPointer)) {
+    stage.releasePointerCapture(capturedPointer);
+  }
+}
+
+function renderMarqueeOverlay(rect: ClientRect): void {
+  const stageRect = stage.getBoundingClientRect();
+  marqueeOverlay ??= (() => {
+    const overlay = document.createElement("div");
+    overlay.className = "marquee-selection";
+    overlay.setAttribute("aria-hidden", "true");
+    stage.append(overlay);
+    return overlay;
+  })();
+  marqueeOverlay.style.left = `${rect.left - stageRect.left + stage.scrollLeft}px`;
+  marqueeOverlay.style.top = `${rect.top - stageRect.top + stage.scrollTop}px`;
+  marqueeOverlay.style.width = `${rect.width}px`;
+  marqueeOverlay.style.height = `${rect.height}px`;
+}
 
 document.addEventListener("keydown", (event) => {
   const target = event.target;
+  if (event.key === "Escape" && marqueeActivation.held) {
+    event.preventDefault();
+    disarmMarquee();
+    return;
+  }
+  if (event.code === "KeyM" || event.code === "ControlLeft") {
+    const armed = marqueeActivation.keyDown({
+      altKey: event.altKey,
+      code: event.code,
+      composing: event.isComposing,
+      ctrlKey: event.ctrlKey,
+      editableOrModal: isLayoutShortcutTarget(target) || Boolean(document.querySelector("dialog[open]")),
+      metaKey: event.metaKey,
+      repeat: event.repeat,
+    });
+    if (armed) {
+      stage.classList.add("marquee-ready");
+      setStatus(selectionPreferences.regionActivation === "m"
+        ? "Region selection ready · drag while holding M"
+        : "Region selection ready · drag or click while holding left Control");
+      event.preventDefault();
+    }
+    return;
+  }
   if (!event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey
     && (event.key === "[" || event.key === "]")
     && !document.querySelector("dialog[open]") && !isLayoutShortcutTarget(target)) {
@@ -1390,7 +1613,7 @@ document.addEventListener("keydown", (event) => {
   if (shortcutDialog.open) {
     if (event.key === "Escape") {
       event.preventDefault();
-      shortcutDialog.close();
+      preferencesDialog.close();
     }
     return;
   }
@@ -1412,40 +1635,156 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("keyup", (event) => {
+  if (event.code === "KeyM" || event.code === "ControlLeft") {
+    if (marqueeActivation.keyUp(event.code)) cancelMarqueeForDisarm();
+    return;
+  }
   if (event.code !== "Space") return;
   spacePressed = false;
-  if (panPointerId === undefined) stage.classList.remove("pan-ready");
+  if (stageGestures.activeKind !== "pan") stage.classList.remove("pan-ready");
 });
 
-stage.addEventListener("pointerdown", (event) => {
-  const canPan = event.button === 1 || (event.button === 0 && (spacePressed || event.target === stage));
-  if (!canPan) return;
-  panPointerId = event.pointerId;
-  panStartX = event.clientX;
-  panStartY = event.clientY;
-  panStartLeft = stage.scrollLeft;
-  panStartTop = stage.scrollTop;
-  stage.setPointerCapture(event.pointerId);
-  stage.classList.add("panning");
-  event.preventDefault();
-});
-
-stage.addEventListener("pointermove", (event) => {
-  if (event.pointerId !== panPointerId) return;
-  stage.scrollLeft = panStartLeft - (event.clientX - panStartX);
-  stage.scrollTop = panStartTop - (event.clientY - panStartY);
-});
-
-function finishPan(event: PointerEvent): void {
-  if (event.pointerId !== panPointerId) return;
-  panPointerId = undefined;
-  stage.classList.remove("panning");
-  if (!spacePressed) stage.classList.remove("pan-ready");
+function cancelMarqueeForDisarm(): void {
+  stage.classList.remove("marquee-ready");
+  if (stageGestures.activeKind === "marquee") applyStageGesture(stageGestures.cancel());
 }
 
-stage.addEventListener("pointerup", finishPan);
-stage.addEventListener("pointercancel", finishPan);
-stage.addEventListener("lostpointercapture", finishPan);
+function disarmMarquee(): void {
+  if (marqueeActivation.disarm()) cancelMarqueeForDisarm();
+}
+
+window.addEventListener("blur", disarmMarquee);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") disarmMarquee();
+});
+document.addEventListener("focusin", (event) => {
+  if (isLayoutShortcutTarget(event.target)) disarmMarquee();
+});
+
+function applyStageGesture(transition: StageGestureTransition<SVGGraphicsElement>): boolean {
+  switch (transition.type) {
+    case "none":
+    case "marquee-pending":
+    case "background-pending":
+    case "background-inert":
+      return false;
+    case "pan-start":
+      panStartLeft = stage.scrollLeft;
+      panStartTop = stage.scrollTop;
+      capturedStagePointer = transition.pointerId;
+      stage.setPointerCapture(transition.pointerId);
+      stage.classList.add("panning");
+      return true;
+    case "pan-move":
+      stage.scrollLeft = panStartLeft - transition.dx;
+      stage.scrollTop = panStartTop - transition.dy;
+      return true;
+    case "pan-end":
+      capturedStagePointer = undefined;
+      stage.classList.remove("panning");
+      if (!spacePressed) stage.classList.remove("pan-ready");
+      return true;
+    case "background-start":
+      capturedStagePointer = transition.pointerId;
+      stage.setPointerCapture(transition.pointerId);
+      return true;
+    case "background-click":
+      editor.completeBackgroundGesture(false, transition.additive);
+      removeMarqueeOverlay();
+      return true;
+    case "background-inert-end":
+      editor.completeBackgroundGesture(true);
+      removeMarqueeOverlay();
+      return true;
+    case "background-cancel":
+      editor.suppressCanvasClick();
+      removeMarqueeOverlay();
+      return true;
+    case "control-click":
+      editor.completeControlGesture(transition.candidate, transition.additive);
+      removeMarqueeOverlay();
+      return true;
+    case "region-noop":
+      editor.suppressCanvasClick();
+      removeMarqueeOverlay();
+      return true;
+    case "marquee-start":
+      if (!editor.beginMarquee()) {
+        stageGestures.cancel(transition.pointerId);
+        return false;
+      }
+      capturedStagePointer = transition.pointerId;
+      stage.setPointerCapture(transition.pointerId);
+      return true;
+    case "marquee-active":
+      stage.classList.add("marquee-active");
+      renderMarqueeOverlay(transition.rect);
+      return true;
+    case "marquee-commit":
+      if (marqueeActivation.held) editor.commitMarquee(transition.rect, transition.additive);
+      else editor.cancelMarquee();
+      removeMarqueeOverlay();
+      return true;
+    case "marquee-cancel":
+      editor.cancelMarquee();
+      removeMarqueeOverlay();
+      return true;
+  }
+}
+
+stage.addEventListener("pointerdown", (event) => {
+  const armed = marqueeActivation.held;
+  const canvasTarget = event.target === stage || editor.canStartRegionSelection(event.target);
+  const handled = applyStageGesture(stageGestures.pointerDown({
+    activation: marqueeActivation.activation,
+    additive: event.shiftKey,
+    altKey: event.altKey,
+    button: event.button,
+    canMarquee: armed ? canvasTarget : editor.canStartMarquee(event.target),
+    ctrlKey: event.ctrlKey,
+    metaKey: event.metaKey,
+    marqueeArmed: armed,
+    point: { x: event.clientX, y: event.clientY },
+    pointerId: event.pointerId,
+    spacePressed,
+    candidate: armed ? editor.exactRegionCandidate(event.target) : undefined,
+  }));
+  if (handled) {
+    if (armed && marqueeActivation.activation === "left-control") {
+      contextMenuSuppression.accept(event.pointerId, { x: event.clientX, y: event.clientY }, performance.now());
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+}, true);
+
+stage.addEventListener("contextmenu", (event) => {
+  if (!contextMenuSuppression.consume({
+    canvasTarget: event.target === stage || editor.canStartRegionSelection(event.target),
+    ctrlKey: event.ctrlKey,
+    point: { x: event.clientX, y: event.clientY },
+    time: performance.now(),
+  })) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}, true);
+
+stage.addEventListener("pointermove", (event) => {
+  contextMenuSuppression.pointerMove(event.pointerId, { x: event.clientX, y: event.clientY });
+  applyStageGesture(stageGestures.pointerMove(event.pointerId, { x: event.clientX, y: event.clientY }));
+});
+
+stage.addEventListener("pointerup", (event) => {
+  applyStageGesture(stageGestures.pointerUp(event.pointerId));
+});
+stage.addEventListener("pointercancel", (event) => applyStageGesture(stageGestures.cancel(event.pointerId)));
+stage.addEventListener("lostpointercapture", (event) => applyStageGesture(stageGestures.cancel(event.pointerId)));
+artboard.addEventListener("lineage-marquee-end", () => {
+  stageGestures.cancel();
+  removeMarqueeOverlay();
+  marqueeActivation.disarm();
+  stage.classList.remove("marquee-ready");
+});
 
 window.addEventListener("beforeunload", (event) => {
   // A clean pending review is recoverable from tab-scoped state. Manual edits
@@ -1462,16 +1801,22 @@ window.addEventListener("pagehide", () => {
   agentTransport.close();
 });
 
+function applyPreviewBackground(background: PreviewBackground): void {
+  previewBackground = background;
+  stage.classList.remove("checker", "light", "dark");
+  stage.classList.add(background);
+  document.querySelectorAll<HTMLButtonElement>(".background-button").forEach((node) => {
+    const active = node.dataset.background === background;
+    node.classList.toggle("active", active);
+    node.setAttribute("aria-pressed", String(active));
+  });
+  persistWorkspaceSession();
+}
+
 for (const button of document.querySelectorAll<HTMLButtonElement>(".background-button")) {
   button.addEventListener("click", () => {
-    stage.classList.remove("checker", "light", "dark");
-    stage.classList.add(button.dataset.background ?? "checker");
-    document.querySelectorAll<HTMLButtonElement>(".background-button").forEach((node) => {
-      node.classList.remove("active");
-      node.setAttribute("aria-pressed", "false");
-    });
-    button.classList.add("active");
-    button.setAttribute("aria-pressed", "true");
+    const background = button.dataset.background;
+    if (background === "checker" || background === "light" || background === "dark") applyPreviewBackground(background);
   });
 }
 
@@ -1548,6 +1893,17 @@ function refreshWorkspaceAfterAgentAccept(): void {
 async function loadWorkspace(openPath?: string, authority?: FileSwitchAuthority): Promise<void> {
   try {
     const workspace = await fetchWorkspace();
+    currentWorkspaceName = workspace.rootName;
+    let restoration: WorkspaceSessionV1 | undefined;
+    if (!workspaceSessionInitialized) {
+      workspaceSessionInitialized = true;
+      restoration = readWorkspaceSession(workspaceSessionStorage, workspace.rootName);
+      if (restoration) {
+        layout.restorePreferences(restoration.leftCollapsed, restoration.rightCollapsed);
+        openPath ??= restoration.activePath;
+        if (openPath !== restoration.activePath) restoration = undefined;
+      }
+    }
 
     let file: SvgFileEntry | undefined;
     let button: HTMLButtonElement | undefined;
@@ -1565,7 +1921,7 @@ async function loadWorkspace(openPath?: string, authority?: FileSwitchAuthority)
     }
     if (openPath) {
       if (file && button) {
-        await openSvg(file, button);
+        await openSvg(file, button, restoration);
         return;
       }
     }
