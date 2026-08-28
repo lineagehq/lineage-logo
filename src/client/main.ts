@@ -24,6 +24,7 @@ import { createSvgPreview, eligiblePreviewTargetIds } from "./preview";
 import { renderInspectorSummaries } from "./ui/inspector";
 import { waitForWorkspaceAdvance } from "./workspace-refresh";
 import {
+  boundedSelectionPath,
   readWorkspaceSession,
   resolveSelectionPath,
   writeWorkspaceSession,
@@ -437,7 +438,7 @@ function selectionIdentityPath(): string[] {
   const root = editor.svgNode;
   const selected = editor.selectionContext.selected;
   if (!root || !selected) return [];
-  return getSelectionAncestry(selected, root).map((node) => node.id).filter(Boolean).slice(-16);
+  return boundedSelectionPath(getSelectionAncestry(selected, root).map((node) => node.id));
 }
 
 function persistWorkspaceSession(): void {

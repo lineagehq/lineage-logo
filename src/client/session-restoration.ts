@@ -29,8 +29,11 @@ function validBoundedString(value: unknown, max: number): value is string {
 
 function validWorkspacePath(value: unknown): value is string {
   return validBoundedString(value, 320)
-    && /^(?:concepts|iterations)\/[^/\\]{1,255}\.svg$/i.test(value)
-    && !value.includes("..");
+    && /^(?:concepts|iterations)\/[^/\\]{1,255}\.svg$/i.test(value);
+}
+
+export function boundedSelectionPath(ids: readonly string[]): string[] {
+  return ids.filter((id) => validBoundedString(id, 160)).slice(-16);
 }
 
 export function validateWorkspaceSession(value: unknown, workspace: string): WorkspaceSessionV1 | undefined {

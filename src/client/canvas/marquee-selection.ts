@@ -263,14 +263,15 @@ export function renderedClientRect(
   node: SVGGraphicsElement,
   boundary: SVGGraphicsElement | SVGSVGElement,
 ): DOMRect | undefined {
-  let candidate: Element | null = node;
   const view = node.ownerDocument.defaultView;
+  const nodeStyle = view?.getComputedStyle(node);
+  const visibility = nodeStyle?.visibility || node.getAttribute("visibility") || "visible";
+  if (visibility === "hidden" || visibility === "collapse") return undefined;
+  let candidate: Element | null = node;
   while (candidate) {
     const style = view?.getComputedStyle(candidate);
-    const visibility = style?.visibility || candidate.getAttribute("visibility") || "visible";
     const opacity = Number(style?.opacity || candidate.getAttribute("opacity") || "1");
     if ((style?.display || candidate.getAttribute("display")) === "none"
-      || visibility === "hidden" || visibility === "collapse"
       || (Number.isFinite(opacity) && opacity <= 0)) return undefined;
     if (candidate === boundary) break;
     candidate = candidate.parentElement;

@@ -888,7 +888,7 @@ describe("marquee client geometry", () => {
 
   it("keeps rendered zero-thickness lines but excludes hidden, transparent, and unusable candidates", () => {
     const window = new Window();
-    window.document.body.innerHTML = '<svg><g id="scope"><line id="line"/><path id="hidden" style="visibility:hidden"/><g opacity="0"><path id="transparent"/></g><path id="point"/></g></svg>';
+    window.document.body.innerHTML = '<svg><g id="scope"><line id="line"/><path id="hidden" style="visibility:hidden"/><g visibility="hidden"><path id="override" style="visibility:visible"/></g><g opacity="0"><path id="transparent"/></g><path id="point"/></g></svg>';
     const scope = window.document.querySelector("#scope") as unknown as SVGGraphicsElement;
     const rect = (left: number, top: number, width: number, height: number) => ({
       bottom: top + height, height, left, right: left + width, top, width,
@@ -897,10 +897,12 @@ describe("marquee client geometry", () => {
     const node = (id: string) => window.document.querySelector(`#${id}`) as unknown as SVGGraphicsElement;
     Object.defineProperty(node("line"), "getBoundingClientRect", { value: () => rect(4, 8, 20, 0) });
     Object.defineProperty(node("hidden"), "getBoundingClientRect", { value: () => rect(0, 0, 10, 10) });
+    Object.defineProperty(node("override"), "getBoundingClientRect", { value: () => rect(0, 0, 10, 10) });
     Object.defineProperty(node("transparent"), "getBoundingClientRect", { value: () => rect(0, 0, 10, 10) });
     Object.defineProperty(node("point"), "getBoundingClientRect", { value: () => rect(4, 8, 0, 0) });
     expect(renderedClientRect(node("line"), scope)).toMatchObject({ height: 0, width: 20 });
     expect(renderedClientRect(node("hidden"), scope)).toBeUndefined();
+    expect(renderedClientRect(node("override"), scope)).toMatchObject({ height: 10, width: 10 });
     expect(renderedClientRect(node("transparent"), scope)).toBeUndefined();
     expect(renderedClientRect(node("point"), scope)).toBeUndefined();
   });

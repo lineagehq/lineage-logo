@@ -1,6 +1,7 @@
 import { Window } from "happy-dom";
 import { describe, expect, it } from "vitest";
 import {
+  boundedSelectionPath,
   readWorkspaceSession,
   resolveSelectionPath,
   validateWorkspaceSession,
@@ -44,6 +45,13 @@ describe("versioned workspace session restoration", () => {
       "activePath", "leftCollapsed", "previewBackground", "rightCollapsed",
       "selectionPath", "version", "workspace", "zoom",
     ]);
+  });
+
+  it("accepts server-supported dotted filenames and bounds producer selection identities", () => {
+    expect(validateWorkspaceSession(validState({ activePath: "concepts/logo..draft.svg" }), "seatify-logo"))
+      .toEqual(validState({ activePath: "concepts/logo..draft.svg" }));
+    expect(boundedSelectionPath(["venue", "x".repeat(161), ...Array.from({ length: 18 }, (_, index) => `layer-${index}`)]))
+      .toEqual(Array.from({ length: 16 }, (_, index) => `layer-${index + 2}`));
   });
 
   it.each([

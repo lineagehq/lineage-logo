@@ -1060,7 +1060,6 @@ export class SvgEditor {
     this.#clearHover();
     this.#deselect();
     this.#selectedNodes = unique;
-    this.#renderSelectionHalos();
     if (!nextPrimary) {
       this.#setSelectionUi(undefined);
       this.#callbacks.onSelectionChange(undefined);
@@ -1079,6 +1078,8 @@ export class SvgEditor {
       && node.getAttribute("display") !== "none"
       && !this.#isLocked(node)
       && !hasComplexResources;
+    if (!canInstallHandles) node.setAttribute(PRIMARY_FALLBACK_ATTRIBUTE, "true");
+    this.#renderSelectionHalos();
     if (canInstallHandles) {
       selected
         .select()
@@ -1278,12 +1279,14 @@ export class SvgEditor {
 
   completeControlGesture(candidate: SVGGraphicsElement | undefined, additive: boolean): void {
     const root = this.svgNode;
+    this.cancelMarquee();
     this.#armCanvasClickSuppression();
     if (candidate && root && candidate.isConnected) this.#toggleExactNode(candidate, root);
     else if (!additive) this.#setSelection([]);
   }
 
   suppressCanvasClick(): void {
+    this.cancelMarquee();
     this.#armCanvasClickSuppression();
   }
 
@@ -1474,8 +1477,7 @@ export class SvgEditor {
     this.#mutate(() => {
       setLayerHidden(node, !hidden);
       if (node === this.selectedNode) {
-        if (hidden) this.#selectNode(node);
-        else this.#selected?.select(false).resize(false).draggable(false);
+        this.#setSelection([...this.#selectedNodes], node);
       }
     });
     this.#callbacks.onStatus(`${hidden ? "Showed" : "Hid"} ${this.#label(node)}`);
@@ -2615,6 +2617,9 @@ export class SvgEditor {
         rect.setAttribute("width", String(width));
         rect.setAttribute("height", String(height));
         rect.setAttribute("data-enhanced", String(this.#selectionPreferences.individualOutlines));
+        if (node === this.selectedNode && node.getAttribute(PRIMARY_FALLBACK_ATTRIBUTE) === "true") {
+          rect.setAttribute(PRIMARY_FALLBACK_ATTRIBUTE, "true");
+        }
         return [rect];
       } catch { return []; }
     });

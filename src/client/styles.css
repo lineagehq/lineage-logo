@@ -118,6 +118,7 @@ button { font: inherit; }
 [data-lineage-hover="true"][filter] { outline: 2px solid #ff7a45; outline-offset: 2px; }
 .lineage-selection-halo { fill: none; pointer-events: none; stroke: #8a5cf6; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .lineage-selection-halo[data-enhanced="true"] { filter: drop-shadow(0 0 2px rgb(138 92 246 / 72%)); stroke-width: 2.5; }
+.lineage-selection-halo[data-lineage-primary-fallback="true"] { filter: drop-shadow(0 0 2px rgb(36 107 253 / 76%)); stroke: #246bfd; stroke-dasharray: 5 3; stroke-width: 2.5; }
 [data-lineage-review-highlight="true"]:not([filter]) { filter: drop-shadow(0 0 2px #df8b18) drop-shadow(0 0 7px rgb(223 139 24 / 90%)); }
 [data-lineage-review-highlight="true"][filter] { outline: 3px solid #df8b18; outline-offset: 3px; }
 .agent-preview { border: 3px solid #df8b18; box-shadow: 0 12px 40px rgb(0 0 0 / 18%), 0 0 0 5px rgb(223 139 24 / 20%); }
