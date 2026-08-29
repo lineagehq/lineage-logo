@@ -10,6 +10,7 @@
     "dev": "tsx scripts/dev.ts",
     "start": "tsx src/server/index.ts",
     "test": "vitest run --config vitest.config.ts",
+    "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "saxes": "6.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^22.18.0",
     "happy-dom": "^20.11.6",
     "tsx": "^4.23.12",

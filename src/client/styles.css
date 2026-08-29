@@ -111,6 +111,10 @@ button { font: inherit; }
 .stage.panning * { pointer-events: none; }
 .stage.marquee-ready { cursor: crosshair; }
 .stage.marquee-active { cursor: crosshair; user-select: none; }
+.stage.marquee-active .svg_select_shape,
+.stage.marquee-active .svg_select_shape_pointSelect,
+.stage.marquee-active .svg_select_handle,
+.stage.marquee-active .svg_select_handle_rot { opacity: 0; }
 .marquee-selection { position: absolute; z-index: 8; box-sizing: border-box; border: 1px solid #246bfd; background: rgb(36 107 253 / 14%); box-shadow: 0 0 0 1px rgb(255 255 255 / 65%) inset; pointer-events: none; }
 .artboard svg { display: block; width: 100%; height: 100%; overflow: visible; }
 [data-lineage-hover="true"] { cursor: pointer; }

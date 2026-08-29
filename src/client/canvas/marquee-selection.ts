@@ -114,7 +114,7 @@ export type StageGestureTransition<TCandidate = unknown> =
   | { type: "background-cancel" }
   | { type: "marquee-start"; additive: boolean; pointerId: number }
   | { type: "marquee-pending" }
-  | { type: "marquee-active"; rect: ClientRect }
+  | { type: "marquee-active"; additive: boolean; rect: ClientRect }
   | { type: "marquee-commit"; additive: boolean; rect?: ClientRect }
   | { type: "control-click"; additive: boolean; candidate?: TCandidate }
   | { type: "region-noop" }
@@ -186,7 +186,7 @@ export class StageGestureController<TCandidate = unknown> {
     }
     if (crossedMarqueeThreshold(active.start, point)) active.latched = true;
     return active.latched
-      ? { type: "marquee-active", rect: clientRectFromPoints(active.start, point) }
+      ? { type: "marquee-active", additive: active.additive, rect: clientRectFromPoints(active.start, point) }
       : { type: "marquee-pending" };
   }
 

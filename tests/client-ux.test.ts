@@ -192,6 +192,7 @@ describe("canvas gesture wiring", () => {
     down(active);
     expect(active.pointerMove(7, { x: 14, y: 20 })).toEqual({
       type: "marquee-active",
+      additive: false,
       rect: { bottom: 20, height: 0, left: 10, right: 14, top: 20, width: 4 },
     });
     expect(active.pointerUp(7)).toEqual({
@@ -308,6 +309,7 @@ describe("canvas gesture wiring", () => {
     expect(source).toContain('document.addEventListener("focusin"');
     expect(source).toContain("isLayoutShortcutTarget(event.target)");
     expect(source).toContain("editor.completeBackgroundGesture(false, transition.additive)");
+    expect(source).toContain("editor.previewMarquee(transition.rect, transition.additive)");
     expect(source).toContain('stage.addEventListener("contextmenu"');
     expect(source).toContain('document.addEventListener("pointerdown", () => contextMenuSuppression.pointerDown(), true)');
   });

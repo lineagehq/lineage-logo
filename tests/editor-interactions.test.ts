@@ -1054,6 +1054,42 @@ describe("marquee and precise selection interactions", () => {
     expect(editor.operationState().align.allowed).toBe(false);
   });
 
+  it("previews live marquee matches with selection halos without committing selection or history", () => {
+    const contexts: SelectionContext[] = [];
+    const { editor, root } = editorHarness((context) => contexts.push(context));
+    const logo = root.querySelector("#logo") as unknown as SVGGraphicsElement;
+    const icon = root.querySelector("#icon") as unknown as SVGGraphicsElement;
+    const waveform = root.querySelector("#waveform") as unknown as SVGGraphicsElement;
+    const wordmark = root.querySelector("#wordmark") as unknown as SVGGraphicsElement;
+    setClientRect(logo, 0, 0, 60, 30);
+    setClientRect(icon, 0, 0, 30, 30);
+    setClientRect(waveform, 10, 10, 10, 10);
+    setClientRect(wordmark, 40, 10, 10, 10);
+    editor.selectNode(wordmark);
+    const before = editor.serializeClean();
+    expect(editor.beginMarquee()).toBe(true);
+    const contextCount = contexts.length;
+
+    expect(editor.previewMarquee({ bottom: 25, height: 20, left: 5, right: 25, top: 5, width: 20 }, false)).toBe(1);
+    expect(editor.selectedNodes).toEqual([wordmark]);
+    expect(root.querySelectorAll('[data-lineage-selection-halos][data-lineage-marquee-preview="true"] .lineage-selection-halo')).toHaveLength(1);
+    expect(root.querySelectorAll('.lineage-selection-halo[data-lineage-marquee-preview="true"]')).toHaveLength(1);
+    expect(contexts).toHaveLength(contextCount);
+
+    expect(editor.previewMarquee({ bottom: 25, height: 20, left: 5, right: 25, top: 5, width: 20 }, true)).toBe(1);
+    expect(editor.selectedNodes).toEqual([wordmark]);
+    expect(root.querySelectorAll('.lineage-selection-halo[data-lineage-marquee-preview="true"]')).toHaveLength(2);
+    expect(editor.serializeClean()).toBe(before);
+    expect(editor.undo()).toBe(false);
+
+    expect(editor.cancelMarquee()).toBe(true);
+    expect(editor.selectedNodes).toEqual([wordmark]);
+    expect(root.querySelector("[data-lineage-selection-halos]")?.hasAttribute("data-lineage-marquee-preview")).toBe(false);
+    expect(root.querySelectorAll(".lineage-selection-halo")).toHaveLength(1);
+    expect(editor.serializeClean()).toBe(before);
+    expect(editor.undo()).toBe(false);
+  });
+
   it("freezes a nested scope and normalizes the full additive union against ancestor coexistence", () => {
     const { editor, root } = editorHarness();
     const logo = root.querySelector("#logo") as unknown as SVGGraphicsElement;

@@ -1546,14 +1546,7 @@ export class SvgEditor {
       this.#announceMarqueeEnd();
       return;
     }
-    const visible = Array.from(gesture.scope.querySelectorAll<SVGGraphicsElement>(EDITABLE_SELECTOR))
-      .filter((node) => isSelectableNode(node, root))
-      .map((node) => ({ node, rect: renderedClientRect(node, gesture.scope) }))
-      .filter((candidate): candidate is { node: SVGGraphicsElement; rect: DOMRect } => Boolean(candidate.rect));
-    const leafCandidates = visible.filter(({ node }) => !visible.some(({ node: descendant }) => node !== descendant && node.contains(descendant)));
-    const matches = leafCandidates
-      .filter((candidate) => marqueeMatches(rect, candidate.rect, rule))
-      .map((candidate) => candidate.node);
+    const matches = this.#marqueeMatches(rect, gesture.scope, root, rule);
     if (additive) {
       if (matches.length > 0) {
         const normalized = this.#normalizeMarqueeUnion([...gesture.nodes, ...matches], gesture.scope, root);
@@ -1562,8 +1555,21 @@ export class SvgEditor {
     } else {
       this.#setSelection(matches, matches.at(-1));
     }
+    if (additive && matches.length === 0) this.#renderSelectionHalos();
     this.#callbacks.onStatus(matches.length === 1 ? "Selected 1 layer" : `Selected ${matches.length} layers`);
     this.#announceMarqueeEnd();
+  }
+
+  previewMarquee(rect: ClientRect, additive: boolean, rule: MarqueeHitRule = this.#selectionPreferences.marqueeMode): number {
+    const gesture = this.#marqueeGesture;
+    const root = this.svgNode;
+    if (!gesture || !root) return 0;
+    const matches = this.#marqueeMatches(rect, gesture.scope, root, rule);
+    const preview = additive
+      ? this.#normalizeMarqueeUnion([...gesture.nodes, ...matches], gesture.scope, root)
+      : matches;
+    this.#renderSelectionHalos(preview, undefined, true);
+    return matches.length;
   }
 
   cancelMarquee(): boolean {
@@ -1586,6 +1592,22 @@ export class SvgEditor {
     const ordered = Array.from(scope.querySelectorAll<SVGGraphicsElement>(EDITABLE_SELECTOR))
       .filter((node) => selected.has(node));
     return ordered.filter((node) => !ordered.some((descendant) => node !== descendant && node.contains(descendant)));
+  }
+
+  #marqueeMatches(
+    rect: ClientRect,
+    scope: SVGGraphicsElement | SVGSVGElement,
+    root: SVGSVGElement,
+    rule: MarqueeHitRule,
+  ): SVGGraphicsElement[] {
+    const visible = Array.from(scope.querySelectorAll<SVGGraphicsElement>(EDITABLE_SELECTOR))
+      .filter((node) => isSelectableNode(node, root))
+      .map((node) => ({ node, rect: renderedClientRect(node, scope) }))
+      .filter((candidate): candidate is { node: SVGGraphicsElement; rect: DOMRect } => Boolean(candidate.rect));
+    return visible
+      .filter(({ node }) => !visible.some(({ node: descendant }) => node !== descendant && node.contains(descendant)))
+      .filter((candidate) => marqueeMatches(rect, candidate.rect, rule))
+      .map((candidate) => candidate.node);
   }
 
   refreshSelectionAffordances(): void {
@@ -1957,6 +1979,10 @@ export class SvgEditor {
     svg.addEventListener("pointercancel", cancelPrecise, true);
     svg.addEventListener("lostpointercapture", cancelPrecise, true);
     svg.addEventListener("pointermove", (event) => {
+      if (this.#marqueeGesture) {
+        this.#setHover(undefined);
+        return;
+      }
       const target = event.target;
       if (!(target instanceof Element) || target.closest(HANDLE_SELECTOR)) {
         this.#setHover(undefined);
@@ -3002,11 +3028,15 @@ export class SvgEditor {
     this.#callbacks.onSelectionContextChange(this.selectionContext);
   }
 
-  #renderSelectionHalos(): void {
+  #renderSelectionHalos(
+    nodes: SVGGraphicsElement[] = this.#selectedNodes,
+    primary: SVGGraphicsElement | undefined = this.selectedNode,
+    marqueePreview = false,
+  ): void {
     const root = this.svgNode;
     if (!root) return;
     let group = root.querySelector<SVGGElement>(SELECTION_HALOS_SELECTOR);
-    if (this.#selectedNodes.length === 0) {
+    if (nodes.length === 0) {
       group?.remove();
       return;
     }
@@ -3017,11 +3047,13 @@ export class SvgEditor {
       group.setAttribute("pointer-events", "none");
       root.append(group);
     }
+    if (marqueePreview) group.setAttribute("data-lineage-marquee-preview", "true");
+    else group.removeAttribute("data-lineage-marquee-preview");
     let screenMatrix: DOMMatrix | null = null;
     try { screenMatrix = root.getScreenCTM?.() ?? null; } catch { /* Detached test SVGs have no screen matrix. */ }
     const minimumWidth = screenMatrix ? 2 / Math.max(Math.hypot(screenMatrix.a, screenMatrix.b), 0.001) : 1;
     const minimumHeight = screenMatrix ? 2 / Math.max(Math.hypot(screenMatrix.c, screenMatrix.d), 0.001) : 1;
-    const rects = this.#selectedNodes.flatMap((node) => {
+    const rects = nodes.flatMap((node) => {
       try {
         const box = (SVG(node) as SvgElement).rbox(this.#drawing);
         if (![box.x, box.y, box.width, box.height].every(Number.isFinite)) return [];
@@ -3034,7 +3066,8 @@ export class SvgEditor {
         rect.setAttribute("width", String(width));
         rect.setAttribute("height", String(height));
         rect.setAttribute("data-enhanced", String(this.#selectionPreferences.individualOutlines));
-        if (node === this.selectedNode && node.getAttribute(PRIMARY_FALLBACK_ATTRIBUTE) === "true") {
+        if (marqueePreview) rect.setAttribute("data-lineage-marquee-preview", "true");
+        if (!marqueePreview && node === primary && node.getAttribute(PRIMARY_FALLBACK_ATTRIBUTE) === "true") {
           rect.setAttribute(PRIMARY_FALLBACK_ATTRIBUTE, "true");
         }
         return [rect];
