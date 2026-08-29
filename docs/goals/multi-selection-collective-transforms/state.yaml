@@ -522,6 +522,25 @@ tasks:
         - cmd: "shasum -a 256 tests/fixtures/workspace/concepts/complex-seatify.svg"
           status: pass
           result: "Fixture remains byte-exact at c374e51fee2094d46a3cb44bc308062a1dde4d94cc31ee46d6e892188e80f0f8."
+post_completion_review:
+  reviewed_against: origin/main
+  implementation_sha: 8f1b7cb4c9a5c8b1b1c732b593312a9d300813d9
+  toolkit: codex-pr-review-toolkit
+  result: fixed
+  findings_fixed:
+    - "Prevented a locked primary from bypassing collective drag rejection."
+    - "Canceled active collective gestures before Undo or Redo changes history."
+    - "Scoped pointercancel and lost-pointer-capture handling to the initiating pointer."
+    - "Invalidated stale scale or rotation metadata after collective transforms."
+    - "Added Enter and Space activation for focusable collective transform controls."
+    - "Strengthened Chromium proof to compare every transformed corner and confirm the named saved SVG is actually reopened."
+  verification:
+    - command: npm run check
+      result: "Typecheck, 414 unit tests, and production build passed."
+    - command: npm run test:e2e -- tests/e2e/collective-transforms.spec.ts --project=chromium
+      result: "4 focused Chromium scenarios passed."
+    - command: npm run test:e2e -- --project=chromium
+      result: "32 full-suite Chromium scenarios passed."
 checks:
   dirty_fingerprint: unknown
   last_verification:
