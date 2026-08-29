@@ -69,13 +69,14 @@ async function identity(page: Page): Promise<unknown> {
 }
 
 async function selectionContext(page: Page): Promise<unknown> {
+  const count = await page.locator("#selection-count-badge").textContent();
   return {
-    inspector: await page.locator("#inspector-panel").evaluate((panel) => ({
+    inspector: await page.locator("#inspector-panel").evaluate((panel, countText) => ({
       breadcrumb: panel.querySelector("#selection-breadcrumb")?.textContent,
-      count: panel.querySelector("#selection-count-badge")?.textContent,
+      count: countText,
       name: panel.querySelector("#selection-name")?.textContent,
       summaries: Array.from(panel.querySelectorAll(".group-summary")).map((summary) => summary.textContent),
-    })),
+    }), count),
     layers: await selectedLabels(page),
     primary: await primaryLabel(page),
   };
@@ -386,6 +387,12 @@ test("multi-selection arrangement works at 125% zoom with both sidebars collapse
   await expect(page.locator("#toggle-left-sidebar")).toHaveAttribute("aria-expanded", "false");
   await expect(page.locator("#toggle-right-sidebar")).toHaveAttribute("aria-expanded", "false");
   await marqueeDistributionTargets(page);
+  const beforeContext = await selectionContext(page);
+  expect(beforeContext).toMatchObject({
+    inspector: { count: "3 objects selected", name: "3 layers" },
+    layers: [...distributionLabels].sort(),
+    primary: distributionLabels.at(-1),
+  });
   const before = await geometry(page, distributionLabels);
   await page.keyboard.press("ArrowRight");
   const moved = await geometry(page, distributionLabels);
@@ -393,6 +400,7 @@ test("multi-selection arrangement works at 125% zoom with both sidebars collapse
     expect(moved[label].left - before[label].left).toBeCloseTo(1, 5);
     expect(moved[label].top - before[label].top).toBeCloseTo(0, 5);
   }
+  expect(await selectionContext(page)).toEqual(beforeContext);
   await page.locator("#toggle-right-sidebar").click();
   await expect(page.locator("#toggle-right-sidebar")).toHaveAttribute("aria-expanded", "true");
   expect(await selectedLabels(page)).toEqual([...distributionLabels].sort());
@@ -400,10 +408,12 @@ test("multi-selection arrangement works at 125% zoom with both sidebars collapse
   const beforeArrange = await geometry(page, distributionLabels);
   await page.locator("#distribute-horizontal").click();
   const arranged = await geometry(page, distributionLabels);
+  expect(await selectionContext(page)).toEqual(beforeContext);
   await page.getByRole("button", { name: "Undo" }).click();
   expectGeometry(await geometry(page, distributionLabels), beforeArrange);
   expect(arranged).not.toEqual(beforeArrange);
   expect(await selectedLabels(page)).toEqual([...distributionLabels].sort());
+  expect(await selectionContext(page)).toEqual(beforeContext);
 });
 
 test("multi-selection arrangement named Save preserves exact authored structure outside target transforms", async ({ page }) => {
@@ -413,6 +423,12 @@ test("multi-selection arrangement named Save preserves exact authored structure 
   await selectDistributionTargets(page);
   await openAlignmentGroup(page);
   await page.locator("#distribute-horizontal").click();
+  const liveTransforms = await page.locator("#artboard svg").evaluate((root, targetLabels) => Object.fromEntries(targetLabels.map((label) => {
+    const node = Array.from(root.querySelectorAll<SVGGraphicsElement>("[aria-label]"))
+      .find((candidate) => candidate.getAttribute("aria-label") === label);
+    if (!node?.id) throw new Error(`Live transform target is unavailable for ${label}.`);
+    return [node.id, node.getAttribute("transform")];
+  })), distributionLabels);
   await page.getByRole("button", { name: "Save iteration" }).click();
   await expect(page.locator("#status")).toHaveText(/^Saved iterations\/iteration-\d+\.svg$/);
   const savedPath = (await page.locator("#status").textContent())?.replace(/^Saved /, "");
@@ -428,20 +444,30 @@ test("multi-selection arrangement named Save preserves exact authored structure 
     const targetIds = new Set(Array.from(sourceDocument.querySelectorAll("[aria-label]"))
       .filter((node) => targetLabels.includes(node.getAttribute("aria-label") ?? ""))
       .map((node) => node.id));
-    const snapshot = (documentNode: Document) => Array.from(documentNode.documentElement.querySelectorAll("*"))
+    const authoredRootAttributes = new Set(Array.from(sourceDocument.documentElement.attributes).map((attribute) => attribute.name));
+    const snapshot = (documentNode: Document) => [documentNode.documentElement, ...Array.from(documentNode.documentElement.querySelectorAll("*"))]
       .map((node) => ({
         attributes: Array.from(node.attributes)
           .filter((attribute) => !(targetIds.has(node.id) && attribute.name === "transform"))
+          .filter((attribute) => node !== documentNode.documentElement || authoredRootAttributes.has(attribute.name))
           .map((attribute) => [attribute.name, attribute.value]),
         childElements: Array.from(node.children).map((child) => child.localName),
         localName: node.localName,
         text: Array.from(node.childNodes).filter((child) => child.nodeType === Node.TEXT_NODE).map((child) => child.textContent).join(""),
       }));
     const transforms = (documentNode: Document) => Object.fromEntries(Array.from(targetIds).map((id) => [id, documentNode.getElementById(id)?.getAttribute("transform") ?? null]));
-    return { savedSnapshot: snapshot(savedDocument), savedTransforms: transforms(savedDocument), sourceSnapshot: snapshot(sourceDocument), sourceTransforms: transforms(sourceDocument), targetIds: Array.from(targetIds) };
+    const savedRootAdditions = Array.from(savedDocument.documentElement.attributes)
+      .filter((attribute) => !authoredRootAttributes.has(attribute.name))
+      .map((attribute) => [attribute.name, attribute.value]);
+    return { savedRootAdditions, savedSnapshot: snapshot(savedDocument), savedTransforms: transforms(savedDocument), sourceSnapshot: snapshot(sourceDocument), sourceTransforms: transforms(sourceDocument), targetIds: Array.from(targetIds) };
   }, { sourceSvg: source, savedSvg: saved, targetLabels: distributionLabels });
   expect(comparison.targetIds).toHaveLength(distributionLabels.length);
+  expect(comparison.savedRootAdditions).toEqual([
+    ["xmlns:xlink", "http://www.w3.org/1999/xlink"],
+    ["version", "1.1"],
+  ]);
   expect(comparison.savedSnapshot).toEqual(comparison.sourceSnapshot);
+  expect(comparison.savedTransforms).toEqual(liveTransforms);
   expect(Object.entries(comparison.savedTransforms).some(([id, value]) => value !== comparison.sourceTransforms[id])).toBe(true);
   expect(saved).not.toMatch(/data-(?:lineage|agent|review|transport)-|lineage-logo-edit|transactionId|agent-token/i);
 });

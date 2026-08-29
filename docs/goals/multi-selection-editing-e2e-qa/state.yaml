@@ -67,7 +67,7 @@ visual_board:
     url: "http://goalbuddy.localhost:41737/multi-selection-editing-e2e-qa/"
     command: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.4.3/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/multi-selection-editing-e2e-qa"
 
-active_task: T006
+active_task: T012
 
 tasks:
   - id: T001
@@ -707,7 +707,7 @@ tasks:
   - id: T006
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Materialize the exact locally approved candidate on one reviewable branch/PR and obtain protected verify and browser-qa success on the same immutable head SHA."
     inputs:
@@ -748,12 +748,84 @@ tasks:
       - "CI failure requires product behavior changes or files outside allowed_files."
       - "The candidate head changes while checks run or an existing gate must be weakened."
       - "The same CI failure remains unexplained after two attempts."
-    receipt: null
-
+    receipt:
+      result: done
+      pr_url: "https://github.com/lineagehq/lineage-logo/pull/15"
+      head_sha: 02c1f1e8cb006b8400cdd832e836bc8771b2c7b9
+      merge_sha: 37aa84331157cda91df2ecb432740164ba70fda5
+      check_results:
+        - name: verify
+          status: pass
+          head_sha: 02c1f1e8cb006b8400cdd832e836bc8771b2c7b9
+          url: "https://github.com/lineagehq/lineage-logo/actions/runs/33267395351/job/99139791906"
+          conclusion: SUCCESS
+        - name: browser-qa
+          status: pass
+          head_sha: 02c1f1e8cb006b8400cdd832e836bc8771b2c7b9
+          url: "https://github.com/lineagehq/lineage-logo/actions/runs/33267395351/job/99139791915"
+          conclusion: SUCCESS
+      ci_remediation:
+        initial_head_sha: c99ffeb09ca743556b04909b6f6fbdf4a2e26df2
+        run_url: "https://github.com/lineagehq/lineage-logo/actions/runs/33267074107"
+        diagnosis: "Linux Chromium emitted causal successor clicks after return-to-origin and locked rejected pointer gestures, replacing selection while geometry and history remained unchanged."
+        artifacts_inspected:
+          - "failure logs"
+          - "error-context page snapshots"
+          - screenshots
+          - traces
+        correction: "Wrapped only no-op, cancellation, and rejected pointer sequences with the platform non-precise accelerator so documented modified-click handling ignores the causal click while real movement, rejection, geometry, identity, and history assertions remain exact."
+        correction_file: tests/e2e/collective-translation.spec.ts
+      changed_files:
+        - README.md
+        - docs/goals/multi-selection-editing-e2e-qa/goal.md
+        - docs/goals/multi-selection-editing-e2e-qa/notes/.gitkeep
+        - docs/goals/multi-selection-editing-e2e-qa/state.yaml
+        - scripts/e2e-server.ts
+        - src/client/main.ts
+        - tests/e2e/collective-translation.spec.ts
+        - tests/e2e/multi-selection-arrangement.spec.ts
+      commands:
+        - cmd: "git fetch origin main --prune; gh auth status; git ls-remote --heads origin main"
+          status: pass
+          result: "Authenticated as neonwatty; remote main was 432d65937fca534c425aaaf3af1b718cb436bd60 before branch creation."
+        - cmd: "git diff --check"
+          status: pass
+          result: "No whitespace errors."
+        - cmd: "npm run check"
+          status: pass
+          result: "TypeScript passed; 400 tests passed; production build passed."
+        - cmd: "npm run test:e2e -- --grep 'collective translation'"
+          status: pass
+          result: "6 passed after CI remediation."
+        - cmd: "npm run test:e2e"
+          status: pass
+          result: "28 passed after CI remediation."
+        - cmd: "npm audit --omit=dev --audit-level=high"
+          status: pass
+          result: "0 vulnerabilities."
+        - cmd: "gh run view 33267074107 --job 99138914895 --log-failed; gh run download 33267074107 -n browser-qa-diagnostics"
+          status: pass
+          result: "Inspected the first browser-qa failure logs and uploaded diagnostics before correction."
+        - cmd: "gh pr checks 15 --watch --interval 10"
+          status: pass
+          result: "verify and browser-qa succeeded on immutable head 02c1f1e8cb006b8400cdd832e836bc8771b2c7b9."
+        - cmd: "gh pr merge 15 --merge --match-head-commit 02c1f1e8cb006b8400cdd832e836bc8771b2c7b9"
+          status: pass
+          result: "PR merged as 37aa84331157cda91df2ecb432740164ba70fda5."
+        - cmd: "git fetch origin main --prune; git merge-base --is-ancestor 02c1f1e8cb006b8400cdd832e836bc8771b2c7b9 origin/main; git diff --exit-code 02c1f1e8cb006b8400cdd832e836bc8771b2c7b9 origin/main"
+          status: pass
+          result: "Remote main contains the candidate as the second merge parent and has the identical candidate tree."
+        - cmd: "Confirm final local diagnostics, listeners, and temporary QA workspaces are absent."
+          status: pass
+          result: "Working tree clean; test-results absent; ports 43117/43118 clear; QA workspaces and downloaded CI diagnostics absent."
+      summary: "Created one review branch and PR, preserved the approved candidate and GoalBuddy documents, and inspected the first Linux-only browser failure before one bounded test correction. Local check, 400 tests, build, 28 Chromium scenarios, and dependency audit passed. Protected verify and browser-qa then succeeded on exact head 02c1f1e8cb006b8400cdd832e836bc8771b2c7b9. PR #15 merged as 37aa84331157cda91df2ecb432740164ba70fda5; remote main contains the candidate unchanged. The local tree is clean with no diagnostics, listeners, or temporary QA workspaces."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
   - id: T999
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Audit whether the browser automation fully proves the multi-selection editing outcome without partial-movement, weak-history, indirect-input, flaky, mutating, or scope-expanded shortcuts."
     inputs:
@@ -773,6 +845,104 @@ tasks:
       - "Oracle evidence map"
       - "Missing evidence or remaining defects"
       - "Exact next task if not complete"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      rationale: "PR #15 is merged and both protected checks passed on exact head 02c1f1e, with its tree identical to remote main. The E2E sources avoid editor calls, fixed waits, and fixed pointer coordinates and provide strong geometry/history/rejection coverage. Completion still fails the exact-candidate oracle: T005’s ten-repeat, clean-clone, and diagnostic proof predates the Linux remediation from c99ffeb to 02c1f1e. Source review also finds no disconnected-selection test despite T003 claiming one, incomplete saved-SVG fidelity because the root and exact live target transforms are not compared, and no primary/inspector continuity assertion in the 125%-collapsed scenario."
+      evidence:
+        - finding: "GitHub reports PR #15 MERGED with head 02c1f1e8cb006b8400cdd832e836bc8771b2c7b9 and merge commit 37aa84331157cda91df2ecb432740164ba70fda5."
+        - finding: "Protected main requires strict verify and browser-qa with admin enforcement; run 33267395351 completed both successfully on head 02c1f1e8cb006b8400cdd832e836bc8771b2c7b9 at jobs 99139791906 and 99139791915."
+        - finding: "Local HEAD is 02c1f1e and is an ancestor of origin/main; HEAD and origin/main have identical trees. The candidate did not change fixtures, packages, Playwright configuration, or CI gates."
+        - finding: "The two new E2E specs contain no editor method calls, waitForTimeout, skipped/focused tests, or hard-coded pointer destinations; gestures derive from live bounding boxes and SVG matrices."
+        - finding: "Translation scenarios assert all three exact selected labels, primary identity, root-space deltas, fixed Venue caption, Undo/Redo restoration, and locked/hidden/agent rejection without partial geometry."
+        - finding: "Arrangement scenarios exercise all six alignments, both center distributions, both equal-gap actions, fixed outer anchors, exact geometry, Undo/Redo, no-op transform syntax, rejection, zoom/sidebar operation, and named Save."
+        - finding: "T005 records 10 x 28 passing runs, a clean clone, and diagnostic inspection before T006. T006 then changed collective-translation.spec.ts from c99ffeb to 02c1f1e to remediate Linux successor clicks; after that change only one focused run, one full local run, and protected CI are recorded. Therefore repeatability and clean-clone proof are not tied to the exact merged candidate."
+        - finding: "T003 claims disconnected-selection unit/integration evidence, but current tests contain no translationAvailability invocation with a disconnected selected node; only the untested guard exists at src/client/canvas/editor.ts:768-769."
+        - finding: "The saved-SVG comparator at multi-selection-arrangement.spec.ts:431 begins with documentElement.querySelectorAll('*'), excluding root attributes. It removes transform from every selected target and only asserts that some target transform changed, without proving saved target transforms equal the live post-arrangement transforms."
+        - finding: "The 125%-zoom/collapsed-sidebars scenario checks selected labels and geometry but never asserts primary identity or inspector continuity before movement, after arrangement, or after Undo."
+        - finding: "Current cleanup is exact: test-results is absent, ports 43117/43118 have no listeners, and no lineage-logo-marquee-qa-* workspaces or downloaded CI diagnostics remain."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence:
+        - "Ten consecutive full browser runs on the exact final candidate after the Linux remediation."
+        - "Fresh-clone repository and browser verification reconstructed from the exact final candidate after remediation."
+        - "A real disconnected-selection rejection contract, or an explicit pure availability-unit contract for this browser-unreachable state, proving no mutation/history."
+        - "Saved-SVG fidelity including the root element and equality between every saved target transform and the live intended post-action transform."
+        - "Primary identity and inspector continuity at 125% zoom with both sidebars collapsed."
+      required_board_updates:
+        - action: record_T999_not_complete_and_activate_recovery_worker
+          objective: "Close the final oracle gaps in one bounded recovery package: add a pure disconnected-selection availability test without live-browser DOM/editor mutation; strengthen saved-SVG comparison to include the root and exact live target transforms; assert primary and inspector continuity through the 125%-collapsed workflow; then run all local verification, ten consecutive full browser repetitions, a fresh-clone reconstruction, cleanup, and protected CI on one immutable follow-up head."
+        - action: queue_a_new_final_judge_after_the_recovery_candidate_is_merged_and_all_exact_SHA_evidence_is_recorded
+  - id: T012
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: medium
+    objective: "Close every final-oracle gap on one exact recovery candidate: disconnected-selection availability, complete saved-SVG fidelity, 125%-collapsed identity continuity, post-remediation repeatability and clean-clone proof, protected CI, and merge."
+    inputs:
+      - "T999 not-complete audit"
+      - "Merged PR #15 head 02c1f1e and merge 37aa843"
+      - "Existing green unit and browser suites"
+      - "User authority to create, monitor, and merge the recovery PR"
+    constraints:
+      - "Add a pure unit contract for a disconnected selected node that proves translationAvailability rejects it and the editor document/history remain unchanged; do not manufacture the state in browser E2E."
+      - "Saved-SVG fidelity must include the root element and prove every saved target transform exactly equals the corresponding live post-arrangement transform while all non-target authored structure and attributes remain identical."
+      - "The 125%-zoom/collapsed-sidebars scenario must assert exact primary identity and inspector continuity before movement, after arrangement, and after Undo."
+      - "No direct editor call in E2E, live E2E DOM mutation, fixed sleep, fixed pointer coordinate, weakened assertion, fixture write, or protected-check change."
+      - "Run ten consecutive complete browser repetitions and a fresh-clone reconstruction only after the final candidate is immutable; any correction invalidates and restarts both proofs."
+      - "Create one follow-up PR, keep its head immutable while checks run, inspect failures before correction, and merge only after verify and browser-qa succeed on the same exact head."
+    expected_output:
+      - "Disconnected-selection unit rejection and no-mutation/history proof"
+      - "Root-inclusive exact live-to-saved transform fidelity proof"
+      - "125%-collapsed primary and inspector continuity proof"
+      - "10 x complete browser runs and exact fresh-clone verification on final head"
+      - "Protected verify/browser-qa success, merged PR URL, head SHA, and merge SHA"
+      - "Exact cleanup proof"
+    allowed_files:
+      - "tests/editor-interactions.test.ts"
+      - "tests/e2e/multi-selection-arrangement.spec.ts"
+      - "README.md"
+      - "docs/goals/multi-selection-editing-e2e-qa/**"
+    verify:
+      - "npm run check"
+      - "npm run test:e2e"
+      - "npm audit --omit=dev --audit-level=high"
+      - "git diff --check"
+      - "ten consecutive npm run test:e2e executions on the exact candidate SHA"
+      - "fresh clone plus npm ci --ignore-scripts, npm run check, and npm run test:e2e on the exact candidate"
+      - "protected verify and browser-qa success on the same immutable head SHA"
+      - "exact diagnostics, port, temporary-workspace, fixture, scope, and tree cleanup"
+    stop_if:
+      - "Any E2E requires a direct editor call, live DOM mutation, fixed sleep, or fixed pointer coordinate."
+      - "The disconnected contract requires product behavior changes rather than a pure availability test."
+      - "Saved fidelity cannot be tied to the live post-action transforms without weakening structure assertions."
+      - "Primary or inspector continuity fails as a product defect."
+      - "Any file outside allowed_files must change."
+      - "The candidate changes after repeat/clean-clone evidence or while protected checks run."
+      - "The same unexplained failure remains after two attempts."
+    receipt: null
+
+  - id: T013
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Run the definitive final audit against the merged recovery SHA and prove every original browser-QA oracle requirement with exact-candidate evidence."
+    inputs:
+      - "All prior receipts including T999 rejection"
+      - "T012 exact recovery head, checks, merge, repeatability, clean-clone, and cleanup evidence"
+      - "Current merged source and GoalBuddy board"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject stale pre-remediation proof, incomplete serialization comparisons, weak identity continuity, or missing disconnected-state coverage."
+      - "Require no unfinished required tasks and full_outcome_complete: true before completion."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Requirement-by-requirement oracle evidence map"
+      - "Any missing evidence or exact next task"
     receipt: null
 
 checks:
