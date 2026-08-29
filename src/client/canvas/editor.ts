@@ -1183,6 +1183,7 @@ export class SvgEditor {
   #collectiveTransformGesture?: CollectiveTransformGesture;
   #collectiveTransformRoot?: MatrixCoefficients;
   #collectiveRotationFeedback?: number;
+  readonly #collectiveRotationBySelection = new Map<string, number>();
   #collectiveTransformPointer?: {
     activated: boolean;
     baseRotation: number;
@@ -1257,6 +1258,8 @@ export class SvgEditor {
     this.#deselect();
     this.#drawing = SVG(svg) as Svg;
     this.#history.reset();
+    this.#collectiveRotationFeedback = undefined;
+    this.#collectiveRotationBySelection.clear();
     this.#keyCounter = 0;
     this.#lockedKeys.clear();
     this.#selectedNodes = [];
@@ -1354,7 +1357,13 @@ export class SvgEditor {
     const nextPrimary = primary && unique.includes(primary) ? primary : unique.at(-1);
     const selectionChanged = unique.length !== this.#selectedNodes.length
       || unique.some((node, index) => node !== this.#selectedNodes[index]);
-    if (selectionChanged) this.#collectiveRotationFeedback = undefined;
+    if (selectionChanged) {
+      this.#rememberCollectiveRotation(this.#selectedNodes, this.#collectiveRotationFeedback);
+      const nextKey = this.#collectiveRotationKey(unique);
+      this.#collectiveRotationFeedback = nextKey === undefined
+        ? undefined
+        : this.#collectiveRotationBySelection.get(nextKey);
+    }
     this.#clearHover();
     this.#deselect();
     this.#selectedNodes = unique;
@@ -2519,6 +2528,9 @@ export class SvgEditor {
     if (collectivePointer?.handle === "rotation" && !changed) {
       this.#collectiveRotationFeedback = collectivePointer.rotationFeedback;
     }
+    if (collectivePointer?.handle === "rotation") {
+      this.#rememberCollectiveRotation(this.#selectedNodes, this.#collectiveRotationFeedback);
+    }
     this.#selectionTranslationGesture = undefined;
     this.#selectionTranslationRejected = false;
     this.#translationRootToScreen = undefined;
@@ -2564,6 +2576,7 @@ export class SvgEditor {
     if (restoreSnapshot) {
       this.#restore(this.#interactiveSnapshot);
       this.#collectiveRotationFeedback = rotationFeedback;
+      this.#rememberCollectiveRotation(this.#selectedNodes, rotationFeedback);
       this.#syncSelectionUi();
     }
   }
@@ -3081,6 +3094,7 @@ export class SvgEditor {
       this.#notifySelectionContext();
     }
     this.#collectiveRotationFeedback = context.collectiveRotationFeedback;
+    this.#rememberCollectiveRotation(selectedNodes, context.collectiveRotationFeedback);
     if (selectedNodes.length > 1) this.#syncSelectionUi();
     this.#notifyDocumentChange();
     this.#notifyHistory();
@@ -3358,6 +3372,23 @@ export class SvgEditor {
     rotation.setAttribute("aria-label", `Rotate selected layers. Current adjustment ${this.#collectiveRotationFeedback}°`);
   }
 
+  #collectiveRotationKey(nodes: SVGGraphicsElement[]): string | undefined {
+    if (nodes.length < 2) return undefined;
+    const keys = nodes.map((node) => node.dataset.lineageKey);
+    if (keys.some((key) => !key)) return undefined;
+    return keys.sort().join("\u0000");
+  }
+
+  #rememberCollectiveRotation(
+    nodes: SVGGraphicsElement[],
+    degrees: number | undefined,
+  ): void {
+    const key = this.#collectiveRotationKey(nodes);
+    if (key === undefined) return;
+    if (degrees === undefined) this.#collectiveRotationBySelection.delete(key);
+    else this.#collectiveRotationBySelection.set(key, normalizeRotationDegrees(degrees));
+  }
+
   #bindCollectiveHandle(
     handle: SVGElement,
     name: string,
@@ -3457,6 +3488,7 @@ export class SvgEditor {
       if (!gesture.apply(transform) || !gesture.complete()) return;
       if (handle === "rotation") {
         this.#setCollectiveRotationFeedback((this.#collectiveRotationFeedback ?? 0) + (reverse ? -1 : 1));
+        this.#rememberCollectiveRotation(this.#selectedNodes, this.#collectiveRotationFeedback);
       }
       const metadata = handle === "rotation" ? "data-lineage-rotation" : "data-lineage-scale";
       this.#selectedNodes.forEach((node) => node.removeAttribute(metadata));
@@ -3499,6 +3531,7 @@ export class SvgEditor {
       const box = active.union;
       const overlayToRoot = collectiveRotationMatrix(0, 0, active.baseRotation);
       let transform: MatrixCoefficients;
+      let liveOverlayRotation = active.baseRotation;
       if (active.handle === "rotation") {
         const pivot = transformPoint(
           overlayToRoot,
@@ -3510,6 +3543,7 @@ export class SvgEditor {
         const degrees = Math.round((currentAngle - startAngle) * 180 / Math.PI);
         transform = collectiveRotationMatrix(pivot.x, pivot.y, degrees);
         const feedback = normalizeRotationDegrees((active.rotationFeedback ?? 0) + degrees);
+        liveOverlayRotation = feedback;
         this.#setCollectiveRotationFeedback(feedback);
         this.#callbacks.onStatus(`Rotation ${feedback}° for ${this.#selectedNodes.length} selected layers`);
       } else {
@@ -3536,6 +3570,18 @@ export class SvgEditor {
         "transform",
         formatMatrix(multiplyMatrices(transform, overlayToRoot)),
       );
+      if (active.handle === "rotation") {
+        const readout = root.querySelector<SVGGElement>("[data-lineage-collective-angle]");
+        const background = readout?.querySelector<SVGRectElement>("rect");
+        if (readout && background) {
+          const readoutX = Number(background.getAttribute("x")) + Number(background.getAttribute("width")) / 2;
+          const readoutY = Number(background.getAttribute("y")) + Number(background.getAttribute("height")) / 2;
+          readout.setAttribute(
+            "transform",
+            formatMatrix(collectiveRotationMatrix(readoutX, readoutY, -liveOverlayRotation)),
+          );
+        }
+      }
       root.querySelector(SELECTION_HALOS_SELECTOR)?.setAttribute("transform", formatMatrix(transform));
       event.preventDefault();
     } catch (error) {

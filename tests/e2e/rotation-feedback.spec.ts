@@ -92,6 +92,13 @@ test("Seatify constellation shows and preserves an arbitrary collective rotation
   await page.mouse.move(end.x, end.y, { steps: 12 });
   await expect(page.locator("[data-lineage-collective-angle]")).toHaveAttribute("data-lineage-collective-angle", "27");
   await expect(page.locator("[data-lineage-collective-angle] text")).toHaveText("Δ +27°");
+  const liveReadoutMatrix = await page.locator("[data-lineage-collective-angle]").evaluate((readout) => {
+    const matrix = (readout as SVGGElement).getScreenCTM();
+    if (!matrix) throw new Error("The live angle readout matrix is unavailable.");
+    return { b: matrix.b, c: matrix.c };
+  });
+  expect(Math.abs(liveReadoutMatrix.b)).toBeLessThan(0.001);
+  expect(Math.abs(liveReadoutMatrix.c)).toBeLessThan(0.001);
   await expect(page.locator("#status")).toHaveText(`Rotation 27° for ${constellationLabels.length} selected layers`);
   await page.mouse.up();
 
@@ -104,6 +111,13 @@ test("Seatify constellation shows and preserves an arbitrary collective rotation
     .toHaveAttribute("aria-label", "Rotate selected layers. Current adjustment 27°");
   const committedEdge = await collectiveTopEdge(page);
   expect(Math.abs(committedEdge.end.y - committedEdge.start.y)).toBeGreaterThan(5);
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator("[data-lineage-collective-transform]")).toHaveCount(0);
+  await selectConstellationObjects(page);
+  await expect(page.locator("[data-lineage-collective-angle]")).toHaveAttribute("data-lineage-collective-angle", "27");
+  const reselectedEdge = await collectiveTopEdge(page);
+  expect(Math.abs(reselectedEdge.end.y - reselectedEdge.start.y)).toBeGreaterThan(5);
 
   await page.getByRole("button", { name: "Undo" }).click();
   expect(await transforms(page)).toEqual(before);
