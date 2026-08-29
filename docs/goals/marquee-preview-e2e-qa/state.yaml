@@ -8,7 +8,7 @@ goal:
   slug: "marquee-preview-e2e-qa"
   kind: existing_plan
   tranche: "Turn the agreed marquee-preview QA design into deterministic repo-owned Chromium automation and a required CI proof without changing product behavior beyond testability seams."
-  status: active
+  status: done
   oracle:
     signal: "A clean-checkout Playwright run uses real left-Control and pointer input on the complex Seatify fixture to prove live preview entry/exit, preview-to-commit parity, additive and canceled gestures, both hit modes, layout variants, and zero document/history mutation before commit."
     cadence: "after each Worker package and at final audit"
@@ -69,7 +69,7 @@ visual_board:
     url: "http://goalbuddy.localhost:41737/marquee-preview-e2e-qa/"
     command: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.4.3/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/marquee-preview-e2e-qa"
 
-active_task: T005
+active_task: null
 
 tasks:
   - id: T001
@@ -425,7 +425,7 @@ tasks:
   - id: T005
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Materialize the exact candidate on one reviewable branch and pull request, obtain GitHub Actions results for that exact revision, and make only bounded CI/harness corrections if required until both verify and browser-qa are green."
     inputs:
@@ -471,12 +471,38 @@ tasks:
       - "Either fast verify or dependency audit would be weakened."
       - "The candidate head changes while checks run."
       - "The same CI failure remains unexplained after two attempts."
-    receipt: null
-
+    receipt:
+      result: done
+      changed_files:
+        - tests/e2e/marquee-preview.spec.ts
+      commands:
+        - cmd: "git switch -c goal/marquee-preview-e2e-qa"
+          status: pass
+        - cmd: "git diff --check; npm run check; npm run test:e2e; npm audit --omit=dev --audit-level=high"
+          status: pass
+        - cmd: "Product-source/test SHA-256 comparison against 03f78cb626712568e98c0c2c690cfc211344a789afe0a447e124c328a83e9e30"
+          status: pass
+        - cmd: "Commit exact candidate and push goal/marquee-preview-e2e-qa"
+          status: pass
+        - cmd: "Open PR https://github.com/lineagehq/lineage-logo/pull/13"
+          status: pass
+        - cmd: "Inspect failed-run log and browser-qa-diagnostics artifact for Actions run 33254335091"
+          status: pass
+        - cmd: "Commit bounded cross-platform Escape harness correction and push"
+          status: pass
+        - cmd: "GitHub Actions https://github.com/lineagehq/lineage-logo/actions/runs/33254480244: verify=SUCCESS and browser-qa=SUCCESS on head 7a1f2f3cd60459809b9d6a66976ec1775e25f3bd"
+          status: pass
+        - cmd: "PM independent SHA/cleanup audit: local, remote, PR, and CI head match; tree clean; product fingerprint preserved; ports and diagnostics absent"
+          status: pass
+      summary: "Created PR #13. Initial Linux CI exposed only a platform difference in whether a canceled pointer gesture emits a DOM click; diagnostics confirmed the stronger behavioral oracle remained correct. One authorized harness correction removed that event-presence assertion while retaining restored selection, inspector, document, history, controls, and marquee-state checks. Final head 7a1f2f3cd60459809b9d6a66976ec1775e25f3bd passed verify and browser-qa on run 33254480244. Product fingerprint remains unchanged, merge state is clean, the tree is clean, and diagnostics/listeners/workspaces are absent."
+      deviations: []
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
   - id: T006
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Run the fresh final audit using the exact remote head SHA and green verify/browser-qa GitHub Actions results."
     inputs:
@@ -492,8 +518,35 @@ tasks:
       - "full_outcome_complete: true | false"
       - "Exact remote CI evidence map"
       - "Remaining defects or explicit clean result"
-    receipt: null
-
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      rationale: "Complete. The exact local, remote, PR, and Actions head is 7a1f2f3cd60459809b9d6a66976ec1775e25f3bd, with verify and browser-qa successful on the same immutable revision. The initial Linux failure was a platform-specific DOM click-emission assertion; the bounded one-line remediation preserved the stronger behavior-level Escape restoration oracle. All T999 gates remain satisfied: real input, exact identity parity, six scenarios, non-mutation, geometry-derived timing-free input, visual/CSS proof, 60/60 repeat stability, failure-only diagnostics, cleanup, CI enforcement, and the unchanged product fingerprint. No required task remains."
+      worker_package: null
+      evidence:
+        - "PR #13 is open and merge-clean at head 7a1f2f3cd60459809b9d6a66976ec1775e25f3bd; local HEAD and origin/goal/marquee-preview-e2e-qa resolve to the same SHA."
+        - "GitHub Actions run https://github.com/lineagehq/lineage-logo/actions/runs/33254480244 completed successfully on that SHA: verify=SUCCESS and browser-qa=SUCCESS; browser-qa passed six Chromium scenarios on ubuntu-latest."
+        - "Initial run 33254335091 failed only because Linux emitted a DOM click after canceled pointer input; its failure artifact contains screenshot, trace, and error context. Commit 7a1f2f3 removed only that event-presence assertion, and the green run retained no artifact."
+        - "The Escape test still proves Escape receipt, pointerup, overlay/preview/ready-state clearing, exact prior Layers restoration, exact inspector restoration, unchanged authored SVG, and unchanged edit-control state."
+        - "ControlLeft is held through real Playwright mouse movement and pointerup; pointer capture, ctrlKey, and additive Shift are verified without editor-method calls."
+        - "Pointer coordinates derive from live labeled-object and stage geometry; the suite contains no fixed sleeps or hard-coded viewport pointer pixels."
+        - "Preview halos map one-to-one to live labeled SVG identities and compare exactly with aria-pressed Layers identities after commit."
+        - "The six scenarios cover live entry/exit and parity, Shift-additive behavior, Escape cancellation, contain/touch preferences, 125% zoom, and collapsed sidebars."
+        - "Authored SVG, edit controls, and inspector state prove non-mutation; the fixture is copied byte-exactly into a validated temporary workspace."
+        - "The focused visual baseline passed Linux Chromium and is guarded by computed purple stroke, hidden transform handles, and absence of hover styling."
+        - "Ten complete repetitions passed 60/60 in 37.2 seconds without retries."
+        - "Failure diagnostics retain only on failure; green removes test-results. No diagnostics, dedicated-port listeners, or marquee QA temporary workspace remain."
+        - "The product-source/test diff fingerprint recomputes to 03f78cb626712568e98c0c2c690cfc211344a789afe0a447e124c328a83e9e30."
+        - "T001 through T005 are done and T006 is the final audit; no required task remains."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence: []
+      required_board_updates:
+        - "Set T006 status to done and record this complete receipt."
+        - "Set goal.status to completed."
+        - "Set active_task to null."
 checks:
   dirty_fingerprint: "product-diff-sha256:94290d474bcf6d43b0c47ab48fa84da7fd04a5b1255217470e622eec59298e64; preserve current uncommitted marquee-preview feature and exclude this goal folder from comparison"
   last_verification:
