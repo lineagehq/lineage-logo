@@ -1730,6 +1730,7 @@ function applyStageGesture(transition: StageGestureTransition<SVGGraphicsElement
     case "marquee-active":
       stage.classList.add("marquee-active");
       renderMarqueeOverlay(transition.rect);
+      editor.previewMarquee(transition.rect, transition.additive);
       return true;
     case "marquee-commit":
       if (marqueeActivation.held) editor.commitMarquee(transition.rect, transition.additive);

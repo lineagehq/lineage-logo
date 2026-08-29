@@ -118,12 +118,39 @@ npm install
 npm run dev -- --workspace /absolute/path/to/logos
 ```
 
-Open the editor address printed by the launcher (normally
-`http://127.0.0.1:5173`). The workspace must be supplied explicitly and is the
+Open the editor address printed by the launcher through a descriptive local
+hostname (for example, `http://lineage-logo.localhost:5173`). The workspace must be supplied explicitly and is the
 only location the local server can read. The launcher uses port 4173 for the
 local API when available and automatically selects the next available API or
 editor port when either default is occupied. Pass `--port 4273` to request a
 different starting API port.
+
+Run the focused Chromium marquee QA with:
+
+```bash
+npx playwright install chromium # once per machine
+npm run test:e2e -- --grep 'live marquee preview'
+```
+
+The command reserves dedicated strict ports, opens
+`http://marquee-qa.localhost:43118`, and copies the complex Seatify fixture
+byte-for-byte into a validated `mkdtemp` workspace. It removes that exact
+workspace and both child-process groups when Playwright stops. Successful runs
+retain no trace or screenshot; failures retain both under `test-results/`.
+The Chromium suite covers live preview entry/exit and exact Layers parity,
+Shift-additive and Escape cancellation behavior, contain/touch preferences,
+125% zoom, collapsed sidebars, visual affordance styling, and document/history
+non-mutation. CI runs it as a separate `browser-qa` job and uploads
+`test-results/` only when that job fails.
+
+To inspect the failure-only diagnostics locally without changing tracked files,
+run the supported intentional diagnostic mode, inspect the generated screenshot
+and trace, then rerun the ordinary green command to clear them:
+
+```bash
+LINEAGE_LOGO_E2E_FORCE_FAILURE=1 npm run test:e2e -- --grep 'live marquee preview'
+npm run test:e2e
+```
 
 Hover the canvas to preview exactly which layer a normal click will select.
 Use `Edit inside` to make a selected group the active scope, `Back to group` to
@@ -142,7 +169,9 @@ its corresponding layer. Use Search layers to filter larger documents by SVG
 element type or layer name.
 Shift-click adjacent siblings in the canvas or Layers panel to build a selection
 for grouping or block reordering; the most recently selected layer is primary
-and drives the inspector. Drag any selected object or use Arrow/Shift+Arrow to
+and drives the inspector. While region-selecting, matching objects preview with
+the same purple selection halos before the gesture is committed. Drag any
+selected object or use Arrow/Shift+Arrow to
 move the entire selection by one shared visual SVG delta, including selections
 that span transformed parents. A locked, hidden, disconnected, or Agent-blocked
 member prevents the whole move instead of allowing a partial edit. Resize and

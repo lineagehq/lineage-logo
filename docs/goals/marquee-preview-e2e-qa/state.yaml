@@ -1,0 +1,505 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Marquee Preview Browser QA Automation"
+  slug: "marquee-preview-e2e-qa"
+  kind: existing_plan
+  tranche: "Turn the agreed marquee-preview QA design into deterministic repo-owned Chromium automation and a required CI proof without changing product behavior beyond testability seams."
+  status: active
+  oracle:
+    signal: "A clean-checkout Playwright run uses real left-Control and pointer input on the complex Seatify fixture to prove live preview entry/exit, preview-to-commit parity, additive and canceled gestures, both hit modes, layout variants, and zero document/history mutation before commit."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Green unit/build checks, green browser QA including ten repeated runs, a green dedicated CI job, failure-only diagnostics, and a final Judge receipt with full_outcome_complete: true."
+  intake:
+    original_request: "Plan implementation of automated marquee-preview QA using GoalBuddy Prep."
+    interpreted_outcome: "The repository owns reliable browser automation that proves the marquee preview behaves exactly like the final selection under real keyboard and pointer input."
+    input_shape: existing_plan
+    audience: "Lineage Logo maintainers and users relying on marquee selection"
+    authority: requested
+    proof_type: test
+    completion_proof: "The complete browser scenario matrix passes repeatedly and in CI without repository mutation or timing flakes."
+    likely_misfire: "Produce method-level tests or screenshot-only coverage that never holds physical ControlLeft through a real pointer drag, or add a flaky browser suite that appears green while preview and commit can diverge."
+    blind_spots_considered:
+      - "Deterministic dev-server ports, descriptive .localhost origin, readiness, shutdown, and exact temporary-workspace cleanup."
+      - "Stable geometry-derived input rather than hard-coded pixels or sleep-based timing."
+      - "Transient preview identity, Layers parity, hit-mode preferences, zoom, collapsed sidebars, pointer capture, and Escape cancellation."
+      - "No dirty state, history checkpoint, Save/Reset enablement, inspector churn, or serialized SVG mutation during preview."
+      - "Failure-only traces/screenshots, CI browser dependencies, runtime budget, repeat-run flake proof, and clean-checkout reproducibility."
+    existing_plan_facts:
+      - "Use Playwright with Chromium only for the MVP."
+      - "Run against the existing complex Seatify fixture through a temporary workspace."
+      - "Use real left-Control keyboard state and real pointer movement."
+      - "Prefer DOM/state assertions; use one focused visual assertion only as secondary proof."
+      - "Cover live entry/exit, commit parity, Shift additive, Escape, contain/touch, zoom, collapsed sidebars, and non-mutation."
+      - "Keep the existing fast check and add a separate browser QA CI job."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  exact_human_approval_can_terminal_wait: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/marquee-preview-e2e-qa/"
+    command: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.4.3/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/marquee-preview-e2e-qa"
+
+active_task: T005
+
+tasks:
+  - id: T001
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the agreed Playwright automation plan against repository reality and authorize the largest safe first vertical slice."
+    inputs:
+      - "Current dirty marquee-preview diff"
+      - "Existing QA plan in goal.md"
+      - "Repository test, dev-server, fixture, and CI seams"
+    constraints:
+      - "Read-only; do not implement."
+      - "Preserve the current uncommitted marquee-preview feature."
+    expected_output:
+      - "approve | revise | block"
+      - "Exact first Worker objective"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+      - "Deferred scope and explicit testability-seam decision"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "Approved. Repository seams support one useful first vertical slice without changing marquee behavior: Playwright can start isolated Vite/API children, navigate through a descriptive .localhost origin, copy the existing labeled Seatify fixture into an exact temporary workspace, hold ControlLeft through real mouse movement, and assert preview entry/exit plus commit parity. The existing transient preview marker and geometry-to-accessible-label mapping are sufficient; no additional product testability seam is authorized. The recorded dirty fingerprint matches exactly and must remain invariant outside the authorized harness files."
+      evidence:
+        - "The current product diff SHA-256 is 94290d474bcf6d43b0c47ab48fa84da7fd04a5b1255217470e622eec59298e64, exactly matching checks.dirty_fingerprint in state.yaml."
+        - "The dirty work is limited to README.md, marquee/editor/client styling and tests, plus the untracked goal folder; no Playwright harness exists yet."
+        - "src/client/main.ts:1589-1799 routes physical ControlLeft, pointer capture, live editor.previewMarquee calls, commit, cancellation, and marquee cleanup through the real UI event path."
+        - "src/client/canvas/editor.ts:1538-1610 shares one matcher between preview and commit, exposes transient data-lineage-marquee-preview markers, preserves selection during preview, and restores the prior selection on cancellation."
+        - "src/client/canvas/editor.ts serialization already excludes data-lineage-* attributes, so transient preview markers do not require a new production seam."
+        - "tests/fixtures/workspace/concepts/complex-seatify.svg contains 42 uniquely aria-labeled selectable elements and transformed nested geometry suitable for live bounding-box-derived pointer input."
+        - "src/server/index.ts accepts an explicit --workspace, exposes /api/workspace readiness, and binds only to 127.0.0.1; a descriptive *.localhost URL can resolve to that listener."
+        - "scripts/dev.ts already supervises detached Vite/API child process groups and forwards --workspace, but its default port discovery is nondeterministic; an opt-in deterministic test path is safely bounded within scripts/dev.ts or scripts/e2e-server.ts."
+        - ".github/workflows/ci.yml currently has only the fast verify job, so CI expansion correctly remains deferred to T003."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "Do not run another write Worker in parallel. T002 owns shared package, startup, configuration, documentation, and test-harness files, and must preserve an existing uncommitted product diff."
+      blocked_tasks: []
+      missing_evidence:
+        - "No repository-owned Playwright command or browser dependency exists yet."
+        - "No real-input live preview entry/exit or preview-to-commit parity browser proof exists yet."
+        - "The remaining scenario matrix, ten-repeat stability, cleanup transcript, diagnostics, and CI enforcement remain unproven."
+      required_board_updates:
+        - "Mark T001 done with decision approved and activate T002 as the sole write task."
+        - "T002 objective: Deliver one deterministic isolated Chromium vertical slice that copies the complex Seatify fixture into a validated temporary workspace, starts the editor at a descriptive marquee-qa.localhost origin, holds real ControlLeft while driving real pointer movement, proves live preview entry and exit before release, and proves the committed exact layer set equals the last previewed set."
+        - "T002 allowed_files: package.json; package-lock.json; playwright.config.ts; scripts/dev.ts; scripts/e2e-server.ts; tests/e2e/**; .gitignore; README.md."
+        - "T002 verify: npm run typecheck; npm test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/complex-seatify-fixture.test.ts; npm run test:e2e -- --grep 'live marquee preview'; npm run check; git diff --check; recompute the product diff fingerprint excluding the goal folder and require 94290d474bcf6d43b0c47ab48fa84da7fd04a5b1255217470e622eec59298e64 outside authorized files."
+        - "T002 stop_if: any product file outside allowed_files is required; actual ControlLeft cannot remain held through pointer capture; exact preview identity cannot be mapped reliably from transient halos plus live labeled-object geometry; startup requires raw localhost/127 navigation; the harness writes into checked-in fixtures; cleanup cannot validate the exact mkdtemp-created path or leaves child processes; fixed sleeps or hard-coded viewport coordinates become necessary; the preserved dirty diff changes outside authorized files; or the same verification failure remains unexplained after two attempts."
+        - "Testability-seam decision: authorize no new product seam. Use data-lineage-marquee-preview, live SVG and halo bounding boxes, unique aria-labels, selected Layers aria-pressed state, and disabled history/save/reset controls. Return to Judge before editing src/client/** if exact identity cannot be proven reliably."
+        - "Deterministic-startup boundary: scripts/dev.ts may receive only an opt-in explicit client-port/strict-port path needed by e2e; preserve ordinary developer defaults. Alternatively, scripts/e2e-server.ts may supervise Vite and API directly. Either approach must fail clearly on occupied dedicated ports and terminate both process groups on success, failure, SIGINT, SIGTERM, and Playwright shutdown."
+        - "Defer to T003: additive selection, Escape successor suppression, contain/touch preference UI, 125% zoom, both collapsed sidebars, complete non-mutation matrix, focused visual/computed-style affordance proof, dedicated CI job, and failure-only artifact upload."
+        - "Defer to T004/T999: ten consecutive repetitions, clean-checkout and cleanup oracle, intentional failure-diagnostic inspection, CI result evidence, and final completion judgment."
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Deliver the first working vertical slice: deterministic isolated Playwright startup plus a real left-Control/pointer test proving live preview entry, exit, and preview-to-commit parity on the complex Seatify fixture."
+    inputs:
+      - "T001 Judge receipt and authorized contract"
+      - "tests/fixtures/workspace/concepts/complex-seatify.svg"
+      - "Current marquee-preview product diff"
+      - "Repository local URL rule"
+    constraints:
+      - "Preserve the current product diff; do not edit marquee behavior unless T001 explicitly authorizes a minimal testability seam."
+      - "Use a temporary fixture workspace and deterministic descriptive .localhost URL."
+      - "Use Chromium keyboard and mouse APIs, not editor method calls."
+      - "Derive pointer coordinates from live labeled-object geometry and use Playwright auto-waiting instead of fixed sleeps."
+      - "Keep startup, shutdown, and cleanup safe under success, failure, SIGINT, and Playwright termination."
+      - "Produce failure-only trace and screenshot diagnostics."
+    expected_output:
+      - "One-command local browser QA"
+      - "Isolated server/workspace lifecycle"
+      - "Real-input live entry/exit and commit-parity proof"
+      - "Focused harness documentation"
+    allowed_files:
+      - "package.json"
+      - "package-lock.json"
+      - "playwright.config.ts"
+      - "scripts/dev.ts"
+      - "scripts/e2e-server.ts"
+      - "tests/e2e/**"
+      - ".gitignore"
+      - "README.md"
+    verify:
+      - "npm run typecheck"
+      - "npm test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/complex-seatify-fixture.test.ts"
+      - "npm run test:e2e -- --grep 'live marquee preview'"
+      - "npm run check"
+      - "git diff --check"
+    stop_if:
+      - "The Judge contract requires files outside allowed_files."
+      - "A browser test cannot hold the actual left-Control activation path through pointer capture."
+      - "The harness would write into checked-in fixtures or cannot prove exact temporary-workspace cleanup."
+      - "Reliable assertions require product behavior changes not explicitly authorized by T001."
+      - "The existing marquee-preview dirty fingerprint changes outside the authorized Worker scope."
+      - "The same verification failure remains unexplained after two attempts."
+    receipt:
+      result: done
+      changed_files:
+        - .gitignore
+        - README.md
+        - package-lock.json
+        - package.json
+        - playwright.config.ts
+        - scripts/e2e-server.ts
+        - tests/e2e/marquee-preview.spec.ts
+      commands:
+        - cmd: "npm install --save-dev @playwright/test"
+          status: pass
+        - cmd: "npx playwright install chromium"
+          status: pass
+        - cmd: "Initial browser-attempt diagnostic and exact failed-run workspace/process cleanup were inspected before the verified rerun"
+          status: pass
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npm test -- --run tests/client-ux.test.ts tests/editor-interactions.test.ts tests/complex-seatify-fixture.test.ts (3 files, 96 tests)"
+          status: pass
+        - cmd: "npm run test:e2e -- --grep 'live marquee preview' (1 Chromium test)"
+          status: pass
+        - cmd: "npm run check (20 files, 400 tests, production build)"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "PM cleanup check: ports 43117 and 43118 clear; no residual process or temporary workspace; no retained trace or screenshot"
+          status: pass
+        - cmd: "Preserved product diff check: outside-authorized SHA-256 03f78cb626712568e98c0c2c690cfc211344a789afe0a447e124c328a83e9e30 before and after"
+          status: pass
+      summary: "Delivered and independently verified the isolated Chromium vertical slice with strict dedicated ports, marquee-qa.localhost, byte-exact mkdtemp fixture copying, bounded process-group teardown, real held ControlLeft/pointer input, live preview entry/exit, geometry-mapped identity, and exact Layers commit parity. One initial harness failure exposed probe-window and teardown issues; the second attempt resolved both. Browser, focused, full test/build, diff, port, cleanup, and preserved-product-diff checks are green."
+      deviations: []
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Complete the browser QA scenario matrix, one focused visual affordance check, documentation, and a separate failure-diagnostic CI job while preserving the fast existing verification gate."
+    inputs:
+      - "T001 Judge contract"
+      - "T002 receipt and working harness"
+      - "Full scenario contract in goal.md"
+      - "Existing CI workflow"
+    constraints:
+      - "Cover additive selection, Escape cancellation, contain/touch preferences, 125% zoom, both collapsed sidebars, and all non-mutation invariants."
+      - "Assert behavior primarily through accessible labels, transient preview markers, Layers state, controls, and document/history state."
+      - "Keep visual comparison narrowly cropped and omit it if two clean local runs prove it platform-unstable; record the replacement CSS/DOM proof."
+      - "Use Chromium only and do not broaden into save, Firefox, WebKit, or unrelated canvas workflows."
+      - "Keep browser QA in a separate CI job and upload diagnostics only on failure."
+      - "Do not reduce or bypass the existing npm run check or dependency audit."
+    expected_output:
+      - "Complete browser scenario suite"
+      - "Stable focused visual or equivalent computed-style proof"
+      - "Dedicated CI/e2e gate"
+      - "Failure-only artifacts"
+      - "Updated local and CI usage documentation"
+    allowed_files:
+      - "package.json"
+      - "package-lock.json"
+      - "playwright.config.ts"
+      - "scripts/dev.ts"
+      - "scripts/e2e-server.ts"
+      - "tests/e2e/**"
+      - ".github/workflows/ci.yml"
+      - ".gitignore"
+      - "README.md"
+    verify:
+      - "npm run test:e2e"
+      - "npm run check"
+      - "npm audit --omit=dev --audit-level=high"
+      - "git diff --check"
+      - "Verify Playwright artifacts are absent after a green run and retained only for an intentionally observed failure path."
+    stop_if:
+      - "Any required scenario can pass without exercising real browser input."
+      - "Assertions require hard-coded viewport coordinates or fixed timing sleeps."
+      - "The visual check is platform-unstable and no equivalent DOM/computed-style proof exists."
+      - "CI requires weakening an existing security, test, or build gate."
+      - "Files outside allowed_files are required."
+      - "The same verification failure remains unexplained after two attempts."
+    receipt:
+      result: done
+      changed_files:
+        - .github/workflows/ci.yml
+        - README.md
+        - playwright.config.ts
+        - tests/e2e/failure-only-reporter.ts
+        - tests/e2e/marquee-preview.spec.ts
+        - tests/e2e/marquee-preview.spec.ts-snapshots/additive-preview-halos-chromium.png
+      commands:
+        - cmd: "npm run test:e2e (6 real-input Chromium scenarios)"
+          status: pass
+        - cmd: "npm run check (20 files, 400 tests, production build)"
+          status: pass
+        - cmd: "npm audit --omit=dev --audit-level=high (0 vulnerabilities)"
+          status: pass
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "Intentional supported failure retained error context, screenshot, and trace"
+          status: pass
+        - cmd: "Green artifact inspection: test-results absent after reporter onExit"
+          status: pass
+        - cmd: "Cleanup inspection: ports 43117/43118 clear and residual mkdtemp workspaces absent"
+          status: pass
+        - cmd: "Outside-authorized product diff SHA-256 remained 03f78cb626712568e98c0c2c690cfc211344a789afe0a447e124c328a83e9e30"
+          status: pass
+        - cmd: "PM independent npm run test:e2e rerun (6 passed in 6.1s)"
+          status: pass
+        - cmd: "PM independent visual/DOM audit: 40x58 baseline, purple computed stroke, hidden transform handles, no hover marker"
+          status: pass
+      summary: "Completed and independently verified the six-scenario real-input Chromium matrix: additive entry/exit, Escape restoration and successor suppression, contain/touch UI paths, 125% zoom, collapsed sidebars, exact Layers parity, and document/history/save/reset/inspector non-mutation. Added a stable 40x58 visual baseline with computed-style guards, a dedicated CI browser job, and failure-only uploads/cleanup. Final browser, full repository, audit, diff, artifact, port, workspace, visual, and preserved-product checks are green."
+      deviations: []
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T004
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Run the final repeatability, cleanup, and clean-checkout oracle, including ten consecutive browser repetitions and inspection of failure diagnostics."
+    inputs:
+      - "T002 and T003 receipts"
+      - "Complete browser QA suite"
+      - "Goal oracle"
+      - "Recorded pre-goal product dirty fingerprint"
+    constraints:
+      - "Do not implement feature or harness changes in this task; record defects as follow-up Worker candidates."
+      - "Run from the descriptive .localhost surface through the same command developers and CI use."
+      - "Confirm the checked-in fixture, repository state, ports, child processes, and temporary workspace return to their expected baseline."
+      - "Intentionally observe one safe failing assertion or supported diagnostic mode only if it can be done without changing tracked files; verify trace/report usefulness, then restore green state."
+    expected_output:
+      - "Ten-repeat transcript and timing"
+      - "Clean repository/workspace/process receipt"
+      - "CI-equivalent command results"
+      - "Failure-diagnostic inspection receipt"
+      - "Concrete defect list or explicit clean result"
+    receipt:
+      result: done
+      summary: "The final oracle is locally clean. Ten consecutive full-matrix repetitions passed (60/60, 37.2s) without retries. The supported intentional failure retained a useful screenshot, trace, error context, DOM snapshot, and network/timeline data; the next green run removed all diagnostics. A fresh isolated clone with only candidate changes passed npm ci, six browser scenarios, 400 tests/build, and audit, then released ports and was moved to Trash. Fixture bytes, existing product fingerprint, repository diff, listeners, temporary workspaces, and green artifacts match baseline."
+      evidence:
+        - "npm run test:e2e -- --repeat-each=10: 60 passed in 37.2 seconds, ten complete six-scenario repetitions, one worker, no retries."
+        - "Intentional LINEAGE_LOGO_E2E_FORCE_FAILURE=1 run retained error-context.md (36 KB), screenshot (124 KB), and trace.zip (1.4 MB / 42 entries including DOM frames, network, stacks, and source)."
+        - "Subsequent green live-preview run passed and custom reporter removed test-results entirely."
+        - "Fresh /tmp clone from repository HEAD with candidate files overlaid passed npm ci, npm run test:e2e (6/6), npm run check (20 files/400 tests/build), and npm audit (0 vulnerabilities)."
+        - "Fresh-clone ports 43117/43118 were clear, test-results was absent, and the exact temporary clone left /tmp via recoverable Trash."
+        - "Checked-in complex Seatify fixture is unmodified and SHA-256 is c374e51fee2094d46a3cb44bc308062a1dde4d94cc31ee46d6e892188e80f0f8."
+        - "Pre-existing product-only diff SHA-256 remains 03f78cb626712568e98c0c2c690cfc211344a789afe0a447e124c328a83e9e30."
+        - "Final git diff --check passed; no QA temporary-workspace residue, no test-results, and no listeners on dedicated ports."
+      facts:
+        - "The candidate config defines a separate browser-qa GitHub Actions job using Chromium and uploads test-results only on failure."
+        - "The existing verify job remains unchanged and retains typecheck, unit tests, build, and production dependency audit."
+        - "The work remains uncommitted in the user's working tree, so no remote GitHub Actions run exists yet; the equivalent clean-clone commands passed locally."
+        - "The isolated verification clone was moved to macOS Trash rather than irreversibly deleted and is absent from /tmp."
+      contradictions: []
+      ambiguity_requiring_judge:
+        - "Judge should explicitly decide whether the green isolated clean-clone execution plus configured dedicated CI job satisfies the implementation goal before a later PR supplies the first remote GitHub Actions run."
+      commands:
+        - cmd: "time npm run test:e2e -- --repeat-each=10 (60 passed, 37.2s)"
+          status: pass
+        - cmd: "Supported intentional failure-diagnostic run and retained-artifact inspection"
+          status: pass
+        - cmd: "npm run test:e2e -- --grep 'live marquee preview' followed by artifact-absence check"
+          status: pass
+        - cmd: "Fresh isolated clone: npm ci; npm run test:e2e; npm run check; npm audit --omit=dev --audit-level=high"
+          status: pass
+        - cmd: "Fixture diff/hash, product fingerprint, git diff --check, port, process, temp-workspace, and artifact baseline checks"
+          status: pass
+      note_needed: false
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit whether the browser automation fully proves the original marquee-preview QA outcome without flaky, indirect, mutating, or scope-expanded shortcuts."
+    inputs:
+      - "All completed task receipts"
+      - "T004 repeatability and cleanup transcript"
+      - "Last unit/build/browser/CI verification"
+      - "Current diff and original dirty fingerprint"
+      - "Goal oracle and non-goals"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject completion if any required Worker is queued, active, blocked, or lacks verification."
+      - "Reject direct editor calls, screenshot-only proof, fixed sleeps, hard-coded pointer pixels, fixture mutation, stale processes, or preview/commit count-only claims that cannot identify Layers parity."
+      - "Reject completion without real left-Control pointer input, full scenario coverage, ten-repeat stability, CI enforcement, failure diagnostics, and cleanup proof."
+      - "Reject scope expansion into unrelated browsers or canvas workflows as a substitute for missing MVP proof."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Oracle evidence map"
+      - "Missing evidence or remaining defects"
+      - "Next task if not complete"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      rationale: "Not complete. The candidate satisfies every local behavioral, repeatability, diagnostics, mutation, and cleanup gate, but the charter explicitly requires a green dedicated CI job. The isolated clean clone is strong local evidence, not equivalent to GitHub Actions: it did not exercise ubuntu-latest, Playwright system-dependency installation, workflow/action syntax, artifact upload behavior, or the macOS-authored visual baseline under Linux Chromium. Because the work is still uncommitted, browser-qa is configured but not yet enforced and has never run remotely. Completion must wait for both verify and browser-qa to pass on the exact candidate revision."
+      worker_package:
+        objective: "Materialize the exact candidate on one reviewable branch/PR, obtain GitHub Actions results for that exact revision, make only bounded CI/harness corrections if required, and prove both verify and browser-qa green on the same head SHA."
+        allowed_files:
+          - .github/workflows/ci.yml
+          - package.json
+          - package-lock.json
+          - playwright.config.ts
+          - scripts/e2e-server.ts
+          - "tests/e2e/**"
+          - README.md
+          - .gitignore
+        verify:
+          - "git diff --check"
+          - "npm run check"
+          - "npm run test:e2e"
+          - "npm audit --omit=dev --audit-level=high"
+          - "preserve product-source/test SHA-256 03f78cb626712568e98c0c2c690cfc211344a789afe0a447e124c328a83e9e30"
+          - "push one exact candidate revision"
+          - "require verify=SUCCESS and browser-qa=SUCCESS for the same head SHA"
+          - "confirm no local diagnostics, listeners, or QA temp workspace remain"
+        stop_if:
+          - "branch/PR creation or remote push lacks user authority"
+          - "GitHub credentials or repository permissions are unavailable"
+          - "CI failure requires edits outside allowed_files or any marquee product behavior change"
+          - "Linux visual baseline fails twice without a stable DOM/computed-style alternative"
+          - "an existing gate would be weakened"
+          - "candidate head changes while checks run"
+          - "the same CI failure remains unexplained after two attempts"
+      evidence:
+        - "Real ControlLeft and pointer input, pointer capture, geometry-derived coordinates, and ctrlKey through pointerup are proven."
+        - "Transient halo identities are mapped to labeled SVG objects and compared exactly with aria-pressed Layers identities."
+        - "Six scenarios cover live entry/exit, parity, Shift-additive, Escape/successor suppression, contain/touch, 125% zoom, and collapsed sidebars."
+        - "Authored SVG, history/edit controls, and inspector state prove preview non-mutation."
+        - "The focused 40x58 snapshot is backed by computed purple stroke, hidden transform handles, and no hover marker."
+        - "Ten complete repetitions passed 60/60 in 37.2 seconds with no retries."
+        - "Intentional failure diagnostics retained screenshot, trace, error context, DOM, network, stacks, and source; the next green run removed test-results."
+        - "Fixture, ports, process groups, temporary workspace, and product fingerprint returned to baseline."
+        - "A separate browser-qa job is configured without weakening verify, but no remote GitHub Actions result exists for this uncommitted candidate."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "The next package must validate one exact pushed candidate revision; parallel edits would invalidate CI evidence."
+      blocked_tasks: []
+      missing_evidence:
+        - "A GitHub Actions run on the exact candidate revision with verify and browser-qa both successful."
+        - "Linux Chromium confirmation that the focused visual baseline is stable."
+        - "Remote confirmation that Playwright system dependencies and failure-only artifact workflow syntax are valid."
+      required_board_updates:
+        - "Mark T999 done with decision not_complete, activate bounded CI-proof Worker T005, and retain fresh final Judge T006."
+        - "T005 must stop until the user explicitly authorizes commit, branch, push, and PR creation."
+  - id: T005
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: medium
+    objective: "Materialize the exact candidate on one reviewable branch and pull request, obtain GitHub Actions results for that exact revision, and make only bounded CI/harness corrections if required until both verify and browser-qa are green."
+    inputs:
+      - "T999 not-complete receipt"
+      - "Current locally verified candidate and preserved product fingerprint"
+      - "Repository GitHub remote and CI workflow"
+      - "Explicit user authority to commit, push, and open the pull request"
+    constraints:
+      - "Preserve the existing marquee product behavior and product-source/test fingerprint."
+      - "Commit the exact candidate; do not include unrelated files or stale diagnostics."
+      - "Require verify and browser-qa success on the same immutable head SHA."
+      - "Inspect browser failure artifacts before any correction and never update a screenshot merely to make Linux green."
+      - "Keep any correction inside CI, harness, package, documentation, or baseline files already authorized by T003."
+      - "Do not weaken the fast verification, dependency audit, real-input assertions, diagnostic retention, or cleanup gates."
+    expected_output:
+      - "Reviewable branch and pull request"
+      - "Exact head SHA and remote run URL"
+      - "verify=SUCCESS and browser-qa=SUCCESS on the same SHA"
+      - "Remediation and artifact receipt if CI initially fails"
+      - "Final local cleanup and fingerprint receipt"
+    allowed_files:
+      - ".github/workflows/ci.yml"
+      - "package.json"
+      - "package-lock.json"
+      - "playwright.config.ts"
+      - "scripts/e2e-server.ts"
+      - "tests/e2e/**"
+      - "README.md"
+      - ".gitignore"
+    verify:
+      - "git diff --check"
+      - "npm run check"
+      - "npm run test:e2e"
+      - "npm audit --omit=dev --audit-level=high"
+      - "Confirm product-source/test SHA-256 remains 03f78cb626712568e98c0c2c690cfc211344a789afe0a447e124c328a83e9e30."
+      - "Push one exact candidate revision and require verify=SUCCESS and browser-qa=SUCCESS for that same head SHA."
+      - "Confirm no local test-results, dedicated-port listeners, or QA temporary workspace remain."
+    stop_if:
+      - "Commit, branch, push, or pull-request authority is not explicitly granted by the user."
+      - "GitHub credentials or repository permissions are unavailable."
+      - "CI failure requires files outside allowed_files or any marquee product behavior change."
+      - "The Linux visual baseline fails twice and correctness cannot be established through the existing computed-style and DOM oracle."
+      - "Either fast verify or dependency audit would be weakened."
+      - "The candidate head changes while checks run."
+      - "The same CI failure remains unexplained after two attempts."
+    receipt: null
+
+  - id: T006
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Run the fresh final audit using the exact remote head SHA and green verify/browser-qa GitHub Actions results."
+    inputs:
+      - "All prior receipts"
+      - "T005 remote CI receipt, run URL, and exact head SHA"
+      - "Current cleanup and product-fingerprint evidence"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject completion unless verify and browser-qa succeeded on the exact candidate head SHA."
+      - "Reapply every T999 behavioral, repeatability, diagnostics, cleanup, scope, and non-mutation rejection rule."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Exact remote CI evidence map"
+      - "Remaining defects or explicit clean result"
+    receipt: null
+
+checks:
+  dirty_fingerprint: "product-diff-sha256:94290d474bcf6d43b0c47ab48fa84da7fd04a5b1255217470e622eec59298e64; preserve current uncommitted marquee-preview feature and exclude this goal folder from comparison"
+  last_verification:
+    result: green
+    task: prep
+    commands:
+      - "Existing baseline before GoalBuddy Prep: npm run check (20 files, 400 tests, production build)"
+      - "Existing targeted baseline: 198 marquee/client interaction tests passed"
+      - "GoalBuddy update check: current 0.4.3"
