@@ -128,6 +128,9 @@ button { font: inherit; }
 .lineage-collective-outline { fill: none; pointer-events: none; stroke: #246bfd; stroke-dasharray: 6 5; stroke-opacity: 0.9; stroke-width: 2; vector-effect: non-scaling-stroke; }
 .lineage-collective-resize-handle, .lineage-collective-rotation-handle { pointer-events: all; }
 .lineage-collective-rotation-connector { pointer-events: none; stroke: #246bfd; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.lineage-collective-angle-readout { pointer-events: none; }
+.lineage-collective-angle-readout rect { fill: #163a70; stroke: rgb(255 255 255 / 75%); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.lineage-collective-angle-readout text { fill: #fff; font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 750; text-anchor: middle; }
 [data-lineage-review-highlight="true"]:not([filter]) { filter: drop-shadow(0 0 2px #df8b18) drop-shadow(0 0 7px rgb(223 139 24 / 90%)); }
 [data-lineage-review-highlight="true"][filter] { outline: 3px solid #df8b18; outline-offset: 3px; }
 .agent-preview { border: 3px solid #df8b18; box-shadow: 0 12px 40px rgb(0 0 0 / 18%), 0 0 0 5px rgb(223 139 24 / 20%); }

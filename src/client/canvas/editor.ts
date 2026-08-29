@@ -118,6 +118,11 @@ const ROTATION_HIT_TARGET_DIAMETER_PX = 30;
 const ROTATION_KNOB_DIAMETER_PX = 18;
 const ROTATION_ICON_DIAMETER_PX = 12;
 
+function rotationFeedbackLabel(degrees: number): string {
+  const normalized = normalizeRotationDegrees(degrees);
+  return `Δ ${normalized > 0 ? "+" : ""}${normalized}°`;
+}
+
 export type SvgPaintProperty = "fill" | "stroke";
 
 interface RotationMatrix {
@@ -677,6 +682,24 @@ function transformBox(box: AlignmentBox, matrix: MatrixCoefficients): AlignmentB
   return { x, y, width: right - x, height: bottom - y };
 }
 
+function transformPoint(matrix: MatrixCoefficients, x: number, y: number): { x: number; y: number } {
+  return {
+    x: matrix.a * x + matrix.c * y + matrix.e,
+    y: matrix.b * x + matrix.d * y + matrix.f,
+  };
+}
+
+function multiplyMatrices(left: MatrixCoefficients, right: MatrixCoefficients): MatrixCoefficients {
+  return {
+    a: left.a * right.a + left.c * right.b,
+    b: left.b * right.a + left.d * right.b,
+    c: left.a * right.c + left.c * right.d,
+    d: left.b * right.c + left.d * right.d,
+    e: left.a * right.e + left.c * right.f + left.e,
+    f: left.b * right.e + left.d * right.f + left.f,
+  };
+}
+
 function rootBox(node: SVGGraphicsElement, root: SVGSVGElement): AlignmentBox {
   const rootScreen = screenMatrix(root);
   const nodeScreen = screenMatrix(node);
@@ -715,8 +738,21 @@ function translationTargets(nodes: SVGGraphicsElement[], root: SVGSVGElement): S
   }));
 }
 
-function collectiveUnion(nodes: SVGGraphicsElement[], root: SVGSVGElement): TransformBox {
-  const boxes = nodes.map((node) => rootBox(node, root));
+function collectiveUnion(
+  nodes: SVGGraphicsElement[],
+  root: SVGSVGElement,
+  rotationDegrees = 0,
+): TransformBox {
+  const rootScreen = screenMatrix(root);
+  if (!rootScreen) throw new RangeError("The collective transform coordinate space is unavailable.");
+  const inverseRotation = collectiveRotationMatrix(0, 0, -rotationDegrees);
+  const boxes = nodes.map((node) => {
+    const nodeScreen = screenMatrix(node);
+    if (!nodeScreen) throw new RangeError("A selected layer's visual bounds are unavailable.");
+    const nodeToRoot = relativeMatrix(rootScreen, nodeScreen);
+    const nodeToOrientedRoot = multiplyMatrices(inverseRotation, nodeToRoot);
+    return transformBox(node.getBBox(), nodeToOrientedRoot);
+  });
   if (boxes.some((box) => ![box.x, box.y, box.width, box.height].every(Number.isFinite))) {
     throw new RangeError("Every selected layer needs finite visual bounds for a collective transform.");
   }
@@ -1097,6 +1133,8 @@ export function findSelectableByKeys(
 }
 
 interface EditorSnapshot {
+  collectiveRotationFeedback?: number;
+  collectiveRotations?: Record<string, number>;
   markup: string;
   primaryKeys?: string[];
   selectionPaths?: string[][];
@@ -1145,10 +1183,14 @@ export class SvgEditor {
   #translationRootToScreen?: MatrixCoefficients;
   #collectiveTransformGesture?: CollectiveTransformGesture;
   #collectiveTransformRoot?: MatrixCoefficients;
+  #collectiveRotationFeedback?: number;
+  readonly #collectiveRotationBySelection = new Map<string, number>();
   #collectiveTransformPointer?: {
     activated: boolean;
+    baseRotation: number;
     handle: string;
     pointerId: number;
+    rotationFeedback?: number;
     startRoot: { x: number; y: number };
     startScreen: { x: number; y: number };
     union: TransformBox;
@@ -1217,6 +1259,8 @@ export class SvgEditor {
     this.#deselect();
     this.#drawing = SVG(svg) as Svg;
     this.#history.reset();
+    this.#collectiveRotationFeedback = undefined;
+    this.#collectiveRotationBySelection.clear();
     this.#keyCounter = 0;
     this.#lockedKeys.clear();
     this.#selectedNodes = [];
@@ -1312,6 +1356,15 @@ export class SvgEditor {
     if (!this.#drawing || !root) return;
     const unique = Array.from(new Set(nodes)).filter((node) => node.isConnected && isSelectableNode(node, root));
     const nextPrimary = primary && unique.includes(primary) ? primary : unique.at(-1);
+    const selectionChanged = unique.length !== this.#selectedNodes.length
+      || unique.some((node, index) => node !== this.#selectedNodes[index]);
+    if (selectionChanged) {
+      this.#rememberCollectiveRotation(this.#selectedNodes, this.#collectiveRotationFeedback);
+      const nextKey = this.#collectiveRotationKey(unique);
+      this.#collectiveRotationFeedback = nextKey === undefined
+        ? undefined
+        : this.#collectiveRotationBySelection.get(nextKey);
+    }
     this.#clearHover();
     this.#deselect();
     this.#selectedNodes = unique;
@@ -1717,6 +1770,8 @@ export class SvgEditor {
     const previous = JSON.parse(before) as EditorSnapshot;
     const accepted: EditorSnapshot = {
       ...previous,
+      collectiveRotationFeedback: undefined,
+      collectiveRotations: {},
       markup: serializeSvg(candidate, false),
       ...(selection ? {
         primaryKeys: selection.primarySessionKey ? [selection.primarySessionKey] : [],
@@ -2448,6 +2503,7 @@ export class SvgEditor {
     this.#interactiveMutation = false;
     const selectionChanged = this.#selectionTranslationGesture?.complete();
     const groupChanged = this.#groupTransformGesture?.complete();
+    const collectivePointer = this.#collectiveTransformPointer;
     const collectiveChanged = this.#collectiveTransformGesture?.complete();
     if (collectiveChanged) {
       const metadata = this.#collectiveTransformPointer?.handle === "rotation"
@@ -2472,6 +2528,12 @@ export class SvgEditor {
       : this.#groupTransformGesture
         ? groupChanged === true
         : this.#interactiveMoved && this.#snapshot() !== this.#interactiveSnapshot;
+    if (collectivePointer?.handle === "rotation" && !changed) {
+      this.#collectiveRotationFeedback = collectivePointer.rotationFeedback;
+    }
+    if (collectivePointer?.handle === "rotation") {
+      this.#rememberCollectiveRotation(this.#selectedNodes, this.#collectiveRotationFeedback);
+    }
     this.#selectionTranslationGesture = undefined;
     this.#selectionTranslationRejected = false;
     this.#translationRootToScreen = undefined;
@@ -2495,6 +2557,9 @@ export class SvgEditor {
 
   #cancelInteractiveMutation(restoreSnapshot = true): void {
     if (!this.#interactiveMutation) return;
+    const rotationFeedback = this.#collectiveTransformPointer?.handle === "rotation"
+      ? this.#collectiveTransformPointer.rotationFeedback
+      : this.#collectiveRotationFeedback;
     this.#interactiveCleanup?.();
     this.#terminateInteractivePlugin();
     this.#selectionTranslationGesture?.cancel();
@@ -2511,7 +2576,12 @@ export class SvgEditor {
     this.#interactiveStartPoint = undefined;
     this.#interactiveMutation = false;
     this.#interactiveMoved = false;
-    if (restoreSnapshot) this.#restore(this.#interactiveSnapshot);
+    if (restoreSnapshot) {
+      this.#restore(this.#interactiveSnapshot);
+      this.#collectiveRotationFeedback = rotationFeedback;
+      this.#rememberCollectiveRotation(this.#selectedNodes, rotationFeedback);
+      this.#syncSelectionUi();
+    }
   }
 
   #terminateInteractivePlugin(): void {
@@ -2988,6 +3058,8 @@ export class SvgEditor {
         .filter((key): key is string => Boolean(key));
     };
     return JSON.stringify({
+      collectiveRotationFeedback: this.#collectiveRotationFeedback,
+      collectiveRotations: Object.fromEntries(this.#collectiveRotationBySelection),
       markup: serializeSvg(root, false),
       primaryKeys: keysFor(this.selectedNode),
       selectionPaths: this.#selectedNodes.map((node) => keysFor(node)),
@@ -3025,6 +3097,13 @@ export class SvgEditor {
       this.#callbacks.onSelectionChange(undefined);
       this.#notifySelectionContext();
     }
+    this.#collectiveRotationBySelection.clear();
+    for (const [key, degrees] of Object.entries(context.collectiveRotations ?? {})) {
+      if (Number.isFinite(degrees)) this.#collectiveRotationBySelection.set(key, normalizeRotationDegrees(degrees));
+    }
+    this.#collectiveRotationFeedback = context.collectiveRotationFeedback;
+    this.#rememberCollectiveRotation(selectedNodes, context.collectiveRotationFeedback);
+    if (selectedNodes.length > 1) this.#syncSelectionUi();
     this.#notifyDocumentChange();
     this.#notifyHistory();
   }
@@ -3167,13 +3246,17 @@ export class SvgEditor {
       this.#agentMutationBlocked,
     );
     if (!availability.allowed) return;
+    const baseRotation = this.#collectiveRotationFeedback ?? 0;
     let box: TransformBox;
-    try { box = collectiveUnion(this.#selectedNodes, root); } catch { return; }
+    try { box = collectiveUnion(this.#selectedNodes, root, baseRotation); } catch { return; }
 
     const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
     group.setAttribute("data-lineage-collective-transform", "true");
     group.setAttribute("aria-label", `Transform ${this.#selectedNodes.length} selected layers`);
     group.setAttribute("role", "group");
+    if (baseRotation !== 0) {
+      group.setAttribute("transform", formatMatrix(collectiveRotationMatrix(0, 0, baseRotation)));
+    }
     const outline = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     outline.setAttribute("class", "svg_select_shape lineage-collective-outline");
     outline.setAttribute("x", String(box.x));
@@ -3206,7 +3289,7 @@ export class SvgEditor {
       handle.setAttribute("cx", String(point.x));
       handle.setAttribute("cy", String(point.y));
       handle.setAttribute("r", String(radius));
-      this.#bindCollectiveHandle(handle, name, box);
+      this.#bindCollectiveHandle(handle, name, box, baseRotation);
       group.append(handle);
     }
 
@@ -3222,7 +3305,9 @@ export class SvgEditor {
     const rotation = document.createElementNS("http://www.w3.org/2000/svg", "g");
     rotation.setAttribute("class", "svg_select_handle_rot lineage-collective-rotation-handle");
     rotation.setAttribute("data-lineage-collective-handle", "rotation");
-    rotation.setAttribute("aria-label", "Rotate selected layers");
+    rotation.setAttribute("aria-label", this.#collectiveRotationFeedback === undefined
+      ? "Rotate selected layers"
+      : `Rotate selected layers. Current adjustment ${this.#collectiveRotationFeedback}°`);
     rotation.setAttribute("role", "button");
     rotation.setAttribute("tabindex", "0");
     rotation.setAttribute("aria-keyshortcuts", "Enter Space");
@@ -3239,12 +3324,85 @@ export class SvgEditor {
     icon.setAttribute("d", ROTATION_ICON_PATH);
     icon.setAttribute("transform", `translate(${rotationX - 12 * iconScale} ${rotationY - 12 * iconScale}) scale(${iconScale})`);
     rotation.append(knob, icon);
-    this.#bindCollectiveHandle(rotation, "rotation", box);
+    this.#bindCollectiveHandle(rotation, "rotation", box, baseRotation);
     group.append(rotation);
+
+    const readoutX = rotationX + 39 / scale;
+    const readoutWidth = 54 / scale;
+    const readoutHeight = 24 / scale;
+    const readout = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    readout.setAttribute("class", "lineage-collective-angle-readout");
+    readout.setAttribute("data-lineage-collective-angle", this.#collectiveRotationFeedback === undefined
+      ? "" : String(this.#collectiveRotationFeedback));
+    readout.setAttribute("aria-hidden", "true");
+    if (this.#collectiveRotationFeedback === undefined) readout.setAttribute("visibility", "hidden");
+    if (baseRotation !== 0) {
+      readout.setAttribute(
+        "transform",
+        formatMatrix(collectiveRotationMatrix(readoutX, rotationY, -baseRotation)),
+      );
+    }
+    const readoutBackground = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    readoutBackground.setAttribute("x", String(readoutX - readoutWidth / 2));
+    readoutBackground.setAttribute("y", String(rotationY - readoutHeight / 2));
+    readoutBackground.setAttribute("width", String(readoutWidth));
+    readoutBackground.setAttribute("height", String(readoutHeight));
+    readoutBackground.setAttribute("rx", String(6 / scale));
+    const readoutText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    readoutText.setAttribute("x", String(readoutX));
+    readoutText.setAttribute("y", String(rotationY + 4 / scale));
+    readoutText.setAttribute("font-size", String(12 / scale));
+    readoutText.textContent = this.#collectiveRotationFeedback === undefined
+      ? "" : rotationFeedbackLabel(this.#collectiveRotationFeedback);
+    readout.append(readoutBackground, readoutText);
+    group.append(readout);
     root.append(group);
   }
 
-  #bindCollectiveHandle(handle: SVGElement, name: string, union: TransformBox): void {
+  #setCollectiveRotationFeedback(degrees: number | undefined): void {
+    this.#collectiveRotationFeedback = degrees === undefined ? undefined : normalizeRotationDegrees(degrees);
+    const root = this.svgNode;
+    const readout = root?.querySelector<SVGGElement>("[data-lineage-collective-angle]");
+    const rotation = root?.querySelector<SVGElement>('[data-lineage-collective-handle="rotation"]');
+    if (!readout || !rotation) return;
+    if (this.#collectiveRotationFeedback === undefined) {
+      readout.setAttribute("visibility", "hidden");
+      readout.setAttribute("data-lineage-collective-angle", "");
+      const text = readout.querySelector("text");
+      if (text) text.textContent = "";
+      rotation.setAttribute("aria-label", "Rotate selected layers");
+      return;
+    }
+    readout.removeAttribute("visibility");
+    readout.setAttribute("data-lineage-collective-angle", String(this.#collectiveRotationFeedback));
+    const text = readout.querySelector("text");
+    if (text) text.textContent = rotationFeedbackLabel(this.#collectiveRotationFeedback);
+    rotation.setAttribute("aria-label", `Rotate selected layers. Current adjustment ${this.#collectiveRotationFeedback}°`);
+  }
+
+  #collectiveRotationKey(nodes: SVGGraphicsElement[]): string | undefined {
+    if (nodes.length < 2) return undefined;
+    const keys = nodes.map((node) => node.dataset.lineageKey);
+    if (keys.some((key) => !key)) return undefined;
+    return keys.sort().join("\u0000");
+  }
+
+  #rememberCollectiveRotation(
+    nodes: SVGGraphicsElement[],
+    degrees: number | undefined,
+  ): void {
+    const key = this.#collectiveRotationKey(nodes);
+    if (key === undefined) return;
+    if (degrees === undefined) this.#collectiveRotationBySelection.delete(key);
+    else this.#collectiveRotationBySelection.set(key, normalizeRotationDegrees(degrees));
+  }
+
+  #bindCollectiveHandle(
+    handle: SVGElement,
+    name: string,
+    union: TransformBox,
+    baseRotation: number,
+  ): void {
     handle.addEventListener("pointerdown", (event) => {
       if (event.button !== 0 || this.#interactiveMutation) return;
       const root = this.svgNode;
@@ -3254,8 +3412,10 @@ export class SvgEditor {
         const startRoot = transformPointToLocal(rootScreen, event.clientX, event.clientY);
         this.#collectiveTransformPointer = {
           activated: false,
+          baseRotation,
           handle: name,
           pointerId: event.pointerId,
+          rotationFeedback: this.#collectiveRotationFeedback,
           startRoot,
           startScreen: { x: event.clientX, y: event.clientY },
           union: { ...union },
@@ -3277,7 +3437,7 @@ export class SvgEditor {
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
       event.stopPropagation();
-      this.#applyCollectiveKeyboardTransform(name, union, event.shiftKey);
+      this.#applyCollectiveKeyboardTransform(name, union, baseRotation, event.shiftKey);
     });
     handle.addEventListener("lostpointercapture", (event) => {
       if (this.#interactiveMutation && this.#collectiveTransformPointer?.pointerId === event.pointerId) {
@@ -3286,7 +3446,12 @@ export class SvgEditor {
     });
   }
 
-  #applyCollectiveKeyboardTransform(handle: string, union: TransformBox, reverse: boolean): void {
+  #applyCollectiveKeyboardTransform(
+    handle: string,
+    union: TransformBox,
+    baseRotation: number,
+    reverse: boolean,
+  ): void {
     const root = this.svgNode;
     if (!root || this.#interactiveMutation) return;
     const availability = collectiveTransformAvailability(
@@ -3304,11 +3469,17 @@ export class SvgEditor {
     try {
       gesture = new CollectiveTransformGesture(translationTargets(this.#selectedNodes, root));
       let transform: MatrixCoefficients;
+      const overlayToRoot = collectiveRotationMatrix(0, 0, baseRotation);
       if (handle === "rotation") {
         const degrees = reverse ? -1 : 1;
-        transform = collectiveRotationMatrix(
+        const pivot = transformPoint(
+          overlayToRoot,
           union.x + union.width / 2,
           union.y + union.height / 2,
+        );
+        transform = collectiveRotationMatrix(
+          pivot.x,
+          pivot.y,
           degrees,
         );
         this.#callbacks.onStatus(`Rotated ${this.#selectedNodes.length} selected layers ${degrees}°`);
@@ -3317,11 +3488,16 @@ export class SvgEditor {
           : handle.includes("r") ? union.x : union.x + union.width / 2;
         const anchorY = handle.includes("t") ? union.y + union.height
           : handle.includes("b") ? union.y : union.y + union.height / 2;
+        const anchor = transformPoint(overlayToRoot, anchorX, anchorY);
         const factor = reverse ? 1 / 1.05 : 1.05;
-        transform = collectiveScaleMatrix(anchorX, anchorY, factor);
+        transform = collectiveScaleMatrix(anchor.x, anchor.y, factor);
         this.#callbacks.onStatus(`${reverse ? "Shrank" : "Enlarged"} ${this.#selectedNodes.length} selected layers`);
       }
       if (!gesture.apply(transform) || !gesture.complete()) return;
+      if (handle === "rotation") {
+        this.#setCollectiveRotationFeedback((this.#collectiveRotationFeedback ?? 0) + (reverse ? -1 : 1));
+        this.#rememberCollectiveRotation(this.#selectedNodes, this.#collectiveRotationFeedback);
+      }
       const metadata = handle === "rotation" ? "data-lineage-rotation" : "data-lineage-scale";
       this.#selectedNodes.forEach((node) => node.removeAttribute(metadata));
       this.#history.checkpoint(before);
@@ -3361,35 +3537,60 @@ export class SvgEditor {
       if (!rootScreen) throw new RangeError("The collective transform coordinate space is unavailable.");
       const point = transformPointToLocal(rootScreen, event.clientX, event.clientY);
       const box = active.union;
+      const overlayToRoot = collectiveRotationMatrix(0, 0, active.baseRotation);
       let transform: MatrixCoefficients;
+      let liveOverlayRotation = active.baseRotation;
       if (active.handle === "rotation") {
-        const pivotX = box.x + box.width / 2;
-        const pivotY = box.y + box.height / 2;
-        const startAngle = Math.atan2(active.startRoot.y - pivotY, active.startRoot.x - pivotX);
-        const currentAngle = Math.atan2(point.y - pivotY, point.x - pivotX);
+        const pivot = transformPoint(
+          overlayToRoot,
+          box.x + box.width / 2,
+          box.y + box.height / 2,
+        );
+        const startAngle = Math.atan2(active.startRoot.y - pivot.y, active.startRoot.x - pivot.x);
+        const currentAngle = Math.atan2(point.y - pivot.y, point.x - pivot.x);
         const degrees = Math.round((currentAngle - startAngle) * 180 / Math.PI);
-        transform = collectiveRotationMatrix(pivotX, pivotY, degrees);
-        this.#callbacks.onStatus(`Rotation ${degrees}° for ${this.#selectedNodes.length} selected layers`);
+        transform = collectiveRotationMatrix(pivot.x, pivot.y, degrees);
+        const feedback = normalizeRotationDegrees((active.rotationFeedback ?? 0) + degrees);
+        liveOverlayRotation = feedback;
+        this.#setCollectiveRotationFeedback(feedback);
+        this.#callbacks.onStatus(`Rotation ${feedback}° for ${this.#selectedNodes.length} selected layers`);
       } else {
-        const snapped = { x: Math.round(point.x), y: Math.round(point.y) };
+        const orientedPoint = transformPointToLocal(overlayToRoot, point.x, point.y);
+        const orientedStart = transformPointToLocal(overlayToRoot, active.startRoot.x, active.startRoot.y);
+        const snapped = { x: Math.round(orientedPoint.x), y: Math.round(orientedPoint.y) };
         const anchorX = active.handle.includes("l") ? box.x + box.width
           : active.handle.includes("r") ? box.x : box.x + box.width / 2;
         const anchorY = active.handle.includes("t") ? box.y + box.height
           : active.handle.includes("b") ? box.y : box.y + box.height / 2;
+        const anchor = transformPoint(overlayToRoot, anchorX, anchorY);
         const horizontal = active.handle === "l" || active.handle === "r";
         const vertical = active.handle === "t" || active.handle === "b";
-        const scaleX = (snapped.x - anchorX) / (active.startRoot.x - anchorX);
-        const scaleY = (snapped.y - anchorY) / (active.startRoot.y - anchorY);
+        const scaleX = (snapped.x - anchorX) / (orientedStart.x - anchorX);
+        const scaleY = (snapped.y - anchorY) / (orientedStart.y - anchorY);
         const factor = horizontal ? scaleX : vertical ? scaleY
           : Math.abs(scaleX - 1) >= Math.abs(scaleY - 1) ? scaleX : scaleY;
-        transform = collectiveScaleMatrix(anchorX, anchorY, factor);
+        transform = collectiveScaleMatrix(anchor.x, anchor.y, factor);
         this.#callbacks.onStatus(`Scale ${Number((factor * 100).toFixed(1))}% for ${this.#selectedNodes.length} selected layers`);
       }
       this.#markInteractiveMoved(gesture.apply(transform));
       this.#collectiveTransformRoot = transform;
-      const value = formatMatrix(transform);
-      root.querySelector(COLLECTIVE_TRANSFORM_SELECTOR)?.setAttribute("transform", value);
-      root.querySelector(SELECTION_HALOS_SELECTOR)?.setAttribute("transform", value);
+      root.querySelector(COLLECTIVE_TRANSFORM_SELECTOR)?.setAttribute(
+        "transform",
+        formatMatrix(multiplyMatrices(transform, overlayToRoot)),
+      );
+      if (active.handle === "rotation") {
+        const readout = root.querySelector<SVGGElement>("[data-lineage-collective-angle]");
+        const background = readout?.querySelector<SVGRectElement>("rect");
+        if (readout && background) {
+          const readoutX = Number(background.getAttribute("x")) + Number(background.getAttribute("width")) / 2;
+          const readoutY = Number(background.getAttribute("y")) + Number(background.getAttribute("height")) / 2;
+          readout.setAttribute(
+            "transform",
+            formatMatrix(collectiveRotationMatrix(readoutX, readoutY, -liveOverlayRotation)),
+          );
+        }
+      }
+      root.querySelector(SELECTION_HALOS_SELECTOR)?.setAttribute("transform", formatMatrix(transform));
       event.preventDefault();
     } catch (error) {
       gesture.cancel();
