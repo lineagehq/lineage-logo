@@ -2397,6 +2397,12 @@ export class SvgEditor {
   #bindInteractiveTerminals(): void {
     const finish = () => queueMicrotask(() => this.#finishInteractiveMutation());
     const cancel = () => queueMicrotask(() => this.#cancelInteractiveMutation());
+    const legacyFinish = () => {
+      if (!this.#collectiveTransformPointer) finish();
+    };
+    const legacyCancel = () => {
+      if (!this.#collectiveTransformPointer) cancel();
+    };
     const pointerCancel = (event: PointerEvent) => {
       const active = this.#collectiveTransformPointer;
       if (!active || active.pointerId === event.pointerId) cancel();
@@ -2405,16 +2411,16 @@ export class SvgEditor {
     const pointerUp = (event: PointerEvent) => {
       if (this.#collectiveTransformPointer?.pointerId === event.pointerId) this.#finishInteractiveMutation();
     };
-    window.addEventListener("mouseup", finish);
-    window.addEventListener("touchend", finish);
-    window.addEventListener("touchcancel", cancel);
+    window.addEventListener("mouseup", legacyFinish);
+    window.addEventListener("touchend", legacyFinish);
+    window.addEventListener("touchcancel", legacyCancel);
     window.addEventListener("pointercancel", pointerCancel);
     window.addEventListener("pointermove", pointerMove);
     window.addEventListener("pointerup", pointerUp);
     this.#interactiveCleanup = () => {
-      window.removeEventListener("mouseup", finish);
-      window.removeEventListener("touchend", finish);
-      window.removeEventListener("touchcancel", cancel);
+      window.removeEventListener("mouseup", legacyFinish);
+      window.removeEventListener("touchend", legacyFinish);
+      window.removeEventListener("touchcancel", legacyCancel);
       window.removeEventListener("pointercancel", pointerCancel);
       window.removeEventListener("pointermove", pointerMove);
       window.removeEventListener("pointerup", pointerUp);
@@ -3263,6 +3269,7 @@ export class SvgEditor {
         event.preventDefault();
         event.stopPropagation();
       } catch (error) {
+        this.#cancelInteractiveMutation();
         this.#callbacks.onStatus(error instanceof Error ? error.message : "The collective transform could not start.");
       }
     });

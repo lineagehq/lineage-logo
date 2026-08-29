@@ -1004,6 +1004,50 @@ describe("SvgEditor plugin cancellation teardown", () => {
     expect(editor.selectedNodes.every((node) => !node.hasAttribute("data-lineage-rotation"))).toBe(true);
   });
 
+  it.each(["mouseup", "touchend", "touchcancel"])(
+    "ignores unrelated legacy %s while a collective pointer gesture is active",
+    async (type) => {
+      const { editor, root, window } = editorHarness();
+      selectNestedMulti(editor);
+      const before = editor.serializeClean();
+      const handle = root.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+      dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 20, clientY: 20, pointerId: 76 }));
+      dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 30, clientY: 30, pointerId: 76 }));
+      const preview = editor.serializeClean();
+      expect(preview).not.toBe(before);
+
+      dispatch(window, new window.Event(type, { bubbles: true }));
+      await Promise.resolve();
+      expect(editor.serializeClean()).toBe(preview);
+      dispatch(window, new window.PointerEvent("pointercancel", { bubbles: true, pointerId: 76 }));
+      await Promise.resolve();
+      expect(editor.serializeClean()).toBe(before);
+      expect(editor.undo()).toBe(false);
+    },
+  );
+
+  it("cleans up a collective gesture when pointer capture fails", () => {
+    const { editor, root, statuses, window } = editorHarness();
+    selectNestedMulti(editor);
+    const before = editor.serializeClean();
+    const handle = root.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+    handle.setPointerCapture = () => { throw new Error("Pointer capture failed"); };
+
+    dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 20, clientY: 20, pointerId: 77 }));
+    expect(editor.serializeClean()).toBe(before);
+    expect(editor.undo()).toBe(false);
+    expect(statuses.at(-1)).toBe("Pointer capture failed");
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-transform]")).toBeTruthy();
+
+    const successor = editor.svgNode?.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+    dispatch(successor, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 20, clientY: 20, pointerId: 78 }));
+    dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 30, clientY: 30, pointerId: 78 }));
+    dispatch(window, new window.PointerEvent("pointerup", { bubbles: true, clientX: 30, clientY: 30, pointerId: 78 }));
+    expect(editor.serializeClean()).not.toBe(before);
+    expect(editor.undo()).toBe(true);
+    expect(editor.serializeClean()).toBe(before);
+  });
+
   it("cancels an active collective gesture before applying Undo", async () => {
     const { editor, root, window } = editorHarness();
     selectNestedMulti(editor);
