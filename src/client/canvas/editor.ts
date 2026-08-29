@@ -3320,6 +3320,9 @@ export class SvgEditor {
       this.#history.checkpoint(before);
       this.#notifyHistory();
       this.#syncSelectionUi();
+      this.svgNode
+        ?.querySelector<SVGElement>(`[data-lineage-collective-handle="${handle}"]`)
+        ?.focus();
       this.#notifyDocumentChange();
     } catch (error) {
       gesture?.cancel();

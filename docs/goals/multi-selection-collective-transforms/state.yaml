@@ -533,6 +533,7 @@ post_completion_review:
     - "Scoped pointercancel and lost-pointer-capture handling to the initiating pointer."
     - "Invalidated stale scale or rotation metadata after collective transforms."
     - "Added Enter and Space activation for focusable collective transform controls."
+    - "Preserved focus on the equivalent transform handle after each keyboard increment so repeated adjustments remain operable."
     - "Strengthened Chromium proof to compare every transformed corner and confirm the named saved SVG is actually reopened."
   verification:
     - command: npm run check

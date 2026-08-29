@@ -1031,9 +1031,17 @@ describe("SvgEditor plugin cancellation teardown", () => {
     editor.selectedNodes.forEach((node) => node.setAttribute("data-lineage-scale", "125"));
     const before = editor.serializeClean();
     const resize = root.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+    resize.focus();
     dispatch(resize, new window.KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Enter" }));
     const resized = editor.serializeClean();
     expect(resized).not.toBe(before);
+    const replacementResize = root.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+    expect(window.document.activeElement).toBe(replacementResize);
+    dispatch(replacementResize, new window.KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Enter" }));
+    expect(editor.serializeClean()).not.toBe(resized);
+    expect(window.document.activeElement).toBe(root.querySelector('[data-lineage-collective-handle="rb"]'));
+    expect(editor.undo()).toBe(true);
+    expect(editor.serializeClean()).toBe(resized);
     expect(editor.selectedNodes.every((node) => !node.hasAttribute("data-lineage-scale"))).toBe(true);
     expect(editor.undo()).toBe(true);
     expect(editor.serializeClean()).toBe(before);
