@@ -1042,6 +1042,22 @@ describe("SvgEditor plugin cancellation teardown", () => {
 
   it("invalidates collective frame state for Agent replacement markup and restores it on rollback", () => {
     const { editor, root, window } = editorHarness();
+    const extraA = window.document.createElementNS("http://www.w3.org/2000/svg", "rect") as unknown as SVGGraphicsElement;
+    const extraB = window.document.createElementNS("http://www.w3.org/2000/svg", "rect") as unknown as SVGGraphicsElement;
+    extraA.id = "extra-a";
+    extraB.id = "extra-b";
+    root.append(extraA, extraB);
+    editor.load(root);
+    editor.selectNode(extraA);
+    editor.selectNode(extraB, true);
+    const extraRotation = root.querySelector('[data-lineage-collective-handle="rotation"]') as SVGElement;
+    dispatch(extraRotation, new window.KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: " " }));
+    dispatch(
+      root.querySelector('[data-lineage-collective-handle="rotation"]') as SVGElement,
+      new window.KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: " " }),
+    );
+    expect(root.querySelector("[data-lineage-collective-angle]")?.getAttribute("data-lineage-collective-angle")).toBe("2");
+
     selectNestedMulti(editor);
     const rotation = root.querySelector('[data-lineage-collective-handle="rotation"]') as SVGElement;
     dispatch(rotation, new window.KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: " " }));
@@ -1051,7 +1067,10 @@ describe("SvgEditor plugin cancellation teardown", () => {
     const candidate = editor.svgNode?.cloneNode(true) as SVGSVGElement;
     candidate.querySelector("#wordmark")?.removeAttribute("transform");
     candidate.querySelector("#icon")?.removeAttribute("transform");
-    const checkpoint = editor.beginAgentAcceptance(candidate);
+    const checkpoint = editor.beginAgentAcceptance(candidate, {
+      targetSessionKeys: [extraA.dataset.lineageKey!, extraB.dataset.lineageKey!],
+      primarySessionKey: extraB.dataset.lineageKey,
+    });
     expect(editor.svgNode?.querySelector("[data-lineage-collective-angle]")?.getAttribute("visibility")).toBe("hidden");
     expect(editor.svgNode?.querySelector("[data-lineage-collective-transform]")?.hasAttribute("transform")).toBe(false);
 
@@ -1060,6 +1079,14 @@ describe("SvgEditor plugin cancellation teardown", () => {
     expect(editor.svgNode?.querySelector("[data-lineage-collective-angle]")?.getAttribute("data-lineage-collective-angle")).toBe("1");
     expect(editor.svgNode?.querySelector("[data-lineage-collective-transform]")?.getAttribute("transform"))
       .toBe(formatMatrix(collectiveRotationMatrix(0, 0, 1)));
+
+    const restoredExtraA = editor.svgNode?.querySelector("#extra-a") as SVGGraphicsElement;
+    const restoredExtraB = editor.svgNode?.querySelector("#extra-b") as SVGGraphicsElement;
+    editor.selectNode(restoredExtraA);
+    editor.selectNode(restoredExtraB, true);
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-angle]")?.getAttribute("data-lineage-collective-angle")).toBe("2");
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-transform]")?.getAttribute("transform"))
+      .toBe(formatMatrix(collectiveRotationMatrix(0, 0, 2)));
   });
 
   it.each(["mouseup", "touchend", "touchcancel"])(

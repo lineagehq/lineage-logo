@@ -3084,10 +3084,6 @@ export class SvgEditor {
     this.#artboard.replaceChildren(imported);
     this.#drawing = SVG(imported) as Svg;
     this.#assignKeys(imported);
-    this.#collectiveRotationBySelection.clear();
-    for (const [key, degrees] of Object.entries(context.collectiveRotations ?? {})) {
-      if (Number.isFinite(degrees)) this.#collectiveRotationBySelection.set(key, normalizeRotationDegrees(degrees));
-    }
     this.#scope = findSelectableByKeys(imported, context.scopeKeys) ?? imported;
     this.#bindCanvasSelection(imported);
     const selectionPaths = context.selectionPaths ?? (context.selectionKeys.length > 0 ? [context.selectionKeys] : []);
@@ -3100,6 +3096,10 @@ export class SvgEditor {
       this.#setSelectionUi(undefined);
       this.#callbacks.onSelectionChange(undefined);
       this.#notifySelectionContext();
+    }
+    this.#collectiveRotationBySelection.clear();
+    for (const [key, degrees] of Object.entries(context.collectiveRotations ?? {})) {
+      if (Number.isFinite(degrees)) this.#collectiveRotationBySelection.set(key, normalizeRotationDegrees(degrees));
     }
     this.#collectiveRotationFeedback = context.collectiveRotationFeedback;
     this.#rememberCollectiveRotation(selectedNodes, context.collectiveRotationFeedback);
