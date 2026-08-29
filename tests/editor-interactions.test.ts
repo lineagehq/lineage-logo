@@ -3,8 +3,12 @@ import { Window } from "happy-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { registerWindow, SVG } from "@svgdotjs/svg.js";
 import { History } from "../src/client/history/history";
-import { cleanSvgsEqualForDirtyComparison, matrixRotationDegrees, rotationHandleRadii, serializeSvg, SvgEditor, translationAvailability, type SelectionContext } from "../src/client/canvas/editor";
+import { cleanSvgsEqualForDirtyComparison, collectiveTransformAvailability, matrixRotationDegrees, rotationHandleRadii, serializeSvg, SvgEditor, translationAvailability, type SelectionContext } from "../src/client/canvas/editor";
 import {
+  CollectiveTransformGesture,
+  collectiveRotationMatrix,
+  collectiveScaleMatrix,
+  composeCollectiveRootTransform,
   composeGroupDrag,
   composeGroupResize,
   composeGroupScale,
@@ -286,6 +290,27 @@ describe("deterministic grouped transform composition", () => {
     noOp.move(0, 0);
     expect(noOp.complete()).toBe(false);
     expect(window.document.querySelector("svg")?.innerHTML).toBe(before);
+  });
+
+  it("applies one immutable root transform through independent parent spaces and restores exact syntax", () => {
+    const window = new Window();
+    window.document.body.innerHTML = '<svg><g><path id="a" transform="translate(3 4)"/></g><g><path id="b"/></g></svg>';
+    const first = window.document.querySelector("#a") as unknown as SVGGraphicsElement;
+    const second = window.document.querySelector("#b") as unknown as SVGGraphicsElement;
+    const before = window.document.querySelector("svg")?.innerHTML;
+    const scale = collectiveScaleMatrix(20, 20, 1.5);
+    expect(formatMatrix(composeCollectiveRootTransform(IDENTITY, { a: 2, b: 0, c: 0, d: 2, e: 4, f: 5 }, scale)))
+      .toBe("matrix(1.5,0,0,1.5,-4,-3.75)");
+    const gesture = new CollectiveTransformGesture([
+      { element: first, initial: { ...IDENTITY, e: 3, f: 4 }, parentToRoot: { a: 2, b: 0, c: 0, d: 2, e: 4, f: 5 } },
+      { element: second, initial: IDENTITY, parentToRoot: IDENTITY },
+    ]);
+    expect(gesture.apply(scale)).toBe(true);
+    expect(first.getAttribute("transform")).toBe("matrix(1.5,0,0,1.5,0.5,2.25)");
+    expect(second.getAttribute("transform")).toBe("matrix(1.5,0,0,1.5,-10,-10)");
+    gesture.cancel();
+    expect(window.document.querySelector("svg")?.innerHTML).toBe(before);
+    expect(formatMatrix(collectiveRotationMatrix(10, 10, 90))).toBe("matrix(0,1,-1,0,20,0)");
   });
 
   it("rejects singular and non-finite collective coordinate spaces before mutation", () => {
@@ -889,29 +914,27 @@ describe("SvgEditor plugin cancellation teardown", () => {
     expect(editor.serializeClean()).toBe(after);
   });
 
-  it("uses ResizeHandler.handleResize for pointercancel and a real immediate mouse resize", async () => {
-    const { editor, window } = editorHarness();
-    const group = selectNestedMulti(editor);
+  it("cancels and commits shared-overlay resize through public pointer events", async () => {
+    const { editor, root, window } = editorHarness();
+    selectNestedMulti(editor);
     const before = editor.serializeClean();
     const context = editorContext(editor);
     const fidelity = fidelitySnapshot(editor);
 
-    const canceledHandler = startResize(group, window, "rb", mouseEvent(window, "mousedown", 20, 20));
-    dispatch(window, mouseEvent(window, "mousemove", 28, 28));
-    dispatch(window, new window.Event("pointercancel"));
+    expect(collectiveTransformAvailability(editor.selectedNodes, root).allowed).toBe(true);
+    let handle = root.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+    dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 20, clientY: 20, pointerId: 71 }));
+    dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 28, clientY: 28, pointerId: 71 }));
+    dispatch(window, new window.PointerEvent("pointercancel", { bubbles: true, pointerId: 71 }));
     await Promise.resolve();
     expect(editor.serializeClean()).toBe(before);
     expect(editorContext(editor)).toEqual(context);
-    expect(canceledHandler.eventType).toBe("");
-    expect(canceledHandler.lastEvent).toBeNull();
     expect(editor.undo()).toBe(false);
-    dispatch(window, mouseEvent(window, "mousemove", 60, 60));
-    dispatch(window, mouseEvent(window, "mouseup", 60, 60));
-    expect(editor.serializeClean()).toBe(before);
 
-    startResize(editor.selectedNode as SVGGraphicsElement, window, "rb", mouseEvent(window, "mousedown", 20, 20));
-    dispatch(window, mouseEvent(window, "mousemove", 30, 30));
-    dispatch(window, mouseEvent(window, "mouseup", 30, 30));
+    handle = editor.svgNode?.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+    dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 20, clientY: 20, pointerId: 72 }));
+    dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 30, clientY: 30, pointerId: 72 }));
+    dispatch(window, new window.PointerEvent("pointerup", { bubbles: true, clientX: 30, clientY: 30, pointerId: 72 }));
     await Promise.resolve();
     const after = editor.serializeClean();
     expect(after).not.toBe(before);
@@ -924,31 +947,27 @@ describe("SvgEditor plugin cancellation teardown", () => {
     expect(editor.serializeClean()).toBe(after);
   });
 
-  it("uses ResizeHandler.handleResize for touchcancel and a real immediate touch rotation", async () => {
-    const { controls, editor, statuses, window } = editorHarness();
-    const group = selectNestedMulti(editor);
+  it("cancels and commits shared-overlay rotation around the frozen union center", async () => {
+    const { editor, root, statuses, window } = editorHarness();
+    selectNestedMulti(editor);
     const before = editor.serializeClean();
     const context = editorContext(editor);
     const fidelity = fidelitySnapshot(editor);
 
-    const canceledHandler = startResize(group, window, "rot", touchEvent(window, "touchstart", 10, -10));
-    dispatch(window, touchEvent(window, "touchmove", 20, 10));
-    dispatch(window, touchEvent(window, "touchcancel", 20, 10));
+    let handle = root.querySelector('[data-lineage-collective-handle="rotation"]') as SVGElement;
+    dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 10, clientY: -20, pointerId: 73 }));
+    dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 40, clientY: 10, pointerId: 73 }));
+    dispatch(window, new window.PointerEvent("pointercancel", { bubbles: true, pointerId: 73 }));
     await Promise.resolve();
     expect(editor.serializeClean()).toBe(before);
     expect(editorContext(editor)).toEqual(context);
-    expect(canceledHandler.eventType).toBe("");
-    expect(canceledHandler.lastEvent).toBeNull();
     expect(editor.undo()).toBe(false);
-    dispatch(window, touchEvent(window, "touchmove", 50, 50));
-    dispatch(window, touchEvent(window, "touchend", 50, 50));
-    expect(editor.serializeClean()).toBe(before);
 
-    startResize(editor.selectedNode as SVGGraphicsElement, window, "rot", touchEvent(window, "touchstart", 10, -10));
-    dispatch(window, touchEvent(window, "touchmove", 20, 10));
-    expect(controls.rotation.value).not.toBe("0");
-    expect(statuses.at(-1)).toMatch(/^Rotation -?\d+(?:\.\d)?°$/);
-    dispatch(window, touchEvent(window, "touchend", 20, 10));
+    handle = editor.svgNode?.querySelector('[data-lineage-collective-handle="rotation"]') as SVGElement;
+    dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 10, clientY: -20, pointerId: 74 }));
+    dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 40, clientY: 10, pointerId: 74 }));
+    expect(statuses.at(-1)).toMatch(/^Rotation -?\d+° for 2 selected layers$/);
+    dispatch(window, new window.PointerEvent("pointerup", { bubbles: true, clientX: 40, clientY: 10, pointerId: 74 }));
     await Promise.resolve();
     const after = editor.serializeClean();
     expect(after).not.toBe(before);
@@ -959,6 +978,83 @@ describe("SvgEditor plugin cancellation teardown", () => {
     expect(editor.undo()).toBe(false);
     expect(editor.redo()).toBe(true);
     expect(editor.serializeClean()).toBe(after);
+  });
+
+  it("immediately cleans up a collective session when fresh pointerdown preflight fails", () => {
+    const { editor, root, statuses, window } = editorHarness();
+    selectNestedMulti(editor);
+    const context = editorContext(editor);
+    const primary = editor.selectedNode!;
+    const handle = root.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+    primary.setAttribute("display", "none");
+    const before = editor.serializeClean();
+    dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 20, clientY: 20, pointerId: 77 }));
+    expect(editor.serializeClean()).toBe(before);
+    expect(editorContext(editor)).toEqual(context);
+    expect(statuses.at(-1)).toMatch(/Show every selected layer/);
+    expect(editor.undo()).toBe(false);
+    dispatch(window, new window.PointerEvent("pointerup", { bubbles: true, clientX: 40, clientY: 40, pointerId: 77 }));
+    expect(editor.serializeClean()).toBe(before);
+  });
+
+  it.each(["hidden", "disconnected", "overlap", "css", "geometry"] as const)(
+    "revalidates a %s terminal gate after the last collective move and restores exact selection bytes",
+    (gate) => {
+      const { editor, root, window } = editorHarness();
+      selectNestedMulti(editor);
+      const before = editor.serializeClean();
+      const context = editorContext(editor);
+      const selected = [...editor.selectedNodes];
+      const handle = root.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+      dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 20, clientY: 20, pointerId: 78 }));
+      dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 32, clientY: 32, pointerId: 78 }));
+      if (gate === "hidden") selected[0].setAttribute("visibility", "hidden");
+      else if (gate === "disconnected") selected[0].remove();
+      else if (gate === "overlap") selected[1].append(selected[0]);
+      else if (gate === "css") selected[0].style.transform = "translateX(1px)";
+      else setScreenMatrix(root, { a: 0, b: 0, c: 0, d: 0, e: 0, f: 0 });
+      dispatch(window, new window.PointerEvent("pointerup", { bubbles: true, clientX: 32, clientY: 32, pointerId: 78 }));
+      expect(editor.serializeClean()).toBe(before);
+      expect(editorContext(editor)).toEqual(context);
+      expect(editor.undo()).toBe(false);
+      expect(root.querySelector("[data-lineage-collective-transform]") ?? editor.svgNode?.querySelector("[data-lineage-collective-transform]")).toBeTruthy();
+    },
+  );
+
+  it("restores rounded identity, Escape, and lost-capture collective paths with zero history", () => {
+    const { editor, root, window } = editorHarness();
+    selectNestedMulti(editor);
+    const before = editor.serializeClean();
+    const context = editorContext(editor);
+    let handle = root.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+    dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 20, clientY: 20, pointerId: 79 }));
+    dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 30, clientY: 30, pointerId: 79 }));
+    dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 20, clientY: 20, pointerId: 79 }));
+    dispatch(window, new window.PointerEvent("pointerup", { bubbles: true, clientX: 20, clientY: 20, pointerId: 79 }));
+    expect(editor.serializeClean()).toBe(before);
+
+    handle = editor.svgNode?.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+    dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 20, clientY: 20, pointerId: 80 }));
+    dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 30, clientY: 30, pointerId: 80 }));
+    dispatch(window.document, new window.KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    expect(editor.serializeClean()).toBe(before);
+
+    handle = editor.svgNode?.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+    dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 20, clientY: 20, pointerId: 81 }));
+    dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 30, clientY: 30, pointerId: 81 }));
+    dispatch(handle, new window.PointerEvent("lostpointercapture", { bubbles: true, pointerId: 81 }));
+    expect(editor.serializeClean()).toBe(before);
+    expect(editorContext(editor)).toEqual(context);
+    expect(editor.undo()).toBe(false);
+  });
+
+  it("keeps resource-backed selectable leaves eligible for editor-owned collective controls", () => {
+    const { editor, root } = editorHarness();
+    const { secondary } = selectCrossParentMulti(editor);
+    expect(secondary.getAttribute("fill")).toBe("url(#paint)");
+    expect(collectiveTransformAvailability(editor.selectedNodes, root).allowed).toBe(true);
+    expect(root.querySelectorAll("[data-lineage-collective-handle]")).toHaveLength(9);
+    expect(SVG(secondary).remember("_ResizeHandler")).toBeUndefined();
   });
 
   it("terminates a real drag session before load and ignores its late plugin events", () => {
@@ -988,28 +1084,30 @@ describe("SvgEditor plugin cancellation teardown", () => {
     expect(editor.undo()).toBe(false);
   });
 
-  it("terminates a real resize session when review lock starts and permits one successor after unlock", async () => {
-    const { editor, window } = editorHarness();
-    const group = selectNestedMulti(editor);
+  it("terminates a shared resize when review lock starts and permits one successor after unlock", async () => {
+    const { editor, root, window } = editorHarness();
+    selectNestedMulti(editor);
     const before = editor.serializeClean();
     const context = editorContext(editor);
     const fidelity = fidelitySnapshot(editor);
 
-    startResize(group, window, "rb", touchEvent(window, "touchstart", 20, 20));
-    dispatch(window, touchEvent(window, "touchmove", 28, 28));
+    let handle = root.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+    dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 20, clientY: 20, pointerId: 75 }));
+    dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 28, clientY: 28, pointerId: 75 }));
     editor.setAgentMutationBlocked(true);
     expect(editor.serializeClean()).toBe(before);
     expect(editorContext(editor)).toEqual(context);
     expect(editor.undo()).toBe(false);
-    dispatch(window, touchEvent(window, "touchmove", 60, 60));
-    dispatch(window, touchEvent(window, "touchend", 60, 60));
+    dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 60, clientY: 60, pointerId: 75 }));
+    dispatch(window, new window.PointerEvent("pointerup", { bubbles: true, clientX: 60, clientY: 60, pointerId: 75 }));
     await Promise.resolve();
     expect(editor.serializeClean()).toBe(before);
 
     editor.setAgentMutationBlocked(false);
-    startResize(editor.selectedNode as SVGGraphicsElement, window, "rb", touchEvent(window, "touchstart", 20, 20));
-    dispatch(window, touchEvent(window, "touchmove", 30, 30));
-    dispatch(window, touchEvent(window, "touchend", 30, 30));
+    handle = editor.svgNode?.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+    dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 20, clientY: 20, pointerId: 76 }));
+    dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 30, clientY: 30, pointerId: 76 }));
+    dispatch(window, new window.PointerEvent("pointerup", { bubbles: true, clientX: 30, clientY: 30, pointerId: 76 }));
     await Promise.resolve();
     const after = editor.serializeClean();
     expect(after).not.toBe(before);

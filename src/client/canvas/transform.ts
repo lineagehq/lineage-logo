@@ -37,6 +37,8 @@ function multiply(left: MatrixCoefficients, right: MatrixCoefficients): MatrixCo
   };
 }
 
+const IDENTITY: MatrixCoefficients = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+
 function determinant(matrix: MatrixCoefficients): number {
   return matrix.a * matrix.d - matrix.b * matrix.c;
 }
@@ -101,6 +103,21 @@ export function transformVectorToLocal(
   return {
     dx: bounded(local.a * dx + local.c * dy),
     dy: bounded(local.b * dx + local.d * dy),
+  };
+}
+
+export function transformPointToLocal(
+  localToRoot: MatrixCoefficients,
+  x: number,
+  y: number,
+): { x: number; y: number } {
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    throw new RangeError("The collective transform pointer is non-finite.");
+  }
+  const local = inverse(localToRoot);
+  return {
+    x: bounded(local.a * x + local.c * y + local.e),
+    y: bounded(local.b * x + local.d * y + local.f),
   };
 }
 
@@ -182,6 +199,98 @@ export class SelectionTranslationGesture {
     }
     this.#currentDx = 0;
     this.#currentDy = 0;
+  }
+}
+
+export interface CollectiveTransformTarget extends SelectionTranslationTarget {}
+
+export function collectiveScaleMatrix(anchorX: number, anchorY: number, factor: number): MatrixCoefficients {
+  if (![anchorX, anchorY, factor].every(Number.isFinite) || factor < MIN_SCALE || factor > MAX_COEFFICIENT) {
+    throw new RangeError("The collective resize exceeds the supported scale range.");
+  }
+  return normalized({
+    a: factor,
+    b: 0,
+    c: 0,
+    d: factor,
+    e: anchorX * (1 - factor),
+    f: anchorY * (1 - factor),
+  });
+}
+
+export function collectiveRotationMatrix(pivotX: number, pivotY: number, degrees: number): MatrixCoefficients {
+  if (![pivotX, pivotY, degrees].every(Number.isFinite)) {
+    throw new RangeError("The collective rotation contains non-finite geometry.");
+  }
+  const radians = degrees * Math.PI / 180;
+  const cosine = Math.cos(radians);
+  const sine = Math.sin(radians);
+  return normalized({
+    a: cosine,
+    b: sine,
+    c: -sine,
+    d: cosine,
+    e: pivotX - cosine * pivotX + sine * pivotY,
+    f: pivotY - sine * pivotX - cosine * pivotY,
+  });
+}
+
+export function composeCollectiveRootTransform(
+  initial: MatrixCoefficients,
+  parentToRoot: MatrixCoefficients,
+  collectiveRoot: MatrixCoefficients,
+): MatrixCoefficients {
+  return normalized(multiply(multiply(multiply(inverse(parentToRoot), collectiveRoot), parentToRoot), initial));
+}
+
+export class CollectiveTransformGesture {
+  readonly #targets: Array<CollectiveTransformTarget & { originalTransform: string | null }>;
+  #currentRoot = IDENTITY;
+
+  constructor(targets: CollectiveTransformTarget[]) {
+    if (targets.length < 2 || new Set(targets.map((target) => target.element)).size !== targets.length) {
+      throw new RangeError("A collective transform requires at least two distinct layers.");
+    }
+    this.#targets = targets.map((target) => ({
+      ...target,
+      initial: normalized(target.initial),
+      parentToRoot: normalized(target.parentToRoot),
+      originalTransform: target.element.getAttribute("transform"),
+    }));
+    for (const target of this.#targets) composeCollectiveRootTransform(target.initial, target.parentToRoot, IDENTITY);
+  }
+
+  apply(rootTransform: MatrixCoefficients): boolean {
+    const collective = normalized(rootTransform);
+    const next = this.#targets.map((target) => formatMatrix(composeCollectiveRootTransform(
+      target.initial,
+      target.parentToRoot,
+      collective,
+    )));
+    const changed = next.some((value, index) => value !== this.#targets[index].element.getAttribute("transform"));
+    next.forEach((value, index) => this.#targets[index].element.setAttribute("transform", value));
+    this.#currentRoot = collective;
+    return changed;
+  }
+
+  cancel(): void {
+    this.#restoreOriginal();
+  }
+
+  complete(): boolean {
+    if (formatMatrix(this.#currentRoot) === formatMatrix(IDENTITY)) {
+      this.#restoreOriginal();
+      return false;
+    }
+    return true;
+  }
+
+  #restoreOriginal(): void {
+    for (const target of this.#targets) {
+      if (target.originalTransform === null) target.element.removeAttribute("transform");
+      else target.element.setAttribute("transform", target.originalTransform);
+    }
+    this.#currentRoot = IDENTITY;
   }
 }
 
