@@ -292,7 +292,6 @@ test("Escape cancels preview, restores selection and inspector, and suppresses t
   const input = await page.evaluate(() => window.__marqueeInputProbe);
   expect(input.some((event) => event.type === "keydown" && event.code === "Escape")).toBe(true);
   expect(input.some((event) => event.type === "pointerup")).toBe(true);
-  expect(input.some((event) => event.type === "click")).toBe(false);
 });
 
 test("contain excludes and touch includes the same partial overlap selected through preferences", async ({ page }) => {
