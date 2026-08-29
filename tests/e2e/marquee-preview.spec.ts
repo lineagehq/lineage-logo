@@ -22,6 +22,7 @@ declare global {
 
 const runtimeSvgSelector = [
   "[data-lineage-selection-halos]",
+  "[data-lineage-collective-transform]",
   ".svg_select_shape",
   ".svg_select_shape_pointSelect",
   ".svg_select_handle",

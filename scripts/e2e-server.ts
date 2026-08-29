@@ -12,7 +12,10 @@ const PROXIED_EDITOR_ORIGIN = `http://127.0.0.1:${CLIENT_PORT}`;
 const AGENT_TOKEN = "lineage-logo-e2e-agent-token";
 const WORKSPACE_PREFIX = "lineage-logo-marquee-qa-";
 const repositoryRoot = process.cwd();
-const fixture = path.join(repositoryRoot, "tests/fixtures/workspace/concepts/complex-seatify.svg");
+const fixtures = [
+  path.join(repositoryRoot, "tests/fixtures/workspace/concepts/complex-seatify.svg"),
+  path.join(repositoryRoot, "examples/seatify-constellation.svg"),
+];
 const executable = (name: string) => path.join(repositoryRoot, "node_modules", ".bin", name);
 const detached = process.platform !== "win32";
 
@@ -74,15 +77,17 @@ async function shutdown(exitCode: number, signal: NodeJS.Signals = "SIGTERM"): P
 }
 
 async function main(): Promise<void> {
-  await access(fixture, constants.R_OK);
+  await Promise.all(fixtures.map((fixture) => access(fixture, constants.R_OK)));
   const temporaryRoot = await realpath(tmpdir());
   workspace = await mkdtemp(path.join(temporaryRoot, WORKSPACE_PREFIX));
   const concepts = path.join(workspace, "concepts");
-  const copiedFixture = path.join(concepts, path.basename(fixture));
   await mkdir(concepts);
-  await copyFile(fixture, copiedFixture, constants.COPYFILE_EXCL);
-  const [sourceBytes, copiedBytes] = await Promise.all([readFile(fixture), readFile(copiedFixture)]);
-  if (!sourceBytes.equals(copiedBytes)) throw new Error("The e2e fixture copy is not byte-for-byte exact.");
+  for (const fixture of fixtures) {
+    const copiedFixture = path.join(concepts, path.basename(fixture));
+    await copyFile(fixture, copiedFixture, constants.COPYFILE_EXCL);
+    const [sourceBytes, copiedBytes] = await Promise.all([readFile(fixture), readFile(copiedFixture)]);
+    if (!sourceBytes.equals(copiedBytes)) throw new Error(`The e2e fixture copy is not byte-for-byte exact: ${path.basename(fixture)}`);
+  }
 
   const environment = {
     ...process.env,

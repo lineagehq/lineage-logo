@@ -978,21 +978,32 @@ describe("SvgEditor plugin cancellation teardown", () => {
     let handle = root.querySelector('[data-lineage-collective-handle="rotation"]') as SVGElement;
     dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 10, clientY: -20, pointerId: 73 }));
     dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 40, clientY: 10, pointerId: 73 }));
+    const canceledAngle = root.querySelector("[data-lineage-collective-angle]");
+    expect(Number(canceledAngle?.getAttribute("data-lineage-collective-angle"))).not.toBe(0);
+    expect(canceledAngle?.getAttribute("visibility")).toBeNull();
     dispatch(window, new window.PointerEvent("pointercancel", { bubbles: true, pointerId: 73 }));
     await Promise.resolve();
     expect(editor.serializeClean()).toBe(before);
     expect(editorContext(editor)).toEqual(context);
     expect(editor.undo()).toBe(false);
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-angle]")?.getAttribute("visibility")).toBe("hidden");
 
     handle = editor.svgNode?.querySelector('[data-lineage-collective-handle="rotation"]') as SVGElement;
     dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 10, clientY: -20, pointerId: 74 }));
     dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 40, clientY: 10, pointerId: 74 }));
     expect(statuses.at(-1)).toMatch(/^Rotation -?\d+° for 2 selected layers$/);
+    const committedAngle = Number(editor.svgNode?.querySelector("[data-lineage-collective-angle]")?.getAttribute("data-lineage-collective-angle"));
+    expect(committedAngle).not.toBe(0);
     dispatch(window, new window.PointerEvent("pointerup", { bubbles: true, clientX: 40, clientY: 10, pointerId: 74 }));
     await Promise.resolve();
     const after = editor.serializeClean();
     expect(after).not.toBe(before);
     expect(editor.selectedNodes.every((node) => !node.hasAttribute("data-lineage-rotation"))).toBe(true);
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-angle]")?.getAttribute("data-lineage-collective-angle")).toBe(String(committedAngle));
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-transform]")?.getAttribute("transform"))
+      .toBe(formatMatrix(collectiveRotationMatrix(0, 0, committedAngle)));
+    expect(editor.svgNode?.querySelector('[data-lineage-collective-handle="rotation"]')?.getAttribute("aria-label"))
+      .toContain(`Current adjustment ${committedAngle}°`);
     expect(editorContext(editor)).toEqual(context);
     expect(fidelitySnapshot(editor)).toEqual(fidelity);
     expect(editor.undo()).toBe(true);
@@ -1002,6 +1013,9 @@ describe("SvgEditor plugin cancellation teardown", () => {
     expect(editor.redo()).toBe(true);
     expect(editor.serializeClean()).toBe(after);
     expect(editor.selectedNodes.every((node) => !node.hasAttribute("data-lineage-rotation"))).toBe(true);
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-angle]")?.getAttribute("data-lineage-collective-angle")).toBe(String(committedAngle));
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-transform]")?.getAttribute("transform"))
+      .toBe(formatMatrix(collectiveRotationMatrix(0, 0, committedAngle)));
   });
 
   it("shrinks from a corner along one moved axis and clears the halo preview transform", () => {
@@ -1109,6 +1123,10 @@ describe("SvgEditor plugin cancellation teardown", () => {
     const rotation = editor.svgNode?.querySelector('[data-lineage-collective-handle="rotation"]') as SVGElement;
     dispatch(rotation, new window.KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: " ", shiftKey: true }));
     expect(editor.serializeClean()).not.toBe(before);
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-angle]")?.getAttribute("data-lineage-collective-angle")).toBe("-1");
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-angle] text")?.textContent).toBe("Δ -1°");
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-transform]")?.getAttribute("transform"))
+      .toBe(formatMatrix(collectiveRotationMatrix(0, 0, -1)));
     expect(editor.undo()).toBe(true);
     expect(editor.serializeClean()).toBe(before);
   });

@@ -110,7 +110,7 @@ describe("editor serialization", () => {
 
   it("strips the complete collective transform overlay from clean saves and snapshots", () => {
     const window = new Window();
-    window.document.body.innerHTML = '<svg><path id="mark"/><g data-lineage-collective-transform="true" role="group" aria-label="Transform 3 selected layers"><rect class="svg_select_shape lineage-collective-outline"/><circle class="svg_select_handle lineage-collective-resize-handle" data-lineage-collective-handle="rb"/><g class="svg_select_handle_rot lineage-collective-rotation-handle"><circle/><path/></g></g></svg>';
+    window.document.body.innerHTML = '<svg><path id="mark"/><g data-lineage-collective-transform="true" role="group" aria-label="Transform 3 selected layers"><rect class="svg_select_shape lineage-collective-outline"/><circle class="svg_select_handle lineage-collective-resize-handle" data-lineage-collective-handle="rb"/><g class="svg_select_handle_rot lineage-collective-rotation-handle"><circle/><path/></g><g data-lineage-collective-angle="27"><rect/><text>Δ +27°</text></g></g></svg>';
     const root = window.document.querySelector("svg") as unknown as SVGSVGElement;
     expect(serializeSvg(root, true)).toBe('<svg><path id="mark"></path></svg>');
     expect(serializeSvg(root, false)).toBe('<svg><path id="mark"></path></svg>');
