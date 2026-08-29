@@ -524,7 +524,7 @@ tasks:
           result: "Fixture remains byte-exact at c374e51fee2094d46a3cb44bc308062a1dde4d94cc31ee46d6e892188e80f0f8."
 post_completion_review:
   reviewed_against: origin/main
-  implementation_sha: c8795bf0184e23e6d8ea9570ed80bbabad159d1d
+  implementation_sha: 0765032
   toolkit: codex-pr-review-toolkit
   result: fixed
   findings_fixed:
@@ -539,7 +539,7 @@ post_completion_review:
     - "Strengthened Chromium proof to compare every transformed corner and confirm the named saved SVG is actually reopened."
   verification:
     - command: npm run check
-      result: "Typecheck, 418 unit tests, and production build passed."
+      result: "Typecheck, 419 unit tests, and production build passed."
     - command: npm run test:e2e -- tests/e2e/collective-transforms.spec.ts --project=chromium
       result: "4 focused Chromium scenarios passed."
     - command: npm run test:e2e -- --project=chromium
