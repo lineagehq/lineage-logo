@@ -567,6 +567,22 @@ describe("multi-selection mutation boundaries", () => {
     expect(statuses.at(-1)).toMatch(/pending Agent review/);
   });
 
+  it("does not install a draggable source when the locked member is primary", () => {
+    const { editor, window } = editorHarness();
+    const primary = editor.svgNode?.querySelector("#wordmark") as SVGGraphicsElement;
+    editor.selectNode(primary);
+    editor.toggleLock();
+    selectCrossParentMulti(editor);
+    const before = editor.serializeClean();
+
+    dispatch(primary, mouseEvent(window, "mousedown", 5, 5));
+    dispatch(window, mouseEvent(window, "mousemove", 20, 12));
+    dispatch(window, mouseEvent(window, "mouseup", 20, 12));
+
+    expect(editor.serializeClean()).toBe(before);
+    expect(editor.undo()).toBe(false);
+  });
+
   it("rejects a disconnected selected layer without changing the editor document or history", () => {
     const { editor } = editorHarness();
     selectCrossParentMulti(editor);
@@ -925,6 +941,10 @@ describe("SvgEditor plugin cancellation teardown", () => {
     let handle = root.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
     dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 20, clientY: 20, pointerId: 71 }));
     dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 28, clientY: 28, pointerId: 71 }));
+    const preview = editor.serializeClean();
+    dispatch(window, new window.PointerEvent("pointercancel", { bubbles: true, pointerId: 700 }));
+    await Promise.resolve();
+    expect(editor.serializeClean()).toBe(preview);
     dispatch(window, new window.PointerEvent("pointercancel", { bubbles: true, pointerId: 71 }));
     await Promise.resolve();
     expect(editor.serializeClean()).toBe(before);
@@ -950,6 +970,7 @@ describe("SvgEditor plugin cancellation teardown", () => {
   it("cancels and commits shared-overlay rotation around the frozen union center", async () => {
     const { editor, root, statuses, window } = editorHarness();
     selectNestedMulti(editor);
+    editor.selectedNodes.forEach((node) => node.setAttribute("data-lineage-rotation", "15"));
     const before = editor.serializeClean();
     const context = editorContext(editor);
     const fidelity = fidelitySnapshot(editor);
@@ -971,13 +992,57 @@ describe("SvgEditor plugin cancellation teardown", () => {
     await Promise.resolve();
     const after = editor.serializeClean();
     expect(after).not.toBe(before);
+    expect(editor.selectedNodes.every((node) => !node.hasAttribute("data-lineage-rotation"))).toBe(true);
     expect(editorContext(editor)).toEqual(context);
     expect(fidelitySnapshot(editor)).toEqual(fidelity);
     expect(editor.undo()).toBe(true);
     expect(editor.serializeClean()).toBe(before);
+    expect(editor.selectedNodes.every((node) => node.getAttribute("data-lineage-rotation") === "15")).toBe(true);
     expect(editor.undo()).toBe(false);
     expect(editor.redo()).toBe(true);
     expect(editor.serializeClean()).toBe(after);
+    expect(editor.selectedNodes.every((node) => !node.hasAttribute("data-lineage-rotation"))).toBe(true);
+  });
+
+  it("cancels an active collective gesture before applying Undo", async () => {
+    const { editor, root, window } = editorHarness();
+    selectNestedMulti(editor);
+    const baseline = editor.serializeClean();
+    dispatch(window.document, new window.KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight" }));
+    const priorEdit = editor.serializeClean();
+    expect(priorEdit).not.toBe(baseline);
+
+    const handle = root.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+    dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 20, clientY: 20, pointerId: 75 }));
+    dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 34, clientY: 34, pointerId: 75 }));
+    dispatch(window.document, new window.KeyboardEvent("keydown", { bubbles: true, ctrlKey: true, key: "z" }));
+    dispatch(window, new window.PointerEvent("pointerup", { bubbles: true, clientX: 34, clientY: 34, pointerId: 75 }));
+    await Promise.resolve();
+
+    expect(editor.serializeClean()).toBe(baseline);
+    expect(editor.undo()).toBe(false);
+    expect(editor.redo()).toBe(true);
+    expect(editor.serializeClean()).toBe(priorEdit);
+  });
+
+  it("activates focusable collective controls with Enter and Space", () => {
+    const { editor, root, window } = editorHarness();
+    selectNestedMulti(editor);
+    editor.selectedNodes.forEach((node) => node.setAttribute("data-lineage-scale", "125"));
+    const before = editor.serializeClean();
+    const resize = root.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+    dispatch(resize, new window.KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Enter" }));
+    const resized = editor.serializeClean();
+    expect(resized).not.toBe(before);
+    expect(editor.selectedNodes.every((node) => !node.hasAttribute("data-lineage-scale"))).toBe(true);
+    expect(editor.undo()).toBe(true);
+    expect(editor.serializeClean()).toBe(before);
+
+    const rotation = editor.svgNode?.querySelector('[data-lineage-collective-handle="rotation"]') as SVGElement;
+    dispatch(rotation, new window.KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: " ", shiftKey: true }));
+    expect(editor.serializeClean()).not.toBe(before);
+    expect(editor.undo()).toBe(true);
+    expect(editor.serializeClean()).toBe(before);
   });
 
   it("immediately cleans up a collective session when fresh pointerdown preflight fails", () => {

@@ -1479,6 +1479,7 @@ export class SvgEditor {
 
   undo(): boolean {
     if (this.#agentMutationBlocked) return false;
+    if (this.#interactiveMutation) this.#cancelInteractiveMutation();
     const previous = this.#history.undo(this.#snapshot());
     if (previous === undefined) return false;
     this.#restore(previous);
@@ -1488,6 +1489,7 @@ export class SvgEditor {
 
   redo(): boolean {
     if (this.#agentMutationBlocked) return false;
+    if (this.#interactiveMutation) this.#cancelInteractiveMutation();
     const next = this.#history.redo(this.#snapshot());
     if (next === undefined) return false;
     this.#restore(next);
@@ -2310,7 +2312,8 @@ export class SvgEditor {
     source?: Event,
     pluginSession?: DraggableSession | ResizeSession,
   ): void {
-    if (!this.#canMutatePrimary()) return;
+    const collectiveDrag = kind === "drag" && this.#selectedNodes.length > 1;
+    if (!collectiveDrag && !this.#canMutatePrimary()) return;
     if (this.#interactiveMutation) return;
     this.#interactiveSnapshot = this.#snapshot();
     this.#interactiveMutation = true;
@@ -2394,6 +2397,10 @@ export class SvgEditor {
   #bindInteractiveTerminals(): void {
     const finish = () => queueMicrotask(() => this.#finishInteractiveMutation());
     const cancel = () => queueMicrotask(() => this.#cancelInteractiveMutation());
+    const pointerCancel = (event: PointerEvent) => {
+      const active = this.#collectiveTransformPointer;
+      if (!active || active.pointerId === event.pointerId) cancel();
+    };
     const pointerMove = (event: PointerEvent) => this.#moveCollectiveTransform(event);
     const pointerUp = (event: PointerEvent) => {
       if (this.#collectiveTransformPointer?.pointerId === event.pointerId) this.#finishInteractiveMutation();
@@ -2401,14 +2408,14 @@ export class SvgEditor {
     window.addEventListener("mouseup", finish);
     window.addEventListener("touchend", finish);
     window.addEventListener("touchcancel", cancel);
-    window.addEventListener("pointercancel", cancel);
+    window.addEventListener("pointercancel", pointerCancel);
     window.addEventListener("pointermove", pointerMove);
     window.addEventListener("pointerup", pointerUp);
     this.#interactiveCleanup = () => {
       window.removeEventListener("mouseup", finish);
       window.removeEventListener("touchend", finish);
       window.removeEventListener("touchcancel", cancel);
-      window.removeEventListener("pointercancel", cancel);
+      window.removeEventListener("pointercancel", pointerCancel);
       window.removeEventListener("pointermove", pointerMove);
       window.removeEventListener("pointerup", pointerUp);
       this.#interactiveCleanup = undefined;
@@ -2436,6 +2443,12 @@ export class SvgEditor {
     const selectionChanged = this.#selectionTranslationGesture?.complete();
     const groupChanged = this.#groupTransformGesture?.complete();
     const collectiveChanged = this.#collectiveTransformGesture?.complete();
+    if (collectiveChanged) {
+      const metadata = this.#collectiveTransformPointer?.handle === "rotation"
+        ? "data-lineage-rotation"
+        : "data-lineage-scale";
+      this.#selectedNodes.forEach((node) => node.removeAttribute(metadata));
+    }
     if (this.#groupRotationGesture && this.#interactiveMoved && this.#selected) {
       try {
         this.selectedNode?.setAttribute("transform", formatMatrix(this.#selected.matrixify()));
@@ -3183,6 +3196,7 @@ export class SvgEditor {
       handle.setAttribute("aria-label", `Resize selection from ${name}`);
       handle.setAttribute("role", "button");
       handle.setAttribute("tabindex", "0");
+      handle.setAttribute("aria-keyshortcuts", "Enter Space");
       handle.setAttribute("cx", String(point.x));
       handle.setAttribute("cy", String(point.y));
       handle.setAttribute("r", String(radius));
@@ -3205,6 +3219,7 @@ export class SvgEditor {
     rotation.setAttribute("aria-label", "Rotate selected layers");
     rotation.setAttribute("role", "button");
     rotation.setAttribute("tabindex", "0");
+    rotation.setAttribute("aria-keyshortcuts", "Enter Space");
     const knob = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     const { hit, knob: knobRadius } = rotationHandleRadii(scale);
     knob.setAttribute("class", ROTATION_KNOB_CLASS);
@@ -3251,9 +3266,66 @@ export class SvgEditor {
         this.#callbacks.onStatus(error instanceof Error ? error.message : "The collective transform could not start.");
       }
     });
-    handle.addEventListener("lostpointercapture", () => {
-      if (this.#interactiveMutation && this.#collectiveTransformPointer) this.#cancelInteractiveMutation();
+    handle.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      event.stopPropagation();
+      this.#applyCollectiveKeyboardTransform(name, union, event.shiftKey);
     });
+    handle.addEventListener("lostpointercapture", (event) => {
+      if (this.#interactiveMutation && this.#collectiveTransformPointer?.pointerId === event.pointerId) {
+        this.#cancelInteractiveMutation();
+      }
+    });
+  }
+
+  #applyCollectiveKeyboardTransform(handle: string, union: TransformBox, reverse: boolean): void {
+    const root = this.svgNode;
+    if (!root || this.#interactiveMutation) return;
+    const availability = collectiveTransformAvailability(
+      this.#selectedNodes,
+      root,
+      (candidate) => this.#isLocked(candidate),
+      this.#agentMutationBlocked,
+    );
+    if (!availability.allowed) {
+      this.#callbacks.onStatus(availability.reason);
+      return;
+    }
+    const before = this.#snapshot();
+    let gesture: CollectiveTransformGesture | undefined;
+    try {
+      gesture = new CollectiveTransformGesture(translationTargets(this.#selectedNodes, root));
+      let transform: MatrixCoefficients;
+      if (handle === "rotation") {
+        const degrees = reverse ? -1 : 1;
+        transform = collectiveRotationMatrix(
+          union.x + union.width / 2,
+          union.y + union.height / 2,
+          degrees,
+        );
+        this.#callbacks.onStatus(`Rotated ${this.#selectedNodes.length} selected layers ${degrees}°`);
+      } else {
+        const anchorX = handle.includes("l") ? union.x + union.width
+          : handle.includes("r") ? union.x : union.x + union.width / 2;
+        const anchorY = handle.includes("t") ? union.y + union.height
+          : handle.includes("b") ? union.y : union.y + union.height / 2;
+        const factor = reverse ? 1 / 1.05 : 1.05;
+        transform = collectiveScaleMatrix(anchorX, anchorY, factor);
+        this.#callbacks.onStatus(`${reverse ? "Shrank" : "Enlarged"} ${this.#selectedNodes.length} selected layers`);
+      }
+      if (!gesture.apply(transform) || !gesture.complete()) return;
+      const metadata = handle === "rotation" ? "data-lineage-rotation" : "data-lineage-scale";
+      this.#selectedNodes.forEach((node) => node.removeAttribute(metadata));
+      this.#history.checkpoint(before);
+      this.#notifyHistory();
+      this.#syncSelectionUi();
+      this.#notifyDocumentChange();
+    } catch (error) {
+      gesture?.cancel();
+      this.#restore(before);
+      this.#callbacks.onStatus(error instanceof Error ? error.message : "The collective transform was rejected.");
+    }
   }
 
   #moveCollectiveTransform(event: PointerEvent): void {

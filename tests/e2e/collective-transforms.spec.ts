@@ -105,6 +105,11 @@ function bounds(points: Point[]): Omit<Shape, "points"> {
 
 function expectGeometry(actual: Geometry, expected: Geometry): void {
   for (const label of labels) {
+    expect(actual[label].points).toHaveLength(expected[label].points.length);
+    for (const [index, point] of actual[label].points.entries()) {
+      expect(point.x, `${label} point ${index} x`).toBeCloseTo(expected[label].points[index].x, 3);
+      expect(point.y, `${label} point ${index} y`).toBeCloseTo(expected[label].points[index].y, 3);
+    }
     for (const key of ["left", "right", "top", "bottom", "width", "height"] as const) {
       expect(actual[label][key], `${label} ${key}`).toBeCloseTo(expected[label][key], 3);
     }
@@ -234,6 +239,7 @@ test("collective transform remains operable at 125% with both sidebars collapsed
   expect(await selectionIdentity(page)).toEqual(identity);
 
   let savedSvg = "";
+  let savedSvgRequests = 0;
   const savedPath = "iterations/collective-transform-e2e.svg";
   await page.route("**/api/iterations", async (route) => {
     savedSvg = (JSON.parse(route.request().postData() ?? "{}") as { svg?: string }).svg ?? "";
@@ -249,10 +255,13 @@ test("collective transform remains operable at 125% with both sidebars collapsed
     await route.fulfill({ response, json: workspace });
   });
   await page.route(`**/api/svg?path=${encodeURIComponent(savedPath)}`, async (route) => {
+    savedSvgRequests += 1;
     await route.fulfill({ status: 200, contentType: "image/svg+xml", body: savedSvg });
   });
   await page.getByRole("button", { name: "Save iteration" }).click();
   await expect(page.locator("#status")).toHaveText(`Saved ${savedPath}`);
+  await expect.poll(() => savedSvgRequests).toBe(1);
+  await expect(page.locator(".file-button[aria-current='true']")).toContainText("collective-transform-e2e");
   expect(savedSvg).not.toMatch(/data-(?:lineage|agent|review|transport)-|lineage-collective|svg_select|selection-halo/i);
   expect(savedSvg).toContain("Ticket accent star");
   expectGeometry(await geometry(page), after);
