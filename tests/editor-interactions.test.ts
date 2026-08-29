@@ -542,6 +542,27 @@ describe("multi-selection mutation boundaries", () => {
     expect(statuses.at(-1)).toMatch(/pending Agent review/);
   });
 
+  it("rejects a disconnected selected layer without changing the editor document or history", () => {
+    const { editor } = editorHarness();
+    selectCrossParentMulti(editor);
+    const root = editor.svgNode!;
+    const disconnected = root.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "path") as unknown as SVGGraphicsElement;
+    disconnected.setAttribute("d", "M0 0h20v20z");
+    const selected = [...editor.selectedNodes, disconnected];
+    const before = editor.serializeClean();
+    const context = editorContext(editor);
+
+    expect(disconnected.isConnected).toBe(false);
+    expect(translationAvailability(selected, root)).toEqual({
+      allowed: false,
+      reason: "Every selected layer must remain connected and editable before moving.",
+    });
+    expect(editor.serializeClean()).toBe(before);
+    expect(editorContext(editor)).toEqual(context);
+    expect(editor.undo()).toBe(false);
+    expect(editor.redo()).toBe(false);
+  });
+
   it("rejects computed-style-hidden layers and nested ancestor selections atomically", () => {
     let harness = editorHarness();
     const hidden = harness.editor.svgNode?.querySelector("#waveform") as SVGGraphicsElement;
