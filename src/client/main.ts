@@ -789,6 +789,7 @@ function setReviewPreview(active: boolean): void {
     editor.setAgentReviewHighlights(reviewImpactKeys);
     renderLayers(editor.svgNode);
   }
+  renderSelectionContext(editor.selectionContext);
 }
 
 function focusReviewLayer(sessionKey: string): void {

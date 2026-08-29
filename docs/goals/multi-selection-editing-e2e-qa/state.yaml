@@ -1,0 +1,785 @@
+# GoalBuddy v2 state.yaml
+# Board truth lives here. goal.md is the editable charter; notes/ holds long receipts only.
+
+version: 2
+
+goal:
+  title: "Multi-Selection Editing Browser QA"
+  slug: "multi-selection-editing-e2e-qa"
+  kind: existing_plan
+  tranche: "Automate the complete collective movement, history, arrangement, rejection, and serialization workflow in real Chromium using the complex Seatify fixture."
+  status: active
+  oracle:
+    signal: "Real Chromium proves exact shared root-space movement, deterministic arrangement, one-step history, all-or-nothing rejection, stable selection, and clean SVG serialization for complex multi-selections."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Green full scenario matrix, ten repetitions, clean-checkout and cleanup proof, protected CI success, and a final Judge receipt with full_outcome_complete: true."
+  intake:
+    original_request: "Plan automated browser QA for multi-selection editing."
+    interpreted_outcome: "The repository reliably catches regressions across the complete multi-selection correction loop under real browser input."
+    input_shape: existing_plan
+    audience: "Lineage Logo maintainers and users correcting layered SVG logos"
+    authority: approved
+    proof_type: test
+    completion_proof: "The complete browser matrix passes repeatedly and in protected CI while proving exact geometry, history, selection, rejection, and serialization invariants."
+    likely_misfire: "Add method-level or screenshot-only tests that never prove all selected objects moved together, history remained atomic, or runtime metadata stayed out of SVG output."
+    blind_spots_considered:
+      - "Cross-parent transforms, root-space deltas, and drag from a selected non-primary object."
+      - "History checkpoint cardinality, cancellation, below-threshold, zero-delta, and no-op behavior."
+      - "Locked, hidden, disconnected, ineligible, and agent-review all-or-nothing gates."
+      - "Deterministic alignment/distribution anchors, ordering, overlap, and zero-size geometry."
+      - "Zoom, collapsed sidebars, primary identity, inspector continuity, serialization, cleanup, CI runtime, and repeat stability."
+    existing_plan_facts:
+      - "Reuse the deterministic Chromium harness, complex Seatify fixture, strict ports, descriptive .localhost origin, and byte-exact temporary workspace."
+      - "Use real keyboard and pointer input with live geometry-derived coordinates and no fixed sleeps."
+      - "Cover collective drag, Arrow/Shift+Arrow, undo/redo, alignment, distribution, equal spacing, rejection, 125% zoom, collapsed sidebars, Layers parity, and clean SVG output."
+      - "Keep the existing marquee-preview suite and protected verify/browser-qa jobs green."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  exact_human_approval_can_terminal_wait: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/multi-selection-editing-e2e-qa/"
+    command: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.4.3/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/multi-selection-editing-e2e-qa"
+
+active_task: T006
+
+tasks:
+  - id: T001
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the proposed real-browser scenario contract against the current harness and interaction semantics, then authorize the largest safe translation/history Worker package."
+    inputs:
+      - "Current merged multi-selection implementation"
+      - "Existing Playwright marquee harness and CI job"
+      - "Complex Seatify fixture"
+      - "Prior multi-selection movement/distribution goal receipts"
+    constraints:
+      - "Read-only; do not implement."
+      - "Distinguish observable browser contracts from method-level implementation details."
+      - "Preserve existing protected checks and product behavior."
+    expected_output:
+      - "approve | revise | block"
+      - "Exact translation/history Worker objective"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+      - "Testability-seam decision and deferred arrangement scope"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "Approve a test/harness-only translation milestone. Real Chromium built an exact three-object cross-parent selection and dragged a non-primary object; every selected object shared the visual delta, the anchor stayed fixed, and one named Undo/Redo preserved identities and primary. Public DOM exposes the required geometry, Layers, inspector, lock, history, dirty, save, and selection state. One harness defect must be corrected: Vite rewrites proxied Origin to 127.0.0.1 while the e2e server expects marquee-qa.localhost, blocking save and agent-review traffic. This is a harness seam, not a product seam. Arrangement remains deferred."
+      worker_package:
+        objective: "Implement the complete real-Chromium collective translation/history milestone on the complex Seatify fixture, including exact selection, non-primary drag, nudge, atomic history, cancellation/no-op, reachable rejection, save cleanliness, agent-review blocking, and exact cleanup after a harness-only Origin correction."
+        allowed_files:
+          - "tests/e2e/**"
+          - scripts/e2e-server.ts
+          - README.md
+        verify:
+          - "npm run test:e2e -- --grep collective translation"
+          - "npm run test:e2e"
+          - "npm run check"
+          - "npm audit --omit=dev --audit-level=high"
+          - "git diff --check"
+          - "git diff --exit-code -- src playwright.config.ts .github/workflows/ci.yml tests/fixtures/workspace/concepts/complex-seatify.svg package.json package-lock.json"
+          - "Confirm green runs leave no test-results directory, listeners on 43117/43118, or lineage-logo-marquee-qa-* temporary workspace."
+        stop_if:
+          - "Origin correction requires files outside tests/e2e/**, scripts/e2e-server.ts, or README.md."
+          - "Exact identity, primary, root geometry, or history cannot be observed through public DOM and named controls."
+          - "Any scenario requires direct editor calls, DOM mutation, fixed sleeps, or hard-coded viewport coordinates."
+          - "Pending agent review cannot be staged and reverted through the public producer protocol after Origin correction."
+          - "Named Save iteration cannot expose the temporary saved SVG for cleanliness assertions."
+          - "Fixture/product bytes change, protected checks weaken, cleanup is not exact, or the same unexplained failure occurs twice."
+      evidence:
+        - "Current harness uses one Chromium worker, strict ports 43117/43118, marquee-qa.localhost, failure diagnostics, and an exact temporary complex Seatify copy."
+        - "Live Chromium selected West north seat, East north seat, and Ticket accent star through ControlLeft/additive marquee; Ticket accent star became primary."
+        - "Dragging selected non-primary East north seat moved all three targets by approximately 30 by 15 visual units while Venue caption stayed fixed."
+        - "Named Undo restored baseline geometry and enabled Redo; Redo restored movement. Exact selected labels and Ticket accent star primary identity survived."
+        - "Public UI exposes named history, save, lock, visibility, Layers, primary/secondary, inspector, status, zoom, and dirty state."
+        - "scripts/e2e-server.ts expects marquee-qa.localhost while Vite rewrites proxied Origin to 127.0.0.1; the Worker may split user-facing and server-validated origins only in the harness."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence:
+        - "The translation spec, save-fidelity proof, agent-review case, repeatability evidence, and cleanup transcript do not yet exist."
+        - "Browser-unreachable disconnected, overlap, CSS-transform, singular, and precision gates remain unit evidence for T003 to assess."
+      required_board_updates:
+        - "Record T001 done and activate T002 with the exact authorized package."
+        - "Keep arrangement entirely deferred to T003/T004."
+        - "Do not authorize product files, fixture edits, Playwright/CI weakening, or direct DOM/editor mutation."
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Implement the complete real-Chromium collective translation/history milestone on the complex Seatify fixture, including public save and agent-review paths after a harness-only Origin correction."
+    inputs:
+      - "T001 Judge contract"
+      - "Existing deterministic Playwright harness"
+      - "Complex Seatify fixture"
+      - "Current public canvas, Layers, inspector, lock, and history controls"
+    constraints:
+      - "Use real UI selection, keyboard, pointer, and named controls; never call editor movement or history methods."
+      - "Derive all gesture coordinates and expected deltas from live labeled geometry."
+      - "Compare every selected object's root-space geometry before/after and prove unselected anchors remain fixed."
+      - "Preserve exact selected identities, primary identity, Layers state, inspector context, and dirty controls through movement and history."
+      - "No fixed sleeps, hard-coded viewport coordinates, checked-in fixture writes, or product behavior changes without Judge approval."
+      - "Build the exact selection with ControlLeft marquee for West north seat, additive marquee for East north seat and Ticket accent star; Ticket accent star is primary, East north seat is the non-primary drag source, and Venue caption is the fixed anchor."
+      - "Compute root-relative geometry from getBBox/getCTM composed with inverse(root.getCTM()); derive gesture expectations from inverse(root.getScreenCTM())."
+      - "Correct only the e2e runner Origin mismatch needed for public save and agent-review traffic; do not edit product configuration or behavior."
+      - "Keep alignment, distribution, spacing, and arrangement layout variants deferred to T003/T004."
+    expected_output:
+      - "Real collective drag from a non-primary selected object"
+      - "Arrow and Shift+Arrow movement proof"
+      - "Atomic Undo/Redo proof"
+      - "Zero-distance, below-threshold, Escape, locked, hidden, and agent-review rejection proof"
+      - "Named Save iteration and temporary saved-SVG cleanliness proof"
+      - "Focused harness documentation"
+    allowed_files:
+      - "tests/e2e/**"
+      - "scripts/e2e-server.ts"
+      - "README.md"
+    verify:
+      - "npm run test:e2e -- --grep 'collective translation'"
+      - "npm run test:e2e"
+      - "npm run check"
+      - "npm audit --omit=dev --audit-level=high"
+      - "git diff --check"
+      - "git diff --exit-code -- src playwright.config.ts .github/workflows/ci.yml tests/fixtures/workspace/concepts/complex-seatify.svg package.json package-lock.json"
+      - "Confirm successful runs leave no test-results, dedicated-port listeners, or temporary QA workspace."
+    stop_if:
+      - "Correcting the proxy/server Origin contract requires changes outside tests/e2e/**, scripts/e2e-server.ts, or README.md."
+      - "Exact target identity, primary identity, root-relative geometry, or history cardinality cannot be observed through public DOM and named controls."
+      - "Any scenario requires direct editor calls, DOM mutation, fixed sleeps, or hard-coded viewport coordinates."
+      - "A pending agent review cannot be staged and reverted through the existing public producer protocol after the harness Origin correction."
+      - "The named Save iteration flow cannot expose the saved temporary SVG for cleanliness assertions."
+      - "Checked-in fixture bytes change, product files change, protected checks are weakened, cleanup is not exact, or the same unexplained verification failure occurs twice."
+    receipt:
+      result: blocked
+      changed_files:
+        - README.md
+        - scripts/e2e-server.ts
+        - tests/e2e/collective-translation.spec.ts
+      commands:
+        - cmd: "npm run test:e2e -- --grep 'collective translation'"
+          status: failed
+      summary: "Implemented the authorized Origin split, deterministic agent token, focused documentation, and a public-UI Chromium suite covering exact target selection, shared drag/nudges, history, no-op/cancel, locked/hidden/agent gates, named Save, and SVG cleanliness. Stopped after two fix attempts as required. The final run had a 0.0000065 root-delta precision miss and locked-member setup failed because marquee excludes the locked target; two scenarios passed, remaining scenarios were interrupted/not run. Later verify commands were not run."
+      remaining_blockers:
+        - "Relax the drag floating-point precision by one decimal place without weakening shared-delta proof."
+        - "Build the locked cross-parent selection through a reachable public sequence; marquee excludes locked targets and Layers Shift selection is sibling-scoped."
+        - "Rerun all T002 verify and cleanup commands; test-results currently contains failure diagnostics."
+      verification_attempts: 3
+      stopped_because: "Verification still failed after two fix attempts, triggering the Worker hard stop."
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the translation/history slice against the oracle and authorize the largest safe arrangement/rejection/fidelity Worker package."
+    inputs:
+      - "T001 and T002 receipts"
+      - "Translation browser tests and diagnostics"
+      - "Arrangement controls and prior movement/distribution contracts"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject count-only, primary-only, same-parent-only, non-atomic history, or indirect method-level proof."
+      - "Set exact alignment/distribution geometry, anchor, eligibility, and serialization contracts before writes."
+    expected_output:
+      - "approve | revise | block"
+      - "Translation oracle evidence map"
+      - "Exact arrangement Worker objective"
+      - "allowed_files"
+      - "verify"
+      - "stop_if"
+      - "Any approved minimal testability seam"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "Approve one sequential test/harness-only Worker package: first make the translation/rejection milestone green, then add the complete arrangement/fidelity browser slice. The drag failure is harmless client/SVG floating-point drift requiring a pointer-only 1e-4 root-unit tolerance while retaining stricter keyboard/history checks. The locked failure is test setup, not product behavior: locking East north seat leaves the active scope inside East table cluster, so the subsequent West marquee returns empty; marquee does not exclude locked nodes. Reset scope through the public top-level Layers row, assert the locked member is selected, then prove atomic rejection. No product seam is justified."
+      evidence:
+        - finding: "T002 implemented only tests/e2e/collective-translation.spec.ts, scripts/e2e-server.ts, and README.md; product, fixture, Playwright, package, and CI files remain unchanged."
+        - finding: "T001 real Chromium evidence already proves exact three-object cross-parent selection, non-primary collective drag, fixed Venue caption anchor, and named Undo/Redo with selection and primary continuity."
+        - finding: "T002's ArrowRight/Shift+ArrowDown and zero-distance/below-threshold/Escape cases passed in the final focused run; the drag case reached the post-movement assertion and missed only by 0.0000065147 root units."
+        - finding: "The pointer expectation is derived from observed browser events through inverse(root.getScreenCTM()); a maximum 1e-4 root-unit pointer tolerance remains materially exact. Keyboard 1/10-unit movement, geometry restoration, and history comparisons must remain at 1e-5 or stricter."
+        - finding: "The locked diagnostic shows zero selection immediately after attempting West north seat. Source inspection shows marquee matching does not filter locked nodes; selectNode(East north seat) sets scope to East table cluster, which excludes West. A public click on top-level Venue logo resets scope to root before rebuilding the exact marquee union."
+        - finding: "Public controls expose all six alignment actions, four distribution/spacing actions, disabled reasons, Layers selection, inspector state, zoom, sidebar collapse, history, named Save, and public saved-SVG retrieval. Existing product contracts define same-parent alignment and root-space cross-parent center/gap distribution with stable outer anchors."
+        - finding: "Existing unit/integration evidence covers browser-unreachable disconnected, ancestor/descendant, CSS-transform, singular-matrix, overlap, zero-size, and sub-precision contracts; browser tests should not manufacture these through DOM mutation."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence:
+        - "No complete focused translation run exists; locked, hidden, agent-review, Save, and cleanup cases remain unverified after the interrupted run."
+        - "No real-browser alignment, center distribution, equal-gap spacing, deterministic anchor/order, geometric no-op, 125% zoom, collapsed-sidebar, or arrangement serialization proof exists."
+        - "Saved-SVG assertions currently exclude runtime metadata but do not yet prove that IDs, labels, references, text, and every non-target authored attribute remain unchanged."
+        - "Full e2e, repository check, audit, cleanup, repetition, clean-checkout, and protected-CI evidence remain outstanding."
+      required_board_updates:
+        - action: record_T003_done_and_activate_T004_with_replacement_contract
+          task_id: T004
+  - id: T004
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Complete one sequential real-Chromium multi-selection QA slice: first remediate and fully verify collective translation/history/rejection, then implement exact alignment, distribution, spacing, layout-variant, and serialization-fidelity browser coverage without product changes."
+    inputs:
+      - "T003 Judge contract"
+      - "T002 translation/history suite"
+      - "Complex Seatify fixture and existing arrangement controls"
+      - "Protected browser-qa workflow"
+    constraints:
+      - "First fix pointer-drag assertions with a pointer-only maximum 1e-4 root-unit tolerance while retaining 1e-5-or-stricter keyboard, restoration, and pairwise shared-delta checks."
+      - "Fix locked setup by locking East north seat, publicly selecting top-level Venue logo to restore root scope, rebuilding the exact three-object marquee selection, and asserting all identities plus the Locked marker before rejection probes."
+      - "Run the complete focused collective-translation suite green and remove diagnostics before starting arrangement work."
+      - "Use only real pointer, keyboard, Layers, toolbar, inspector, review, and Save controls; never call editor movement, arrangement, history, or serialization methods."
+      - "Live-document DOM mutation, fixed sleeps, hard-coded viewport pixels, checked-in fixture writes, product/config/package/CI changes, and weakened assertions are forbidden."
+      - "Detached read-only parsing of public API SVG responses is allowed solely for fidelity comparison."
+      - "Keep Chromium-only scope, descriptive marquee-qa.localhost, strict ports, byte-exact temporary workspace, existing marquee suite, and protected checks intact."
+      - "Translation retains West north seat, East north seat, and Ticket accent star; Ticket accent star stays primary; drag starts from East north seat; Venue caption stays fixed."
+      - "Each completed drag and ArrowRight/Shift+ArrowDown action creates exactly one reversible checkpoint; cancellation, return-to-origin, below-threshold, locked, hidden, agent-blocked, and geometric no-op work creates none."
+      - "Exercise all six alignment controls on eligible same-parent West-cluster siblings with exact parent/root geometry, fixed anchors, stable identity/inspector, and one-step Undo/Redo."
+      - "Exercise horizontal/vertical center distribution and equal edge-gap spacing on three eligible cross-parent labeled objects using live root-space boxes, deterministic outer anchors/tie order, fixed unrelated anchors, and one-step Undo/Redo."
+      - "Add an already-even three-object distribution no-op proving unchanged geometry, selection, dirty/history controls, and authored transform syntax."
+      - "For mixed-parent alignment, locked, hidden, and pending-agent states, assert disabled controls/reasons and zero partial mutation/history; cite existing unit coverage for unreachable invalid states rather than manufacturing them."
+      - "At 125% zoom with both sidebars collapsed, build and verify the exact selection and collective keyboard movement using live geometry; reopen the inspector, execute and undo one arrangement action."
+      - "Named Save and public SVG API comparison must prove IDs, labels, text, references, resources, element order, and all non-target authored attributes remain identical; only intended target transforms may differ; no runtime/test metadata may serialize."
+    expected_output:
+      - "Eligible alignment scenarios"
+      - "Center distribution and equal edge-spacing scenarios"
+      - "Locked/hidden/ineligible/agent-blocked all-or-nothing scenarios approved by Judge"
+      - "Zoom/sidebar and serialization fidelity scenarios"
+      - "Updated focused documentation"
+    allowed_files:
+      - "tests/e2e/**"
+      - "scripts/e2e-server.ts"
+      - "README.md"
+    verify:
+      - "npm run test:e2e -- --grep 'collective translation'"
+      - "npm run test:e2e -- --grep 'multi-selection arrangement'"
+      - "npm run test:e2e"
+      - "npm run check"
+      - "npm audit --omit=dev --audit-level=high"
+      - "git diff --check"
+      - "git diff --exit-code -- src playwright.config.ts .github/workflows/ci.yml tests/fixtures/workspace/concepts/complex-seatify.svg package.json package-lock.json"
+      - "Confirm successful runs leave no test-results directory, listeners on 43117/43118, or lineage-logo-marquee-qa-* temporary workspace."
+    stop_if:
+      - "The focused translation suite is not green before arrangement work begins."
+      - "The root-scope public sequence cannot retain a locked member in the exact selection, or another rejection case requires product/fixture/DOM mutation."
+      - "Exact arrangement geometry, selected identities, primary identity, inspector continuity, checkpoint cardinality, or saved structure cannot be observed through public controls and read-only DOM/API state."
+      - "Any required change falls outside tests/e2e/**, scripts/e2e-server.ts, or README.md."
+      - "CI timeout would require weakening scenarios/checks, cleanup is not exact, fixture/product bytes change, or the same unexplained verification failure remains after two attempts."
+    receipt:
+      result: blocked
+      changed_files:
+        - README.md
+        - scripts/e2e-server.ts
+        - tests/e2e/collective-translation.spec.ts
+      commands:
+        - cmd: "npm run test:e2e -- --grep 'collective translation'"
+          status: failed
+        - cmd: "npm run test:e2e -- --grep 'collective translation'"
+          status: failed
+      summary: "Remediated pointer tolerance while preserving strict shared-delta checks, rebuilt locked selection through the public Venue logo scope reset, and corrected hidden-history geometry assertions. Five of six focused translation scenarios passed on the second verification. The remaining agent-review scenario has an explained assertion wording mismatch: public status says ‘Finish the pending Agent review before moving layers,’ while the test expects ‘accept or revert.’ Stopped after the allowed two fix attempts before arrangement work."
+      remaining_blockers:
+        - "Update the agent-blocked status assertion to accept the observed public wording without weakening the rejection proof."
+        - "Rerun the focused translation suite green before beginning arrangement coverage."
+        - "Failure diagnostics remain under test-results from the final failed run; remaining verification and cleanup commands were not run."
+      verification_attempts: 2
+      stopped_because: "The focused translation suite remained non-green after two fix attempts, requiring the Worker hard stop before arrangement work."
+  - id: T007
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Finish the approved browser QA package: correct the explained agent-review wording assertion, prove the complete translation suite green, then add and verify the exact arrangement, layout-variant, rejection, and serialization-fidelity matrix."
+    inputs:
+      - "T003 Judge contract"
+      - "T004 blocked receipt and five-of-six passing translation evidence"
+      - "Current collective-translation browser spec"
+      - "Complex Seatify fixture and public arrangement controls"
+    constraints:
+      - "Accept the observed public pending-review wording without weakening the movement, history, geometry, identity, or save-blocking assertions."
+      - "Run the full focused collective-translation suite green and remove its diagnostics before adding arrangement coverage."
+      - "Use only real pointer, keyboard, Layers, toolbar, inspector, review, and Save controls; never call editor movement, arrangement, history, or serialization methods."
+      - "Use live geometry-derived coordinates and expectations; no live DOM mutation, fixed sleeps, hard-coded viewport pixels, fixture writes, or product/config/package/CI changes."
+      - "Exercise all six alignment controls on eligible same-parent West-cluster siblings with exact geometry, stable identities/inspector, fixed anchors, and atomic Undo/Redo."
+      - "Exercise horizontal/vertical center distribution and equal edge-gap spacing on eligible cross-parent labeled objects with deterministic anchors/order, exact inner geometry, fixed unrelated anchors, and atomic Undo/Redo."
+      - "Add an already-even three-object no-op and mixed-parent/locked/hidden/pending-agent disabled-state proof with zero partial mutation or history."
+      - "At 125% zoom with both sidebars collapsed, verify exact selection and keyboard movement, then reopen the inspector and execute/undo one arrangement action."
+      - "Named Save plus public SVG retrieval must prove IDs, labels, text, references, resources, element order, and all non-target authored attributes remain identical; only intended target transforms may differ and no runtime/test metadata may serialize."
+      - "Preserve Chromium-only scope, marquee-qa.localhost, strict ports, byte-exact temporary workspace, existing marquee suite, and protected checks."
+    expected_output:
+      - "Six-of-six green collective translation/rejection/history scenarios"
+      - "All alignment, center distribution, equal spacing, and no-op browser scenarios"
+      - "125% zoom and collapsed-sidebars proof"
+      - "Exact saved-SVG structural fidelity proof"
+      - "Full verification and cleanup transcript"
+    allowed_files:
+      - "tests/e2e/**"
+      - "scripts/e2e-server.ts"
+      - "README.md"
+    verify:
+      - "npm run test:e2e -- --grep 'collective translation'"
+      - "npm run test:e2e -- --grep 'multi-selection arrangement'"
+      - "npm run test:e2e"
+      - "npm run check"
+      - "npm audit --omit=dev --audit-level=high"
+      - "git diff --check"
+      - "git diff --exit-code -- src playwright.config.ts .github/workflows/ci.yml tests/fixtures/workspace/concepts/complex-seatify.svg package.json package-lock.json"
+      - "Confirm successful runs leave no test-results directory, listeners on 43117/43118, or lineage-logo-marquee-qa-* temporary workspace."
+    stop_if:
+      - "The focused translation suite remains non-green after the wording correction."
+      - "Exact arrangement geometry, identity, inspector continuity, history cardinality, or saved structure cannot be observed through public controls and read-only DOM/API state."
+      - "Any required change falls outside tests/e2e/**, scripts/e2e-server.ts, or README.md."
+      - "A scenario requires product/fixture/live-DOM mutation, fixed sleeps, hard-coded pointer pixels, or weakened assertions."
+      - "Cleanup is not exact, fixture/product bytes change, or the same unexplained verification failure remains after two attempts."
+    receipt:
+      result: blocked
+      changed_files:
+        - tests/e2e/collective-translation.spec.ts
+      commands:
+        - cmd: "npm run test:e2e -- --grep 'collective translation'"
+          status: failed
+          result: "5 passed; agent-review/Revert/Save scenario timed out waiting for .layer-button.selected while reading identity after public Revert"
+      summary: "Corrected the pending Agent-review status assertion to the exact observed public wording. The required focused translation suite remained non-green: five scenarios passed, while the agent-review scenario timed out after Revert because no selected Layers row was observable when identity was read. Per T007 stop_if, arrangement work and remaining verification were not started. Failure diagnostics remain in test-results."
+      remaining_blockers:
+        - "Determine why public Revert leaves no observable .layer-button.selected row, or adjust the test only if selection loss is the approved public contract."
+        - "Rerun the complete focused translation suite green and remove diagnostics before arrangement coverage."
+        - "Run the remaining T007 verification and cleanup checks after the focused prerequisite passes."
+      verification_attempts: 1
+      stopped_because: "The focused collective-translation suite remained non-green after the wording correction, triggering T007's explicit stop condition."
+  - id: T008
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Resolve the public Revert selection-continuity contract from product behavior and existing tests, then authorize the smallest rigorous recovery package that can complete translation and arrangement QA without weakening the oracle."
+    inputs:
+      - "T001-T004 and T007 receipts"
+      - "Current collective-translation browser spec and Revert failure diagnostics"
+      - "Public agent-review/Revert implementation and existing tests"
+      - "Goal oracle requiring stable selection and rejection fidelity"
+    constraints:
+      - "Read-only; do not implement."
+      - "Distinguish intended full-document replacement behavior from a genuine selection-continuity regression."
+      - "Do not approve removal of geometry, rejection, history, Layers, primary, inspector, or serialization proof merely to make the test pass."
+      - "Authorize product changes only if continuity is clearly required by existing UX contracts and no test-only correction can honestly represent public behavior."
+    expected_output:
+      - "approve | revise | block"
+      - "Exact Revert selection contract and evidence"
+      - "Smallest safe Worker objective, allowed_files, verify, and stop_if"
+      - "Decision on whether arrangement may proceed after recovery"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "Revert is documented and implemented as leaving the document unchanged; it does not replace the SVG or intentionally clear editor selection. The failure is a Layers projection regression: setReviewPreview(false) rebuilds the Layers DOM but does not reapply the editor’s still-live selection context. The page snapshot retains ‘3 objects selected’ while every rebuilt Layers row is unpressed. Authorize one narrow UI resynchronization in main.ts, strengthen exact pending/Revert continuity assertions, rerun translation green, then complete the already-approved arrangement/fidelity slice. No editor, agent-session, geometry, history, or serialization behavior change is justified."
+      evidence:
+        - finding: "The public review copy says Revert leaves the document unchanged, and finishAgentReview('reverted') does not load or replace the SVG."
+        - finding: "The failed browser snapshot shows agent status reverted and 3 objects selected, while no Layers button has aria-pressed=true or the primary selected class; editor selection survived but its Layers projection did not."
+        - finding: "setReviewPreview(false) calls renderLayers(editor.svgNode), which replaces every Layers row with default aria-pressed=false, but does not call renderSelectionContext(editor.selectionContext) or highlightLayers afterward."
+        - finding: "Other Layers rebuild paths pair renderLayers with renderSelectionContext, including document changes, disclosure changes, and search changes; the agent-preview path is the exceptional stale projection."
+        - finding: "The existing identity helper checks exact selected Layers labels, primary Layers row, breadcrumb, count, name, geometry inputs, and inspector summaries; retaining it preserves the oracle."
+      worker_package:
+        objective: "Fix the narrow public agent-preview Layers resynchronization regression, prove exact selection/primary/inspector continuity before pending review, during rejection, and after Revert, run all collective-translation scenarios green, remove diagnostics, then complete the full T003-approved arrangement, layout-variant, rejection, and saved-SVG fidelity browser matrix."
+        allowed_files:
+          - src/client/main.ts
+          - "tests/e2e/**"
+          - scripts/e2e-server.ts
+          - README.md
+        verify:
+          - "npm run test:e2e -- --grep 'collective translation'"
+          - "npm run test:e2e -- --grep 'multi-selection arrangement'"
+          - "npm run test:e2e"
+          - "npm run check"
+          - "npm audit --omit=dev --audit-level=high"
+          - "git diff --check"
+          - "git diff --exit-code -- src/client/canvas src/client/agent src/server playwright.config.ts .github/workflows/ci.yml tests/fixtures/workspace/concepts/complex-seatify.svg package.json package-lock.json"
+          - "Confirm the only src change is the exact Layers selection-context resynchronization in src/client/main.ts."
+          - "Confirm successful runs leave no test-results directory, listeners on 43117/43118, or lineage-logo-marquee-qa-* temporary workspace."
+        stop_if:
+          - "Selection, primary identity, inspector state, geometry, dirty state, or history actually changes when review is staged or reverted; report that as a broader product defect instead of masking it."
+          - "Continuity requires document reload, editor-selection mutation, agent-session changes, timing sleeps, DOM mutation from tests, or any product file other than src/client/main.ts."
+          - "The focused collective-translation suite is not green after the narrow Layers resynchronization and exact continuity assertions."
+          - "Arrangement geometry, deterministic anchors/order, history cardinality, disabled reasons, or saved structure cannot be observed through public controls and read-only DOM/API state."
+          - "Fixture bytes, protected checks, product geometry/history semantics, or serialization behavior change, or cleanup is not exact."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence:
+        - "The narrow Layers resynchronization has not yet been implemented or verified in Chromium."
+        - "No complete green collective-translation run exists after public Revert."
+        - "Arrangement, 125% zoom/collapsed-sidebar, exact saved-SVG fidelity, ten-repeat, clean-clone, cleanup, and protected-CI evidence remain outstanding."
+      required_board_updates:
+        - "Record T008 done and activate one sequential recovery Worker with the authorized package."
+        - "Permit arrangement work only after the complete focused collective-translation suite passes and its diagnostics are removed."
+        - "Keep T005, T006, and T999 queued; full outcome is not complete."
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Fix the narrow public agent-preview Layers resynchronization regression, prove exact review continuity and all collective-translation scenarios green, then complete the approved arrangement, layout-variant, rejection, and saved-SVG fidelity browser matrix."
+    inputs:
+      - "T008 Judge contract"
+      - "Current collective-translation spec and diagnostics"
+      - "Public review preview and Layers rendering path"
+      - "T003 arrangement scenario contract"
+    constraints:
+      - "The only permitted product change is exact Layers selection-context resynchronization in src/client/main.ts after review preview rendering."
+      - "Prove selection, primary identity, inspector, geometry, dirty state, and history are unchanged while review is pending and after Revert."
+      - "Run all collective-translation scenarios green and remove diagnostics before arrangement work."
+      - "Use only public pointer, keyboard, Layers, toolbar, inspector, review, and Save controls; never call editor mutation/history/serialization methods."
+      - "Use live geometry-derived coordinates and expectations; no test DOM mutation, fixed sleeps, hard-coded viewport pixels, or fixture writes."
+      - "Cover all six alignment actions, both center distributions, both equal-gap spacing actions, deterministic anchors/order, atomic history, and geometric no-op behavior."
+      - "Cover mixed-parent, locked, hidden, and pending-agent disabled/rejection states without partial mutation or history."
+      - "At 125% zoom with both sidebars collapsed, verify exact selection and movement, reopen inspector, and execute/undo one arrangement action."
+      - "Named Save and public SVG retrieval must prove structural fidelity for IDs, labels, text, references, resources, element order, and non-target authored attributes; only intended target transforms may differ and no runtime/test metadata may serialize."
+      - "Preserve descriptive marquee-qa.localhost, strict ports, temporary workspace isolation, existing marquee suite, and protected checks."
+    expected_output:
+      - "Narrow Layers resynchronization fix"
+      - "Green complete translation/rejection/history suite"
+      - "Green complete arrangement/layout/fidelity suite"
+      - "Full repository verification and exact cleanup"
+    allowed_files:
+      - "src/client/main.ts"
+      - "tests/e2e/**"
+      - "scripts/e2e-server.ts"
+      - "README.md"
+    verify:
+      - "npm run test:e2e -- --grep 'collective translation'"
+      - "npm run test:e2e -- --grep 'multi-selection arrangement'"
+      - "npm run test:e2e"
+      - "npm run check"
+      - "npm audit --omit=dev --audit-level=high"
+      - "git diff --check"
+      - "git diff --exit-code -- src/client/canvas src/client/agent src/server playwright.config.ts .github/workflows/ci.yml tests/fixtures/workspace/concepts/complex-seatify.svg package.json package-lock.json"
+      - "Confirm the only src change is the Layers selection-context resynchronization in src/client/main.ts."
+      - "Confirm successful runs leave no test-results directory, listeners on 43117/43118, or lineage-logo-marquee-qa-* temporary workspace."
+    stop_if:
+      - "Selection, primary identity, inspector state, geometry, dirty state, or history actually changes when review is staged or reverted."
+      - "Continuity requires document reload, editor-selection mutation, agent-session changes, timing sleeps, test DOM mutation, or another product file."
+      - "The focused collective-translation suite is not green after the narrow resynchronization and exact continuity assertions."
+      - "Arrangement geometry, anchors/order, history cardinality, disabled reasons, or saved structure cannot be observed publicly."
+      - "Fixture bytes, protected checks, product geometry/history/serialization semantics change, or cleanup is not exact."
+    receipt:
+      result: blocked
+      changed_files:
+        - src/client/main.ts
+        - tests/e2e/collective-translation.spec.ts
+        - tests/e2e/multi-selection-arrangement.spec.ts
+        - scripts/e2e-server.ts
+        - README.md
+      commands:
+        - cmd: "npm run test:e2e -- --grep 'collective translation'"
+          status: passed
+          result: "6 passed"
+        - cmd: "npm run test:e2e -- --grep 'multi-selection arrangement'"
+          status: failed
+          result: "Second attempt reached 13/16; locked mixed-parent alignment expected an unlock reason but publicly reports the preceding same-parent rejection."
+      summary: "Implemented the approved Layers selection-context resynchronization and strengthened exact pending/Revert continuity. All six collective-translation scenarios pass. Added the 16-scenario arrangement, rejection, layout, no-op, and saved-fidelity matrix; alignment and distribution scenarios reached green through the locked/hidden case. The second arrangement verification remained non-green because the assertion expected every locked-state control to report unlock, while mixed-parent alignment correctly reports its earlier same-parent eligibility failure. Stopped per the two-attempt Worker limit."
+      remaining_blockers:
+        - "Adjust locked/hidden reason assertions by operation precedence: alignment should report same-parent, while distribution/spacing should report unlock or visibility."
+        - "The collapsed-sidebar scenario must build selection by canvas pointer only; its helper currently starts with a hidden Layers control."
+        - "Run the complete arrangement suite, remaining verification commands, and exact cleanup checks."
+        - "Failure diagnostics remain under test-results because the mandatory stop occurred during the second verification attempt."
+      verification_attempts: 2
+      stopped_because: "Arrangement verification remained non-green after two fix attempts, triggering the Worker hard stop."
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Finish the now-green translation and 13-of-16 arrangement package by correcting operation-precedence assertions, using canvas-only selection while sidebars are collapsed, then run the complete scenario, repository, fidelity, and cleanup verification."
+    inputs:
+      - "T009 receipt with 6/6 translation and 13/16 arrangement evidence"
+      - "Current collective-translation and arrangement specs"
+      - "Public operation eligibility precedence and collapsed-sidebar controls"
+    constraints:
+      - "Preserve the one-line src/client/main.ts resynchronization exactly; do not broaden product changes."
+      - "For mixed-parent locked/hidden checks, assert the public reason produced by operation eligibility order: alignment same-parent first; distribution/spacing lock or visibility where applicable."
+      - "The collapsed-sidebar scenario must create its selection using canvas pointer gestures only while Layers controls are hidden."
+      - "Do not weaken exact geometry, identity, primary, inspector, history, disabled-state, no-op, or saved-SVG fidelity assertions."
+      - "Use only public UI and read-only DOM/API observations with live-derived coordinates; no test DOM mutation, fixed sleeps, hard-coded pointer pixels, or fixture writes."
+      - "No product/config/package/CI changes beyond the already-approved one-line main.ts fix."
+    expected_output:
+      - "16/16 green arrangement scenarios"
+      - "Green full e2e and repository checks"
+      - "Exact scope and cleanup proof"
+    allowed_files:
+      - "src/client/main.ts"
+      - "tests/e2e/**"
+      - "scripts/e2e-server.ts"
+      - "README.md"
+    verify:
+      - "npm run test:e2e -- --grep 'collective translation'"
+      - "npm run test:e2e -- --grep 'multi-selection arrangement'"
+      - "npm run test:e2e"
+      - "npm run check"
+      - "npm audit --omit=dev --audit-level=high"
+      - "git diff --check"
+      - "git diff --exit-code -- src/client/canvas src/client/agent src/server playwright.config.ts .github/workflows/ci.yml tests/fixtures/workspace/concepts/complex-seatify.svg package.json package-lock.json"
+      - "Confirm the only src change is the exact selection-context resynchronization in src/client/main.ts."
+      - "Confirm successful runs leave no test-results directory, listeners on 43117/43118, or lineage-logo-marquee-qa-* temporary workspace."
+    stop_if:
+      - "A remaining failure exposes a product behavior defect rather than assertion/setup precedence."
+      - "Collapsed-sidebar coverage cannot operate through public canvas pointer gestures."
+      - "Any exact geometry, history, identity, rejection, or fidelity assertion must be weakened."
+      - "Another product/config/package/CI/fixture file must change, or cleanup is not exact."
+      - "The same unexplained verification failure remains after two attempts."
+    receipt:
+      result: blocked
+      changed_files:
+        - tests/e2e/multi-selection-arrangement.spec.ts
+      commands:
+        - cmd: "npm run test:e2e -- --grep 'collective translation'"
+          status: pass
+          result: "6 passed"
+        - cmd: "npm run test:e2e -- --grep 'multi-selection arrangement'"
+          status: failed
+          result: "Locked-selection setup exposed the need to retain the public Layers reset outside the collapsed-sidebar scenario."
+        - cmd: "npm run test:e2e -- --grep 'multi-selection arrangement'"
+          status: pass
+          result: "16 passed"
+        - cmd: "npm run test:e2e"
+          status: failed
+          result: "Save-fidelity scenario hard-coded iteration-1 although the full suite correctly produced iteration-2."
+        - cmd: "npm run test:e2e"
+          status: pass
+          result: "28 passed"
+        - cmd: "npm run check"
+          status: failed
+          result: "TypeScript errors TS2352 and TS2367 at multi-selection-arrangement.spec.ts:101-102 for parentElement SVG typing."
+      summary: "Corrected locked/hidden eligibility assertions by operation precedence, made collapsed-sidebar selection canvas-pointer-only, and preserved exact arrangement, history, identity, rejection, and save-fidelity checks. Focused translation, focused arrangement, and full E2E pass. Repository check then exposed two TypeScript parentElement-cast errors in the new arrangement geometry helper. Stopped after the permitted two fix attempts."
+      remaining_blockers:
+        - "Fix SVG parentElement typing at tests/e2e/multi-selection-arrangement.spec.ts:101-102, then rerun npm run check and all remaining audit, diff, scope, and cleanup verification."
+      verification_attempts: 2
+      stopped_because: "The Worker hard contract permits at most two fix attempts; npm run check exposed a new TypeScript failure after both were used."
+  - id: T011
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Correct the two TypeScript-only SVG parent typing errors in the green browser arrangement suite, then run the complete focused, full, repository, audit, scope, and cleanup verification without changing behavior or coverage."
+    inputs:
+      - "T010 receipt proving 6 translation, 16 arrangement, and 28 full E2E scenarios green"
+      - "TypeScript diagnostics at tests/e2e/multi-selection-arrangement.spec.ts:101-102"
+    constraints:
+      - "Change only TypeScript typing in the test helper; do not alter runtime behavior, gestures, geometry expectations, scenario count, or assertions."
+      - "Preserve the exact one-line main.ts resynchronization and all existing harness/docs edits."
+      - "No product/config/package/CI/fixture changes."
+      - "Run every verification from a clean diagnostics state and prove exact resource cleanup."
+    expected_output:
+      - "TypeScript-clean arrangement helper"
+      - "Green 6/16/28 browser evidence and npm run check"
+      - "Green audit, diff, scope, and cleanup evidence"
+    allowed_files:
+      - "tests/e2e/multi-selection-arrangement.spec.ts"
+    verify:
+      - "npm run test:e2e -- --grep 'collective translation'"
+      - "npm run test:e2e -- --grep 'multi-selection arrangement'"
+      - "npm run test:e2e"
+      - "npm run check"
+      - "npm audit --omit=dev --audit-level=high"
+      - "git diff --check"
+      - "git diff --exit-code -- src/client/canvas src/client/agent src/server playwright.config.ts .github/workflows/ci.yml tests/fixtures/workspace/concepts/complex-seatify.svg package.json package-lock.json"
+      - "Confirm the only src change remains the one-line selection-context resynchronization in src/client/main.ts."
+      - "Confirm successful runs leave no test-results directory, listeners on 43117/43118, or lineage-logo-marquee-qa-* temporary workspace."
+    stop_if:
+      - "The typing correction changes runtime semantics or weakens any assertion."
+      - "Any browser or repository check fails for a product behavior reason."
+      - "Another file must change or cleanup is not exact."
+      - "The same unexplained failure remains after two attempts."
+    receipt:
+      result: done
+      changed_files:
+        - tests/e2e/multi-selection-arrangement.spec.ts
+      commands:
+        - cmd: "npm run test:e2e -- --grep 'collective translation'"
+          status: pass
+          result: "6 passed"
+        - cmd: "npm run test:e2e -- --grep 'multi-selection arrangement'"
+          status: pass
+          result: "16 passed"
+        - cmd: "npm run test:e2e"
+          status: pass
+          result: "28 passed"
+        - cmd: "npm run check"
+          status: pass
+          result: "TypeScript passed; 400 tests passed; production build passed"
+        - cmd: "npm audit --omit=dev --audit-level=high"
+          status: pass
+          result: "0 vulnerabilities"
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "git diff --exit-code -- src/client/canvas src/client/agent src/server playwright.config.ts .github/workflows/ci.yml tests/fixtures/workspace/concepts/complex-seatify.svg package.json package-lock.json"
+          status: pass
+        - cmd: "Confirm the only src change remains the one-line selection-context resynchronization in src/client/main.ts."
+          status: pass
+          result: "Only src/client/main.ts changed: one added renderSelectionContext(editor.selectionContext) line"
+        - cmd: "Confirm successful runs leave no test-results directory, listeners on 43117/43118, or lineage-logo-marquee-qa-* temporary workspace."
+          status: pass
+          result: "No artifacts, listeners, or temporary workspaces remain"
+      summary: "Corrected only the two reported SVG parent TypeScript casts by routing them through unknown. Runtime behavior, gestures, geometry, scenarios, and assertions are unchanged. Focused translation, focused arrangement, full browser, repository check, audit, diff, protected-scope, source-scope, and exact cleanup verification all pass."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T005
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Run the final local oracle: ten complete browser repetitions, isolated clean-clone verification, intentional failure-diagnostic inspection, runtime/cleanup audit, and exact scope review."
+    inputs:
+      - "All Worker and Judge receipts"
+      - "Complete multi-selection browser suite"
+      - "Goal oracle and protected CI contract"
+    constraints:
+      - "Read-only verification; do not fix defects in this task."
+      - "Use the same descriptive .localhost command developers and CI use."
+      - "Confirm repository, fixture, ports, processes, temporary workspaces, and artifacts return to baseline."
+      - "Record defects as bounded follow-up Worker candidates."
+    expected_output:
+      - "Ten-repeat transcript and timing"
+      - "Clean-clone command results"
+      - "Failure-diagnostic usefulness receipt"
+      - "Process/workspace/artifact cleanup receipt"
+      - "Concrete defect list or explicit clean result"
+    receipt:
+      result: done
+      summary: "Final local oracle is clean. Ten consecutive complete Chromium runs passed 28/28 scenarios in 31–32 seconds each (280/280 total). An isolated fresh clone reconstructed the exact candidate, installed from lockfile, passed 400 tests/build and 28 browser scenarios. A bounded intentional timeout produced a useful screenshot, trace, and structured page snapshot. Final scope, diagnostics, listeners, temporary workspaces, and artifact checks returned to baseline with no defects."
+      evidence:
+        - "Ten consecutive npm run test:e2e repetitions: every run 28 passed; durations 31,31,32,31,32,31,31,32,31,31 seconds."
+        - "Fresh /tmp clone plus tracked diff and untracked candidate files: npm ci found zero vulnerabilities; npm run check passed 400 tests and build; npm run test:e2e passed 28."
+        - "Intentional 1000ms timeout retained exactly error-context.md, screenshot PNG, and trace ZIP. Screenshot showed two selected layers at the timed-out additive-selection step; page snapshot exposed controls, selection count, layer state, and fixture identity."
+        - "Final cleanup: test-results absent, listeners on 43117/43118 zero, lineage-logo-marquee-qa-* workspaces zero, isolated clone absent from /tmp."
+        - "Scope diff is limited to README.md, scripts/e2e-server.ts, one line in src/client/main.ts, two new E2E specs, and GoalBuddy documentation; protected workflow, packages, fixtures, canvas, agent, and server product code are unchanged."
+      facts:
+        - "280 of 280 repeated browser scenario executions passed."
+        - "Runtime range was 31–32 seconds for the full 28-scenario suite."
+        - "One-line product change reapplies selection context after review-preview Layers rebuilding."
+        - "No local defect remains."
+      contradictions: []
+      ambiguity_requiring_judge: []
+      commands:
+        - cmd: "ten consecutive npm run test:e2e repetitions"
+          status: pass
+          result: "10 x 28 passed; 31–32s each"
+        - cmd: "isolated clone: npm ci --ignore-scripts && npm run check && npm run test:e2e"
+          status: pass
+          result: "0 vulnerabilities; 400 tests/build passed; 28 browser tests passed"
+        - cmd: "npm run test:e2e -- --grep 'collective translation drag' --timeout=1000"
+          status: expected_failure
+          result: "Useful screenshot, trace, and error-context retained and inspected"
+        - cmd: "git diff --check and protected scope diff"
+          status: pass
+        - cmd: "final process/workspace/artifact cleanup audit"
+          status: pass
+      note_needed: false
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: active
+    reasoning_hint: medium
+    objective: "Materialize the exact locally approved candidate on one reviewable branch/PR and obtain protected verify and browser-qa success on the same immutable head SHA."
+    inputs:
+      - "T005 local oracle receipt"
+      - "Explicit user authority for branch, commit, push, and PR creation"
+      - "Current protected main and GitHub Actions workflow"
+    constraints:
+      - "Do not create external state until the user explicitly authorizes this task during execution."
+      - "Keep one immutable candidate head while checks run; inspect logs/artifacts before corrections."
+      - "Corrections remain inside the harness, tests, CI, package, and documentation files authorized by T004."
+      - "Never weaken verify, browser-qa, dependency audit, real-input assertions, or cleanup."
+    expected_output:
+      - "PR URL and exact head SHA"
+      - "verify=SUCCESS and browser-qa=SUCCESS on the same SHA"
+      - "Failure-artifact and remediation receipt if needed"
+      - "Final clean working tree and cleanup proof"
+    allowed_files:
+      - "src/client/main.ts"
+      - "tests/e2e/**"
+      - "playwright.config.ts"
+      - "scripts/e2e-server.ts"
+      - "package.json"
+      - "package-lock.json"
+      - "README.md"
+      - ".gitignore"
+      - ".github/workflows/ci.yml"
+      - "docs/goals/multi-selection-editing-e2e-qa/**"
+    verify:
+      - "git diff --check"
+      - "npm run check"
+      - "npm run test:e2e"
+      - "npm audit --omit=dev --audit-level=high"
+      - "Require protected verify and browser-qa success on one exact remote head SHA."
+      - "Confirm final local diagnostics, listeners, and temporary QA workspaces are absent."
+    stop_if:
+      - "Branch, commit, push, or PR authority is not explicitly granted by the user."
+      - "GitHub credentials or repository permissions are unavailable."
+      - "CI failure requires product behavior changes or files outside allowed_files."
+      - "The candidate head changes while checks run or an existing gate must be weakened."
+      - "The same CI failure remains unexplained after two attempts."
+    receipt: null
+
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: queued
+    reasoning_hint: high
+    objective: "Audit whether the browser automation fully proves the multi-selection editing outcome without partial-movement, weak-history, indirect-input, flaky, mutating, or scope-expanded shortcuts."
+    inputs:
+      - "All completed receipts"
+      - "T005 repeatability/cleanup evidence"
+      - "T006 exact remote CI run when authority was granted"
+      - "Current diff, scenario suite, and goal oracle"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject completion with queued, active, blocked, or unverified required work."
+      - "Reject direct editor calls, fixed sleeps, hard-coded pointer pixels, count-only selection, primary-only movement, partial rejection, multiple history checkpoints, fixture mutation, or serialized runtime metadata."
+      - "Reject completion without exact geometry, full scenario coverage, ten-repeat stability, cleanup, failure diagnostics, and protected CI proof for the exact candidate."
+      - "Reject unrelated collective resize/rotation, snapping, agent insertion, or browser expansion as substitutes for missing proof."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Oracle evidence map"
+      - "Missing evidence or remaining defects"
+      - "Exact next task if not complete"
+    receipt: null
+
+checks:
+  dirty_fingerprint: "clean-main-before-goal-prep"
+  last_verification:
+    result: green
+    task: prep
+    commands:
+      - "Current protected main previously passed verify and browser-qa after PR #14."
+      - "GoalBuddy update check: current 0.4.3."

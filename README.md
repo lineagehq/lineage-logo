@@ -132,6 +132,13 @@ npx playwright install chromium # once per machine
 npm run test:e2e -- --grep 'live marquee preview'
 ```
 
+Run the collective movement and history milestone on the same real-Chromium
+harness with:
+
+```bash
+npm run test:e2e -- --grep 'collective translation'
+```
+
 The command reserves dedicated strict ports, opens
 `http://marquee-qa.localhost:43118`, and copies the complex Seatify fixture
 byte-for-byte into a validated `mkdtemp` workspace. It removes that exact
@@ -140,7 +147,11 @@ retain no trace or screenshot; failures retain both under `test-results/`.
 The Chromium suite covers live preview entry/exit and exact Layers parity,
 Shift-additive and Escape cancellation behavior, contain/touch preferences,
 125% zoom, collapsed sidebars, visual affordance styling, and document/history
-non-mutation. CI runs it as a separate `browser-qa` job and uploads
+non-mutation. It also covers cross-parent collective drag from a non-primary
+layer, one- and ten-unit keyboard nudges, named Undo/Redo, gesture cancellation,
+locked/hidden/Agent-review rejection, named Save, and clean saved SVG bytes.
+Every gesture is derived from live SVG transforms rather than viewport
+coordinates. CI runs it as a separate `browser-qa` job and uploads
 `test-results/` only when that job fails.
 
 To inspect the failure-only diagnostics locally without changing tracked files,

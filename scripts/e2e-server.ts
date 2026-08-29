@@ -8,6 +8,8 @@ import process from "node:process";
 const API_PORT = 43117;
 const CLIENT_PORT = 43118;
 const EDITOR_ORIGIN = `http://marquee-qa.localhost:${CLIENT_PORT}`;
+const PROXIED_EDITOR_ORIGIN = `http://127.0.0.1:${CLIENT_PORT}`;
+const AGENT_TOKEN = "lineage-logo-e2e-agent-token";
 const WORKSPACE_PREFIX = "lineage-logo-marquee-qa-";
 const repositoryRoot = process.cwd();
 const fixture = path.join(repositoryRoot, "tests/fixtures/workspace/concepts/complex-seatify.svg");
@@ -86,7 +88,11 @@ async function main(): Promise<void> {
     ...process.env,
     LINEAGE_LOGO_CLIENT_PORT: String(CLIENT_PORT),
     LINEAGE_LOGO_PORT: String(API_PORT),
-    LINEAGE_LOGO_EDITOR_ORIGIN: EDITOR_ORIGIN,
+    // Vite intentionally rewrites proxied API Origin headers to its loopback
+    // listener. Keep the descriptive hostname for the public browser URL while
+    // validating the exact internal Origin that reaches the API server.
+    LINEAGE_LOGO_EDITOR_ORIGIN: PROXIED_EDITOR_ORIGIN,
+    LINEAGE_LOGO_AGENT_TOKEN: AGENT_TOKEN,
   };
   children.push(
     spawn(executable("vite"), ["--host", "127.0.0.1", "--port", String(CLIENT_PORT), "--strictPort"], {
