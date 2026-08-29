@@ -3380,7 +3380,8 @@ export class SvgEditor {
         const vertical = active.handle === "t" || active.handle === "b";
         const scaleX = (snapped.x - anchorX) / (active.startRoot.x - anchorX);
         const scaleY = (snapped.y - anchorY) / (active.startRoot.y - anchorY);
-        const factor = horizontal ? scaleX : vertical ? scaleY : Math.max(scaleX, scaleY);
+        const factor = horizontal ? scaleX : vertical ? scaleY
+          : Math.abs(scaleX - 1) >= Math.abs(scaleY - 1) ? scaleX : scaleY;
         transform = collectiveScaleMatrix(anchorX, anchorY, factor);
         this.#callbacks.onStatus(`Scale ${Number((factor * 100).toFixed(1))}% for ${this.#selectedNodes.length} selected layers`);
       }
@@ -3416,6 +3417,7 @@ export class SvgEditor {
       group.setAttribute("pointer-events", "none");
       root.append(group);
     }
+    group.removeAttribute("transform");
     if (marqueePreview) group.setAttribute("data-lineage-marquee-preview", "true");
     else group.removeAttribute("data-lineage-marquee-preview");
     let screenMatrix: DOMMatrix | null = null;

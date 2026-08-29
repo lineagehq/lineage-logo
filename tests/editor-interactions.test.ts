@@ -1004,6 +1004,22 @@ describe("SvgEditor plugin cancellation teardown", () => {
     expect(editor.selectedNodes.every((node) => !node.hasAttribute("data-lineage-rotation"))).toBe(true);
   });
 
+  it("shrinks from a corner along one moved axis and clears the halo preview transform", () => {
+    const { editor, root, window } = editorHarness();
+    selectNestedMulti(editor);
+    const before = editor.serializeClean();
+    const handle = root.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+    dispatch(handle, new window.PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 20, clientY: 20, pointerId: 75 }));
+    dispatch(window, new window.PointerEvent("pointermove", { bubbles: true, clientX: 15, clientY: 20, pointerId: 75 }));
+    expect(root.querySelector("[data-lineage-selection-halos]")?.hasAttribute("transform")).toBe(true);
+    dispatch(window, new window.PointerEvent("pointerup", { bubbles: true, clientX: 15, clientY: 20, pointerId: 75 }));
+
+    expect(editor.serializeClean()).not.toBe(before);
+    expect(editor.svgNode?.querySelector("[data-lineage-selection-halos]")?.hasAttribute("transform")).toBe(false);
+    expect(editor.undo()).toBe(true);
+    expect(editor.serializeClean()).toBe(before);
+  });
+
   it.each(["mouseup", "touchend", "touchcancel"])(
     "ignores unrelated legacy %s while a collective pointer gesture is active",
     async (type) => {
