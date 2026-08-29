@@ -1016,6 +1016,12 @@ describe("SvgEditor plugin cancellation teardown", () => {
     expect(editor.svgNode?.querySelector("[data-lineage-collective-angle]")?.getAttribute("data-lineage-collective-angle")).toBe(String(committedAngle));
     expect(editor.svgNode?.querySelector("[data-lineage-collective-transform]")?.getAttribute("transform"))
       .toBe(formatMatrix(collectiveRotationMatrix(0, 0, committedAngle)));
+
+    editor.selectNode(editor.svgNode?.querySelector("#waveform") as SVGGraphicsElement);
+    editor.reset();
+    selectNestedMulti(editor);
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-angle]")?.getAttribute("visibility")).toBe("hidden");
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-transform]")?.hasAttribute("transform")).toBe(false);
   });
 
   it("shrinks from a corner along one moved axis and clears the halo preview transform", () => {
@@ -1032,6 +1038,28 @@ describe("SvgEditor plugin cancellation teardown", () => {
     expect(editor.svgNode?.querySelector("[data-lineage-selection-halos]")?.hasAttribute("transform")).toBe(false);
     expect(editor.undo()).toBe(true);
     expect(editor.serializeClean()).toBe(before);
+  });
+
+  it("invalidates collective frame state for Agent replacement markup and restores it on rollback", () => {
+    const { editor, root, window } = editorHarness();
+    selectNestedMulti(editor);
+    const rotation = root.querySelector('[data-lineage-collective-handle="rotation"]') as SVGElement;
+    dispatch(rotation, new window.KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: " " }));
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-angle]")?.getAttribute("data-lineage-collective-angle")).toBe("1");
+    const rotated = editor.serializeClean();
+
+    const candidate = editor.svgNode?.cloneNode(true) as SVGSVGElement;
+    candidate.querySelector("#wordmark")?.removeAttribute("transform");
+    candidate.querySelector("#icon")?.removeAttribute("transform");
+    const checkpoint = editor.beginAgentAcceptance(candidate);
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-angle]")?.getAttribute("visibility")).toBe("hidden");
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-transform]")?.hasAttribute("transform")).toBe(false);
+
+    editor.rollbackAgentAcceptance(checkpoint);
+    expect(editor.serializeClean()).toBe(rotated);
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-angle]")?.getAttribute("data-lineage-collective-angle")).toBe("1");
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-transform]")?.getAttribute("transform"))
+      .toBe(formatMatrix(collectiveRotationMatrix(0, 0, 1)));
   });
 
   it.each(["mouseup", "touchend", "touchcancel"])(

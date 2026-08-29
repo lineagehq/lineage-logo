@@ -1134,6 +1134,7 @@ export function findSelectableByKeys(
 
 interface EditorSnapshot {
   collectiveRotationFeedback?: number;
+  collectiveRotations?: Record<string, number>;
   markup: string;
   primaryKeys?: string[];
   selectionPaths?: string[][];
@@ -1769,6 +1770,8 @@ export class SvgEditor {
     const previous = JSON.parse(before) as EditorSnapshot;
     const accepted: EditorSnapshot = {
       ...previous,
+      collectiveRotationFeedback: undefined,
+      collectiveRotations: {},
       markup: serializeSvg(candidate, false),
       ...(selection ? {
         primaryKeys: selection.primarySessionKey ? [selection.primarySessionKey] : [],
@@ -3056,6 +3059,7 @@ export class SvgEditor {
     };
     return JSON.stringify({
       collectiveRotationFeedback: this.#collectiveRotationFeedback,
+      collectiveRotations: Object.fromEntries(this.#collectiveRotationBySelection),
       markup: serializeSvg(root, false),
       primaryKeys: keysFor(this.selectedNode),
       selectionPaths: this.#selectedNodes.map((node) => keysFor(node)),
@@ -3080,6 +3084,10 @@ export class SvgEditor {
     this.#artboard.replaceChildren(imported);
     this.#drawing = SVG(imported) as Svg;
     this.#assignKeys(imported);
+    this.#collectiveRotationBySelection.clear();
+    for (const [key, degrees] of Object.entries(context.collectiveRotations ?? {})) {
+      if (Number.isFinite(degrees)) this.#collectiveRotationBySelection.set(key, normalizeRotationDegrees(degrees));
+    }
     this.#scope = findSelectableByKeys(imported, context.scopeKeys) ?? imported;
     this.#bindCanvasSelection(imported);
     const selectionPaths = context.selectionPaths ?? (context.selectionKeys.length > 0 ? [context.selectionKeys] : []);
