@@ -8,7 +8,7 @@ goal:
   slug: "multi-selection-editing-e2e-qa"
   kind: existing_plan
   tranche: "Automate the complete collective movement, history, arrangement, rejection, and serialization workflow in real Chromium using the complex Seatify fixture."
-  status: active
+  status: done
   oracle:
     signal: "Real Chromium proves exact shared root-space movement, deterministic arrangement, one-step history, all-or-nothing rejection, stable selection, and clean SVG serialization for complex multi-selections."
     cadence: "after each Worker package and at final audit"
@@ -67,7 +67,7 @@ visual_board:
     url: "http://goalbuddy.localhost:41737/multi-selection-editing-e2e-qa/"
     command: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.4.3/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/multi-selection-editing-e2e-qa"
 
-active_task: T012
+active_task: null
 
 tasks:
   - id: T001
@@ -878,7 +878,7 @@ tasks:
   - id: T012
     type: worker
     assignee: Worker
-    status: active
+    status: done
     reasoning_hint: medium
     objective: "Close every final-oracle gap on one exact recovery candidate: disconnected-selection availability, complete saved-SVG fidelity, 125%-collapsed identity continuity, post-remediation repeatability and clean-clone proof, protected CI, and merge."
     inputs:
@@ -922,12 +922,95 @@ tasks:
       - "Any file outside allowed_files must change."
       - "The candidate changes after repeat/clean-clone evidence or while protected checks run."
       - "The same unexplained failure remains after two attempts."
-    receipt: null
-
+    receipt:
+      result: done
+      pr_url: "https://github.com/lineagehq/lineage-logo/pull/16"
+      head_sha: 4fa97d51b8202b1d6b126906028d8cf32b41a681
+      merge_sha: 41e640f9d6e08d11d206801c274d1ae3f63ac8f4
+      check_results:
+        - name: verify
+          status: pass
+          conclusion: SUCCESS
+          head_sha: 4fa97d51b8202b1d6b126906028d8cf32b41a681
+          url: "https://github.com/lineagehq/lineage-logo/actions/runs/33268363667/job/99142326104"
+        - name: browser-qa
+          status: pass
+          conclusion: SUCCESS
+          head_sha: 4fa97d51b8202b1d6b126906028d8cf32b41a681
+          url: "https://github.com/lineagehq/lineage-logo/actions/runs/33268363667/job/99142326046"
+      repeatability:
+        head_sha: 4fa97d51b8202b1d6b126906028d8cf32b41a681
+        executions: 10
+        scenarios_per_execution: 28
+        total_passed: 280
+        playwright_durations_seconds:
+          - 31.5
+          - 32.1
+          - 31.2
+          - 34
+          - 33.1
+          - 32.2
+          - 31.8
+          - 31.2
+          - 52.3
+          - 34.3
+        candidate_changed: false
+      fresh_clone:
+        head_sha: 4fa97d51b8202b1d6b126906028d8cf32b41a681
+        npm_ci: "69 packages installed; 0 vulnerabilities"
+        repository_check: "TypeScript passed; 401 tests passed; production build passed"
+        browser_qa: "28 passed"
+        working_tree: clean
+        candidate_changed: false
+      changed_files:
+        - docs/goals/multi-selection-editing-e2e-qa/state.yaml
+        - tests/e2e/multi-selection-arrangement.spec.ts
+        - tests/editor-interactions.test.ts
+      commands:
+        - cmd: "npx vitest run tests/editor-interactions.test.ts"
+          status: pass
+          result: "64 tests passed, including disconnected-selection rejection with unchanged document and history."
+        - cmd: "npm run test:e2e -- --grep 'multi-selection arrangement'"
+          status: pass
+          result: "16 scenarios passed with root-inclusive saved fidelity and 125%-collapsed identity continuity."
+        - cmd: "npm run check"
+          status: pass
+          result: "TypeScript passed; 401 tests passed; production build passed."
+        - cmd: "npm run test:e2e"
+          status: pass
+          result: "28 Chromium scenarios passed before the immutable candidate commit."
+        - cmd: "npm audit --omit=dev --audit-level=high"
+          status: pass
+          result: "0 vulnerabilities."
+        - cmd: "git diff --check"
+          status: pass
+          result: "No whitespace errors."
+        - cmd: "ten consecutive npm run test:e2e executions on 4fa97d51b8202b1d6b126906028d8cf32b41a681"
+          status: pass
+          result: "10 x 28 passed; 280/280 total; candidate SHA remained immutable."
+        - cmd: "fresh clone plus npm ci --ignore-scripts, npm run check, and npm run test:e2e"
+          status: pass
+          result: "Exact SHA 4fa97d51b8202b1d6b126906028d8cf32b41a681; 0 vulnerabilities; 401 tests/build passed; 28 browser scenarios passed; clone remained clean."
+        - cmd: "gh pr checks 16 --watch --interval 10"
+          status: pass
+          result: "Protected verify and browser-qa succeeded on immutable head 4fa97d51b8202b1d6b126906028d8cf32b41a681."
+        - cmd: "gh pr merge 16 --merge --match-head-commit 4fa97d51b8202b1d6b126906028d8cf32b41a681"
+          status: pass
+          result: "PR #16 merged as 41e640f9d6e08d11d206801c274d1ae3f63ac8f4."
+        - cmd: "git fetch origin main --prune; git merge-base --is-ancestor 4fa97d51b8202b1d6b126906028d8cf32b41a681 origin/main; git diff --exit-code 4fa97d51b8202b1d6b126906028d8cf32b41a681 origin/main"
+          status: pass
+          result: "Remote main contains the candidate as the second merge parent and has the identical candidate tree."
+        - cmd: "exact diagnostics, port, temporary-workspace, fixture, scope, and tree cleanup"
+          status: pass
+          result: "Local tree clean; fixture and unauthorized files unchanged; test-results absent; ports 43117/43118 clear; QA, clone, and diagnostic temporary workspaces absent."
+      summary: "Closed all five T999 gaps on one immutable recovery candidate. Added disconnected-selection rejection with no document/history mutation, root-inclusive authored SVG comparison with exact live-to-saved target transforms, and primary/inspector continuity through the 125%-collapsed workflow. After the final commit, 10 complete browser runs passed 280/280 scenarios and a fresh clone passed install, 401 tests/build, and all 28 browser scenarios. Protected verify and browser-qa passed on exact head 4fa97d5. PR #16 merged as 41e640f; remote main has the identical candidate tree. Scope, fixture, diagnostics, listeners, and temporary workspaces are clean."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
   - id: T013
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: high
     objective: "Run the definitive final audit against the merged recovery SHA and prove every original browser-QA oracle requirement with exact-candidate evidence."
     inputs:
@@ -943,8 +1026,44 @@ tasks:
       - "full_outcome_complete: true | false"
       - "Requirement-by-requirement oracle evidence map"
       - "Any missing evidence or exact next task"
-    receipt: null
-
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      rationale: "The complete oracle is now proven on immutable head 4fa97d5. T012 closes every T999 gap in source: disconnected rejection has an explicit no-mutation/history contract, saved SVG comparison includes the root and exact live target transforms, and the 125%-collapsed workflow preserves full selection/primary/inspector context. That same SHA passed 280/280 post-freeze browser executions, a clean-clone install/check/28-scenario run, and strict protected verify/browser-qa before PR #16 merged. The merge tree equals the candidate; scope, fixtures, diagnostics, ports, and temporary workspaces are clean. Historical blocked attempts are superseded by completed recovery tasks; only this final audit remained active."
+      evidence:
+        - requirement: "Exact merged candidate"
+          proof: "Local HEAD and PR #16 head are 4fa97d51b8202b1d6b126906028d8cf32b41a681. GitHub reports PR #16 merged as 41e640f9d6e08d11d206801c274d1ae3f63ac8f4; HEAD is an ancestor of origin/main and the candidate, merge commit, and remote-main trees are identical."
+        - requirement: "Protected CI"
+          proof: "Main protection is strict, enforced for administrators, and requires verify plus browser-qa. Pull-request run 33268363667 completed verify job 99142326104 and browser-qa job 99142326046 successfully on exact head 4fa97d51b8202b1d6b126906028d8cf32b41a681."
+        - requirement: "Collective translation and exact history"
+          proof: "The merged Chromium suite selects exact nested/cross-parent labels, drags from selected non-primary East north seat, checks every selected object’s shared root-space delta and fixed Venue caption, proves one- and ten-unit nudges, and requires exact one-step Undo/Redo geometry, Layers, primary, inspector, and dirty-control restoration."
+        - requirement: "Cancellation and all-or-nothing rejection"
+          proof: "Real-browser cases cover zero-distance, below-threshold, Escape, locked, hidden, mixed-parent, and pending-Agent rejection with unchanged full geometry, exact identities, and history controls. The new pure browser-unreachable contract passes a disconnected node to translationAvailability and proves the editor serialization, selection context, Undo, and Redo remain unchanged."
+        - requirement: "Deterministic arrangement"
+          proof: "Six alignment actions, horizontal/vertical center distribution, horizontal/vertical equal-gap spacing, deterministic outer anchors/order, fixed unrelated geometry, exact no-op transform syntax, and one-checkpoint Undo/Redo are exercised through public controls in real Chromium."
+        - requirement: "Non-default layout fidelity"
+          proof: "At 125% zoom with both sidebars collapsed, selection is built by live canvas pointer input. The test now captures exact labels, Ticket accent star primary identity, count/name/breadcrumb/group summaries, verifies shared keyboard movement, preserves the full context after arrangement, and restores exact geometry/context after Undo."
+        - requirement: "Serialization fidelity"
+          proof: "Named Save retrieves the public saved SVG, snapshots the root plus every descendant, preserves authored root values, element order, text, IDs, labels, references, resources, and all non-target attributes, permits only the two exact serializer root additions, and requires every saved target transform to equal the live post-arrangement transform. Runtime, review, transport, transaction, token, and lineage metadata are rejected."
+        - requirement: "No shortcut proof"
+          proof: "Source inspection finds no direct editor calls in E2E, no fixed sleeps, no fixed pointer destinations, and no skipped/focused tests. Pointer input and expected positions derive from live bounding boxes and SVG matrices; fixtures, Playwright configuration, packages, workflow gates, canvas, agent, and server behavior were not weakened."
+        - requirement: "Repeatability on final SHA"
+          proof: "After candidate freeze at 4fa97d51b8202b1d6b126906028d8cf32b41a681, ten consecutive complete Chromium runs passed 28/28 each, 280/280 total, with recorded durations and candidate_changed=false."
+        - requirement: "Clean-checkout proof"
+          proof: "A fresh clone pinned to 4fa97d51b8202b1d6b126906028d8cf32b41a681 installed 69 packages with zero vulnerabilities, passed TypeScript, 401 tests, production build, and all 28 browser scenarios, remained clean, and did not change the candidate."
+        - requirement: "Diagnostics and cleanup"
+          proof: "The earlier bounded intentional failure demonstrated screenshot, trace, and structured page-snapshot retention; T012 did not modify diagnostic infrastructure. Current independent checks find no test-results, listeners on 43117/43118, QA/clone workspaces, or downloaded diagnostics. Only the expected local GoalBuddy receipt/T013 board transition differs from the merged candidate."
+        - requirement: "Board completion safety"
+          proof: "T011, T005, T006, T999, and T012 are done with receipts; earlier blocked attempts are explicitly superseded by later successful recovery tasks. No queued or active required implementation remains; T013 is the sole active task and this receipt completes it."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence: []
+      required_board_updates:
+        - "Record T013 done with this receipt and full_outcome_complete: true."
+        - "Set goal.status to complete and clear active_task using the GoalBuddy completion transition."
+        - "Persist the final administrative board state without changing the verified candidate behavior or evidence."
 checks:
   dirty_fingerprint: "clean-main-before-goal-prep"
   last_verification:
