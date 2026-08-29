@@ -1,0 +1,552 @@
+version: 2
+
+goal:
+  title: "Collective Multi-Selection Transforms"
+  slug: "multi-selection-collective-transforms"
+  kind: specific
+  tranche: "Implement, dogfood, and rigorously verify shared resize and rotation for multi-selected SVG objects."
+  status: done
+  oracle:
+    signal: "On the complex Seatify fixture, a user can select three or more eligible nested and cross-parent objects and use one shared transform box to resize or rotate them as a coherent temporary group, with exact atomic Undo/Redo and no SVG contamination."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Receipt-backed unit, build, focused Chromium, repeated exact-geometry, and adversarial local dogfood evidence mapped to every required interaction and safety case."
+  intake:
+    original_request: "Agreed. Let's continue with that now."
+    interpreted_outcome: "Add production-ready collective resize and rotation to the existing multi-selection workflow."
+    input_shape: specific
+    audience: "People manually correcting layered SVG logos in the Lineage Logo canvas"
+    authority: approved
+    proof_type: test
+    completion_proof: "The exact oracle passes on a clean checkout, the shared transform UI is manually usable, and a final audit records full_outcome_complete: true."
+    likely_misfire: "Rendering a shared box or transforming only the primary object while failing to preserve cross-parent geometry, history atomicity, selection identity, or clean authored SVG."
+    blind_spots_considered:
+      - "Cross-parent coordinate conversion and rotated or transformed ancestors"
+      - "Union bounds, pivot semantics, handle hit targets, and modifier behavior"
+      - "Selection feedback versus primary-object feedback"
+      - "Pointer cancellation, below-threshold movement, and no-op history"
+      - "Locked, hidden, disconnected, ineligible, and agent-review gates"
+      - "Zoom, collapsed sidebars, serialization, and authored-SVG cleanliness"
+    existing_plan_facts:
+      - "Build on the merged marquee selection and collective movement foundation."
+      - "Use one shared union transform box for multi-selection resize and rotation."
+      - "Preserve relative layout and produce one atomic Undo/Redo checkpoint per gesture."
+      - "Use the complex Seatify logo as the primary dogfood fixture."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  exact_human_approval_can_terminal_wait: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41737/multi-selection-collective-transforms/"
+    command: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.4.3/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/multi-selection-collective-transforms"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map the existing single- and multi-selection transform architecture, geometry boundaries, history model, fixtures, and verification surfaces needed for collective resize and rotation."
+    inputs:
+      - "Current canvas selection and transform implementation"
+      - "Existing unit and Playwright coverage"
+      - "docs/goals/multi-selection-editing-e2e-qa"
+      - "Complex Seatify fixture"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation or goal files."
+      - "Report concrete file and symbol evidence."
+    expected_output:
+      - "Architecture and data-flow map"
+      - "Coordinate-system and history risks"
+      - "Relevant files and verification commands"
+      - "Candidate behavior contract and largest safe Worker slice"
+    receipt:
+      result: done
+      summary: "Mapped the collective-transform architecture and proof surfaces. Current multi-selection uses primary-only resize/rotation handles, while collective movement already provides the correct all-or-nothing eligibility, cross-parent root-space conversion, atomic snapshot history, cancellation, and browser-test patterns. The safest vertical slice is a root-space CollectiveTransformGesture plus a shared editor-only union overlay, integrated into the existing interactive lifecycle and covered by focused unit and Chromium tests on the complex Seatify fixture."
+      evidence:
+        - file: src/client/canvas/editor.ts
+          symbols: "SvgEditor.#setSelection,SvgEditor.#beginInteractiveMutation,SvgEditor.#finishInteractiveMutation,SvgEditor.#cancelInteractiveMutation"
+          finding: "Only the primary SvgElement receives svg.resize handles; multi-selection installs drag sources on all eligible members. Interactive mutations already capture one pre-gesture snapshot, checkpoint once on commit, and restore on cancellation."
+        - file: src/client/canvas/editor.ts
+          symbols: "translationAvailability,translationTargets,parentToRootMatrix,rootBox"
+          finding: "Collective movement rejects disconnected, hidden, CSS-transform-controlled, locked, ancestor/descendant, and agent-blocked selections before mutation and derives each member's parent-to-root matrix independently."
+        - file: src/client/canvas/transform.ts
+          symbols: "relativeMatrix,SelectionTranslationGesture,composeGroupResize,GroupTransformGesture"
+          finding: "Matrix normalization, inversion, bounded coefficients, exact original-transform restoration, and gesture completion semantics are reusable. GroupTransformGesture is single-element/local-box only and is not sufficient for cross-parent collective transforms."
+        - file: src/client/canvas/editor.ts
+          symbols: "SvgEditor.#renderSelectionHalos,enhanceRotationHandle,serializeSvg"
+          finding: "Per-member violet halos are root-space editor overlays, while resize/rotation handles come from the selected primary. Serialization strips selection overlays, handle nodes, data-lineage attributes, and other editor state."
+        - file: src/client/history/history.ts
+          symbols: "History.checkpoint,History.undo,History.redo"
+          finding: "History stores serialized snapshots; one checkpoint of the before snapshot is sufficient for an atomic multi-member gesture."
+        - file: tests/editor-interactions.test.ts
+          finding: "Existing deterministic tests cover parent/root matrix conversion, bounded composition, exact cancel/no-op syntax restoration, collective cross-parent movement, lock/hidden/disconnected/CSS/agent rejection, rotation affordance, and atomic Undo/Redo."
+        - file: tests/e2e/collective-translation.spec.ts
+          finding: "Real Chromium helpers already exercise labeled cross-parent selection, non-primary gesture initiation, exact root geometry, threshold/Escape paths, rejection, public Agent review, named Save, and SVG cleanliness."
+        - file: tests/e2e/multi-selection-arrangement.spec.ts
+          finding: "Browser coverage supplies 125% zoom, collapsed-sidebars, identity continuity, exact arrangement geometry, rejection precedence, and authored-structure fidelity patterns."
+        - file: tests/fixtures/workspace/concepts/complex-seatify.svg
+          finding: "The 42-object fixture contains transformed ancestors, nested table seats, cross-parent stage/access/ticket/wordmark objects, rotations, resource-backed leaves, and labeled selectable targets suitable for collective transform proof."
+        - file: docs/goals/multi-selection-editing-e2e-qa/state.yaml
+          finding: "Prior goal evidence records 10 complete Chromium repetitions, clean-clone verification, protected CI, and full outcome completion for the movement/arrangement foundation."
+      facts:
+        - "A coherent collective transform must be expressed in root coordinates, then conjugated into each member's parent coordinate space: inverse(parentToRoot) × collectiveRootTransform × parentToRoot × initialLocalTransform."
+        - "The shared union box should be computed from root-space visual bounds, remain an editor-only overlay, and own the resize and rotation hit targets; primary-member plugin handles cannot represent the required behavior."
+        - "Eligibility should reuse the existing all-or-nothing collective movement policy unless Judge explicitly narrows or extends it."
+        - "The existing interactive snapshot lifecycle can preserve deterministic primary identity, selection paths, one-checkpoint history, Escape/pointer cancellation, and no-op behavior."
+        - "Candidate largest safe Worker slice: add collective root-space affine composition and a multi-target gesture in src/client/canvas/transform.ts; add shared union overlay/handles and lifecycle routing in src/client/canvas/editor.ts; style the overlay in src/client/styles.css; add deterministic unit coverage in tests/editor-interactions.test.ts; add a focused tests/e2e/collective-transforms.spec.ts reusing the established Seatify public-UI harness. Keep serialization and existing movement paths unchanged except for shared eligibility helpers required by the slice."
+        - "Candidate verification commands: npm run typecheck; npm run test -- --run tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/complex-seatify-fixture.test.ts; npm run build; npm run test:e2e -- --project=chromium --grep 'collective transform'; npm run test:e2e -- --project=chromium."
+      contradictions:
+        - "The goal requires one shared union transform box, but current SvgEditor.#setSelection installs resize and rotation handles only on the primary selected element."
+        - "Current GroupTransformGesture composes against one element's local bounding box and cannot preserve one root-space affine transform across different parents."
+        - "Current rotation handling delegates mutation to the primary svg.resize plugin and only normalizes a selected group afterward; it does not transform every multi-selected member."
+      ambiguity_requiring_judge:
+        - "Define resize anchor semantics for corner and edge handles, including whether aspect preservation is unconditional or modifier-controlled."
+        - "Define the union pivot for rotation and whether the shared box remains axis-aligned during live rotation."
+        - "Decide whether resource-backed leaves that currently suppress primary handles reject the entire collective transform or remain eligible through the editor-owned overlay."
+        - "Specify the exact pointer threshold and whether non-primary member drags remain translation-only while shared-overlay handles exclusively initiate resize and rotation."
+      commands:
+        - "git rev-parse --show-toplevel && git status --short && yq '.active_task, .tasks.T001' docs/goals/multi-selection-collective-transforms/state.yaml"
+        - "sed -n '1,260p' docs/goals/multi-selection-collective-transforms/state.yaml && sed -n '1,240p' docs/goals/multi-selection-collective-transforms/goal.md"
+        - "rg --files src tests e2e docs/goals/multi-selection-editing-e2e-qa 2>/dev/null | sort | sed -n '1,240p'"
+        - "rg -n 'class |interface |type |function |constructor|pointer|resize|rotate|selection|transform|history|undo|redo|commit|serialize|agent|locked|hidden' src/client/canvas/editor.ts src/client/canvas/transform.ts src/client/canvas/marquee-selection.ts src/client/history/history.ts | sed -n '1,320p'"
+        - "sed -n '1,330p' src/client/canvas/transform.ts && sed -n '1050,1435p' src/client/canvas/editor.ts"
+        - "sed -n '1840,2140p' src/client/canvas/editor.ts && sed -n '2140,2440p' src/client/canvas/editor.ts"
+        - "rg -n 'SelectionTranslationGesture|GroupTransformGesture|composeGroup|rotationHandle|multi-select|collective|Undo|Redo|Escape|pointercancel|agent|locked|hidden|cross-parent|nested|zoom|sidebar' tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/e2e/collective-translation.spec.ts tests/e2e/multi-selection-arrangement.spec.ts tests/complex-seatify-fixture.test.ts | sed -n '1,360p'"
+        - "sed -n '1,240p' tests/fixtures/workspace/concepts/complex-seatify.svg && sed -n '1,220p' tests/complex-seatify-fixture.test.ts && node -e 'const p=require(\"./package.json\"); console.log(JSON.stringify(p.scripts,null,2))'"
+        - "rg -n 'receipt:|summary:|evidence:|full_outcome_complete|collective|allowed_files|verify:' docs/goals/multi-selection-editing-e2e-qa/state.yaml | sed -n '1,300p'"
+        - "rg -n 'SELECTION_|renderSelectionHalos|enhanceRotationHandle|svg_select_handle|selection-halo|lineage-secondary|lineage-primary|HANDLE_SELECTOR' src/client/canvas/editor.ts src/client/styles.css tests/editor-interactions.test.ts | sed -n '1,300p'"
+        - "sed -n '2660,2790p' src/client/canvas/editor.ts && sed -n '3000,3095p' src/client/canvas/editor.ts && sed -n '1,70p' src/client/history/history.ts"
+        - "sed -n '240,620p' tests/editor-interactions.test.ts && sed -n '1,120p' playwright.config.ts && sed -n '230,470p' tests/e2e/collective-translation.spec.ts"
+      note_needed: false
+  - id: T002
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Turn the Scout evidence and owner intent into a precise collective-transform behavior contract and authorize the largest safe vertical implementation slice."
+    inputs:
+      - "T001 receipt"
+      - "Goal oracle and non-negotiable constraints"
+      - "Existing single-selection and collective-movement behavior"
+    constraints:
+      - "Read-only; do not implement."
+      - "Resolve union bounds, pivot, anchor, modifier, eligibility, preview, and history semantics from evidence rather than invention."
+      - "Reject any design that requires temporary SVG hierarchy mutation or only transforms the primary member."
+    expected_output:
+      - "Approved observable behavior contract"
+      - "Exact Worker objective"
+      - "Concrete allowed_files"
+      - "Focused and full verify commands"
+      - "Stop conditions and deferred decisions"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "T001 proves the existing root-space movement, eligibility, snapshot-history, overlay-cleanup, and browser harness can support one coherent vertical slice. Existing single-selection resize is uniformly aspect-preserving, opposite-handle anchored, not center-based, grid-1, and rotation-snapped to 1 degree. The approved design replaces primary-owned handles only for eligible multi-selection, applies one immutable root-space affine transform to every member through its own parent conversion, and never reparents authored nodes. Resource-backed leaves remain eligible because the editor-owned overlay changes only each selected node's transform attribute. Implementation, exact geometry, cancellation, history, serialization, and regression evidence are still required."
+      evidence:
+        - source: "T001 receipt"
+          finding: "Collective movement already supplies all-or-nothing eligibility, independent parent-to-root matrices, immutable gesture-start transforms, atomic snapshot history, exact cancellation, and cross-parent Chromium patterns."
+        - source: "src/client/canvas/editor.ts:1286-1338"
+          finding: "Single-selection handles use preserveAspectRatio=true, aroundCenter=false, grid=1, and degree=1; multi-selection currently still exposes only the primary member's resize and rotation handles."
+        - source: "node_modules/@svgdotjs/svg.resize.js/src/ResizeHandler.js:145-205"
+          finding: "Current resize semantics use the opposite handle as the fixed point, uniform scaling for every handle, the dragged axis for edge handles, and the axis furthest from identity for corner handles."
+        - source: "src/client/canvas/editor.ts:674-787"
+          finding: "rootBox, parentToRootMatrix, translationTargets, and translationAvailability establish the current visual-bounds and safety policy for connected, visible, unlocked, non-overlapping, non-CSS-controlled selections."
+        - source: "src/client/canvas/transform.ts:127-185"
+          finding: "SelectionTranslationGesture demonstrates exact original-transform restoration, immutable initial matrices, bounded parent-space conversion, and no-op completion semantics."
+        - source: "src/client/canvas/transform.ts:199-302"
+          finding: "GroupTransformGesture is single-element and local-box based, so it cannot satisfy cross-parent collective resize or rotation."
+        - source: "src/client/canvas/editor.ts:2256-2410"
+          finding: "The existing interactive lifecycle captures one before snapshot, rejects overlapping gestures, cancels on terminal cancellation, checkpoints once only when changed, and restores snapshots on rejection."
+        - source: "src/client/canvas/editor.ts:3040-3090 and serializeSvg"
+          finding: "Selection halos are editor-only root overlays and serialization already removes editor handle and halo state, providing the required pattern for a shared overlay."
+        - source: docs/goals/multi-selection-collective-transforms/goal.md
+          finding: "The oracle requires exact nested and cross-parent geometry, deterministic primary identity, one history action, cancellation and rejection no-ops, zoom/sidebar coverage, save/reload fidelity, and clean authored SVG."
+      parallel_safety:
+        safe: false
+        reason: "Geometry, overlay routing, gesture lifecycle, styling, and deterministic tests form one coupled vertical slice across shared symbols. Use the single authorized Worker; parallel edits would overlap editor.ts and the interaction tests."
+      missing_evidence:
+        - "No collective resize or rotation implementation exists yet."
+        - "No focused unit or Chromium evidence exists for the approved behavior contract."
+        - "No exact save/reload, repeated-run, clean-checkout, or adversarial dogfood evidence exists yet."
+      required_board_updates:
+        - task_id: T003
+          status: queued
+          objective: "Implement one production-complete collective resize and rotation slice: an editor-owned shared transform overlay, immutable root-space affine composition for every eligible selected member, exact atomic lifecycle integration, serialization cleanliness, and deterministic unit and Chromium coverage on the complex Seatify fixture."
+          behavior_contract: "Show collective controls only when at least two distinct selected nodes pass one all-or-nothing collectiveTransformAvailability preflight. Preserve the existing single-selection plugin path unchanged.,At gesture start, compute each member's finite rootBox and the tight axis-aligned union in root user coordinates. Reject zero-width, zero-height, non-finite, disconnected, or unsupported geometry before capturing or mutating authored state.,Freeze the gesture-start union, its center pivot, every member's original transform attribute, initial local matrix, and parent-to-root matrix. Never recompute member inputs cumulatively during a gesture.,Create one editor-only selection-owned overlay with an outline, eight shared resize handles, a top-center connector, and the existing recognizable rotation icon. Do not attach shared handles to the primary member and do not wrap, reparent, reorder, or rename selected SVG nodes.,Keep all selected-member violet halos and Layers selection feedback visible. Keep the existing deterministic primary identity visually distinguishable and unchanged throughout preview, commit, Undo, Redo, and save/reload.,Shared resize is uniformly aspect-preserving without a modifier, matching current single-selection behavior. aroundCenter remains false. Each handle uses its opposite handle as the fixed root-space anchor; edge handles derive the factor from their dragged axis and corner handles use the axis whose scale is furthest from identity. Use grid-1 root-coordinate snapping, positive bounded scale only, and no mirroring.,Shift, Alt, Control, Meta, and platform selection accelerators do not introduce new resize or rotation modes. Existing selection and canvas shortcuts remain unchanged; modifier-based aspect toggling or center scaling is deferred.,Shared rotation uses the frozen root-union center as pivot. Derive the delta from root-space start/current pointer vectors, snap the resulting delta to 1-degree increments, and apply one rotation around that fixed pivot to every member.,During resize, update the shared box and handles from the scaled frozen union. During rotation, rotate the frozen box, connector, handle, and member halos rigidly around the same pivot rather than recomputing an axis-aligned box each frame. After commit or restore, rebase the displayed box to the current tight root-space union.,For a collective root transform C, set each member from immutable gesture-start data using inverse(parentToRoot) × C × parentToRoot × initialLocalTransform. Scaling uses T(anchor) × S(factor) × T(-anchor); rotation uses T(pivot) × R(delta) × T(-pivot). Reject the entire gesture if any inversion, coefficient bound, or transform write cannot be completed safely.,Use a 3-screen-pixel activation threshold consistent with collective movement. Zero-distance, below-threshold, invalid-pivot, and exact-snapshot no-op gestures restore every original transform attribute byte-for-byte and add no history.,Only shared-overlay handles initiate collective resize or rotation. Dragging any selected member remains collective translation; pointer activity on an overlay handle must not toggle selection, change the primary, or start member drag.,Reuse the collective movement safety policy: reject all selected members if agent review is pending, any member is locked through its ancestry, hidden through its ancestry, disconnected, unsupported, ancestor/descendant-overlapping, CSS-transform-controlled, or lacks valid root/parent geometry. A gate that begins mid-gesture cancels and exactly restores the whole selection.,Resource-backed selectable leaves remain eligible when every normal precondition passes because the editor-owned overlay only composes the selected node's transform attribute; do not invoke the primary svg.resize mutation path on them.,Escape, pointercancel, lost pointer capture, touch cancellation, and explicit rejection cancel the entire gesture, restore original transform syntax and selection identity, and create zero history actions.,A changed pointer gesture captures one before snapshot and creates exactly one checkpoint. Undo restores exact before geometry and syntax; Redo restores exact after geometry; save/reload preserves the same root geometry and selected-node identities where the existing history/selection contract supports restoration.,The shared overlay, handles, auras, accessibility metadata, preferences, test identifiers, and transient gesture state must be absent from serialized SVG. Only intended transform attributes on authored selected nodes may change.,Reuse existing handle cursor, focus, label, rotation hit-target, keyboard-cancellation, zoom, and reduced-motion conventions. Collective controls must remain legible and operable at 100% and 125% zoom with either sidebar collapsed.,Focused Chromium coverage must select at least three labeled complex Seatify objects including nested and cross-parent members, vary which member is primary, and exercise shared resize and rotation through public pointer UI with exact root-space assertions."
+          allowed_files: "src/client/canvas/transform.ts,src/client/canvas/editor.ts,src/client/styles.css,tests/editor-interactions.test.ts,tests/editor-serialization.test.ts,tests/e2e/collective-transforms.spec.ts"
+          verify: "npm run typecheck,npm run test -- tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/complex-seatify-fixture.test.ts,npm run build,npm run test:e2e -- tests/e2e/collective-transforms.spec.ts --project=chromium,npm run test:e2e -- tests/e2e/collective-transforms.spec.ts tests/e2e/collective-translation.spec.ts tests/e2e/multi-selection-arrangement.spec.ts --project=chromium,npm run test,npm run test:e2e -- --project=chromium"
+          stop_if: "Implementing the slice would require reparenting selected authored nodes, inserting a temporary authored wrapper, or changing saved SVG hierarchy.,Any selected member cannot be preflighted and transformed all-or-nothing with the documented root-to-parent conjugation.,Implementation requires a source, fixture, configuration, dependency, generated, or test-helper file outside allowed_files.,Existing verified single-selection modifier behavior contradicts the documented resize contract; return the concrete contradiction instead of inventing a new modifier mode.,The editor-owned overlay cannot be removed from serialization without broadening production persistence behavior.,A focused or full verification command fails twice for a reason not attributable to this slice."
+          deferred_decisions: "Shift/Alt aspect or center-scaling modes,Smart snapping, guides, constraints, and auto-layout,Persistent oriented-box state across separate gestures,Touch-specific transform UX,Permanent grouping or hierarchy mutation,Agent-authored insertion and settings-page work"
+  - id: T003
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement one production-complete collective resize and rotation slice: an editor-owned shared transform overlay, immutable root-space affine composition for every eligible selected member, exact atomic lifecycle integration, serialization cleanliness, and deterministic unit and Chromium coverage on the complex Seatify fixture."
+    allowed_files:
+      - "src/client/canvas/transform.ts"
+      - "src/client/canvas/editor.ts"
+      - "src/client/styles.css"
+      - "tests/editor-interactions.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/e2e/collective-transforms.spec.ts"
+    verify:
+      - "npm run typecheck"
+      - "npm run test -- tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/complex-seatify-fixture.test.ts"
+      - "npm run build"
+      - "npm run test:e2e -- tests/e2e/collective-transforms.spec.ts --project=chromium"
+      - "npm run test:e2e -- tests/e2e/collective-transforms.spec.ts tests/e2e/collective-translation.spec.ts tests/e2e/multi-selection-arrangement.spec.ts --project=chromium"
+      - "npm run test"
+      - "npm run test:e2e -- --project=chromium"
+    stop_if:
+      - "Implementing the slice would require reparenting selected authored nodes, inserting a temporary authored wrapper, or changing saved SVG hierarchy."
+      - "Any selected member cannot be preflighted and transformed all-or-nothing with the documented root-to-parent conjugation."
+      - "Implementation requires a source, fixture, configuration, dependency, generated, or test-helper file outside allowed_files."
+      - "Existing verified single-selection modifier behavior contradicts the documented resize contract; return the concrete contradiction instead of inventing a new modifier mode."
+      - "The editor-owned overlay cannot be removed from serialization without broadening production persistence behavior."
+      - "A focused or full verification command fails twice for a reason not attributable to this slice."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/transform.ts
+        - src/client/canvas/editor.ts
+        - src/client/styles.css
+        - tests/editor-interactions.test.ts
+        - tests/editor-serialization.test.ts
+        - tests/e2e/collective-transforms.spec.ts
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+          result: "TypeScript completed with no errors."
+        - cmd: "npm run test -- tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/complex-seatify-fixture.test.ts"
+          status: pass
+          result: "172 tests passed across 3 files."
+        - cmd: "npm run build"
+          status: pass
+          result: "Vite production build completed successfully."
+        - cmd: "npm run test:e2e -- tests/e2e/collective-transforms.spec.ts --project=chromium"
+          status: pass
+          result: "2 focused Chromium tests passed."
+        - cmd: "npm run test:e2e -- tests/e2e/collective-transforms.spec.ts tests/e2e/collective-translation.spec.ts tests/e2e/multi-selection-arrangement.spec.ts --project=chromium"
+          status: pass
+          result: "24 related Chromium tests passed."
+        - cmd: "npm run test"
+          status: pass
+          result: "403 tests passed across 20 files."
+        - cmd: "npm run test:e2e -- --project=chromium"
+          status: pass
+          result: "30 full-suite Chromium tests passed."
+      summary: "Implemented editor-owned collective resize and rotation controls with eight shared handles, fixed-pivot rotation, immutable root-space affine composition across independent parents, all-or-nothing eligibility, threshold/cancellation handling, atomic history, primary identity feedback, and serialization cleanup. Added deterministic geometry, cancellation, Undo/Redo, cross-parent, primary-variation, and overlay-cleanliness tests. Final verification passed: 172 focused unit tests, build/typecheck, 2 focused Chromium tests, 24 related Chromium tests, 403 full unit tests, and 30 full Chromium tests."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T004
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Adversarially review the implemented collective transform slice for geometry, interaction, regression, serialization, and proof gaps before dogfood."
+    inputs:
+      - "T001 through T003 receipts"
+      - "Current diff"
+      - "Focused test output"
+      - "Goal oracle"
+    constraints:
+      - "Read-only; do not fix findings."
+      - "Inspect nested and cross-parent transforms, transformed ancestors, non-primary handle paths, cancellation, no-op history, locks, zoom, sidebars, save/reload, and agent-review gates."
+      - "If defects exist, specify one coherent recovery Worker package with allowed_files and verify commands."
+    expected_output:
+      - "approved | changes_required"
+      - "Oracle coverage matrix"
+      - "High-confidence findings"
+      - "Recovery task specification if needed"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "The root-space affine math, transformed-ancestor fixture, shared overlay, primary variation, atomic history, and serialization stripping are credible, but the slice does not yet satisfy the approved all-or-nothing lifecycle or its proof contract. Collective eligibility is checked on pointer movement but not at terminal commit, so a secondary becoming locked, hidden, disconnected, or otherwise ineligible after the final move can still commit. Failed pointerdown preflight also leaves interactive state active until a compatibility terminal event. Browser coverage has only two happy-path tests and omits required Escape/pointercancel, gate rejection, 125%-zoom/collapsed-sidebar, save/reload, identity, and serialized-output assertions. One coherent recovery package should fix lifecycle revalidation and close these exact proof gaps before dogfood."
+      evidence:
+        - source: "src/client/canvas/transform.ts:202-294"
+          finding: "CollectiveTransformGesture correctly freezes initial matrices and applies inverse(parentToRoot) × collectiveRoot × parentToRoot × initial without hierarchy mutation; cancel restores original transform syntax."
+        - source: "src/client/canvas/editor.ts:715-754"
+          finding: "collectiveUnion and collectiveTransformAvailability reuse root-space visual bounds and the existing all-or-nothing movement policy, including transformed ancestors and independent parent spaces."
+        - source: "src/client/canvas/editor.ts:1328-1401"
+          finding: "Eligible multi-selection receives one editor-owned overlay, while selected members remain collective-translation drag sources and the primary identity is not replaced."
+        - source: "src/client/canvas/editor.ts:2312-2357"
+          finding: "Interactive state, snapshot, and terminal listeners are installed before collective preflight. If preflight fails, the method returns without canceling or clearing the interactive session."
+        - source: "src/client/canvas/editor.ts:2416-2458"
+          finding: "#finishInteractiveMutation calls CollectiveTransformGesture.complete and checkpoints without re-running collectiveTransformAvailability; terminal commit therefore does not enforce a gate that begins after the last pointermove."
+        - source: "src/client/canvas/editor.ts:3241-3288"
+          finding: "Eligibility is rechecked only in #moveCollectiveTransform. Resize uses the approved frozen anchor and uniform scale rule; rotation uses the approved frozen union center and one-degree snapping."
+        - source: "src/client/canvas/editor.ts:3278-3283"
+          finding: "The frozen overlay and selection halos receive the same live root transform, satisfying rigid preview rather than per-frame axis-aligned recomputation."
+        - source: "src/client/canvas/editor.ts:476-506 and tests/editor-serialization.test.ts:111-117"
+          finding: "Serialization removes the collective overlay and transient selection state, but the new proof is synthetic and does not exercise an actual transformed save/reload."
+        - source: "tests/fixtures/workspace/concepts/complex-seatify.svg:37-76 and tests/e2e/collective-transforms.spec.ts:3-164"
+          finding: "The focused browser fixture includes rotated/transformed ancestors and cross-parent targets, and the two tests vary the primary while asserting exact resize/rotation geometry and Undo/Redo."
+        - source: "tests/e2e/collective-transforms.spec.ts:103-164"
+          finding: "Focused Chromium coverage contains only resize and rotation happy paths. Despite the first title, it tests only below-threshold cancellation; it has no Escape, pointercancel, lost-capture, locked/hidden/disconnected/ineligible/agent rejection, 125% zoom, collapsed sidebars, save/reload, selection-identity continuity, or serialized-SVG assertion."
+        - source: "tests/editor-interactions.test.ts:917-1042"
+          finding: "Unit interaction coverage proves pointercancel, atomic Undo/Redo, and agent-review cancellation for two-member selections, but does not prove terminal eligibility revalidation or the full three-member Seatify oracle."
+      parallel_safety:
+        safe: false
+        reason: "Lifecycle repair and browser proof both touch editor.ts and the same focused interaction spec; one Worker should own the coherent recovery slice."
+      missing_evidence:
+        - "Terminal all-or-nothing cancellation when lock, hidden state, disconnection, structural overlap, CSS control, or invalid geometry begins after the last pointermove."
+        - "Exact cleanup of a collective pointerdown whose fresh preflight fails."
+        - "Collective Escape, lost-pointer-capture, exact no-op syntax/history, and resource-backed-leaf behavior."
+        - "Public Chromium operation at 125% zoom with both sidebars collapsed."
+        - "Save/reload exact geometry, deterministic primary/selection identity, and actual serialized-SVG cleanliness after collective resize and rotation."
+        - "Focused rejection coverage for locked, hidden, disconnected, ancestor/descendant, CSS-controlled, and pending-Agent selections."
+      required_board_updates:
+        - task_id: T004R1
+          status: queued
+          type: worker
+          objective: "Repair collective-transform lifecycle finalization so all eligibility failures cancel exactly before commit, then extend deterministic unit and public Chromium coverage to prove every currently missing T002 and goal-oracle clause before dogfood."
+          allowed_files: "src/client/canvas/editor.ts,tests/editor-interactions.test.ts,tests/editor-serialization.test.ts,tests/e2e/collective-transforms.spec.ts"
+          requirements: "If collective preflight fails after interactive state is opened, immediately tear down the session, restore the exact snapshot and selection identity, and leave zero history.,Before a collective pointerup can commit, re-run collectiveTransformAvailability against the current complete selection. Any lock, hidden state, disconnection, ancestor overlap, CSS-controlled transform, invalid root/parent geometry, or Agent gate must cancel every target byte-exactly and create zero history.,Preserve the approved root-space composition, frozen union/anchor/pivot, primary identity, shared overlay, single-selection behavior, collective translation, and SVG hierarchy.,Add deterministic interaction tests for fresh-preflight rejection, terminal gate changes after the last move, Escape, pointercancel/lost capture, below-threshold and rounded identity no-ops, resource-backed eligibility, exact selection identity, one-checkpoint Undo/Redo, and overlay cleanup.,Expand collective-transforms Chromium coverage on at least three labeled nested/cross-parent Seatify objects to cover 100% and 125% zoom, both sidebars collapsed, different primaries, public resize and rotation gestures, rejection/no-op paths, exact Undo/Redo, named save/reload geometry, Layers identity feedback, and serialized SVG free of collective/selection/editor metadata."
+          verify: "npm run typecheck,npm run test -- tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/complex-seatify-fixture.test.ts,npm run build,npm run test:e2e -- tests/e2e/collective-transforms.spec.ts --project=chromium,npm run test:e2e -- tests/e2e/collective-transforms.spec.ts tests/e2e/collective-translation.spec.ts tests/e2e/multi-selection-arrangement.spec.ts --project=chromium,npm run test,npm run test:e2e -- --project=chromium"
+          stop_if: "The repair requires changing the approved collective affine math, reparenting authored SVG nodes, or broadening persistence behavior.,A required public-UI proof needs fixture, application, configuration, dependency, generated, or helper changes outside allowed_files.,A focused or full verification command fails twice for a reason not attributable to this recovery slice."
+  - id: T005
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: high
+    objective: "Run final adversarial dogfood and exact-SHA proof on the complex Seatify fixture, creating and completing bounded recovery tasks for every in-scope defect."
+    inputs:
+      - "T004 receipt"
+      - "Complex Seatify fixture"
+      - "Goal oracle"
+      - "Repository verification scripts"
+    constraints:
+      - "Use a temporary byte-exact fixture copy and a named .localhost subdomain."
+      - "Exercise public UI paths; do not use test-only state mutation to fake success."
+      - "Do not accept visual plausibility in place of exact geometry, history, and serialized-SVG assertions."
+      - "Rerun affected and full gates after every recovery edit."
+    expected_output:
+      - "Adversarial manual dogfood receipt"
+      - "Focused deterministic Chromium results"
+      - "Full type, unit, build, and E2E results"
+      - "Repeat-run and clean-checkout exact-SHA results"
+      - "Recovery receipts or explicit no-defect result"
+    receipt:
+      result: done
+      changed_files: []
+      commands:
+        - cmd: "Browser public-UI dogfood at http://collective-transform.localhost:5173/ using /tmp/lineage-logo-collective-qa.6uwmj0"
+          status: pass
+          result: "Loaded the byte-exact complex Seatify copy, inspected all 42 Layers entries, exercised public selection controls, and confirmed the app and fixture rendered correctly. In-app automation did not reliably forward modifier clicks, so no product conclusion was drawn from that limitation; exact collective gestures were proven through the real Chromium pointer/keyboard harness instead."
+        - cmd: "shasum -a 256 /tmp/lineage-logo-collective-qa.6uwmj0/concepts/complex-seatify.svg tests/fixtures/workspace/concepts/complex-seatify.svg"
+          status: pass
+          result: "Both copies matched c374e51fee2094d46a3cb44bc308062a1dde4d94cc31ee46d6e892188e80f0f8."
+        - cmd: "npm run test:e2e -- tests/e2e/collective-transforms.spec.ts --project=chromium --repeat-each=10"
+          status: pass
+          result: "40/40 public-UI Chromium scenarios passed across ten consecutive repetitions."
+        - cmd: "npm run check"
+          status: pass
+          result: "Typecheck passed, 411 unit tests passed, and the production build succeeded on the working tree."
+        - cmd: "npm run test:e2e -- --project=chromium"
+          status: pass
+          result: "All 32 Chromium scenarios passed on the working tree."
+        - cmd: "git commit -m 'Add collective multi-selection transforms'"
+          status: pass
+          result: "Created exact implementation commit be62951f3ebc5aed660e94a146dd3a044f14207c."
+        - cmd: "git clone --no-local --branch docs/multi-selection-qa-completion file:///Users/neonwatty/Desktop/lineage-logo /tmp/lineage-logo-clean-be62951.lq46hr/repo"
+          status: pass
+          result: "Fresh clone resolved to be62951f3ebc5aed660e94a146dd3a044f14207c with a clean status."
+        - cmd: "npm ci"
+          status: pass
+          result: "Clean checkout installed 69 packages with zero vulnerabilities."
+        - cmd: "npm run check"
+          status: pass
+          result: "On the clean exact-SHA checkout, typecheck passed, 411 unit tests passed, and the production build succeeded."
+        - cmd: "npm run test:e2e -- --project=chromium"
+          status: pass
+          result: "All 32 Chromium scenarios passed on the clean exact-SHA checkout."
+        - cmd: "git rev-parse HEAD && git status --short && shasum -a 256 tests/fixtures/workspace/concepts/complex-seatify.svg && git diff --exit-code && git diff --cached --exit-code"
+          status: pass
+          result: "Verified exact SHA be62951f3ebc5aed660e94a146dd3a044f14207c, clean tracked state, and unchanged fixture hash c374e51fee2094d46a3cb44bc308062a1dde4d94cc31ee46d6e892188e80f0f8."
+      summary: "Adversarial dogfood and exact-SHA verification found no remaining in-scope product defect. Public Chromium coverage proves shared three-object resize and rotation with different primaries, exact cross-parent geometry, below-threshold/Escape/pointercancel no-ops, one-step Undo/Redo, 125% zoom with both sidebars collapsed, clean named save/reload, deterministic selection identity, and all-or-nothing locked/hidden/pending-Agent rejection. Ten consecutive focused repetitions and a full clean-clone gate passed."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T006
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Repair collective-transform lifecycle finalization so all eligibility failures cancel exactly before commit, then extend deterministic unit and public Chromium coverage to prove every currently missing T002 and goal-oracle clause before dogfood."
+    allowed_files:
+      - "src/client/canvas/editor.ts"
+      - "tests/editor-interactions.test.ts"
+      - "tests/editor-serialization.test.ts"
+      - "tests/e2e/collective-transforms.spec.ts"
+    verify:
+      - "npm run typecheck"
+      - "npm run test -- tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/complex-seatify-fixture.test.ts"
+      - "npm run build"
+      - "npm run test:e2e -- tests/e2e/collective-transforms.spec.ts --project=chromium"
+      - "npm run test:e2e -- tests/e2e/collective-transforms.spec.ts tests/e2e/collective-translation.spec.ts tests/e2e/multi-selection-arrangement.spec.ts --project=chromium"
+      - "npm run test"
+      - "npm run test:e2e -- --project=chromium"
+    stop_if:
+      - "The repair requires changing the approved collective affine math, reparenting authored SVG nodes, or broadening persistence behavior."
+      - "A required public-UI proof needs fixture, application, configuration, dependency, generated, or helper changes outside allowed_files."
+      - "A focused or full verification command fails twice for a reason not attributable to this recovery slice."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - tests/editor-interactions.test.ts
+        - tests/e2e/collective-transforms.spec.ts
+      commands:
+        - cmd: "npm run typecheck"
+          status: pass
+          result: "TypeScript completed with no errors."
+        - cmd: "npm run test -- tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/complex-seatify-fixture.test.ts"
+          status: pass
+          result: "180 tests passed across 3 files."
+        - cmd: "npm run build"
+          status: pass
+          result: "Vite production build completed successfully."
+        - cmd: "npm run test:e2e -- tests/e2e/collective-transforms.spec.ts --project=chromium"
+          status: pass
+          result: "4 focused Chromium tests passed."
+        - cmd: "npm run test:e2e -- tests/e2e/collective-transforms.spec.ts tests/e2e/collective-translation.spec.ts tests/e2e/multi-selection-arrangement.spec.ts --project=chromium"
+          status: pass
+          result: "26 related Chromium tests passed."
+        - cmd: "npm run test"
+          status: pass
+          result: "411 tests passed across 20 files."
+        - cmd: "npm run test:e2e -- --project=chromium"
+          status: pass
+          result: "32 full-suite Chromium tests passed."
+      summary: "Repaired collective-transform finalization by immediately cleaning failed pointerdown preflights, revalidating full eligibility before commit, canceling terminal gate changes byte-exactly, and suppressing snapshot-identical history. Fixed activated gestures returning to identity. Added deterministic coverage for hidden, disconnected, overlap, CSS, invalid geometry, Escape, pointercancel, lost capture, resource-backed leaves, identity, Undo/Redo, locked/hidden/Agent rejection, 125% zoom, collapsed sidebars, and clean intercepted named save/reload after resize plus rotation."
+      remaining_blockers: []
+      verification_attempts: 2
+      stopped_because: null
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the final exact tree and decide whether collective multi-selection resize and rotation fully satisfy the owner outcome."
+    inputs:
+      - "All completed task receipts"
+      - "Final exact-SHA verification"
+      - "Adversarial dogfood evidence"
+      - "Current diff and serialized fixture output"
+    constraints:
+      - "Read-only; do not implement."
+      - "Reject completion if any oracle clause lacks current evidence or any required Worker work remains."
+      - "Reject a visually convincing shared box if member transforms, atomic history, regressions, or SVG cleanliness are not exact."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Oracle-to-evidence mapping"
+      - "Missing evidence and exact next task if not complete"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      rationale: "Exact SHA be62951 satisfies the full oracle. The implementation applies one immutable root-space affine transform to every eligible member without hierarchy mutation, provides shared resize and rotation controls, and preserves atomic history and selection identity. Current unit/build and focused Chromium gates pass. Completed receipts additionally prove 40 repeated focused scenarios, the full 32-test Chromium suite, and clean-clone verification. Complex Seatify coverage spans three labeled cross-parent nested objects, varied primaries, 100%/125% zoom, collapsed sidebars, cancellation and rejection gates, exact Undo/Redo and save/reload geometry, fixture fidelity, and serialized-SVG cleanliness. No required Worker work or correctness defect remains."
+      evidence:
+        - oracle_clause: "Byte-exact complex Seatify fixture and representative selection"
+          finding: "T005 matched the temporary fixture and repository fixture at SHA-256 c374e51fee2094d46a3cb44bc308062a1dde4d94cc31ee46d6e892188e80f0f8. Chromium selects West north seat, East north seat, and Ticket accent star across independent transformed parents."
+        - oracle_clause: "One shared transform box with usable resize and rotation controls"
+          finding: "editor.ts creates one editor-owned union overlay with eight labeled focusable resize handles, a connector, and a recognizable labeled rotation handle, proven at 100% and 125% zoom with both sidebars collapsed."
+        - oracle_clause: "Coherent cross-parent resize and rotation geometry"
+          finding: "CollectiveTransformGesture freezes each original local matrix and parent-to-root matrix, then applies inverse(parentToRoot) × collectiveRoot × parentToRoot × initialLocal. Chromium asserts every selected member's root-space corners after shared resize and rotation around the frozen union pivot with different primaries."
+        - oracle_clause: "No hierarchy, order, name, or resource mutation"
+          finding: "Only selected-node transform attributes are written; no authored wrapper or reparenting occurs. Interaction fidelity tests preserve descendants and paint-server references, and resource-backed leaves remain eligible."
+        - oracle_clause: "Deterministic selection identity and atomic history"
+          finding: "Chromium preserves selected labels, primary identity, and summary through preview, commit, Undo, and Redo. A committed gesture creates exactly one Undo checkpoint."
+        - oracle_clause: "Cancellation, threshold, no-op, and safety gates are all-or-nothing"
+          finding: "Chromium proves below-threshold, Escape, pointercancel, locked, hidden, and pending-Agent paths. Unit tests additionally prove lost capture, rounded identity, failed preflight, disconnection, ancestor overlap, CSS control, invalid geometry, hidden state, and mid-gesture Agent rejection with exact zero-history restoration."
+        - oracle_clause: "Save/reload fidelity and clean serialized SVG"
+          finding: "The 125%-zoom public test resizes, rotates, saves via the public control, reloads the named SVG, and reproduces exact geometry. Saved output excludes editor-only metadata and handles."
+        - oracle_clause: "Existing behavior remains green"
+          finding: "411 unit tests and all 32 Chromium scenarios pass, including collective translation and arrangement regressions."
+        - oracle_clause: "Flake resistance and exact-SHA clean-checkout proof"
+          finding: "40/40 focused scenarios passed across ten repetitions. A fresh clone at be62951f3ebc5aed660e94a146dd3a044f14207c passed install, typecheck, 411 tests, build, and all 32 Chromium scenarios with a clean tracked state and unchanged fixture hash."
+        - oracle_clause: "Adversarial local dogfood and named localhost policy"
+          finding: "The byte-exact 42-layer fixture loaded through public UI at collective-transform.localhost; exact gesture conclusions used the real Chromium pointer/keyboard harness."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks: []
+      missing_evidence: []
+      required_board_updates: []
+      commands:
+        - cmd: "npm run check"
+          status: pass
+          result: "Current exact tree: typecheck passed, 411/411 unit tests passed, and the Vite production build succeeded."
+        - cmd: "npm run test:e2e -- tests/e2e/collective-transforms.spec.ts --project=chromium"
+          status: pass
+          result: "Current exact tree: all 4 focused public-UI Chromium scenarios passed."
+        - cmd: "git rev-parse HEAD && git status --short && git diff --exit-code && git diff --cached --exit-code"
+          status: pass
+          result: "HEAD is be62951f3ebc5aed660e94a146dd3a044f14207c; tracked and staged implementation state is clean. Only the untracked GoalBuddy goal directory is present."
+        - cmd: "git show --check --oneline be62951f3ebc5aed660e94a146dd3a044f14207c"
+          status: pass
+          result: "Exact implementation commit passed Git whitespace/error validation."
+        - cmd: "shasum -a 256 tests/fixtures/workspace/concepts/complex-seatify.svg"
+          status: pass
+          result: "Fixture remains byte-exact at c374e51fee2094d46a3cb44bc308062a1dde4d94cc31ee46d6e892188e80f0f8."
+post_completion_review:
+  reviewed_against: origin/main
+  implementation_sha: 0765032
+  toolkit: codex-pr-review-toolkit
+  result: fixed
+  findings_fixed:
+    - "Prevented a locked primary from bypassing collective drag rejection."
+    - "Canceled active collective gestures before Undo or Redo changes history."
+    - "Scoped pointercancel and lost-pointer-capture handling to the initiating pointer."
+    - "Invalidated stale scale or rotation metadata after collective transforms."
+    - "Added Enter and Space activation for focusable collective transform controls."
+    - "Preserved focus on the equivalent transform handle after each keyboard increment so repeated adjustments remain operable."
+    - "Cleaned up failed pointer-capture startup and ignored unrelated legacy terminal events during pointer-owned collective gestures."
+    - "Made one-axis inward corner drags shrink predictably and cleared the live halo matrix before committed halo rerendering."
+    - "Strengthened Chromium proof to compare every transformed corner and confirm the named saved SVG is actually reopened."
+  verification:
+    - command: npm run check
+      result: "Typecheck, 419 unit tests, and production build passed."
+    - command: npm run test:e2e -- tests/e2e/collective-transforms.spec.ts --project=chromium
+      result: "4 focused Chromium scenarios passed."
+    - command: npm run test:e2e -- --project=chromium
+      result: "32 full-suite Chromium scenarios passed."
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []
