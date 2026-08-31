@@ -154,10 +154,11 @@ async function transforms(page: Page, labels: string[]): Promise<Array<string | 
 }
 
 function expectTracked(before: OverlayProbe, live: OverlayProbe): void {
-  // Chromium can quantize one text-derived SVG outline edge by 1/8 CSS pixel on
-  // Linux at fractional zoom. Keep the outline contract subpixel-tight while
-  // reserving the stricter tolerance below for the transform handles.
-  const outlineTolerance = 0.15;
+  // Chromium can quantize individual text-derived SVG outline edges on Linux at
+  // fractional zoom. Keep edge drift below a CSS pixel while requiring the
+  // overall outline position and every transform handle to track tightly.
+  const outlineEdgeTolerance = 0.5;
+  const trackingTolerance = 0.05;
   const artworkDelta = {
     x: live.artwork.x - before.artwork.x,
     y: live.artwork.y - before.artwork.y,
@@ -167,14 +168,22 @@ function expectTracked(before: OverlayProbe, live: OverlayProbe): void {
     expect(live.rootMatrix[coefficient], `root matrix ${coefficient}`).toBeCloseTo(before.rootMatrix[coefficient], 6);
   }
   expect(live.outline).toHaveLength(before.outline.length);
+  const center = (points: Point[]): Point => ({
+    x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
+    y: points.reduce((sum, point) => sum + point.y, 0) / points.length,
+  });
+  const beforeOutlineCenter = center(before.outline);
+  const liveOutlineCenter = center(live.outline);
+  expect(Math.abs(liveOutlineCenter.x - beforeOutlineCenter.x - artworkDelta.x), "outline center x").toBeLessThan(trackingTolerance);
+  expect(Math.abs(liveOutlineCenter.y - beforeOutlineCenter.y - artworkDelta.y), "outline center y").toBeLessThan(trackingTolerance);
   live.outline.forEach((point, index) => {
-    expect(Math.abs(point.x - before.outline[index].x - artworkDelta.x), `outline point ${index} x`).toBeLessThan(outlineTolerance);
-    expect(Math.abs(point.y - before.outline[index].y - artworkDelta.y), `outline point ${index} y`).toBeLessThan(outlineTolerance);
+    expect(Math.abs(point.x - before.outline[index].x - artworkDelta.x), `outline point ${index} x`).toBeLessThan(outlineEdgeTolerance);
+    expect(Math.abs(point.y - before.outline[index].y - artworkDelta.y), `outline point ${index} y`).toBeLessThan(outlineEdgeTolerance);
   });
   expect(live.handles).toHaveLength(before.handles.length);
   live.handles.forEach((handle, index) => {
-    expect(Math.abs(handle.x - before.handles[index].x - artworkDelta.x), `handle ${index} x`).toBeLessThan(0.05);
-    expect(Math.abs(handle.y - before.handles[index].y - artworkDelta.y), `handle ${index} y`).toBeLessThan(0.05);
+    expect(Math.abs(handle.x - before.handles[index].x - artworkDelta.x), `handle ${index} x`).toBeLessThan(trackingTolerance);
+    expect(Math.abs(handle.y - before.handles[index].y - artworkDelta.y), `handle ${index} y`).toBeLessThan(trackingTolerance);
   });
   expect(live.probeIds).toEqual(before.probeIds);
 }
