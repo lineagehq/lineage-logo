@@ -14,6 +14,7 @@ import {
   composeGroupScale,
   formatMatrix,
   GroupTransformGesture,
+  oppositeResizeAnchor,
   relativeMatrix,
   SelectionTranslationGesture,
   snapAbsoluteRotation,
@@ -1556,15 +1557,11 @@ export class SvgEditor {
             const initial = detail.handler.box;
             const rawFactor = initial.width > 0 ? detail.box.width / initial.width : 1;
             const handle = detail.eventType;
-            const originX = handle.includes("l") ? initial.x + initial.width : initial.x;
-            const originY = handle.includes("t") ? initial.y + initial.height : initial.y;
+            const localAnchor = oppositeResizeAnchor(initial, handle);
             const nodeScreen = this.selectedNode ? screenMatrix(this.selectedNode) : undefined;
             const anchor = rootScreen && nodeScreen
-              ? transformPoint(relativeMatrix(rootScreen, nodeScreen), originX, originY)
-              : {
-                x: handle.includes("l") ? this.#translationStartBox.x + this.#translationStartBox.width : this.#translationStartBox.x,
-                y: handle.includes("t") ? this.#translationStartBox.y + this.#translationStartBox.height : this.#translationStartBox.y,
-              };
+              ? transformPoint(relativeMatrix(rootScreen, nodeScreen), localAnchor.x, localAnchor.y)
+              : oppositeResizeAnchor(this.#translationStartBox, handle);
             const raw = detail.event as MouseEvent;
             const snap = rootScreen && this.#shouldSnap(raw)
               ? snapUniformScale(
@@ -1578,8 +1575,8 @@ export class SvgEditor {
               )
               : { factor: rawFactor };
             if (snap.winner) {
-              detail.box.x = originX + (initial.x - originX) * snap.factor;
-              detail.box.y = originY + (initial.y - originY) * snap.factor;
+              detail.box.x = localAnchor.x + (initial.x - localAnchor.x) * snap.factor;
+              detail.box.y = localAnchor.y + (initial.y - localAnchor.y) * snap.factor;
               detail.box.width = initial.width * snap.factor;
               detail.box.height = initial.height * snap.factor;
               (detail.box as TransformBox & { x2?: number; y2?: number }).x2 = detail.box.x + detail.box.width;

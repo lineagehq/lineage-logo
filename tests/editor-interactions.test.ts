@@ -17,6 +17,7 @@ import {
   composeRootTranslation,
   formatMatrix,
   GroupTransformGesture,
+  oppositeResizeAnchor,
   relativeMatrix,
   SelectionTranslationGesture,
   snapAbsoluteRotation,
@@ -46,6 +47,26 @@ describe("precision snapping geometry", () => {
     expect(snapped.factor).toBe(1.4);
     expect(snapped.winner).toMatchObject({ axis: "x", family: "object" });
     expect(snapUniformScale({ x: 10, y: 10, width: 100, height: 50 }, { x: 10, y: 10 }, 1.2, targets, IDENTITY, 6).factor).toBe(1.2);
+
+    const subPrecision = snapUniformScale(
+      { x: 0, y: 0, width: 1_000_000, height: 10 },
+      { x: 0, y: 0 },
+      1.0000015,
+      [{ axis: "x", anchor: "max", family: "object", key: "large-target", order: 0, value: 1_000_000.4, spanMin: 0, spanMax: 10 }],
+      { ...IDENTITY, a: 4, d: 4 },
+      6,
+      ["x"],
+    );
+    expect(subPrecision).toEqual({ factor: 1.0000015 });
+  });
+
+  it("keeps side-handle resizes fixed on the opposite edge midpoint", () => {
+    const box = { x: 10, y: 20, width: 100, height: 60 };
+    expect(oppositeResizeAnchor(box, "t")).toEqual({ x: 60, y: 80 });
+    expect(oppositeResizeAnchor(box, "b")).toEqual({ x: 60, y: 20 });
+    expect(oppositeResizeAnchor(box, "l")).toEqual({ x: 110, y: 50 });
+    expect(oppositeResizeAnchor(box, "r")).toEqual({ x: 10, y: 50 });
+    expect(oppositeResizeAnchor(box, "rb")).toEqual({ x: 10, y: 20 });
   });
 
   it("snaps absolute rotation to fifteen degrees and lets Option suspend Shift", () => {

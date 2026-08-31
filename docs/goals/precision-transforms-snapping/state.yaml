@@ -33,7 +33,7 @@ goal:
       - "Numeric X, Y, width, height, and rotation controls are required."
       - "Multi-selection must communicate exact versus mixed values."
       - "The complex Seatify constellation is the primary E2E fixture."
-      - "Persistent Group/Ungroup is deferred to a later goal."
+      - "Existing guarded Group/Ungroup must not regress; expanding its supported cases is deferred to a later goal."
 
 rules:
   pm_owns_state: true
@@ -93,11 +93,11 @@ tasks:
       result: done
       decision: approved
       full_outcome_complete: false
-      rationale: "The plan faithfully preserves the approved outcome and correctly defers Group/Ungroup, pivots, grids/rulers, structural normalization, and PR work. Its two vertical slices are appropriately outcome-sized, but implementation is unsafe until Scout evidence establishes the editor's actual coordinate spaces, transform composition, selection compatibility rules, history boundaries, serialization path, preferences/inspector patterns, and real Seatify test harness. T002 should collect symbol-level evidence and current verification commands; T003 must then resolve the remaining UX and geometry semantics before authorizing a Worker package."
+      rationale: "The plan faithfully preserves the approved outcome and correctly defers expanded grouping capabilities, pivots, grids/rulers, structural normalization, and PR work while preserving the existing guarded Group/Ungroup feature. Its two vertical slices are appropriately outcome-sized, but implementation is unsafe until Scout evidence establishes the editor's actual coordinate spaces, transform composition, selection compatibility rules, history boundaries, serialization path, preferences/inspector patterns, and real Seatify test harness. T002 should collect symbol-level evidence and current verification commands; T003 must then resolve the remaining UX and geometry semantics before authorizing a Worker package."
       worker_package: null
       evidence:
         - "Validated outcome: optional precision assistance for free and snapped single/multi move, resize, and rotation; numeric X/Y/width/height/rotation; truthful guides; mixed-value feedback; atomic history; zoom/sidebar independence; clean save/reload; real Seatify Chromium proof."
-        - "Validated non-goals: persistent Group/Ungroup, arbitrary pivot editing, grids/rulers, structural SVG normalization, and PR creation/merge."
+        - "Validated non-goals: expanded grouping capabilities beyond existing guarded Group/Ungroup, arbitrary pivot editing, grids/rulers, structural SVG normalization, and PR creation/merge."
         - "The charter requires screen-pixel tolerance, deterministic canvas/object candidates and tie-breaking, live guides matching applied math, one checkpoint per completed gesture/edit, no checkpoint for cancel/no-op, and no editor-state serialization."
         - "T002 is the necessary evidence gate before T003 can safely define allowed_files or a Worker package."
       subgoal_contract: null
@@ -228,7 +228,7 @@ tasks:
       - "Read-only."
       - "Resolve semantics before implementation: modifier behavior, screen-pixel tolerance, candidates, priority, tie-breaking, guide rendering, rotated bounds, mixed values, validation, history, and serialization."
       - "Prefer one coherent snapping-and-guides vertical slice over helper-by-helper tasks."
-      - "Do not expand scope into Group/Ungroup, rulers, grids, or transform normalization."
+      - "Do not expand the existing guarded Group/Ungroup behavior or add rulers, grids, or transform normalization."
     expected_output:
       - "Normative UX and geometry contract with concrete examples"
       - "Decision on snapping enablement/preferences and temporary modifier overrides"
@@ -529,7 +529,7 @@ tasks:
       - "Current repository implementation and test fixtures"
     constraints:
       - "Implement the T003 contract as one coherent vertical slice; do not narrow it to collective-only behavior or decorative-only guides."
-      - "Do not add Group/Ungroup, rulers, grids, arbitrary pivots, transform normalization, or numeric inspector controls in this task."
+      - "Do not expand the existing guarded Group/Ungroup behavior or add rulers, grids, arbitrary pivots, transform normalization, or numeric inspector controls in this task."
       - "Preserve free transforms, all-or-nothing selection availability, one-checkpoint history, modifier changes mid-gesture, and clean SVG boundaries."
     allowed_files:
       - src/client/canvas/transform.ts

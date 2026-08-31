@@ -162,7 +162,28 @@ export function snapUniformScale(
       || sourceRank(left.sourceAnchor) - sourceRank(right.sourceAnchor)
       || (left.axis === "x" ? 0 : 1) - (right.axis === "x" ? 0 : 1);
   })[0];
-  return winner ? { factor: bounded(winner.factor), winner } : { factor: rawFactor };
+  if (!winner) return { factor: rawFactor };
+  const factor = bounded(winner.factor);
+  const pivot = winner.axis === "x" ? anchor.x : anchor.y;
+  const min = winner.axis === "x" ? box.x : box.y;
+  const max = min + (winner.axis === "x" ? box.width : box.height);
+  const applied = pivot + (anchorValue(min, max, winner.sourceAnchor) - pivot) * factor;
+  if (screenCorrection(rootToScreen, winner.axis, winner.value - applied) > 0.001) {
+    return { factor: rawFactor };
+  }
+  return { factor, winner };
+}
+
+export function oppositeResizeAnchor(box: TransformBox, handle: string): { x: number; y: number } {
+  if (!finiteBox(box)) throw new RangeError("Resize anchoring requires finite geometry.");
+  return {
+    x: handle.includes("l") ? box.x + box.width
+      : handle.includes("r") ? box.x
+      : box.x + box.width / 2,
+    y: handle.includes("t") ? box.y + box.height
+      : handle.includes("b") ? box.y
+      : box.y + box.height / 2,
+  };
 }
 
 /** Shift rotation snaps the absolute visible frame angle; Alt/Option remains free. */

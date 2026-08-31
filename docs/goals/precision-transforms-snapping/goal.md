@@ -18,7 +18,7 @@ Make single- and multi-object transforms feel precise and predictable by adding 
 - Goal oracle: A repeatable Chromium walkthrough on the real Seatify constellation proves snapped and unsnapped transforms, live guides, numeric edits, Undo/Redo, zoom independence, sidebar independence, and clean saved SVG.
 - Likely misfire: Shipping attractive guide lines or inspector fields that do not use exact document-space geometry, behave differently at non-100% zoom, corrupt authored transform structure, or create multiple history checkpoints for one gesture.
 - Blind spots considered: screen-space tolerance across zoom, resize-handle semantics, modifier conflicts, mixed-value editing, negative or zero sizes, locked/hidden selections, nested transforms and mixed parents, rotated selections, agent-pending state, keyboard accessibility, history atomicity, guide occlusion, serialization cleanliness, and browser/platform modifier differences.
-- Existing plan facts: Shift snaps rotation to 15-degree increments; direct manipulation can snap to canvas center/edges and nearby objects; live alignment guides explain the snap target; numeric X, Y, width, height, and rotation controls support multi-selection and mixed values; complex Seatify constellation QA is required; persistent Group/Ungroup follows later and is not part of this goal.
+- Existing plan facts: Shift snaps rotation to 15-degree increments; direct manipulation can snap to canvas center/edges and nearby objects; live alignment guides explain the snap target; numeric X, Y, width, height, and rotation controls support multi-selection and mixed values; complex Seatify constellation QA is required; existing guarded Group/Ungroup behavior must remain intact, while expanded grouping capabilities are outside this goal.
 
 ## Goal Oracle
 
@@ -50,7 +50,7 @@ Validate the existing product plan against the current editor architecture, defi
 - Preserve authored SVG structure and clean serialization; editor-only guides, state, metadata, and controls must never leak into saved or agent-submitted SVG.
 - Locked, hidden, incompatible-parent, or agent-pending selections must remain all-or-nothing and must not partially mutate.
 - Use the checked-in complex Seatify constellation fixture for the principal E2E oracle, not a toy-only SVG.
-- Persistent Group/Ungroup, arbitrary pivot editing, grid/ruler systems, and structural SVG normalization are out of scope.
+- Expanding the existing guarded Group/Ungroup behavior, arbitrary pivot editing, grid/ruler systems, and structural SVG normalization are out of scope.
 - Do not create, merge, or publish a pull request without explicit owner authorization.
 
 ## Stop Rule

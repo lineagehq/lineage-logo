@@ -118,7 +118,14 @@ test("smart-alignment preferences are discoverable, bounded, and applied immedia
   await expect(dialog.locator("#preference-snap-canvas")).toBeChecked();
   await expect(dialog.locator("#preference-snap-objects")).toBeChecked();
   await expect(dialog.locator("#preference-snap-tolerance")).toHaveValue("6");
+  await dialog.locator("#preference-snap-tolerance").fill("10");
+  await dialog.locator("#preference-snap-tolerance").press("Tab");
+  await expect(dialog.locator("#preference-snap-tolerance")).toHaveValue("10");
+  await dialog.locator("#preference-snap-tolerance").fill("21");
+  await dialog.locator("#preference-snap-tolerance").press("Tab");
+  await expect(dialog.locator("#preference-snap-tolerance")).toHaveValue("10");
   await dialog.locator("#preference-alignment-snapping").uncheck();
+  await expect(dialog.locator("#preference-snap-tolerance")).toHaveValue("10");
   await expect(dialog.locator("#preference-snap-tolerance")).toBeDisabled();
 });
 

@@ -1522,6 +1522,7 @@ function applySelectionPreferences(next: SelectionPreferences): void {
 }
 
 function readSelectionPreferencesForm(): SelectionPreferences {
+  const tolerance = snapTolerancePreference.valueAsNumber;
   return {
     preciseModifier: preciseModifierPreference.value === "alt" ? "alt" : "platform",
     marqueeMode: marqueeModePreference.value === "touch" ? "touch" : "contain",
@@ -1531,11 +1532,9 @@ function readSelectionPreferencesForm(): SelectionPreferences {
     alignmentSnappingEnabled: alignmentSnappingPreference.checked,
     snapToCanvas: snapCanvasPreference.checked,
     snapToObjects: snapObjectsPreference.checked,
-    snapTolerancePx: Number.isInteger(snapTolerancePreference.valueAsNumber)
-      && snapTolerancePreference.valueAsNumber >= 2
-      && snapTolerancePreference.valueAsNumber <= 20
-      ? snapTolerancePreference.valueAsNumber
-      : 6,
+    snapTolerancePx: Number.isInteger(tolerance) && tolerance >= 2 && tolerance <= 20
+      ? tolerance
+      : selectionPreferences.snapTolerancePx,
   };
 }
 
@@ -1544,7 +1543,17 @@ for (const control of [
   regionActivationPreference, alignmentSnappingPreference, snapCanvasPreference, snapObjectsPreference,
   snapTolerancePreference,
 ]) {
-  control.addEventListener("change", () => applySelectionPreferences(readSelectionPreferencesForm()));
+  control.addEventListener("change", () => {
+    if (control === snapTolerancePreference) {
+      const tolerance = snapTolerancePreference.valueAsNumber;
+      if (!Number.isInteger(tolerance) || tolerance < 2 || tolerance > 20) {
+        renderSelectionPreferences();
+        setStatus("Snap tolerance must be a whole number from 2 to 20");
+        return;
+      }
+    }
+    applySelectionPreferences(readSelectionPreferencesForm());
+  });
 }
 getElement("restore-selection-preferences").addEventListener("click", () => {
   applySelectionPreferences(selectionPreferencesStore.reset());
