@@ -58,6 +58,21 @@ describe("precision snapping geometry", () => {
       ["x"],
     );
     expect(subPrecision).toEqual({ factor: 1.0000015 });
+
+    const nextRepresentable = snapUniformScale(
+      { x: 0, y: 0, width: 1_000_000, height: 10 },
+      { x: 0, y: 0 },
+      1.00000041,
+      [
+        { axis: "x", anchor: "max", family: "object", key: "sub-precision-target", order: 0, value: 1_000_000.4, spanMin: 0, spanMax: 10 },
+        { axis: "x", anchor: "max", family: "object", key: "representable-target", order: 1, value: 1_000_001, spanMin: 0, spanMax: 10 },
+      ],
+      { ...IDENTITY, a: 4, d: 4 },
+      6,
+      ["x"],
+    );
+    expect(nextRepresentable.factor).toBe(1.000001);
+    expect(nextRepresentable.winner?.key).toBe("representable-target");
   });
 
   it("keeps side-handle resizes fixed on the opposite edge midpoint", () => {

@@ -143,7 +143,7 @@ export function snapUniformScale(
         const denominator = source - pivot;
         if (Math.abs(denominator) < MIN_SCALE) continue;
         const factor = (target.value - pivot) / denominator;
-        if (!Number.isFinite(factor) || factor < MIN_SCALE) continue;
+        if (!Number.isFinite(factor) || factor < MIN_SCALE || factor > MAX_COEFFICIENT) continue;
         const rawValue = pivot + denominator * rawFactor;
         const correction = target.value - rawValue;
         const correctionPx = screenCorrection(rootToScreen, axis, correction);
@@ -161,16 +161,16 @@ export function snapUniformScale(
       || (left.anchor === "min" ? 0 : 1) - (right.anchor === "min" ? 0 : 1)
       || sourceRank(left.sourceAnchor) - sourceRank(right.sourceAnchor)
       || (left.axis === "x" ? 0 : 1) - (right.axis === "x" ? 0 : 1);
-  })[0];
+  }).find((candidate) => {
+    const factor = bounded(candidate.factor);
+    const pivot = candidate.axis === "x" ? anchor.x : anchor.y;
+    const min = candidate.axis === "x" ? box.x : box.y;
+    const max = min + (candidate.axis === "x" ? box.width : box.height);
+    const applied = pivot + (anchorValue(min, max, candidate.sourceAnchor) - pivot) * factor;
+    return screenCorrection(rootToScreen, candidate.axis, candidate.value - applied) <= 0.001;
+  });
   if (!winner) return { factor: rawFactor };
   const factor = bounded(winner.factor);
-  const pivot = winner.axis === "x" ? anchor.x : anchor.y;
-  const min = winner.axis === "x" ? box.x : box.y;
-  const max = min + (winner.axis === "x" ? box.width : box.height);
-  const applied = pivot + (anchorValue(min, max, winner.sourceAnchor) - pivot) * factor;
-  if (screenCorrection(rootToScreen, winner.axis, winner.value - applied) > 0.001) {
-    return { factor: rawFactor };
-  }
   return { factor, winner };
 }
 
