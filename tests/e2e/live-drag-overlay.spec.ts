@@ -78,11 +78,21 @@ async function overlayProbe(page: Page, labels: string[], collective: boolean, m
     const nodes = input.labels.map((label) => Array.from(root.querySelectorAll<SVGGraphicsElement>("[aria-label]"))
       .find((candidate) => candidate.getAttribute("aria-label") === label));
     if (nodes.some((node) => !node)) throw new Error("Selected Seatify artwork is unavailable.");
-    const artworkRects = nodes.map((node) => node!.getBoundingClientRect());
-    const left = Math.min(...artworkRects.map((rect) => rect.left));
-    const right = Math.max(...artworkRects.map((rect) => rect.right));
-    const top = Math.min(...artworkRects.map((rect) => rect.top));
-    const bottom = Math.max(...artworkRects.map((rect) => rect.bottom));
+    const artworkPoints = nodes.flatMap((node) => {
+      const box = node!.getBBox();
+      const matrix = node!.getScreenCTM();
+      if (!matrix) throw new Error("Selected Seatify artwork screen geometry is unavailable.");
+      return [
+        new DOMPoint(box.x, box.y),
+        new DOMPoint(box.x + box.width, box.y),
+        new DOMPoint(box.x + box.width, box.y + box.height),
+        new DOMPoint(box.x, box.y + box.height),
+      ].map((point) => point.matrixTransform(matrix));
+    });
+    const left = Math.min(...artworkPoints.map((point) => point.x));
+    const right = Math.max(...artworkPoints.map((point) => point.x));
+    const top = Math.min(...artworkPoints.map((point) => point.y));
+    const bottom = Math.max(...artworkPoints.map((point) => point.y));
     const outline = root.querySelector<SVGGraphicsElement>(input.collective
       ? ".lineage-collective-outline"
       : ".svg_select_shape:not(.lineage-collective-outline)");
