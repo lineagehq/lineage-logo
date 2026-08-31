@@ -14,9 +14,200 @@ export interface TransformBox {
   y: number;
 }
 
+export type SnapAxis = "x" | "y";
+export type SnapAnchorName = "min" | "center" | "max";
+export type SnapTargetFamily = "canvas" | "object";
+
+export interface SnapTarget {
+  axis: SnapAxis;
+  anchor: SnapAnchorName;
+  family: SnapTargetFamily;
+  key: string;
+  order: number;
+  value: number;
+  spanMin: number;
+  spanMax: number;
+}
+
+export interface SnapWinner extends SnapTarget {
+  correction: number;
+  correctionPx: number;
+  sourceAnchor: SnapAnchorName;
+}
+
+export interface TranslationSnapResult {
+  dx: number;
+  dy: number;
+  winners: SnapWinner[];
+}
+
+export interface ScaleSnapResult {
+  factor: number;
+  winner?: SnapWinner;
+}
+
 const MATRIX_PRECISION = 6;
 const MAX_COEFFICIENT = 1_000_000_000;
 const MIN_SCALE = 10 ** -MATRIX_PRECISION;
+
+const ANCHORS: SnapAnchorName[] = ["min", "center", "max"];
+
+function anchorValue(min: number, max: number, anchor: SnapAnchorName): number {
+  return anchor === "min" ? min : anchor === "max" ? max : (min + max) / 2;
+}
+
+function targetRank(target: SnapTarget): number {
+  if (target.family === "canvas" && target.anchor === "center") return 0;
+  if (target.family === "object" && target.anchor === "center") return 1;
+  return target.family === "canvas" ? 2 : 3;
+}
+
+function sourceRank(anchor: SnapAnchorName): number {
+  return anchor === "center" ? 0 : anchor === "min" ? 1 : 2;
+}
+
+function screenCorrection(matrix: MatrixCoefficients, axis: SnapAxis, correction: number): number {
+  const x = axis === "x" ? correction : 0;
+  const y = axis === "y" ? correction : 0;
+  return Math.hypot(matrix.a * x + matrix.c * y, matrix.b * x + matrix.d * y);
+}
+
+function chooseWinner(candidates: SnapWinner[]): SnapWinner | undefined {
+  return candidates.sort((left, right) => {
+    const distance = left.correctionPx - right.correctionPx;
+    if (Math.abs(distance) > 0.001) return distance;
+    return targetRank(left) - targetRank(right)
+      || left.order - right.order
+      || (left.anchor === "min" ? 0 : 1) - (right.anchor === "min" ? 0 : 1)
+      || sourceRank(left.sourceAnchor) - sourceRank(right.sourceAnchor);
+  })[0];
+}
+
+/** Resolve a raw root-space translation against deterministic canvas/object anchors. */
+export function snapTranslation(
+  box: TransformBox,
+  rawDx: number,
+  rawDy: number,
+  targets: SnapTarget[],
+  rootToScreen: MatrixCoefficients,
+  tolerancePx: number,
+): TranslationSnapResult {
+  if (!finiteBox(box) || ![rawDx, rawDy, tolerancePx].every(Number.isFinite) || tolerancePx < 0) {
+    throw new RangeError("Snapping requires finite selection geometry and tolerance.");
+  }
+  const winners: SnapWinner[] = [];
+  for (const axis of ["x", "y"] as const) {
+    const raw = axis === "x" ? rawDx : rawDy;
+    const min = (axis === "x" ? box.x : box.y) + raw;
+    const max = min + (axis === "x" ? box.width : box.height);
+    const candidates: SnapWinner[] = [];
+    for (const target of targets.filter((candidate) => candidate.axis === axis)) {
+      for (const sourceAnchor of ANCHORS) {
+        const correction = target.value - anchorValue(min, max, sourceAnchor);
+        const correctionPx = screenCorrection(rootToScreen, axis, correction);
+        if (correctionPx <= tolerancePx + 0.001) {
+          candidates.push({ ...target, correction, correctionPx, sourceAnchor });
+        }
+      }
+    }
+    const winner = chooseWinner(candidates);
+    if (winner) winners.push(winner);
+  }
+  return {
+    dx: bounded(rawDx + (winners.find((winner) => winner.axis === "x")?.correction ?? 0)),
+    dy: bounded(rawDy + (winners.find((winner) => winner.axis === "y")?.correction ?? 0)),
+    winners,
+  };
+}
+
+export function snapUniformScale(
+  box: TransformBox,
+  anchor: { x: number; y: number },
+  rawFactor: number,
+  targets: SnapTarget[],
+  rootToScreen: MatrixCoefficients,
+  tolerancePx: number,
+  axes: SnapAxis[] = ["x", "y"],
+): ScaleSnapResult {
+  if (!finiteBox(box) || ![anchor.x, anchor.y, rawFactor, tolerancePx].every(Number.isFinite)) {
+    throw new RangeError("Resize snapping requires finite geometry.");
+  }
+  const candidates: Array<SnapWinner & { factor: number }> = [];
+  for (const axis of axes) {
+    const pivot = axis === "x" ? anchor.x : anchor.y;
+    const min = axis === "x" ? box.x : box.y;
+    const max = min + (axis === "x" ? box.width : box.height);
+    for (const target of targets.filter((candidate) => candidate.axis === axis)) {
+      for (const sourceAnchor of ANCHORS) {
+        const source = anchorValue(min, max, sourceAnchor);
+        const denominator = source - pivot;
+        if (Math.abs(denominator) < MIN_SCALE) continue;
+        const factor = (target.value - pivot) / denominator;
+        if (!Number.isFinite(factor) || factor < MIN_SCALE) continue;
+        const rawValue = pivot + denominator * rawFactor;
+        const correction = target.value - rawValue;
+        const correctionPx = screenCorrection(rootToScreen, axis, correction);
+        if (correctionPx <= tolerancePx + 0.001) {
+          candidates.push({ ...target, correction, correctionPx, sourceAnchor, factor });
+        }
+      }
+    }
+  }
+  const winner = candidates.sort((left, right) => {
+    const distance = left.correctionPx - right.correctionPx;
+    if (Math.abs(distance) > 0.001) return distance;
+    return targetRank(left) - targetRank(right)
+      || left.order - right.order
+      || (left.anchor === "min" ? 0 : 1) - (right.anchor === "min" ? 0 : 1)
+      || sourceRank(left.sourceAnchor) - sourceRank(right.sourceAnchor)
+      || (left.axis === "x" ? 0 : 1) - (right.axis === "x" ? 0 : 1);
+  })[0];
+  return winner ? { factor: bounded(winner.factor), winner } : { factor: rawFactor };
+}
+
+/** Shift rotation snaps the absolute visible frame angle; Alt/Option remains free. */
+export function snapAbsoluteRotation(
+  baseDegrees: number,
+  rawDeltaDegrees: number,
+  shiftKey: boolean,
+  altKey: boolean,
+  direction = 0,
+): number {
+  if (![baseDegrees, rawDeltaDegrees, direction].every(Number.isFinite)) {
+    throw new RangeError("Rotation snapping requires finite angles.");
+  }
+  if (!shiftKey || altKey) return rawDeltaDegrees;
+  const absolute = baseDegrees + rawDeltaDegrees;
+  const lower = Math.floor(absolute / 15) * 15;
+  const upper = lower + 15;
+  const lowerDistance = Math.abs(absolute - lower);
+  const upperDistance = Math.abs(upper - absolute);
+  const snapped = Math.abs(lowerDistance - upperDistance) <= 1e-9
+    ? direction > 0 ? upper : direction < 0 ? lower : absolute >= 0 ? upper : lower
+    : lowerDistance < upperDistance ? lower : upper;
+  return bounded(snapped - baseDegrees);
+}
+
+export function boxSnapTargets(
+  box: TransformBox,
+  family: SnapTargetFamily,
+  key: string,
+  order: number,
+): SnapTarget[] {
+  if (!finiteBox(box)) return [];
+  return [
+    ...ANCHORS.map((anchor): SnapTarget => ({
+      axis: "x", anchor, family, key, order,
+      value: anchorValue(box.x, box.x + box.width, anchor),
+      spanMin: box.y, spanMax: box.y + box.height,
+    })),
+    ...ANCHORS.map((anchor): SnapTarget => ({
+      axis: "y", anchor, family, key, order,
+      value: anchorValue(box.y, box.y + box.height, anchor),
+      spanMin: box.x, spanMax: box.x + box.width,
+    })),
+  ];
+}
 
 function bounded(value: number): number {
   if (!Number.isFinite(value) || Math.abs(value) > MAX_COEFFICIENT) {
@@ -218,6 +409,37 @@ export function collectiveScaleMatrix(anchorX: number, anchorY: number, factor: 
   });
 }
 
+/**
+ * Scale in an oriented root frame while keeping the supplied opposite corner
+ * fixed. This is the numeric-inspector counterpart to the collective handles:
+ * it composes one root-space matrix and therefore preserves every member's
+ * relative geometry, including members under different transformed parents.
+ */
+export function collectiveFrameScaleMatrix(
+  anchorX: number,
+  anchorY: number,
+  scaleX: number,
+  scaleY: number,
+  rotationDegrees: number,
+): MatrixCoefficients {
+  if (![anchorX, anchorY, scaleX, scaleY, rotationDegrees].every(Number.isFinite)
+    || scaleX < MIN_SCALE || scaleY < MIN_SCALE
+    || scaleX > MAX_COEFFICIENT || scaleY > MAX_COEFFICIENT) {
+    throw new RangeError("The oriented-frame resize exceeds the supported scale range.");
+  }
+  const orientedScale = normalized({
+    a: scaleX,
+    b: 0,
+    c: 0,
+    d: scaleY,
+    e: anchorX * (1 - scaleX),
+    f: anchorY * (1 - scaleY),
+  });
+  const toRoot = collectiveRotationMatrix(0, 0, rotationDegrees);
+  const toFrame = collectiveRotationMatrix(0, 0, -rotationDegrees);
+  return normalized(multiply(multiply(toRoot, orientedScale), toFrame));
+}
+
 export function collectiveRotationMatrix(pivotX: number, pivotY: number, degrees: number): MatrixCoefficients {
   if (![pivotX, pivotY, degrees].every(Number.isFinite)) {
     throw new RangeError("The collective rotation contains non-finite geometry.");
@@ -248,8 +470,8 @@ export class CollectiveTransformGesture {
   #currentRoot = IDENTITY;
 
   constructor(targets: CollectiveTransformTarget[]) {
-    if (targets.length < 2 || new Set(targets.map((target) => target.element)).size !== targets.length) {
-      throw new RangeError("A collective transform requires at least two distinct layers.");
+    if (targets.length < 1 || new Set(targets.map((target) => target.element)).size !== targets.length) {
+      throw new RangeError("A root-frame transform requires one or more distinct layers.");
     }
     this.#targets = targets.map((target) => ({
       ...target,

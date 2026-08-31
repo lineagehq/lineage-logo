@@ -280,11 +280,16 @@ app.innerHTML = `
             <div class="field-grid">
             <label>Stroke width<input id="stroke-width" type="number" min="0" step="0.5" /></label>
             <label>Opacity<input id="opacity" type="number" min="0" max="1" step="0.05" /></label>
-            <label>X<input id="position-x" type="number" step="1" /></label>
-            <label>Y<input id="position-y" type="number" step="1" /></label>
-            <label>Scale %<input id="scale" type="number" min="1" step="1" /></label>
-            <label>Rotation °<input id="rotation" type="number" step="1" /></label>
+            <p id="geometry-mode" class="geometry-mode wide-field" aria-live="polite"></p>
+            <label>Oriented frame X<input id="position-x" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
+            <label>Oriented frame Y<input id="position-y" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
+            <label>Oriented frame width<input id="position-width" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
+            <label>Oriented frame height<input id="position-height" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
+            <label>Absolute frame rotation °<input id="rotation" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
+            <label class="preference-check geometry-aspect-lock"><input id="aspect-lock" type="checkbox" checked /> Lock aspect ratio</label>
+            <input id="scale" type="hidden" value="100" aria-hidden="true" />
           </div>
+          <small id="geometry-error" class="field-error" aria-live="polite"></small>
           </details>
           <p class="inspector-hint"><span id="region-selection-hint">Hold left Control and drag from artwork or empty canvas to region-select; hold Shift too to add.</span> Double-click or Alt-click selects exactly. Open <button type="button" id="inline-shortcut-help">preferences &amp; shortcuts</button>.</p>
         </div>
@@ -331,6 +336,10 @@ app.innerHTML = `
         </select>
       </label>
       <label class="preference-check"><input id="preference-individual-outlines" type="checkbox" /> Enhanced selection outlines</label>
+      <label class="preference-check"><input id="preference-alignment-snapping" type="checkbox" /> Smart alignment</label>
+      <label class="preference-check"><input id="preference-snap-canvas" type="checkbox" /> Snap to canvas</label>
+      <label class="preference-check"><input id="preference-snap-objects" type="checkbox" /> Snap to nearby objects</label>
+      <label>Snap tolerance (CSS px)<input id="preference-snap-tolerance" type="number" min="2" max="20" step="1" inputmode="numeric" /></label>
       <button type="button" id="restore-selection-preferences">Restore defaults</button>
     </fieldset>
     <h3>Keyboard shortcuts</h3>
@@ -339,6 +348,7 @@ app.innerHTML = `
       <div><dt>Duplicate</dt><dd>⌘/Ctrl+D</dd></div>
       <div><dt>Group / Ungroup</dt><dd>⌘/Ctrl+G · ⌘/Ctrl+Shift+G</dd></div>
       <div><dt>Nudge</dt><dd>Arrow keys · Shift for 10 units</dd></div>
+      <div><dt>Smart alignment</dt><dd>Option / Alt suspends · Shift snaps rotation to 15°</dd></div>
       <div><dt>Delete</dt><dd>Delete or Backspace</dd></div>
       <div><dt>Fit artboard / selection</dt><dd>F · Shift+F</dd></div>
       <div><dt>Workspace / Inspector panels</dt><dd>[ · ]</dd></div>
@@ -499,6 +509,11 @@ const editor = new SvgEditor(
     opacity: getInput("opacity"),
     positionX: getInput("position-x"),
     positionY: getInput("position-y"),
+    positionWidth: getInput("position-width"),
+    positionHeight: getInput("position-height"),
+    geometryMode: getElement("geometry-mode"),
+    geometryError: getElement("geometry-error"),
+    aspectLock: getInput("aspect-lock"),
     reorderEarlierButton: getInput("reorder-earlier"),
     reorderLaterButton: getInput("reorder-later"),
     rotation: getInput("rotation"),
@@ -1456,6 +1471,10 @@ const marqueeModePreference = getInput<HTMLSelectElement>("preference-marquee-mo
 const clickDepthPreference = getInput<HTMLSelectElement>("preference-click-depth");
 const individualOutlinesPreference = getInput<HTMLInputElement>("preference-individual-outlines");
 const regionActivationPreference = getInput<HTMLSelectElement>("preference-region-activation");
+const alignmentSnappingPreference = getInput<HTMLInputElement>("preference-alignment-snapping");
+const snapCanvasPreference = getInput<HTMLInputElement>("preference-snap-canvas");
+const snapObjectsPreference = getInput<HTMLInputElement>("preference-snap-objects");
+const snapTolerancePreference = getInput<HTMLInputElement>("preference-snap-tolerance");
 const regionSelectionShortcut = getElement("region-selection-shortcut");
 const regionSelectionHint = getElement("region-selection-hint");
 const exactSelectionShortcut = getElement("exact-selection-shortcut");
@@ -1471,6 +1490,13 @@ function renderSelectionPreferences(): void {
   clickDepthPreference.value = selectionPreferences.clickDepth;
   individualOutlinesPreference.checked = selectionPreferences.individualOutlines;
   regionActivationPreference.value = selectionPreferences.regionActivation;
+  alignmentSnappingPreference.checked = selectionPreferences.alignmentSnappingEnabled;
+  snapCanvasPreference.checked = selectionPreferences.snapToCanvas;
+  snapObjectsPreference.checked = selectionPreferences.snapToObjects;
+  snapTolerancePreference.value = String(selectionPreferences.snapTolerancePx);
+  snapCanvasPreference.disabled = !selectionPreferences.alignmentSnappingEnabled;
+  snapObjectsPreference.disabled = !selectionPreferences.alignmentSnappingEnabled;
+  snapTolerancePreference.disabled = !selectionPreferences.alignmentSnappingEnabled;
   regionSelectionShortcut.textContent = selectionPreferences.regionActivation === "m"
     ? "Hold M and drag · add Shift"
     : "Hold left Control and drag · add Shift; click to toggle exact object";
@@ -1502,10 +1528,22 @@ function readSelectionPreferencesForm(): SelectionPreferences {
     clickDepth: clickDepthPreference.value === "exact" ? "exact" : "logical",
     individualOutlines: individualOutlinesPreference.checked,
     regionActivation: regionActivationPreference.value === "m" ? "m" : "left-control",
+    alignmentSnappingEnabled: alignmentSnappingPreference.checked,
+    snapToCanvas: snapCanvasPreference.checked,
+    snapToObjects: snapObjectsPreference.checked,
+    snapTolerancePx: Number.isInteger(snapTolerancePreference.valueAsNumber)
+      && snapTolerancePreference.valueAsNumber >= 2
+      && snapTolerancePreference.valueAsNumber <= 20
+      ? snapTolerancePreference.valueAsNumber
+      : 6,
   };
 }
 
-for (const control of [preciseModifierPreference, marqueeModePreference, clickDepthPreference, individualOutlinesPreference, regionActivationPreference]) {
+for (const control of [
+  preciseModifierPreference, marqueeModePreference, clickDepthPreference, individualOutlinesPreference,
+  regionActivationPreference, alignmentSnappingPreference, snapCanvasPreference, snapObjectsPreference,
+  snapTolerancePreference,
+]) {
   control.addEventListener("change", () => applySelectionPreferences(readSelectionPreferencesForm()));
 }
 getElement("restore-selection-preferences").addEventListener("click", () => {

@@ -7,17 +7,24 @@ import { evaluateAgentTransaction, type AgentDocumentContext, type AgentSelectio
 import type { AgentTransactionV1 } from "../../shared/agent-protocol";
 import {
   CollectiveTransformGesture,
+  collectiveFrameScaleMatrix,
   collectiveRotationMatrix,
   collectiveScaleMatrix,
+  boxSnapTargets,
   composeGroupScale,
   formatMatrix,
   GroupTransformGesture,
   relativeMatrix,
   SelectionTranslationGesture,
+  snapAbsoluteRotation,
+  snapTranslation,
+  snapUniformScale,
   transformPointToLocal,
   transformVectorToLocal,
   type MatrixCoefficients,
   type SelectionTranslationTarget,
+  type SnapTarget,
+  type SnapWinner,
   type TransformBox,
 } from "./transform";
 import { marqueeMatches, renderedClientRect, type ClientRect, type MarqueeHitRule } from "./marquee-selection";
@@ -50,6 +57,11 @@ interface EditorControls {
   opacity: HTMLInputElement;
   positionX: HTMLInputElement;
   positionY: HTMLInputElement;
+  positionWidth: HTMLInputElement;
+  positionHeight: HTMLInputElement;
+  geometryMode: HTMLElement;
+  geometryError: HTMLElement;
+  aspectLock: HTMLInputElement;
   rotation: HTMLInputElement;
   scale: HTMLInputElement;
   selectionEmpty: HTMLElement;
@@ -99,6 +111,7 @@ const HANDLE_SELECTOR = [
   ".svg_select_handle_rot",
   "[data-lineage-selection-halos]",
   "[data-lineage-collective-transform]",
+  "[data-lineage-snap-guides]",
 ].join(",");
 const SELECTION_BOUNDING_SHAPE_SELECTOR = ".svg_select_shape, .svg_select_shape_pointSelect";
 
@@ -109,6 +122,7 @@ const SECONDARY_ATTRIBUTE = "data-lineage-secondary";
 const PRIMARY_FALLBACK_ATTRIBUTE = "data-lineage-primary-fallback";
 const SELECTION_HALOS_SELECTOR = "[data-lineage-selection-halos]";
 const COLLECTIVE_TRANSFORM_SELECTOR = "[data-lineage-collective-transform]";
+const SNAP_GUIDES_SELECTOR = "[data-lineage-snap-guides]";
 const REVIEW_ATTRIBUTE = "data-lineage-review-highlight";
 const ROTATION_HANDLE_SELECTOR = ".svg_select_handle_rot";
 const ROTATION_KNOB_CLASS = "lineage-rotation-knob";
@@ -478,6 +492,28 @@ export class InspectorEditSession {
   }
 }
 
+export type NumericTransformField = "x" | "y" | "width" | "height" | "rotation";
+
+export function parseNumericTransformValue(
+  field: NumericTransformField,
+  raw: string,
+): { value?: number; error?: string } {
+  const candidate = raw.trim();
+  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(candidate)) {
+    return { error: "Enter a finite decimal number." };
+  }
+  const value = Number(candidate);
+  if (!Number.isFinite(value)) return { error: "Enter a finite decimal number." };
+  if (field === "width" || field === "height") {
+    if (value <= 0 || value > 1_000_000) return { error: "Dimensions must be greater than 0 and at most 1,000,000." };
+    return { value };
+  }
+  if ((field === "x" || field === "y") && (value < -1_000_000 || value > 1_000_000)) {
+    return { error: "Coordinates must be between -1,000,000 and 1,000,000." };
+  }
+  return { value: field === "rotation" ? normalizeRotationDegrees(value) : value };
+}
+
 export function serializeSvg(root: SVGSVGElement | undefined, stripEditorState: boolean): string {
   if (!root) return "";
   const clone = root.cloneNode(true) as SVGSVGElement;
@@ -765,6 +801,20 @@ function collectiveUnion(
     throw new RangeError("The collective transform requires finite, non-zero union bounds.");
   }
   return union;
+}
+
+interface NumericSelectionFrame {
+  box: TransformBox;
+  origin: { x: number; y: number };
+  rotation: number;
+}
+
+function numericFrameOrigin(box: TransformBox, rotation: number): { x: number; y: number } {
+  const matrix = collectiveRotationMatrix(0, 0, rotation);
+  return {
+    x: matrix.a * box.x + matrix.c * box.y + matrix.e,
+    y: matrix.b * box.x + matrix.d * box.y + matrix.f,
+  };
 }
 
 export function collectiveTransformAvailability(
@@ -1162,6 +1212,7 @@ interface DraggableSession {
 interface ResizeSession {
   eventType: string;
   lastEvent: Event | null;
+  box?: TransformBox;
 }
 
 export class SvgEditor {
@@ -1181,6 +1232,15 @@ export class SvgEditor {
   #selectionTranslationGesture?: SelectionTranslationGesture;
   #selectionTranslationRejected = false;
   #translationRootToScreen?: MatrixCoefficients;
+  #translationStartBox?: TransformBox;
+  #snapTargets: SnapTarget[] = [];
+  #rotationDirection = 0;
+  #singleRotationPointer?: {
+    baseRotation: number;
+    lastRotationDelta?: number;
+    pivot: { x: number; y: number };
+    startRoot: { x: number; y: number };
+  };
   #collectiveTransformGesture?: CollectiveTransformGesture;
   #collectiveTransformRoot?: MatrixCoefficients;
   #collectiveRotationFeedback?: number;
@@ -1191,9 +1251,11 @@ export class SvgEditor {
     handle: string;
     pointerId: number;
     rotationFeedback?: number;
+    lastRotationDelta?: number;
     startRoot: { x: number; y: number };
     startScreen: { x: number; y: number };
     union: TransformBox;
+    rootBox: TransformBox;
   };
   #groupRotationGesture = false;
   #interactiveCleanup?: () => void;
@@ -1232,6 +1294,12 @@ export class SvgEditor {
     originalTransform: string | null;
     snapshot: string;
   };
+  #numericEdit?: {
+    field: NumericTransformField;
+    initialDisplay: string;
+    nodes: SVGGraphicsElement[];
+    snapshot: string;
+  };
 
   constructor(artboard: HTMLElement, controls: EditorControls, callbacks: EditorCallbacks) {
     this.#artboard = artboard;
@@ -1239,6 +1307,17 @@ export class SvgEditor {
     const compatibleControls = controls as unknown as Record<string, HTMLElement | undefined>;
     for (const name of ["textContent", "textFamily", "textLetterSpacing", "textSize", "textWeight"]) {
       compatibleControls[name] ??= artboard.ownerDocument.createElement("input");
+    }
+    for (const name of ["positionWidth", "positionHeight", "aspectLock"]) {
+      compatibleControls[name] ??= artboard.ownerDocument.createElement("input");
+    }
+    for (const name of ["geometryMode", "geometryError"]) {
+      compatibleControls[name] ??= artboard.ownerDocument.createElement("small");
+    }
+    this.#controls.aspectLock.type = "checkbox";
+    if (!this.#controls.aspectLock.hasAttribute("data-lineage-initialized")) {
+      this.#controls.aspectLock.checked = true;
+      this.#controls.aspectLock.setAttribute("data-lineage-initialized", "true");
     }
     for (const name of ["distributeHorizontalButton", "distributeVerticalButton", "spaceHorizontalButton", "spaceVerticalButton"]) {
       compatibleControls[name] ??= artboard.ownerDocument.createElement("button");
@@ -1261,6 +1340,7 @@ export class SvgEditor {
     this.#history.reset();
     this.#collectiveRotationFeedback = undefined;
     this.#collectiveRotationBySelection.clear();
+    this.#clearSnapGuides();
     this.#keyCounter = 0;
     this.#lockedKeys.clear();
     this.#selectedNodes = [];
@@ -1399,7 +1479,7 @@ export class SvgEditor {
     if (canInstallHandles) {
       selected
         .select()
-        .resize({ preserveAspectRatio: true, aroundCenter: false, grid: 1, degree: 1 });
+        .resize({ preserveAspectRatio: true, aroundCenter: false, grid: 0, degree: 0 });
       enhanceRotationHandle(root);
       selected.on("beforeresize.lineage", (event) => {
         const detail = (event as CustomEvent<{
@@ -1417,7 +1497,7 @@ export class SvgEditor {
           event.preventDefault();
           return;
         }
-        const detail = (event as CustomEvent<{ angle: number; box: TransformBox; event: Event; eventType: string }>).detail;
+        const detail = (event as CustomEvent<{ angle: number; box: TransformBox; event: Event; eventType: string; handler: ResizeSession }>).detail;
         const terminalPoint = interactionPoint(detail.event);
         const releasedAtStart = Boolean(terminalPoint && this.#interactiveStartPoint
           && Math.abs(terminalPoint.x - this.#interactiveStartPoint.x) <= 1
@@ -1429,10 +1509,96 @@ export class SvgEditor {
           this.#cancelInteractiveMutation();
           return;
         } else if (detail.eventType === "rot") {
-          this.#markInteractiveMoved(true);
-          const degrees = normalizeRotationDegrees(matrixRotationDegrees(selected.matrixify()) + detail.angle);
-          node.dataset.lineageRotation = String(degrees);
-          this.#callbacks.onStatus(`Rotation ${degrees}°`);
+          const rotation = this.#singleRotationPointer;
+          const gesture = this.#collectiveTransformGesture;
+          const root = this.svgNode;
+          const point = interactionPoint(detail.event);
+          if (!rotation || !gesture || !root || !point) {
+            event.preventDefault();
+            this.#cancelInteractiveMutation();
+          } else {
+            event.preventDefault();
+            try {
+              const rootScreen = screenMatrix(root);
+              if (!rootScreen) throw new RangeError("The rotation coordinate space is unavailable.");
+              const current = transformPointToLocal(rootScreen, point.x, point.y);
+              const startAngle = Math.atan2(rotation.startRoot.y - rotation.pivot.y, rotation.startRoot.x - rotation.pivot.x);
+              const currentAngle = Math.atan2(current.y - rotation.pivot.y, current.x - rotation.pivot.x);
+              const rawDegrees = normalizeRotationDegrees((currentAngle - startAngle) * 180 / Math.PI);
+              const direction = rawDegrees === (rotation.lastRotationDelta ?? 0)
+                ? this.#rotationDirection
+                : Math.sign(rawDegrees - (rotation.lastRotationDelta ?? 0));
+              if (direction !== 0) this.#rotationDirection = direction;
+              rotation.lastRotationDelta = rawDegrees;
+              const raw = detail.event as MouseEvent;
+              const degrees = snapAbsoluteRotation(
+                rotation.baseRotation,
+                rawDegrees,
+                raw.shiftKey,
+                raw.altKey,
+                this.#rotationDirection,
+              );
+              this.#markInteractiveMoved(gesture.apply(
+                collectiveRotationMatrix(rotation.pivot.x, rotation.pivot.y, degrees),
+              ));
+              const absolute = normalizeRotationDegrees(rotation.baseRotation + degrees);
+              node.dataset.lineageRotation = String(absolute);
+              this.#callbacks.onStatus(`Rotation ${absolute}°`);
+            } catch (error) {
+              this.#callbacks.onStatus(error instanceof Error ? error.message : "The rotation was rejected.");
+              this.#cancelInteractiveMutation();
+            }
+          }
+        } else if (detail.eventType !== "point" && this.#translationStartBox && detail.handler.box) {
+          try {
+            const root = this.svgNode;
+            const rootScreen = root ? screenMatrix(root) : undefined;
+            const initial = detail.handler.box;
+            const rawFactor = initial.width > 0 ? detail.box.width / initial.width : 1;
+            const handle = detail.eventType;
+            const originX = handle.includes("l") ? initial.x + initial.width : initial.x;
+            const originY = handle.includes("t") ? initial.y + initial.height : initial.y;
+            const nodeScreen = this.selectedNode ? screenMatrix(this.selectedNode) : undefined;
+            const anchor = rootScreen && nodeScreen
+              ? transformPoint(relativeMatrix(rootScreen, nodeScreen), originX, originY)
+              : {
+                x: handle.includes("l") ? this.#translationStartBox.x + this.#translationStartBox.width : this.#translationStartBox.x,
+                y: handle.includes("t") ? this.#translationStartBox.y + this.#translationStartBox.height : this.#translationStartBox.y,
+              };
+            const raw = detail.event as MouseEvent;
+            const snap = rootScreen && this.#shouldSnap(raw)
+              ? snapUniformScale(
+                this.#translationStartBox,
+                anchor,
+                rawFactor,
+                this.#snapTargets,
+                rootScreen,
+                this.#selectionPreferences.snapTolerancePx,
+                handle.length === 1 ? (handle === "l" || handle === "r" ? ["x"] : ["y"]) : ["x", "y"],
+              )
+              : { factor: rawFactor };
+            if (snap.winner) {
+              detail.box.x = originX + (initial.x - originX) * snap.factor;
+              detail.box.y = originY + (initial.y - originY) * snap.factor;
+              detail.box.width = initial.width * snap.factor;
+              detail.box.height = initial.height * snap.factor;
+              (detail.box as TransformBox & { x2?: number; y2?: number }).x2 = detail.box.x + detail.box.width;
+              (detail.box as TransformBox & { x2?: number; y2?: number }).y2 = detail.box.y + detail.box.height;
+            }
+            this.#renderSnapGuides(snap.winner ? [snap.winner] : [], {
+              x: anchor.x + (this.#translationStartBox.x - anchor.x) * snap.factor,
+              y: anchor.y + (this.#translationStartBox.y - anchor.y) * snap.factor,
+              width: this.#translationStartBox.width * snap.factor,
+              height: this.#translationStartBox.height * snap.factor,
+            });
+          } catch { this.#clearSnapGuides(); }
+          if (this.#groupTransformGesture) {
+            event.preventDefault();
+            try { this.#markInteractiveMoved(this.#groupTransformGesture.resize(detail.box)); }
+            catch (error) { this.#rejectGroupTransform(error); }
+          } else {
+            this.#markInteractiveMoved(true);
+          }
         } else if (this.#groupTransformGesture) {
           event.preventDefault();
           try {
@@ -1479,8 +1645,9 @@ export class SvgEditor {
         const detail = (event as CustomEvent<{ event: Event }>).detail;
         const point = interactionPoint(detail.event);
         const start = this.#interactiveStartPoint;
-        const rootToScreen = this.#translationRootToScreen;
-        if (!point || !start || !rootToScreen) {
+        const root = this.svgNode;
+        const rootToScreen = root ? screenMatrix(root) : undefined;
+        if (!point || !start || !rootToScreen || !root) {
           this.#rejectSelectionTranslation(new RangeError("The collective drag pointer could not be resolved."));
         } else {
           try {
@@ -1490,7 +1657,36 @@ export class SvgEditor {
             const rootDelta = crossedThreshold
               ? transformVectorToLocal(rootToScreen, screenDx, screenDy)
               : { dx: 0, dy: 0 };
-            this.#markInteractiveMoved(this.#selectionTranslationGesture.move(rootDelta.dx, rootDelta.dy));
+            const rawEvent = detail.event as MouseEvent;
+            const snapped = crossedThreshold && this.#shouldSnap(rawEvent)
+              && this.#translationStartBox
+              ? snapTranslation(
+                this.#translationStartBox,
+                rootDelta.dx,
+                rootDelta.dy,
+                this.#snapTargets,
+                rootToScreen,
+                this.#selectionPreferences.snapTolerancePx,
+              )
+              : { dx: rootDelta.dx, dy: rootDelta.dy, winners: [] };
+            let appliedDx = snapped.dx;
+            let appliedDy = snapped.dy;
+            let changed = this.#selectionTranslationGesture.move(appliedDx, appliedDy);
+            if (snapped.winners.length > 0 && root) {
+              const live = collectiveUnion(this.#selectedNodes, root);
+              for (const winner of snapped.winners) {
+                const min = winner.axis === "x" ? live.x : live.y;
+                const max = min + (winner.axis === "x" ? live.width : live.height);
+                const actual = winner.sourceAnchor === "min" ? min : winner.sourceAnchor === "max" ? max : (min + max) / 2;
+                if (winner.axis === "x") appliedDx += winner.value - actual;
+                else appliedDy += winner.value - actual;
+              }
+              changed = this.#selectionTranslationGesture.move(appliedDx, appliedDy) || changed;
+            }
+            this.#syncLiveTranslationOverlay(appliedDx, appliedDy);
+            const liveBox = root ? collectiveUnion(this.#selectedNodes, root) : this.#translatedBox(this.#translationStartBox, appliedDx, appliedDy);
+            this.#renderSnapGuides(snapped.winners, liveBox);
+            this.#markInteractiveMoved(changed);
           } catch (error) {
             this.#rejectSelectionTranslation(error);
           }
@@ -2254,20 +2450,38 @@ export class SvgEditor {
       control.addEventListener("change", () => this.#syncSelectionUi());
     }
 
-    const transformControls: Array<[HTMLInputElement, () => void]> = [
-      [this.#controls.positionX, () => this.#moveSelection("x")],
-      [this.#controls.positionY, () => this.#moveSelection("y")],
-      [this.#controls.rotation, () => this.#rotateSelection()],
+    const transformControls: Array<[HTMLInputElement, NumericTransformField]> = [
+      [this.#controls.positionX, "x"],
+      [this.#controls.positionY, "y"],
+      [this.#controls.positionWidth, "width"],
+      [this.#controls.positionHeight, "height"],
+      [this.#controls.rotation, "rotation"],
     ];
-    for (const [control, apply] of transformControls) {
-      control.addEventListener("focus", () => this.#beginInspectorEdit());
+    for (const [control, field] of transformControls) {
+      control.addEventListener("focus", () => this.#beginNumericEdit(field, control));
       control.addEventListener("input", () => {
-        if (this.#syncingControls || !this.#canMutatePrimary()) return;
-        const before = this.#snapshot();
-        apply();
-        this.#checkpointInspectorMutation(before, this.#snapshot());
+        if (this.#syncingControls) return;
+        const validation = parseNumericTransformValue(field, control.value);
+        control.toggleAttribute("aria-invalid", Boolean(validation.error));
+        this.#controls.geometryError.textContent = validation.error ?? "";
       });
-      control.addEventListener("change", () => this.#syncSelectionUi());
+      control.addEventListener("blur", () => this.#commitNumericEdit(field, control));
+      control.addEventListener("keydown", (rawEvent) => {
+        const event = rawEvent as KeyboardEvent;
+        if (event.key === "Enter") {
+          event.preventDefault();
+          this.#commitNumericEdit(field, control);
+          control.blur();
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          this.#numericEdit = undefined;
+          this.#controls.geometryError.textContent = "";
+          control.removeAttribute("aria-invalid");
+          this.#syncSelectionUi();
+          control.blur();
+          this.#callbacks.onStatus("Canceled the numeric geometry edit");
+        }
+      });
     }
     this.#controls.scale.addEventListener("focus", () => {
       if (!this.#canMutatePrimary() || this.selectedNode?.localName !== "g" || !this.#selected) {
@@ -2379,9 +2593,14 @@ export class SvgEditor {
     this.#selectionTranslationGesture = undefined;
     this.#selectionTranslationRejected = false;
     this.#translationRootToScreen = undefined;
+    this.#translationStartBox = undefined;
+    this.#snapTargets = [];
+    this.#rotationDirection = 0;
+    this.#singleRotationPointer = undefined;
+    this.#clearSnapGuides();
     this.#collectiveTransformGesture = undefined;
     this.#collectiveTransformRoot = undefined;
-    this.#groupRotationGesture = kind === "rotation" && this.selectedNode?.localName === "g";
+    this.#groupRotationGesture = false;
     this.#interactiveStartPoint = source ? interactionPoint(source) : undefined;
     this.#interactivePluginSession = pluginSession;
     this.#interactivePluginType = kind === "drag" ? "drag" : "resize";
@@ -2402,13 +2621,33 @@ export class SvgEditor {
       }
       try {
         this.#collectiveTransformGesture = new CollectiveTransformGesture(translationTargets(this.#selectedNodes, root));
+        this.#snapTargets = this.#buildSnapTargets();
       } catch (error) {
         this.#callbacks.onStatus(error instanceof Error ? error.message : "The collective transform was rejected.");
         this.#cancelInteractiveMutation();
       }
       return;
     }
-    if (kind === "drag" && root && this.#selectedNodes.length > 1) {
+    if (kind === "rotation" && root && node && this.#interactiveStartPoint) {
+      try {
+        const rootScreen = screenMatrix(root);
+        const nodeScreen = screenMatrix(node);
+        if (!rootScreen || !nodeScreen) throw new RangeError("The rotation coordinate space is unavailable.");
+        const nodeToRoot = relativeMatrix(rootScreen, nodeScreen);
+        const box = node.getBBox();
+        this.#singleRotationPointer = {
+          baseRotation: matrixRotationDegrees(nodeToRoot),
+          pivot: transformPoint(nodeToRoot, box.x + box.width / 2, box.y + box.height / 2),
+          startRoot: transformPointToLocal(rootScreen, this.#interactiveStartPoint.x, this.#interactiveStartPoint.y),
+        };
+        this.#collectiveTransformGesture = new CollectiveTransformGesture(translationTargets([node], root));
+      } catch (error) {
+        this.#callbacks.onStatus(error instanceof Error ? error.message : "The rotation could not start.");
+        this.#cancelInteractiveMutation();
+      }
+      return;
+    }
+    if (kind === "drag" && root) {
       const availability = translationAvailability(
         this.#selectedNodes,
         root,
@@ -2427,6 +2666,8 @@ export class SvgEditor {
         }
         this.#translationRootToScreen = rootToScreen;
         this.#selectionTranslationGesture = new SelectionTranslationGesture(translationTargets(this.#selectedNodes, root));
+        this.#translationStartBox = collectiveUnion(this.#selectedNodes, root);
+        this.#snapTargets = this.#buildSnapTargets();
       } catch (error) {
         this.#rejectSelectionTranslation(error);
       }
@@ -2440,6 +2681,14 @@ export class SvgEditor {
       } catch (error) {
         this.#groupTransformRejected = true;
         this.#callbacks.onStatus(error instanceof Error ? error.message : `Unable to begin grouped ${kind}`);
+      }
+    }
+    if (kind === "resize" && root && node) {
+      try {
+        this.#translationStartBox = collectiveUnion([node], root);
+        this.#snapTargets = this.#buildSnapTargets();
+      } catch (error) {
+        this.#callbacks.onStatus(error instanceof Error ? error.message : "Resize snapping is unavailable.");
       }
     }
   }
@@ -2487,12 +2736,21 @@ export class SvgEditor {
     if (!this.#interactiveMutation) return;
     if (this.#collectiveTransformGesture) {
       const root = this.svgNode;
-      const availability = root ? collectiveTransformAvailability(
-        this.#selectedNodes,
-        root,
-        (candidate) => this.#isLocked(candidate),
-        this.#agentMutationBlocked,
-      ) : { allowed: false, reason: "The collective transform document is unavailable." };
+      const availability = root
+        ? this.#singleRotationPointer
+          ? translationAvailability(
+            this.#selectedNodes,
+            root,
+            (candidate) => this.#isLocked(candidate),
+            this.#agentMutationBlocked,
+          )
+          : collectiveTransformAvailability(
+            this.#selectedNodes,
+            root,
+            (candidate) => this.#isLocked(candidate),
+            this.#agentMutationBlocked,
+          )
+        : { allowed: false, reason: "The transform document is unavailable." };
       if (!availability.allowed) {
         this.#callbacks.onStatus(availability.reason);
         this.#cancelInteractiveMutation();
@@ -2506,7 +2764,7 @@ export class SvgEditor {
     const collectivePointer = this.#collectiveTransformPointer;
     const collectiveChanged = this.#collectiveTransformGesture?.complete();
     if (collectiveChanged) {
-      const metadata = this.#collectiveTransformPointer?.handle === "rotation"
+      const metadata = this.#collectiveTransformPointer?.handle === "rotation" || this.#singleRotationPointer
         ? "data-lineage-rotation"
         : "data-lineage-scale";
       this.#selectedNodes.forEach((node) => node.removeAttribute(metadata));
@@ -2537,6 +2795,10 @@ export class SvgEditor {
     this.#selectionTranslationGesture = undefined;
     this.#selectionTranslationRejected = false;
     this.#translationRootToScreen = undefined;
+    this.#translationStartBox = undefined;
+    this.#snapTargets = [];
+    this.#clearSnapGuides();
+    this.#singleRotationPointer = undefined;
     this.#collectiveTransformGesture = undefined;
     this.#collectiveTransformRoot = undefined;
     this.#collectiveTransformPointer = undefined;
@@ -2567,6 +2829,10 @@ export class SvgEditor {
     this.#selectionTranslationGesture = undefined;
     this.#selectionTranslationRejected = false;
     this.#translationRootToScreen = undefined;
+    this.#translationStartBox = undefined;
+    this.#snapTargets = [];
+    this.#clearSnapGuides();
+    this.#singleRotationPointer = undefined;
     this.#collectiveTransformGesture = undefined;
     this.#collectiveTransformRoot = undefined;
     this.#collectiveTransformPointer = undefined;
@@ -2624,6 +2890,123 @@ export class SvgEditor {
     this.#syncSelectionUi();
     this.#notifyDocumentChange();
     this.#notifyHistory();
+  }
+
+  #numericSelectionFrame(requireAvailable = true): NumericSelectionFrame {
+    const root = this.svgNode;
+    if (!root || this.#selectedNodes.length === 0) throw new RangeError("Select visible transformable artwork.");
+    if (requireAvailable) {
+      const availability = this.#selectedNodes.length > 1
+        ? collectiveTransformAvailability(this.#selectedNodes, root, (node) => this.#isLocked(node), this.#agentMutationBlocked)
+        : translationAvailability(this.#selectedNodes, root, (node) => this.#isLocked(node), this.#agentMutationBlocked);
+      if (!availability.allowed) throw new RangeError(availability.reason);
+      // Constructing the gesture performs the same finite/invertible preflight as
+      // pointer transforms, before any selected attribute can be changed.
+      new CollectiveTransformGesture(translationTargets(this.#selectedNodes, root));
+    }
+    let rotation = this.#collectiveRotationFeedback ?? 0;
+    if (this.#selectedNodes.length === 1) {
+      const rootScreen = screenMatrix(root);
+      const nodeScreen = screenMatrix(this.#selectedNodes[0]);
+      if (!rootScreen || !nodeScreen) throw new RangeError("The oriented frame coordinate space is unavailable.");
+      rotation = normalizeRotationDegrees(matrixRotationDegrees(relativeMatrix(rootScreen, nodeScreen)));
+    }
+    const box = collectiveUnion(this.#selectedNodes, root, rotation);
+    return { box, origin: numericFrameOrigin(box, rotation), rotation };
+  }
+
+  #beginNumericEdit(field: NumericTransformField, control: HTMLInputElement): void {
+    if (control.disabled) return;
+    this.#numericEdit = {
+      field,
+      initialDisplay: control.value,
+      nodes: [...this.#selectedNodes],
+      snapshot: this.#snapshot(),
+    };
+    control.removeAttribute("aria-invalid");
+    this.#controls.geometryError.textContent = "";
+  }
+
+  #commitNumericEdit(field: NumericTransformField, control: HTMLInputElement): void {
+    if (this.#syncingControls) return;
+    const edit = this.#numericEdit;
+    if (!edit || edit.field !== field) return;
+    this.#numericEdit = undefined;
+    if (edit.initialDisplay === control.value) {
+      this.#syncSelectionUi();
+      return;
+    }
+    const validation = parseNumericTransformValue(field, control.value);
+    if (validation.error || validation.value === undefined) {
+      control.setAttribute("aria-invalid", "true");
+      this.#controls.geometryError.textContent = validation.error ?? "Enter a valid value.";
+      return;
+    }
+    const initialValidation = parseNumericTransformValue(field, edit.initialDisplay);
+    if (initialValidation.value !== undefined && initialValidation.value === validation.value) {
+      this.#syncSelectionUi();
+      return;
+    }
+    if (edit.nodes.length !== this.#selectedNodes.length
+      || edit.nodes.some((node, index) => node !== this.#selectedNodes[index])) {
+      control.setAttribute("aria-invalid", "true");
+      this.#controls.geometryError.textContent = "The selection changed before this edit could be applied.";
+      return;
+    }
+    let gesture: CollectiveTransformGesture | undefined;
+    try {
+      const root = this.svgNode;
+      if (!root) throw new RangeError("The oriented frame is unavailable.");
+      const frame = this.#numericSelectionFrame();
+      const value = validation.value;
+      let transform: MatrixCoefficients;
+      if (field === "x" || field === "y") {
+        const dx = field === "x" ? value - frame.origin.x : 0;
+        const dy = field === "y" ? value - frame.origin.y : 0;
+        transform = { a: 1, b: 0, c: 0, d: 1, e: dx, f: dy };
+      } else if (field === "rotation") {
+        const delta = normalizeRotationDegrees(value - frame.rotation);
+        const center = numericFrameOrigin({
+          x: frame.box.x + frame.box.width / 2,
+          y: frame.box.y + frame.box.height / 2,
+          width: 0,
+          height: 0,
+        }, frame.rotation);
+        transform = collectiveRotationMatrix(center.x, center.y, delta);
+      } else {
+        const requestedScale = value / (field === "width" ? frame.box.width : frame.box.height);
+        const scaleX = field === "width" || this.#controls.aspectLock.checked ? requestedScale : 1;
+        const scaleY = field === "height" || this.#controls.aspectLock.checked ? requestedScale : 1;
+        transform = collectiveFrameScaleMatrix(
+          frame.box.x + frame.box.width,
+          frame.box.y + frame.box.height,
+          scaleX,
+          scaleY,
+          frame.rotation,
+        );
+      }
+      // All target matrices are calculated inside apply before its first write.
+      gesture = new CollectiveTransformGesture(translationTargets(this.#selectedNodes, root));
+      const changed = gesture.apply(transform);
+      if (!changed || !gesture.complete()) {
+        gesture.cancel();
+        this.#syncSelectionUi();
+        return;
+      }
+      if (field === "rotation" && this.#selectedNodes.length > 1) {
+        this.#collectiveRotationFeedback = validation.value;
+        this.#rememberCollectiveRotation(this.#selectedNodes, validation.value);
+      }
+      this.#history.checkpoint(edit.snapshot);
+      this.#syncSelectionUi();
+      this.#notifyDocumentChange();
+      this.#notifyHistory();
+      this.#callbacks.onStatus(`Updated oriented-frame ${field}`);
+    } catch (error) {
+      gesture?.cancel();
+      control.setAttribute("aria-invalid", "true");
+      this.#controls.geometryError.textContent = error instanceof Error ? error.message : "The numeric transform was rejected.";
+    }
   }
 
   #moveSelection(axis: "x" | "y"): void {
@@ -2988,11 +3371,8 @@ export class SvgEditor {
     this.#controls.strokeState.textContent = svgPaintState(explicitStroke);
     this.#controls.strokeWidth.value = String(this.#selected.attr("stroke-width") ?? "");
     this.#controls.opacity.value = String(this.#selected.attr("opacity") ?? 1);
-    this.#controls.positionX.value = String(Number(box.x.toFixed(2)));
-    this.#controls.positionY.value = String(Number(box.y.toFixed(2)));
+    this.#syncNumericControls();
     this.#controls.scale.value = node.dataset.lineageScale ?? "100";
-    this.#controls.rotation.value = node.dataset.lineageRotation
-      ?? String(matrixRotationDegrees(this.#selected.matrixify()));
     const isText = node.localName === "text";
     this.#controls.textContent.value = isText ? node.textContent ?? "" : "";
     this.#controls.textSize.value = isText ? displayedTextValue(node as SVGTextElement, "font-size") : "";
@@ -3021,16 +3401,30 @@ export class SvgEditor {
       this.#controls.strokePicker,
       this.#controls.strokeWidth,
       this.#controls.opacity,
-      this.#controls.positionX,
-      this.#controls.positionY,
       this.#controls.scale,
-      this.#controls.rotation,
       this.#controls.name,
       this.#controls.nameClearButton,
       this.#controls.duplicateButton,
       this.#controls.deleteButton,
       this.#controls.hideButton,
     ]) control.disabled = !single || locked;
+    let numericAvailable = false;
+    let numericReason = "";
+    try {
+      this.#numericSelectionFrame();
+      numericAvailable = true;
+    } catch (error) {
+      numericReason = error instanceof Error ? error.message : "The oriented frame is unavailable.";
+    }
+    for (const control of [
+      this.#controls.positionX,
+      this.#controls.positionY,
+      this.#controls.positionWidth,
+      this.#controls.positionHeight,
+      this.#controls.rotation,
+    ]) control.disabled = !numericAvailable;
+    this.#controls.aspectLock.disabled = !numericAvailable;
+    if (!numericAvailable) this.#controls.geometryMode.textContent = numericReason;
     for (const control of [
       this.#controls.textContent,
       this.#controls.textSize,
@@ -3046,6 +3440,75 @@ export class SvgEditor {
     this.#controls.lockButton.textContent = directlyLocked ? "Unlock" : locked ? "Locked by ancestor" : "Lock";
     this.#syncOperationUi();
     this.#syncingControls = false;
+  }
+
+  #syncLiveTranslationOverlay(dx: number, dy: number): void {
+    const root = this.svgNode;
+    if (!root) return;
+    if (this.#selectedNodes.length > 1) {
+      const overlay = root.querySelector<SVGGElement>(COLLECTIVE_TRANSFORM_SELECTOR);
+      if (!overlay) return;
+      const baseRotation = collectiveRotationMatrix(0, 0, this.#collectiveRotationFeedback ?? 0);
+      overlay.setAttribute("transform", formatMatrix(multiplyMatrices({
+        a: 1,
+        b: 0,
+        c: 0,
+        d: 1,
+        e: dx,
+        f: dy,
+      }, baseRotation)));
+      return;
+    }
+    const selectionHandler = this.#selected?.remember("_selectHandler") as { mutationHandler?: () => void } | undefined;
+    selectionHandler?.mutationHandler?.();
+  }
+
+  #syncNumericControls(): void {
+    const formatDisplay = (value: number): string => String(Number(value.toFixed(4)));
+    try {
+      const frame = this.#numericSelectionFrame(false);
+      this.#controls.positionX.value = formatDisplay(frame.origin.x);
+      this.#controls.positionY.value = formatDisplay(frame.origin.y);
+      this.#controls.positionWidth.value = formatDisplay(frame.box.width);
+      this.#controls.positionHeight.value = formatDisplay(frame.box.height);
+      this.#controls.rotation.value = formatDisplay(frame.rotation);
+      for (const control of [
+        this.#controls.positionX,
+        this.#controls.positionY,
+        this.#controls.positionWidth,
+        this.#controls.positionHeight,
+        this.#controls.rotation,
+      ]) control.removeAttribute("aria-invalid");
+      this.#controls.geometryError.textContent = "";
+      if (this.#selectedNodes.length === 1) {
+        this.#controls.geometryMode.textContent = "Exact oriented-frame values";
+      } else {
+        const memberFrames = this.#selectedNodes.map((node) => {
+          const root = this.svgNode;
+          const rootScreen = root ? screenMatrix(root) : undefined;
+          const nodeScreen = screenMatrix(node);
+          if (!root || !rootScreen || !nodeScreen) return undefined;
+          const rotation = normalizeRotationDegrees(matrixRotationDegrees(relativeMatrix(rootScreen, nodeScreen)));
+          return { box: rootBox(node, root), rotation };
+        });
+        const first = memberFrames[0];
+        const mixed = !first || memberFrames.some((member) => !member
+          || Math.abs(normalizeRotationDegrees(member.rotation - first.rotation)) > 0.000001
+          || (["x", "y", "width", "height"] as const).some((key) => Math.abs(member.box[key] - first.box[key]) > 0.000001));
+        this.#controls.geometryMode.textContent = mixed
+          ? "Aggregate oriented frame · Mixed member values"
+          : "Aggregate oriented frame · Exact member rotation";
+      }
+    } catch (error) {
+      for (const control of [
+        this.#controls.positionX,
+        this.#controls.positionY,
+        this.#controls.positionWidth,
+        this.#controls.positionHeight,
+        this.#controls.rotation,
+      ]) control.value = "";
+      this.#controls.geometryMode.textContent = error instanceof Error ? error.message : "The oriented frame is unavailable.";
+    }
   }
 
   #snapshot(): string {
@@ -3119,6 +3582,103 @@ export class SvgEditor {
   #notifyHistory(): void {
     const availability = visibleHistoryAvailability(this.#agentMutationBlocked, this.#history.canUndo, this.#history.canRedo);
     this.#callbacks.onHistoryChange(availability.canUndo, availability.canRedo);
+  }
+
+  #shouldSnap(event: { altKey?: boolean }): boolean {
+    return this.#selectionPreferences.alignmentSnappingEnabled && !event.altKey;
+  }
+
+  #translatedBox(box: TransformBox | undefined, dx: number, dy: number): TransformBox | undefined {
+    return box ? { ...box, x: box.x + dx, y: box.y + dy } : undefined;
+  }
+
+  #buildSnapTargets(): SnapTarget[] {
+    const root = this.svgNode;
+    if (!root) return [];
+    const targets: SnapTarget[] = [];
+    const viewBox = root.viewBox?.baseVal;
+    if (this.#selectionPreferences.snapToCanvas && viewBox && viewBox.width > 0 && viewBox.height > 0) {
+      targets.push(...boxSnapTargets(
+        { x: viewBox.x, y: viewBox.y, width: viewBox.width, height: viewBox.height },
+        "canvas",
+        "canvas",
+        -1,
+      ));
+    }
+    if (!this.#selectionPreferences.snapToObjects) return targets;
+    const selected = new Set(this.#selectedNodes);
+    const candidates = Array.from(root.querySelectorAll<SVGGraphicsElement>(EDITABLE_SELECTOR));
+    const eligible = candidates.filter((candidate) => {
+      if (!isSelectableNode(candidate, root)
+        || selected.has(candidate)
+        || this.#selectedNodes.some((node) => node.contains(candidate) || candidate.contains(node))
+        || candidate.closest(SNAP_GUIDES_SELECTOR)) return false;
+      const availability = translationAvailability([candidate], root, (node) => this.#isLocked(node));
+      return availability.allowed;
+    });
+    const eligibleSet = new Set(eligible);
+    eligible.filter((candidate) => {
+      let parent = getSelectableParent(candidate, root);
+      while (parent && parent !== root) {
+        if (eligibleSet.has(parent as SVGGraphicsElement)) return false;
+        parent = getSelectableParent(parent, root);
+      }
+      return true;
+    }).forEach((candidate) => {
+      const order = candidates.indexOf(candidate);
+      try {
+        targets.push(...boxSnapTargets(rootBox(candidate, root), "object", candidate.dataset.lineageKey ?? `object-${order}`, order));
+      } catch { /* A non-projectable target is simply ineligible. */ }
+    });
+    return targets;
+  }
+
+  #clearSnapGuides(): void {
+    this.svgNode?.querySelector(SNAP_GUIDES_SELECTOR)?.remove();
+  }
+
+  #renderSnapGuides(winners: SnapWinner[], selectionBox?: TransformBox): void {
+    this.#clearSnapGuides();
+    const root = this.svgNode;
+    if (!root || winners.length === 0 || !selectionBox) return;
+    const viewBox = root.viewBox?.baseVal;
+    if (!viewBox || viewBox.width <= 0 || viewBox.height <= 0) return;
+    const rootScreen = screenMatrix(root);
+    const scale = rootScreen
+      ? Math.max(Math.hypot(rootScreen.a, rootScreen.b), Math.hypot(rootScreen.c, rootScreen.d), 0.001)
+      : 1;
+    const extension = 12 / scale;
+    const group = root.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "g");
+    group.setAttribute("data-lineage-snap-guides", "true");
+    group.setAttribute("aria-hidden", "true");
+    group.setAttribute("pointer-events", "none");
+    for (const winner of winners) {
+      const line = root.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("class", "lineage-snap-guide");
+      line.setAttribute("data-axis", winner.axis);
+      line.setAttribute("data-target-family", winner.family);
+      line.setAttribute("data-target-anchor", winner.anchor);
+      line.setAttribute("data-source-anchor", winner.sourceAnchor);
+      line.setAttribute("data-target-key", winner.key);
+      if (winner.axis === "x") {
+        const min = winner.family === "canvas" ? viewBox.y : Math.max(viewBox.y, Math.min(selectionBox.y, winner.spanMin) - extension);
+        const max = winner.family === "canvas" ? viewBox.y + viewBox.height : Math.min(viewBox.y + viewBox.height, Math.max(selectionBox.y + selectionBox.height, winner.spanMax) + extension);
+        line.setAttribute("x1", String(winner.value)); line.setAttribute("x2", String(winner.value));
+        line.setAttribute("y1", String(min)); line.setAttribute("y2", String(max));
+      } else {
+        const min = winner.family === "canvas" ? viewBox.x : Math.max(viewBox.x, Math.min(selectionBox.x, winner.spanMin) - extension);
+        const max = winner.family === "canvas" ? viewBox.x + viewBox.width : Math.min(viewBox.x + viewBox.width, Math.max(selectionBox.x + selectionBox.width, winner.spanMax) + extension);
+        line.setAttribute("y1", String(winner.value)); line.setAttribute("y2", String(winner.value));
+        line.setAttribute("x1", String(min)); line.setAttribute("x2", String(max));
+      }
+      group.append(line);
+    }
+    const handle = root.querySelector<SVGElement>(SELECTION_BOUNDING_SHAPE_SELECTOR);
+    let handleLayer: Element | null = handle;
+    while (handleLayer?.parentNode instanceof Element && handleLayer.parentNode !== root) handleLayer = handleLayer.parentNode;
+    if (handleLayer?.parentNode === root) root.insertBefore(group, handleLayer);
+    else root.append(group);
+    this.#callbacks.onStatus(winners.map((winner) => `${winner.family} ${winner.anchor}`).join(", ") + " aligned");
   }
 
   #label(node: SVGGraphicsElement): string {
@@ -3419,6 +3979,7 @@ export class SvgEditor {
           startRoot,
           startScreen: { x: event.clientX, y: event.clientY },
           union: { ...union },
+          rootBox: collectiveUnion(this.#selectedNodes, root),
         };
         this.#beginInteractiveMutation(name === "rotation" ? "collective-rotation" : "collective-resize", event);
         if (!this.#collectiveTransformGesture) {
@@ -3548,7 +4109,13 @@ export class SvgEditor {
         );
         const startAngle = Math.atan2(active.startRoot.y - pivot.y, active.startRoot.x - pivot.x);
         const currentAngle = Math.atan2(point.y - pivot.y, point.x - pivot.x);
-        const degrees = Math.round((currentAngle - startAngle) * 180 / Math.PI);
+        const rawDegrees = (currentAngle - startAngle) * 180 / Math.PI;
+        const direction = rawDegrees === (active.lastRotationDelta ?? 0)
+          ? this.#rotationDirection
+          : Math.sign(rawDegrees - (active.lastRotationDelta ?? 0));
+        if (direction !== 0) this.#rotationDirection = direction;
+        active.lastRotationDelta = rawDegrees;
+        const degrees = snapAbsoluteRotation(active.baseRotation, rawDegrees, event.shiftKey, event.altKey, this.#rotationDirection);
         transform = collectiveRotationMatrix(pivot.x, pivot.y, degrees);
         const feedback = normalizeRotationDegrees((active.rotationFeedback ?? 0) + degrees);
         liveOverlayRotation = feedback;
@@ -3557,7 +4124,6 @@ export class SvgEditor {
       } else {
         const orientedPoint = transformPointToLocal(overlayToRoot, point.x, point.y);
         const orientedStart = transformPointToLocal(overlayToRoot, active.startRoot.x, active.startRoot.y);
-        const snapped = { x: Math.round(orientedPoint.x), y: Math.round(orientedPoint.y) };
         const anchorX = active.handle.includes("l") ? box.x + box.width
           : active.handle.includes("r") ? box.x : box.x + box.width / 2;
         const anchorY = active.handle.includes("t") ? box.y + box.height
@@ -3565,11 +4131,29 @@ export class SvgEditor {
         const anchor = transformPoint(overlayToRoot, anchorX, anchorY);
         const horizontal = active.handle === "l" || active.handle === "r";
         const vertical = active.handle === "t" || active.handle === "b";
-        const scaleX = (snapped.x - anchorX) / (orientedStart.x - anchorX);
-        const scaleY = (snapped.y - anchorY) / (orientedStart.y - anchorY);
-        const factor = horizontal ? scaleX : vertical ? scaleY
+        const scaleX = (orientedPoint.x - anchorX) / (orientedStart.x - anchorX);
+        const scaleY = (orientedPoint.y - anchorY) / (orientedStart.y - anchorY);
+        const rawFactor = horizontal ? scaleX : vertical ? scaleY
           : Math.abs(scaleX - 1) >= Math.abs(scaleY - 1) ? scaleX : scaleY;
+        const snap = this.#shouldSnap(event)
+          ? snapUniformScale(
+            active.rootBox,
+            anchor,
+            rawFactor,
+            this.#snapTargets,
+            rootScreen,
+            this.#selectionPreferences.snapTolerancePx,
+            horizontal ? ["x"] : vertical ? ["y"] : ["x", "y"],
+          )
+          : { factor: rawFactor };
+        const factor = snap.factor;
         transform = collectiveScaleMatrix(anchor.x, anchor.y, factor);
+        this.#renderSnapGuides(snap.winner ? [snap.winner] : [], {
+          x: anchor.x + (active.rootBox.x - anchor.x) * factor,
+          y: anchor.y + (active.rootBox.y - anchor.y) * factor,
+          width: active.rootBox.width * factor,
+          height: active.rootBox.height * factor,
+        });
         this.#callbacks.onStatus(`Scale ${Number((factor * 100).toFixed(1))}% for ${this.#selectedNodes.length} selected layers`);
       }
       this.#markInteractiveMoved(gesture.apply(transform));

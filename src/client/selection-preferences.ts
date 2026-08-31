@@ -10,10 +10,14 @@ export interface SelectionPreferences {
   clickDepth: DefaultClickDepth;
   individualOutlines: boolean;
   regionActivation: RegionSelectionActivation;
+  alignmentSnappingEnabled: boolean;
+  snapToCanvas: boolean;
+  snapToObjects: boolean;
+  snapTolerancePx: number;
 }
 
-interface StoredSelectionPreferencesV2 extends SelectionPreferences {
-  version: 2;
+interface StoredSelectionPreferencesV3 extends SelectionPreferences {
+  version: 3;
 }
 
 export interface SelectionPreferencesStorage {
@@ -21,7 +25,8 @@ export interface SelectionPreferencesStorage {
   setItem(key: string, value: string): void;
 }
 
-export const SELECTION_PREFERENCES_STORAGE_KEY = "lineage.selection-preferences.v2";
+export const SELECTION_PREFERENCES_STORAGE_KEY = "lineage.selection-preferences.v3";
+export const PREVIOUS_SELECTION_PREFERENCES_STORAGE_KEY = "lineage.selection-preferences.v2";
 export const LEGACY_SELECTION_PREFERENCES_STORAGE_KEY = "lineage.selection-preferences.v1";
 export const DEFAULT_SELECTION_PREFERENCES: Readonly<SelectionPreferences> = Object.freeze({
   preciseModifier: "platform",
@@ -29,6 +34,10 @@ export const DEFAULT_SELECTION_PREFERENCES: Readonly<SelectionPreferences> = Obj
   clickDepth: "logical",
   individualOutlines: true,
   regionActivation: "left-control",
+  alignmentSnappingEnabled: true,
+  snapToCanvas: true,
+  snapToObjects: true,
+  snapTolerancePx: 6,
 });
 
 function defaults(): SelectionPreferences {
@@ -38,7 +47,44 @@ function defaults(): SelectionPreferences {
 function parseStoredPreferences(raw: string | null): SelectionPreferences | undefined {
   if (!raw) return undefined;
   try {
-    const value = JSON.parse(raw) as Partial<StoredSelectionPreferencesV2> | null;
+    const value = JSON.parse(raw) as Partial<StoredSelectionPreferencesV3> | null;
+    if (!value || typeof value !== "object"
+      || Object.keys(value).sort().join(",") !== "alignmentSnappingEnabled,clickDepth,individualOutlines,marqueeMode,preciseModifier,regionActivation,snapToCanvas,snapToObjects,snapTolerancePx,version"
+      || value.version !== 3
+      || (value.preciseModifier !== "platform" && value.preciseModifier !== "alt")
+      || (value.marqueeMode !== "contain" && value.marqueeMode !== "touch")
+      || (value.clickDepth !== "logical" && value.clickDepth !== "exact")
+      || typeof value.individualOutlines !== "boolean"
+      || (value.regionActivation !== "left-control" && value.regionActivation !== "m")
+      || typeof value.alignmentSnappingEnabled !== "boolean"
+      || typeof value.snapToCanvas !== "boolean"
+      || typeof value.snapToObjects !== "boolean") return undefined;
+    const snapTolerancePx = typeof value.snapTolerancePx === "number"
+      && Number.isInteger(value.snapTolerancePx)
+      && value.snapTolerancePx >= 2
+      && value.snapTolerancePx <= 20
+      ? value.snapTolerancePx
+      : DEFAULT_SELECTION_PREFERENCES.snapTolerancePx;
+    return {
+      preciseModifier: value.preciseModifier,
+      marqueeMode: value.marqueeMode,
+      clickDepth: value.clickDepth,
+      individualOutlines: value.individualOutlines,
+      regionActivation: value.regionActivation,
+      alignmentSnappingEnabled: value.alignmentSnappingEnabled,
+      snapToCanvas: value.snapToCanvas,
+      snapToObjects: value.snapToObjects,
+      snapTolerancePx,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function parsePreviousPreferences(raw: string | null): SelectionPreferences | undefined {
+  if (!raw) return undefined;
+  try {
+    const value = JSON.parse(raw) as Record<string, unknown> | null;
     if (!value || typeof value !== "object"
       || Object.keys(value).sort().join(",") !== "clickDepth,individualOutlines,marqueeMode,preciseModifier,regionActivation,version"
       || value.version !== 2
@@ -48,15 +94,14 @@ function parseStoredPreferences(raw: string | null): SelectionPreferences | unde
       || typeof value.individualOutlines !== "boolean"
       || (value.regionActivation !== "left-control" && value.regionActivation !== "m")) return undefined;
     return {
+      ...DEFAULT_SELECTION_PREFERENCES,
       preciseModifier: value.preciseModifier,
       marqueeMode: value.marqueeMode,
       clickDepth: value.clickDepth,
       individualOutlines: value.individualOutlines,
       regionActivation: value.regionActivation,
     };
-  } catch {
-    return undefined;
-  }
+  } catch { return undefined; }
 }
 
 function parseLegacyPreferences(raw: string | null): SelectionPreferences | undefined {
@@ -76,6 +121,10 @@ function parseLegacyPreferences(raw: string | null): SelectionPreferences | unde
       clickDepth: value.clickDepth,
       individualOutlines: value.individualOutlines,
       regionActivation: "left-control",
+      alignmentSnappingEnabled: true,
+      snapToCanvas: true,
+      snapToObjects: true,
+      snapTolerancePx: 6,
     };
   } catch { return undefined; }
 }
@@ -102,7 +151,9 @@ export class SelectionPreferencesStore {
       const currentRaw = storage.getItem(SELECTION_PREFERENCES_STORAGE_KEY);
       if (currentRaw !== null) this.#value = parseStoredPreferences(currentRaw) ?? defaults();
       else {
-        this.#value = parseLegacyPreferences(storage.getItem(LEGACY_SELECTION_PREFERENCES_STORAGE_KEY)) ?? defaults();
+        this.#value = parsePreviousPreferences(storage.getItem(PREVIOUS_SELECTION_PREFERENCES_STORAGE_KEY))
+          ?? parseLegacyPreferences(storage.getItem(LEGACY_SELECTION_PREFERENCES_STORAGE_KEY))
+          ?? defaults();
         this.#persist();
       }
     } catch { this.#value = defaults(); }
@@ -125,7 +176,7 @@ export class SelectionPreferencesStore {
   }
 
   #persist(): void {
-    const stored: StoredSelectionPreferencesV2 = { version: 2, ...this.#value };
+    const stored: StoredSelectionPreferencesV3 = { version: 3, ...this.#value };
     try { this.#storage.setItem(SELECTION_PREFERENCES_STORAGE_KEY, JSON.stringify(stored)); }
     catch { /* The in-memory value remains usable for this tab. */ }
   }

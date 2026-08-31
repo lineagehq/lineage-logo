@@ -3,9 +3,11 @@ import { Window } from "happy-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { registerWindow, SVG } from "@svgdotjs/svg.js";
 import { History } from "../src/client/history/history";
-import { cleanSvgsEqualForDirtyComparison, collectiveTransformAvailability, matrixRotationDegrees, rotationHandleRadii, serializeSvg, SvgEditor, translationAvailability, type SelectionContext } from "../src/client/canvas/editor";
+import { cleanSvgsEqualForDirtyComparison, collectiveTransformAvailability, matrixRotationDegrees, parseNumericTransformValue, rotationHandleRadii, serializeSvg, SvgEditor, translationAvailability, type SelectionContext } from "../src/client/canvas/editor";
 import {
   CollectiveTransformGesture,
+  boxSnapTargets,
+  collectiveFrameScaleMatrix,
   collectiveRotationMatrix,
   collectiveScaleMatrix,
   composeCollectiveRootTransform,
@@ -17,12 +19,42 @@ import {
   GroupTransformGesture,
   relativeMatrix,
   SelectionTranslationGesture,
+  snapAbsoluteRotation,
+  snapTranslation,
+  snapUniformScale,
   transformVectorToLocal,
   type MatrixCoefficients,
 } from "../src/client/canvas/transform";
 import { DEFAULT_SELECTION_PREFERENCES } from "../src/client/selection-preferences";
 
 const IDENTITY: MatrixCoefficients = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+
+describe("precision snapping geometry", () => {
+  it("uses CSS-pixel tolerance, independent axes, and deterministic canvas-center priority", () => {
+    const box = { x: 200, y: 100, width: 100, height: 40 };
+    const canvas = boxSnapTargets({ x: 0, y: 0, width: 500, height: 300 }, "canvas", "canvas", -1);
+    const object = boxSnapTargets({ x: 349.6, y: 155, width: 20, height: 20 }, "object", "object-a", 0);
+    const result = snapTranslation(box, -0.8, 29.2, [...object, ...canvas], { a: 1.25, b: 0, c: 0, d: 1.25, e: 0, f: 0 }, 6);
+    expect(result.dx).toBe(0);
+    expect(result.winners.find((winner) => winner.axis === "x")).toMatchObject({ family: "canvas", anchor: "center", sourceAnchor: "center" });
+    expect(result.winners.some((winner) => winner.axis === "y")).toBe(true);
+  });
+
+  it("resolves uniform resize with one winner and keeps free precision outside tolerance", () => {
+    const targets = boxSnapTargets({ x: 150, y: 0, width: 20, height: 20 }, "object", "target", 0);
+    const snapped = snapUniformScale({ x: 10, y: 10, width: 100, height: 50 }, { x: 10, y: 10 }, 1.395, targets, IDENTITY, 6, ["x"]);
+    expect(snapped.factor).toBe(1.4);
+    expect(snapped.winner).toMatchObject({ axis: "x", family: "object" });
+    expect(snapUniformScale({ x: 10, y: 10, width: 100, height: 50 }, { x: 10, y: 10 }, 1.2, targets, IDENTITY, 6).factor).toBe(1.2);
+  });
+
+  it("snaps absolute rotation to fifteen degrees and lets Option suspend Shift", () => {
+    expect(snapAbsoluteRotation(7, 9, true, false, 1)).toBe(8);
+    expect(snapAbsoluteRotation(7, 9, true, true, 1)).toBe(9);
+    expect(snapAbsoluteRotation(0, 7.5, true, false, 1)).toBe(15);
+    expect(snapAbsoluteRotation(0, -7.5, true, false, 0)).toBe(-15);
+  });
+});
 
 const CONTROL_TAGS = {
   alignBottomButton: "button", alignCenterButton: "button", alignLeftButton: "button",
@@ -32,6 +64,8 @@ const CONTROL_TAGS = {
   deleteButton: "button", duplicateButton: "button", fill: "input", fillError: "div",
   fillPicker: "input", fillState: "div", hideButton: "button", opacity: "input",
   positionX: "input", positionY: "input", rotation: "input", scale: "input",
+  positionWidth: "input", positionHeight: "input", aspectLock: "input",
+  geometryMode: "div", geometryError: "div",
   selectionEmpty: "div", selectionName: "div", selectionPanel: "div", stroke: "input",
   strokeError: "div", strokePicker: "input", strokeState: "div", strokeWidth: "input",
   ungroupButton: "button",
@@ -97,6 +131,7 @@ function editorHarness(onSelectionContextChange: (context: SelectionContext) => 
     onStatus: (message) => statuses.push(message),
   });
   const root = artboard.querySelector("svg") as unknown as SVGSVGElement;
+  editor.setSelectionPreferences({ ...DEFAULT_SELECTION_PREFERENCES, alignmentSnappingEnabled: false });
   editor.load(root);
   const group = root.querySelector("#logo") as unknown as SVGGraphicsElement;
   editor.selectNode(group);
@@ -409,6 +444,113 @@ describe("rotation affordance", () => {
     expect(root.querySelector(".lineage-rotation-icon")?.getAttribute("d")).toContain("a9 9");
     expect(root.querySelector(".svg_select_handle_rot")?.children).toHaveLength(3);
   });
+
+  it("snaps one nested selection in the absolute root frame with live Shift and Alt transitions", async () => {
+    const { editor, group, root, statuses, window } = editorHarness();
+    editor.selectNode(group);
+    editor.editInside();
+    const nested = root.querySelector("#icon") as unknown as SVGGraphicsElement;
+    editor.selectNode(nested);
+    const radians = 7 * Math.PI / 180;
+    const parentRotation = { a: Math.cos(radians), b: Math.sin(radians), c: -Math.sin(radians), d: Math.cos(radians), e: 0, f: 0 };
+    setScreenMatrix(root, IDENTITY);
+    setScreenMatrix(group, parentRotation);
+    setScreenMatrix(nested, parentRotation);
+    const pivot = {
+      x: parentRotation.a * 10 + parentRotation.c * 10,
+      y: parentRotation.b * 10 + parentRotation.d * 10,
+    };
+    const start = { x: pivot.x, y: pivot.y - 20 };
+    const moved = (degrees: number, shiftKey: boolean, altKey = false) => {
+      const angle = (-90 + degrees) * Math.PI / 180;
+      dispatch(window, new window.MouseEvent("mousemove", {
+        bubbles: true, buttons: 1, clientX: pivot.x + Math.cos(angle) * 20,
+        clientY: pivot.y + Math.sin(angle) * 20, shiftKey, altKey,
+      }));
+    };
+    const before = editor.serializeClean();
+    startResize(nested, window, "rot", new window.MouseEvent("mousedown", {
+      bubbles: true, buttons: 1, button: 0, clientX: start.x, clientY: start.y,
+    }));
+    moved(9, true);
+    expect(statuses.at(-1)).toBe("Rotation 15°");
+    moved(9, true, true);
+    expect(statuses.at(-1)).toBe("Rotation 16°");
+    moved(9, true);
+    expect(statuses.at(-1)).toBe("Rotation 15°");
+    dispatch(window, new window.MouseEvent("mouseup", {
+      bubbles: true, buttons: 0, button: 0, clientX: pivot.x + 3, clientY: pivot.y - 19,
+    }));
+    await Promise.resolve();
+    expect(matrixRotationDegrees(SVG(nested).matrixify())).toBe(8);
+    expect(editor.serializeClean()).not.toBe(before);
+    expect(editor.undo()).toBe(true);
+    expect(editor.serializeClean()).toBe(before);
+    expect(editor.undo()).toBe(false);
+  });
+});
+
+describe("numeric oriented-frame controls", () => {
+  it("accepts bounded finite decimals, normalizes rotation, and rejects malformed values", () => {
+    expect(parseNumericTransformValue("x", "-12.75")).toEqual({ value: -12.75 });
+    expect(parseNumericTransformValue("rotation", "540")).toEqual({ value: -180 });
+    expect(parseNumericTransformValue("width", ".25")).toEqual({ value: 0.25 });
+    expect(parseNumericTransformValue("height", "0").error).toMatch(/greater than 0/);
+    expect(parseNumericTransformValue("x", "1000000.1").error).toMatch(/between/);
+    for (const value of ["", "1e2", "Infinity", "NaN", "12px"]) {
+      expect(parseNumericTransformValue("y", value).error).toMatch(/finite decimal/);
+    }
+  });
+
+  it("composes exact unlocked sizing in oriented frame axes about the opposite corner", () => {
+    expect(formatMatrix(collectiveFrameScaleMatrix(20, 30, 2, 3, 0)))
+      .toBe("matrix(2,0,0,3,-20,-60)");
+    const rotated = collectiveFrameScaleMatrix(20, 30, 2, 1, 90);
+    expect(formatMatrix(rotated)).toBe("matrix(1,0,0,2,0,-20)");
+  });
+
+  it("commits on Enter once, treats unchanged display as a no-op, and cancels Escape", () => {
+    const { controls, editor, group, window } = editorHarness();
+    editor.selectNode(group);
+    const before = editor.serializeClean();
+    expect(controls.geometryMode.textContent).toContain("Exact oriented-frame");
+    expect(controls.positionWidth.value).toBe("20");
+
+    dispatch(controls.positionX, new window.Event("focus"));
+    controls.positionX.value = "10.5";
+    dispatch(controls.positionX, new window.KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
+    const after = editor.serializeClean();
+    expect(after).not.toBe(before);
+    expect(editor.undo()).toBe(true);
+    expect(editor.serializeClean()).toBe(before);
+    expect(editor.undo()).toBe(false);
+
+    dispatch(controls.positionWidth, new window.Event("focus"));
+    const unchanged = controls.positionWidth.value;
+    controls.positionWidth.value = `${unchanged}.0`;
+    dispatch(controls.positionWidth, new window.Event("blur"));
+    expect(editor.serializeClean()).toBe(before);
+    expect(editor.undo()).toBe(false);
+
+    dispatch(controls.positionY, new window.Event("focus"));
+    controls.positionY.value = "25";
+    dispatch(controls.positionY, new window.KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    expect(editor.serializeClean()).toBe(before);
+    expect(editor.undo()).toBe(false);
+  });
+
+  it("shows inline errors and preserves geometry for invalid numeric input", () => {
+    const { controls, editor, group, window } = editorHarness();
+    editor.selectNode(group);
+    const before = editor.serializeClean();
+    dispatch(controls.positionHeight, new window.Event("focus"));
+    controls.positionHeight.value = "1e2";
+    dispatch(controls.positionHeight, new window.Event("blur"));
+    expect(controls.positionHeight.getAttribute("aria-invalid")).toBe("true");
+    expect(controls.geometryError.textContent).toContain("finite decimal");
+    expect(editor.serializeClean()).toBe(before);
+    expect(editor.undo()).toBe(false);
+  });
 });
 
 describe("Geometry Scale % grouped commits", () => {
@@ -485,6 +627,33 @@ describe("Geometry Scale % grouped commits", () => {
 });
 
 describe("multi-selection mutation boundaries", () => {
+  it("synchronously moves the single-selection frame during a live drag", () => {
+    const { editor, group, root, window } = editorHarness();
+    setScreenMatrix(root, IDENTITY);
+    setScreenMatrix(group, () => {
+      const matrix = SVG(group).matrixify();
+      return { a: matrix.a, b: matrix.b, c: matrix.c, d: matrix.d, e: matrix.e, f: matrix.f };
+    });
+    editor.selectNode(group);
+    const outline = root.querySelector(".svg_select_shape") as SVGPolygonElement;
+    const points = () => (outline.getAttribute("points") ?? "").trim().split(/\s+/).map((point) => {
+      const [x, y] = point.split(",").map(Number);
+      return { x, y };
+    });
+    const before = points();
+
+    const handler = startDrag(group, mouseEvent(window, "mousedown", 5, 5));
+    handler.drag(mouseEvent(window, "mousemove", 15, 11) as never);
+
+    const live = points();
+    expect(live).toHaveLength(before.length);
+    live.forEach((point, index) => {
+      expect(point.x - before[index].x).toBeCloseTo(10, 6);
+      expect(point.y - before[index].y).toBeCloseTo(6, 6);
+    });
+    handler.endDrag(mouseEvent(window, "mouseup", 15, 11) as never);
+  });
+
   it("nudges every selected cross-parent layer by the same root-space delta in one reversible checkpoint", () => {
     const { editor, window } = editorHarness();
     const { primary, secondary } = selectCrossParentMulti(editor);
@@ -514,8 +683,11 @@ describe("multi-selection mutation boundaries", () => {
     const context = editorContext(editor);
     expect(SVG(selection.secondary).remember("_draggable")).toBeTruthy();
     expect(SVG(selection.primary).remember("_draggable")).toBeTruthy();
+    const overlay = editor.svgNode?.querySelector("[data-lineage-collective-transform]");
     let handler = startDrag(selection.secondary, mouseEvent(window, "mousedown", 5, 5));
     handler.drag(mouseEvent(window, "mousemove", 15, 11) as never);
+    expect(editor.svgNode?.querySelector("[data-lineage-collective-transform]")).toBe(overlay);
+    expect(overlay?.getAttribute("transform")).toBe("matrix(1,0,0,1,10,6)");
     handler.endDrag(mouseEvent(window, "mouseup", 15, 11) as never);
     expect(selection.secondary.getAttribute("transform")).toBe("matrix(1,0,0,1,5,3)");
     expect(selection.primary.getAttribute("transform")).toBe("matrix(1,0,0,1,10,6)");
@@ -756,6 +928,47 @@ describe("multi-selection mutation boundaries", () => {
 });
 
 describe("group drag and resize interaction fidelity", () => {
+  it("applies truthful canvas resize guides for single and cross-parent selections with atomic Undo", async () => {
+    const single = editorHarness();
+    single.editor.setSelectionPreferences({
+      ...DEFAULT_SELECTION_PREFERENCES,
+      snapToCanvas: true,
+      snapToObjects: false,
+    });
+    const singleBefore = single.editor.serializeClean();
+    startResize(single.group, single.window, "rb", mouseEvent(single.window, "mousedown", 20, 20));
+    dispatch(single.window, mouseEvent(single.window, "mousemove", 49, 49));
+    expect(single.root.querySelector('[data-lineage-snap-guides] [data-axis="x"]')?.getAttribute("x1")).toBe("50");
+    dispatch(single.window, mouseEvent(single.window, "mouseup", 49, 49));
+    await Promise.resolve();
+    expect(single.editor.serializeClean()).not.toBe(singleBefore);
+    expect(single.editor.undo()).toBe(true);
+    expect(single.editor.serializeClean()).toBe(singleBefore);
+
+    const collective = editorHarness();
+    selectCrossParentMulti(collective.editor);
+    collective.editor.setSelectionPreferences({
+      ...DEFAULT_SELECTION_PREFERENCES,
+      snapToCanvas: true,
+      snapToObjects: false,
+    });
+    const collectiveBefore = collective.editor.serializeClean();
+    const handle = collective.root.querySelector('[data-lineage-collective-handle="rb"]') as SVGElement;
+    dispatch(handle, new collective.window.PointerEvent("pointerdown", {
+      bubbles: true, button: 0, clientX: 20, clientY: 20, pointerId: 901,
+    }));
+    dispatch(collective.window, new collective.window.PointerEvent("pointermove", {
+      bubbles: true, clientX: 49, clientY: 49, pointerId: 901,
+    }));
+    expect(collective.root.querySelector('[data-lineage-snap-guides] [data-axis="x"]')?.getAttribute("x1")).toBe("50");
+    dispatch(collective.window, new collective.window.PointerEvent("pointerup", {
+      bubbles: true, clientX: 49, clientY: 49, pointerId: 901,
+    }));
+    expect(collective.editor.serializeClean()).not.toBe(collectiveBefore);
+    expect(collective.editor.undo()).toBe(true);
+    expect(collective.editor.serializeClean()).toBe(collectiveBefore);
+  });
+
   it("changes only the selected group root during drag and survives an exact clean reopen", () => {
     const { group, root } = nestedDocument();
     const descendantsBefore = Array.from(group.querySelectorAll("*")).map((node) => node.outerHTML);
@@ -860,6 +1073,66 @@ describe("group drag and resize interaction fidelity", () => {
 });
 
 describe("SvgEditor plugin cancellation teardown", () => {
+  it("uses the current root-to-screen scale for every drag move and tolerance decision", () => {
+    const { editor, group, root, window } = editorHarness();
+    let scale = 1;
+    setScreenMatrix(root, () => ({ a: scale, b: 0, c: 0, d: scale, e: 0, f: 0 }));
+    setScreenMatrix(group, IDENTITY);
+    editor.setSelectionPreferences({
+      ...DEFAULT_SELECTION_PREFERENCES,
+      snapToCanvas: true,
+      snapToObjects: false,
+      snapTolerancePx: 6,
+    });
+    startDrag(group, mouseEvent(window, "mousedown", 5, 5));
+    scale = 2;
+    dispatch(window, mouseEvent(window, "mousemove", 57, 5));
+    expect(matrixRotationDegrees(SVG(group).matrixify())).toBe(0);
+    expect(SVG(group).matrixify().e).toBe(30);
+    expect(root.querySelector('[data-lineage-snap-guides] [data-axis="x"]')).toBeNull();
+    dispatch(window, mouseEvent(window, "mouseup", 57, 5));
+  });
+
+  it("snaps to eligible object geometry but excludes hidden targets and clears guides on cancel", () => {
+    const { editor, group, root, window } = editorHarness();
+    const target = window.document.createElementNS("http://www.w3.org/2000/svg", "rect") as unknown as SVGGraphicsElement;
+    target.setAttribute("aria-label", "Snap target");
+    target.setAttribute("width", "10");
+    target.setAttribute("height", "10");
+    Object.defineProperty(target, "getBBox", {
+      configurable: true,
+      value: () => ({ x: 50, y: 0, width: 10, height: 10 }),
+    });
+    setScreenMatrix(target, IDENTITY);
+    root.append(target);
+    editor.setSelectionPreferences({
+      ...DEFAULT_SELECTION_PREFERENCES,
+      snapToCanvas: false,
+      snapToObjects: true,
+    });
+    const before = editor.serializeClean();
+    startDrag(group, mouseEvent(window, "mousedown", 5, 5));
+    dispatch(window, mouseEvent(window, "mousemove", 33, 5));
+    expect(root.querySelector('[data-lineage-snap-guides] [data-target-family="object"]')).toBeTruthy();
+    dispatch(window.document, new window.KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    expect(editor.serializeClean()).toBe(before);
+    expect(root.querySelector("[data-lineage-snap-guides]")).toBeNull();
+    expect(editor.undo()).toBe(false);
+
+    const restoredRoot = editor.svgNode as SVGSVGElement;
+    const restoredGroup = restoredRoot.querySelector("#logo") as unknown as SVGGraphicsElement;
+    const restoredTarget = restoredRoot.querySelector('[aria-label="Snap target"]') as unknown as SVGGraphicsElement;
+    restoredTarget.setAttribute("display", "none");
+    editor.selectNode(restoredGroup);
+    startDrag(restoredGroup, mouseEvent(window, "mousedown", 5, 5));
+    dispatch(window, mouseEvent(window, "mousemove", 33, 5));
+    expect(restoredRoot.querySelector('[data-lineage-snap-guides] [data-target-family="object"]')).toBeNull();
+    dispatch(window, mouseEvent(window, "mouseup", 33, 5));
+    expect(editor.undo()).toBe(true);
+    expect(editor.svgNode?.querySelector("#logo")?.getAttribute("transform")).toBe("translate(4 5)");
+    expect(editor.svgNode?.querySelector('[aria-label="Snap target"]')?.getAttribute("display")).toBe("none");
+  });
+
   it("uses DragHandler.startDrag for Escape cancellation and a real immediate mouse successor", () => {
     const { editor, statuses, window } = editorHarness();
     const group = selectNestedMulti(editor);
@@ -1856,7 +2129,7 @@ describe("complete complex Seatify history sequence", () => {
     controls.rotation.dispatchEvent(new Event("focus"));
     controls.rotation.value = "4";
     controls.rotation.dispatchEvent(new Event("input"));
-    controls.rotation.dispatchEvent(new Event("change"));
+    controls.rotation.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
     checkpoint();
 
     select("stage-zone");

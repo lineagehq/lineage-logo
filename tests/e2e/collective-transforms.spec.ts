@@ -156,12 +156,14 @@ test("collective transform shared resize is exact, atomic, cancellable, and clea
 
   const end = { x: start.x + 42, y: start.y + 30 };
   const endRoot = await rootPoint(page, end);
-  const factor = Math.max((Math.round(endRoot.x) - union.left) / union.width, (Math.round(endRoot.y) - union.top) / union.height);
+  const factor = Math.max((endRoot.x - union.left) / union.width, (endRoot.y - union.top) / union.height);
   const expected = Object.fromEntries(labels.map((label) => {
     const points = before[label].points.map(({ x, y }) => ({ x: union.left + (x - union.left) * factor, y: union.top + (y - union.top) * factor }));
     return [label, { points, ...bounds(points) }];
   }));
+  await page.keyboard.down("AltLeft");
   await page.mouse.move(start.x, start.y); await page.mouse.down(); await page.mouse.move(end.x, end.y, { steps: 8 }); await page.mouse.up();
+  await page.keyboard.up("AltLeft");
   const after = await geometry(page);
   expectGeometry(after, expected);
   expect(await selectionIdentity(page)).toEqual(beforeIdentity);

@@ -127,6 +127,53 @@ async function geometry(page: Page, labels: string[], space: "root" | "parent" =
   }, { labels, space });
 }
 
+async function transformAttributes(page: Page, labels: string[]): Promise<Record<string, string | null>> {
+  return await page.locator("#artboard svg").evaluate((root, targetLabels) => Object.fromEntries(targetLabels.map((label) => {
+    const node = Array.from(root.querySelectorAll<SVGGraphicsElement>("[aria-label]"))
+      .find((candidate) => candidate.getAttribute("aria-label") === label);
+    if (!node) throw new Error(`Transform target is unavailable for ${label}.`);
+    return [label, node.getAttribute("transform")];
+  })), labels);
+}
+
+async function authoredGeometryFingerprint(
+  page: Page,
+  targetLabels = [...alignmentLabels, unrelatedLabel, "Seatify wordmark"],
+): Promise<unknown> {
+  return await page.locator("#artboard svg").evaluate((root, labels) => Object.fromEntries(labels.map((label) => {
+    const node = Array.from(root.querySelectorAll<SVGGraphicsElement>("[aria-label]"))
+      .find((candidate) => candidate.getAttribute("aria-label") === label);
+    if (!node) throw new Error(`Authored geometry target is unavailable for ${label}.`);
+    const attributes = (element: Element) => Array.from(element.attributes)
+      .filter((attribute) => !attribute.name.startsWith("data-lineage-"))
+      .map((attribute) => [attribute.name, attribute.value] as const)
+      .sort(([left], [right]) => left.localeCompare(right));
+    const ancestorTransforms: Array<{ attributes: readonly (readonly [string, string])[]; localName: string }> = [];
+    for (let ancestor = node.parentElement; ancestor && ancestor !== root; ancestor = ancestor.parentElement) {
+      if (ancestor.hasAttribute("transform")) ancestorTransforms.push({ attributes: attributes(ancestor), localName: ancestor.localName });
+    }
+    return [label, {
+      ancestorTransforms,
+      attributes: attributes(node),
+      localName: node.localName,
+      text: node.textContent,
+    }];
+  })), targetLabels);
+}
+
+async function numericValues(page: Page): Promise<Record<string, number>> {
+  const ids = ["position-x", "position-y", "position-width", "position-height", "rotation"];
+  return Object.fromEntries(await Promise.all(ids.map(async (id) => [id, Number(await page.locator(`#${id}`).inputValue())])));
+}
+
+async function expectNumericAvailability(page: Page, enabled: boolean, reason?: RegExp): Promise<void> {
+  for (const id of ["position-x", "position-y", "position-width", "position-height", "rotation", "aspect-lock"]) {
+    if (enabled) await expect(page.locator(`#${id}`)).toBeEnabled();
+    else await expect(page.locator(`#${id}`)).toBeDisabled();
+  }
+  if (reason) await expect(page.locator("#geometry-mode")).toHaveText(reason);
+}
+
 function expectGeometry(actual: Geometry, expected: Geometry, precision = 5): void {
   for (const label of Object.keys(expected)) {
     for (const property of ["left", "right", "top", "bottom", "width", "height"] as const) {
@@ -188,6 +235,310 @@ async function exactOneCheckpoint(
 }
 
 test.beforeEach(async ({ page }) => openFixture(page));
+
+test("Seatify numeric oriented-frame edits are aggregate, validated, and atomic", async ({ page }) => {
+  await selectLayers(page, alignmentLabels);
+  const geometryGroup = page.locator("#geometry-group");
+  await geometryGroup.locator(":scope > summary").click();
+  await expect(geometryGroup).toHaveAttribute("open", "");
+  await expect(page.locator("#geometry-mode")).toContainText("Aggregate oriented frame");
+  await expect(page.locator("#geometry-mode")).toContainText("Mixed member values");
+  await expect(page.locator("#aspect-lock")).toBeChecked();
+  for (const id of ["position-x", "position-y", "position-width", "position-height", "rotation"]) {
+    await expect(page.locator(`#${id}`)).toBeEnabled();
+  }
+
+  const before = await geometry(page, alignmentLabels);
+  const unrelatedBefore = await geometry(page, [unrelatedLabel]);
+  const width = Number(await page.locator("#position-width").inputValue());
+  await page.locator("#position-width").fill(String(width * 1.1));
+  await page.locator("#position-width").press("Enter");
+  const after = await geometry(page, alignmentLabels);
+  for (const label of alignmentLabels) {
+    expect(after[label].width).toBeCloseTo(before[label].width * 1.1, 4);
+    expect(after[label].height).toBeCloseTo(before[label].height * 1.1, 4);
+  }
+  expectGeometry(await geometry(page, [unrelatedLabel]), unrelatedBefore);
+  await page.getByRole("button", { name: "Undo" }).click();
+  expectGeometry(await geometry(page, alignmentLabels), before);
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+
+  const unchanged = await page.locator("#position-height").inputValue();
+  await page.locator("#position-height").fill(Number(unchanged).toFixed(6));
+  await page.locator("#position-height").press("Enter");
+  expectGeometry(await geometry(page, alignmentLabels), before);
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+
+  await page.locator("#position-height").fill("1e2");
+  await page.locator("#position-height").press("Enter");
+  await expect(page.locator("#position-height")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.locator("#geometry-error")).toContainText("finite decimal");
+  expectGeometry(await geometry(page, alignmentLabels), before);
+
+  // Recover inline without leaving a partial mutation, then cancel a changed value.
+  await page.locator("#position-height").press("Escape");
+  await expect(page.locator("#position-height")).not.toHaveAttribute("aria-invalid", "true");
+  await expect(page.locator("#geometry-error")).toBeEmpty();
+  const beforeEscape = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  const beforeEscapeTransforms = await transformAttributes(page, alignmentLabels);
+  await page.locator("#position-x").fill(String(Number(await page.locator("#position-x").inputValue()) + 41.25));
+  await page.locator("#position-x").press("Escape");
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), beforeEscape);
+  expect(await transformAttributes(page, alignmentLabels)).toEqual(beforeEscapeTransforms);
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+  await expect(page.locator("#status")).toHaveText("Canceled the numeric geometry edit");
+
+  // Rotation normalization is a semantic no-op, including transform syntax and history.
+  await page.locator("#rotation").fill("360");
+  await page.locator("#rotation").press("Enter");
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), beforeEscape);
+  expect(await transformAttributes(page, alignmentLabels)).toEqual(beforeEscapeTransforms);
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+
+  // X and Y commits move every selected member by the exact root-space delta.
+  const xBefore = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  const xIdentity = await identity(page);
+  const x = Number(await page.locator("#position-x").inputValue());
+  await page.locator("#position-x").fill(String(x + 17.25));
+  await page.locator("#position-x").press("Enter");
+  const xAfter = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  for (const label of alignmentLabels) {
+    expect(Math.abs(xAfter[label].left - xBefore[label].left - 17.25)).toBeLessThanOrEqual(1e-4);
+    expect(xAfter[label].top - xBefore[label].top).toBeCloseTo(0, 5);
+  }
+  expectGeometry({ [unrelatedLabel]: xAfter[unrelatedLabel] }, { [unrelatedLabel]: xBefore[unrelatedLabel] });
+  const xAfterIdentity = await identity(page);
+  await exactOneCheckpoint(page, xBefore, xAfter, xIdentity, xAfterIdentity, () => geometry(page, [...alignmentLabels, unrelatedLabel]));
+  await page.getByRole("button", { name: "Undo" }).click();
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), xBefore);
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+
+  const yBefore = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  const y = Number(await page.locator("#position-y").inputValue());
+  await page.locator("#position-y").fill(String(y - 12.5));
+  await page.locator("#position-y").press("Enter");
+  const yAfter = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  for (const label of alignmentLabels) {
+    expect(yAfter[label].left - yBefore[label].left).toBeCloseTo(0, 5);
+    expect(Math.abs(yAfter[label].top - yBefore[label].top + 12.5)).toBeLessThanOrEqual(1e-4);
+  }
+  expectGeometry({ [unrelatedLabel]: yAfter[unrelatedLabel] }, { [unrelatedLabel]: yBefore[unrelatedLabel] });
+  await page.getByRole("button", { name: "Undo" }).click();
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), yBefore);
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+  await page.getByRole("button", { name: "Redo" }).click();
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), yAfter);
+  await page.getByRole("button", { name: "Undo" }).click();
+
+  // A changed-value blur commits one locked-aspect height checkpoint.
+  const blurBefore = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  const height = Number(await page.locator("#position-height").inputValue());
+  await page.locator("#position-height").fill(String(height * 1.125));
+  await page.locator("#position-height").blur();
+  const blurAfter = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  for (const label of alignmentLabels) {
+    expect(blurAfter[label].width).toBeCloseTo(blurBefore[label].width * 1.125, 4);
+    expect(blurAfter[label].height).toBeCloseTo(blurBefore[label].height * 1.125, 4);
+  }
+  expectGeometry({ [unrelatedLabel]: blurAfter[unrelatedLabel] }, { [unrelatedLabel]: blurBefore[unrelatedLabel] });
+  await page.getByRole("button", { name: "Undo" }).click();
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), blurBefore);
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+
+  // Absolute rotation uses the aggregate frame rather than a relative delta.
+  const rotationBefore = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  await page.locator("#rotation").fill("90");
+  await page.locator("#rotation").press("Enter");
+  await expect(page.locator("#rotation")).toHaveValue("90");
+  const rotationAfter = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  for (const label of alignmentLabels) {
+    expect(rotationAfter[label].width).toBeCloseTo(rotationBefore[label].height, 4);
+    expect(rotationAfter[label].height).toBeCloseTo(rotationBefore[label].width, 4);
+  }
+  expectGeometry({ [unrelatedLabel]: rotationAfter[unrelatedLabel] }, { [unrelatedLabel]: rotationBefore[unrelatedLabel] });
+  await page.getByRole("button", { name: "Undo" }).click();
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), rotationBefore);
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+  await page.getByRole("button", { name: "Redo" }).click();
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), rotationAfter);
+  await page.getByRole("button", { name: "Undo" }).click();
+
+  // Two unlocked dimension commits are independent, exact nonuniform checkpoints.
+  await page.locator("#aspect-lock").uncheck();
+  const nonuniformBefore = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  const frameBefore = await numericValues(page);
+  await page.locator("#position-width").fill(String(frameBefore["position-width"] * 1.2));
+  await page.locator("#position-width").press("Enter");
+  const widthAfter = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  for (const label of alignmentLabels) {
+    expect(widthAfter[label].width).toBeCloseTo(nonuniformBefore[label].width * 1.2, 4);
+    expect(widthAfter[label].height).toBeCloseTo(nonuniformBefore[label].height, 4);
+  }
+  const widthFrame = await numericValues(page);
+  expect(widthFrame["position-width"]).toBeCloseTo(frameBefore["position-width"] * 1.2, 4);
+  expect(widthFrame["position-height"]).toBeCloseTo(frameBefore["position-height"], 4);
+  await page.locator("#position-height").fill(String(widthFrame["position-height"] * 0.8));
+  await page.locator("#position-height").press("Enter");
+  const nonuniformAfter = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  for (const label of alignmentLabels) {
+    expect(nonuniformAfter[label].width).toBeCloseTo(nonuniformBefore[label].width * 1.2, 4);
+    expect(nonuniformAfter[label].height).toBeCloseTo(nonuniformBefore[label].height * 0.8, 4);
+  }
+  expectGeometry({ [unrelatedLabel]: nonuniformAfter[unrelatedLabel] }, { [unrelatedLabel]: nonuniformBefore[unrelatedLabel] });
+  await page.getByRole("button", { name: "Undo" }).click();
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), widthAfter);
+  await page.getByRole("button", { name: "Undo" }).click();
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), nonuniformBefore);
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+  await page.getByRole("button", { name: "Redo" }).click();
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), widthAfter);
+  await page.getByRole("button", { name: "Redo" }).click();
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), nonuniformAfter);
+  await expect(page.getByRole("button", { name: "Redo" })).toBeDisabled();
+
+  await page.getByRole("button", { name: "Reset edits" }).click();
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), beforeEscape);
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Redo" })).toBeDisabled();
+
+  // Locked and hidden members disable every numeric control without partial mutation.
+  await layerButton(page, alignmentLabels[0]).click();
+  await page.locator("#lock-selection").click();
+  await selectLayers(page, alignmentLabels);
+  const lockedBefore = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  await expectNumericAvailability(page, false, /Unlock every selected layer/i);
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), lockedBefore);
+  await page.getByRole("button", { name: "Reset edits" }).click();
+  await selectLayers(page, alignmentLabels);
+  await page.getByRole("button", { exact: true, name: `Hide ${alignmentLabels[1]}` }).click();
+  const hiddenBefore = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  await expectNumericAvailability(page, false, /Show every selected layer/i);
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), hiddenBefore);
+  await page.getByRole("button", { name: "Undo" }).click();
+
+  // An accepted public agent focus proves the incompatible ancestor/descendant state.
+  const manifest = await page.request.get("/api/agent/document", { headers: { Authorization: `Bearer ${agentToken}` } }).then((response) => response.json());
+  const ancestor = manifest.layers.find((layer: { name: string; sessionKey: string }) => layer.name === "West table cluster");
+  const descendant = manifest.layers.find((layer: { name: string; sessionKey: string }) => layer.name === alignmentLabels[0]);
+  if (!ancestor || !descendant) throw new Error("The incompatible Seatify focus targets are unavailable.");
+  const focusId = `numeric-incompatible-${Date.now()}`;
+  const focused = await page.request.post("/api/agent/transactions", {
+    data: {
+      protocolVersion: 1,
+      transactionId: focusId,
+      producer: { kind: "test", name: "Numeric precision QA" },
+      document: { sessionId: manifest.sessionId, sourcePath: manifest.sourcePath, baseRevision: manifest.revision },
+      operations: [{
+        type: "selectFocus", operationId: "nested-focus",
+        targets: [{ sessionKey: ancestor.sessionKey }, { sessionKey: descendant.sessionKey }],
+        primary: { sessionKey: descendant.sessionKey },
+      }],
+    },
+    headers: { Authorization: `Bearer ${agentToken}` },
+  });
+  expect(focused.status()).toBe(202);
+  await expect(page.locator("#agent-review-status")).toHaveAttribute("data-status", "accepted");
+  await expect.poll(() => selectedLabels(page)).toEqual([alignmentLabels[0], "West table cluster"].sort());
+  const incompatibleBefore = await geometry(page, [alignmentLabels[0], unrelatedLabel]);
+  await expectNumericAvailability(page, false, /either a group or its nested layers/i);
+  expectGeometry(await geometry(page, [alignmentLabels[0], unrelatedLabel]), incompatibleBefore);
+
+  // Reload the clean source before exercising pending-Agent and saved-file phases.
+  await openFixture(page);
+  await selectLayers(page, alignmentLabels);
+  await page.locator("#geometry-group").locator(":scope > summary").click();
+  const pendingBefore = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  const pendingManifest = await page.request.get("/api/agent/document", { headers: { Authorization: `Bearer ${agentToken}` } }).then((response) => response.json());
+  const pendingTarget = pendingManifest.layers.find((layer: { name: string; sessionKey: string }) => layer.name === unrelatedLabel);
+  if (!pendingTarget) throw new Error("The pending-Agent Seatify target is unavailable.");
+  const pendingId = `numeric-pending-${Date.now()}`;
+  const queued = await page.request.post("/api/agent/transactions", {
+    data: {
+      protocolVersion: 1,
+      transactionId: pendingId,
+      producer: { kind: "test", name: "Numeric precision QA" },
+      document: { sessionId: pendingManifest.sessionId, sourcePath: pendingManifest.sourcePath, baseRevision: pendingManifest.revision },
+      operations: [{ type: "renameLayer", operationId: "rename-venue", target: { sessionKey: pendingTarget.sessionKey }, name: "Numeric proposal" }],
+    },
+    headers: { Authorization: `Bearer ${agentToken}` },
+  });
+  expect(queued.status()).toBe(202);
+  await expect(page.locator("#agent-review-status")).toHaveAttribute("data-status", "pending");
+  await expectNumericAvailability(page, false, /pending Agent review/i);
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), pendingBefore);
+  await page.getByRole("button", { name: "Revert" }).click();
+  await expect(page.locator("#agent-review-status")).toHaveAttribute("data-status", "reverted");
+  expectGeometry(await geometry(page, [...alignmentLabels, unrelatedLabel]), pendingBefore);
+
+  // Zoom and collapsed sidebars do not alter the selection frame; the reopened
+  // inspector commits at that same zoom, then a clean named save is reloaded.
+  const authoredBeforeReflow = await authoredGeometryFingerprint(page);
+  const unrelatedAuthoredBeforeReflow = await authoredGeometryFingerprint(page, [unrelatedLabel, "Seatify wordmark"]);
+  const numericBeforeReflow = await numericValues(page);
+  await page.locator("#zoom-in").click();
+  await expect(page.locator("#zoom-label")).toHaveText("125%");
+  const zoomBefore = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  await page.locator("#toggle-left-sidebar").click();
+  await page.locator("#toggle-right-sidebar").click();
+  await expect(page.locator("#toggle-left-sidebar")).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("#toggle-right-sidebar")).toHaveAttribute("aria-expanded", "false");
+  expect(await authoredGeometryFingerprint(page)).toEqual(authoredBeforeReflow);
+  expect(await selectedLabels(page)).toEqual([...alignmentLabels].sort());
+  await page.locator("#toggle-right-sidebar").click();
+  await expect(page.locator("#toggle-right-sidebar")).toHaveAttribute("aria-expanded", "true");
+  await expectNumericAvailability(page, true);
+  expect(await numericValues(page)).toEqual(numericBeforeReflow);
+  expect(await selectedLabels(page)).toEqual([...alignmentLabels].sort());
+  const savedX = Number(await page.locator("#position-x").inputValue());
+  await page.locator("#position-x").fill(String(savedX + 9.5));
+  await page.locator("#position-x").blur();
+  const savedGeometry = await geometry(page, [...alignmentLabels, unrelatedLabel]);
+  const savedSelectedGeometry = Object.fromEntries(alignmentLabels.map((label) => [label, savedGeometry[label]]));
+  for (const label of alignmentLabels) {
+    expect(Math.abs(savedGeometry[label].left - zoomBefore[label].left - 9.5)).toBeLessThanOrEqual(1e-4);
+  }
+  expect(await authoredGeometryFingerprint(page, [unrelatedLabel, "Seatify wordmark"]))
+    .toEqual(unrelatedAuthoredBeforeReflow);
+  const savedCaptionWordmarkFingerprint = await authoredGeometryFingerprint(page, [unrelatedLabel, "Seatify wordmark"]);
+  const savedTransforms = await transformAttributes(page, alignmentLabels);
+
+  let savedSvg = "";
+  const savedPath = "iterations/seatify-numeric-precision-e2e.svg";
+  await page.route("**/api/iterations", async (route) => {
+    savedSvg = (JSON.parse(route.request().postData() ?? "{}") as { svg?: string }).svg ?? "";
+    await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({
+      file: { collection: "iterations", name: "seatify-numeric-precision-e2e.svg", path: savedPath },
+      nextIterationPath: "iterations/iteration-1.svg",
+    }) });
+  });
+  await page.route("**/api/workspace", async (route) => {
+    const response = await route.fetch();
+    const workspace = await response.json() as { files: Array<{ collection: string; name: string; path: string }> };
+    if (!workspace.files.some((file) => file.path === savedPath)) {
+      workspace.files.push({ collection: "iterations", name: "seatify-numeric-precision-e2e.svg", path: savedPath });
+    }
+    await route.fulfill({ response, json: workspace });
+  });
+  await page.route(`**/api/svg?path=${encodeURIComponent(savedPath)}`, async (route) => {
+    await route.fulfill({ status: 200, contentType: "image/svg+xml", body: savedSvg });
+  });
+  await page.getByRole("button", { name: "Save iteration" }).click();
+  await expect(page.locator("#status")).toHaveText(`Saved ${savedPath}`);
+  await expect(page.locator(".file-button[aria-current='true']")).toHaveAttribute("data-path", savedPath);
+  expect(savedSvg).not.toMatch(/data-(?:lineage|agent|review|transport)-|lineage-(?:collective|numeric)|svg_select|selection-halo|transactionId|agent-token/i);
+
+  await page.locator("#toggle-left-sidebar").click();
+  await expect(page.locator("#toggle-left-sidebar")).toHaveAttribute("aria-expanded", "true");
+  await page.getByRole("button", { name: "complex-seatify" }).click();
+  await expect(page.locator(".file-button[aria-current='true']")).toHaveAttribute("data-path", "concepts/complex-seatify.svg");
+  await page.locator(`.file-button[data-path=${JSON.stringify(savedPath)}]`).click();
+  await expect(page.locator(".file-button[aria-current='true']")).toHaveAttribute("data-path", savedPath);
+  await expect(page.locator("#artboard svg[aria-label='Complex Seatify venue logo']")).toBeVisible();
+  expectGeometry(await geometry(page, alignmentLabels), savedSelectedGeometry);
+  expect(await transformAttributes(page, alignmentLabels)).toEqual(savedTransforms);
+  expect(await authoredGeometryFingerprint(page, [unrelatedLabel, "Seatify wordmark"]))
+    .toEqual(savedCaptionWordmarkFingerprint);
+});
 
 const alignments = [
   { id: "align-left", direction: "left" },
