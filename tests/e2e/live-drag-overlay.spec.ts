@@ -154,6 +154,10 @@ async function transforms(page: Page, labels: string[]): Promise<Array<string | 
 }
 
 function expectTracked(before: OverlayProbe, live: OverlayProbe): void {
+  // Chromium can quantize one text-derived SVG outline edge by 1/8 CSS pixel on
+  // Linux at fractional zoom. Keep the outline contract subpixel-tight while
+  // reserving the stricter tolerance below for the transform handles.
+  const outlineTolerance = 0.15;
   const artworkDelta = {
     x: live.artwork.x - before.artwork.x,
     y: live.artwork.y - before.artwork.y,
@@ -164,8 +168,8 @@ function expectTracked(before: OverlayProbe, live: OverlayProbe): void {
   }
   expect(live.outline).toHaveLength(before.outline.length);
   live.outline.forEach((point, index) => {
-    expect(Math.abs(point.x - before.outline[index].x - artworkDelta.x), `outline point ${index} x`).toBeLessThan(0.05);
-    expect(Math.abs(point.y - before.outline[index].y - artworkDelta.y), `outline point ${index} y`).toBeLessThan(0.05);
+    expect(Math.abs(point.x - before.outline[index].x - artworkDelta.x), `outline point ${index} x`).toBeLessThan(outlineTolerance);
+    expect(Math.abs(point.y - before.outline[index].y - artworkDelta.y), `outline point ${index} y`).toBeLessThan(outlineTolerance);
   });
   expect(live.handles).toHaveLength(before.handles.length);
   live.handles.forEach((handle, index) => {
