@@ -138,3 +138,45 @@ test("Seatify constellation shows and preserves an arbitrary collective rotation
   const resizeUndoneEdge = await collectiveTopEdge(page);
   expect(Math.abs(resizeUndoneEdge.end.y - resizeUndoneEdge.start.y)).toBeGreaterThan(5);
 });
+
+test("Seatify collective rotation switches live between absolute Shift snapping and Alt suspension", async ({ page }) => {
+  await openConstellation(page);
+  await selectConstellationObjects(page);
+  const before = await transforms(page);
+  const handle = page.locator('[data-lineage-collective-handle="rotation"]');
+  const handleBox = await handle.boundingBox();
+  if (!handleBox) throw new Error("The collective rotation handle is unavailable.");
+  const start = { x: handleBox.x + handleBox.width / 2, y: handleBox.y + handleBox.height / 2 };
+  const pivot = await page.locator("#artboard svg").evaluate((root) => {
+    const outline = root.querySelector<SVGRectElement>(".lineage-collective-outline");
+    const matrix = (root as SVGSVGElement).getScreenCTM();
+    if (!outline || !matrix) throw new Error("The collective rotation pivot is unavailable.");
+    return new DOMPoint(
+      Number(outline.getAttribute("x")) + Number(outline.getAttribute("width")) / 2,
+      Number(outline.getAttribute("y")) + Number(outline.getAttribute("height")) / 2,
+    ).matrixTransform(matrix);
+  });
+  const radians = 11 * Math.PI / 180;
+  const vector = { x: start.x - pivot.x, y: start.y - pivot.y };
+  const end = {
+    x: pivot.x + Math.cos(radians) * vector.x - Math.sin(radians) * vector.y,
+    y: pivot.y + Math.sin(radians) * vector.x + Math.cos(radians) * vector.y,
+  };
+  const readout = page.locator("[data-lineage-collective-angle]");
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.keyboard.down("ShiftLeft");
+  await page.mouse.move(end.x, end.y, { steps: 6 });
+  await expect(readout).toHaveAttribute("data-lineage-collective-angle", "15");
+  await page.keyboard.down("AltLeft");
+  await page.mouse.move(end.x + 0.01, end.y + 0.01);
+  await expect(readout).toHaveAttribute("data-lineage-collective-angle", "11");
+  await page.keyboard.up("AltLeft");
+  await page.mouse.move(end.x, end.y);
+  await expect(readout).toHaveAttribute("data-lineage-collective-angle", "15");
+  await page.keyboard.up("ShiftLeft");
+  await page.mouse.up();
+  await page.getByRole("button", { name: "Undo" }).click();
+  expect(await transforms(page)).toEqual(before);
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+});

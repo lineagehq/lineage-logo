@@ -261,8 +261,10 @@ test("collective translation drag from a non-primary layer is one exact Undo/Red
   const beforeIdentity = await identity(page);
   expect(await controls(page)).toEqual({ redo: true, "reset-edits": true, "save-iteration": true, undo: true });
 
+  await page.keyboard.down("AltLeft");
   const drag = await selectionDrag(page);
   await page.mouse.up();
+  await page.keyboard.up("AltLeft");
   await expect.poll(async () => (await controls(page)).undo).toBe(false);
   const moved = await rootGeometry(page);
   expectPointerTranslation(before, moved, drag.delta);

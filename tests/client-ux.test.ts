@@ -355,15 +355,24 @@ describe("preferences and shortcuts dialog", () => {
     for (const id of [
       "preference-precise-modifier", "preference-marquee-mode", "preference-click-depth",
       "preference-individual-outlines", "preference-region-activation", "restore-selection-preferences",
+      "preference-alignment-snapping", "preference-snap-canvas", "preference-snap-objects", "preference-snap-tolerance",
     ]) expect(source).toContain(`id="${id}"`);
     expect(source).toContain("Preferences &amp; shortcuts");
     expect(source).toContain("Option/Alt-click toggles");
+    expect(source).toContain("Option / Alt suspends · Shift snaps rotation to 15°");
     expect(source).toContain('id="selection-count-badge"');
     expect(source).toContain('aria-live="polite" aria-atomic="true"');
     expect(source).toContain("objects selected");
     expect(source).toContain("for (const selectedNode of context.selectedNodes)");
     expect(source).toContain("applySelectionPreferences(selectionPreferencesStore.reset())");
     expect(source).toContain('id="region-selection-hint"');
+    for (const label of [
+      "Oriented frame X", "Oriented frame Y", "Oriented frame width",
+      "Oriented frame height", "Absolute frame rotation °", "Lock aspect ratio",
+    ]) expect(source).toContain(label);
+    expect(source).toContain('id="geometry-error" class="field-error" aria-live="polite"');
+    expect(source).toContain('aria-describedby="geometry-mode geometry-error"');
+    expect(styles).toContain('#geometry-group input[aria-invalid="true"]');
     expect(styles).toContain("@media (prefers-reduced-motion: reduce)");
     expect(styles).toContain(".artboard { transition: none; }");
   });

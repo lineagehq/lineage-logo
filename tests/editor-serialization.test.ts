@@ -116,6 +116,14 @@ describe("editor serialization", () => {
     expect(serializeSvg(root, false)).toBe('<svg><path id="mark"></path></svg>');
   });
 
+  it("strips transient smart-alignment guides from snapshots and clean saves", () => {
+    const window = new Window();
+    window.document.body.innerHTML = '<svg><path id="mark"></path><g data-lineage-snap-guides="true" aria-hidden="true"><line class="lineage-snap-guide" data-target-key="canvas"></line></g></svg>';
+    const root = window.document.querySelector("svg") as unknown as SVGSVGElement;
+    expect(serializeSvg(root, true)).toBe('<svg><path id="mark"></path></svg>');
+    expect(serializeSvg(root, false)).toBe('<svg><path id="mark"></path></svg>');
+  });
+
   it("strips agent review highlighting without changing accepted SVG content", () => {
     const window = new Window();
     window.document.body.innerHTML = '<svg><g id="accepted" data-lineage-review-highlight="true"><path id="mark" /></g></svg>';

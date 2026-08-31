@@ -1,0 +1,1865 @@
+version: 2
+
+goal:
+  title: "Precision Transforms And Snapping"
+  slug: "precision-transforms-snapping"
+  kind: existing_plan
+  tranche: "Validate semantics, implement snapping and guides, implement numeric precision controls, harden with Seatify QA, and reach a locally complete PR-ready state."
+  status: blocked
+  oracle:
+    signal: "A deterministic Chromium workflow on the real Seatify constellation proves free and snapped transforms, truthful live guides, numeric edits, mixed-value behavior, atomic history, zoom/sidebar independence, and clean save/reload."
+    cadence: "after each Worker package and at final audit"
+    final_proof: "Passing repository checks and full browser suite, explicit Seatify E2E evidence, serialization evidence, and a final Judge receipt with full_outcome_complete: true."
+  intake:
+    original_request: "Plan precision transforms and snapping thoroughly."
+    interpreted_outcome: "Deliver precise, discoverable snapping and numeric transform editing for single and multi-selection without regressing SVG integrity or existing canvas interactions."
+    input_shape: existing_plan
+    audience: "Logo-canvas users making manual corrections to generated SVG artwork."
+    authority: requested
+    proof_type: test
+    completion_proof: "Automated and manual Seatify constellation QA proves the complete interaction contract and all existing verification remains green."
+    likely_misfire: "Implementing visual guides or numeric controls that appear correct but diverge from exact transform geometry, zoom behavior, history, or serialization."
+    blind_spots_considered:
+      - "Screen-pixel snap tolerance across canvas zoom."
+      - "Modifier conflicts and cross-platform keyboard semantics."
+      - "Mixed-value numeric editing and invalid input."
+      - "Rotated selections, nested transforms, and mixed-parent selections."
+      - "Locked, hidden, and agent-pending all-or-nothing behavior."
+      - "Undo/Redo atomicity, cancellation, no-op gestures, and clean SVG serialization."
+      - "Guide priority, deterministic tie-breaking, visual occlusion, and accessibility."
+    existing_plan_facts:
+      - "Shift snaps rotation to 15-degree increments."
+      - "Smart guides and snapping target canvas center/edges and nearby objects."
+      - "Numeric X, Y, width, height, and rotation controls are required."
+      - "Multi-selection must communicate exact versus mixed values."
+      - "The complex Seatify constellation is the primary E2E fixture."
+      - "Existing guarded Group/Ungroup must not regress; expanding its supported cases is deferred to a later goal."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  exact_human_approval_can_terminal_wait: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+  goal_pressure_requires_oracle: true
+  no_completion_on_weak_proof: true
+  slice_policy:
+    max_consecutive_tiny_tasks: 2
+    prefer_vertical_slices: true
+    judge_picks_largest_safe_slice: true
+    worker_completes_whole_slice: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+visual_board:
+  selected: local
+  local:
+    status: live
+    url: "http://goalbuddy.localhost:41738/precision-transforms-snapping/"
+    command: "node /Users/neonwatty/.codex/plugins/cache/goalbuddy/goalbuddy/0.4.3/skills/goal-prep/surfaces/local-goal-board/scripts/local-goal-board.mjs --goal docs/goals/precision-transforms-snapping --port 41738"
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Validate the existing precision-transform plan against the owner outcome and identify the exact evidence Scouts must collect before implementation."
+    inputs:
+      - "docs/goals/precision-transforms-snapping/goal.md"
+      - "Current goal intake and existing plan facts"
+    constraints:
+      - "Read-only."
+      - "Do not inspect or implement product files beyond what is needed to define targeted Scout questions."
+      - "Preserve the user-approved feature direction while challenging ambiguous semantics and proof gaps."
+    expected_output:
+      - "Validated outcome and non-goals"
+      - "Ambiguities requiring evidence"
+      - "Targeted Scout questions"
+      - "Risks that must shape Worker verification"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "The plan faithfully preserves the approved outcome and correctly defers expanded grouping capabilities, pivots, grids/rulers, structural normalization, and PR work while preserving the existing guarded Group/Ungroup feature. Its two vertical slices are appropriately outcome-sized, but implementation is unsafe until Scout evidence establishes the editor's actual coordinate spaces, transform composition, selection compatibility rules, history boundaries, serialization path, preferences/inspector patterns, and real Seatify test harness. T002 should collect symbol-level evidence and current verification commands; T003 must then resolve the remaining UX and geometry semantics before authorizing a Worker package."
+      worker_package: null
+      evidence:
+        - "Validated outcome: optional precision assistance for free and snapped single/multi move, resize, and rotation; numeric X/Y/width/height/rotation; truthful guides; mixed-value feedback; atomic history; zoom/sidebar independence; clean save/reload; real Seatify Chromium proof."
+        - "Validated non-goals: expanded grouping capabilities beyond existing guarded Group/Ungroup, arbitrary pivot editing, grids/rulers, structural SVG normalization, and PR creation/merge."
+        - "The charter requires screen-pixel tolerance, deterministic canvas/object candidates and tie-breaking, live guides matching applied math, one checkpoint per completed gesture/edit, no checkpoint for cancel/no-op, and no editor-state serialization."
+        - "T002 is the necessary evidence gate before T003 can safely define allowed_files or a Worker package."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "Do not parallelize implementation discovery or Workers yet. Transform, selection, history, inspector, and serialization paths may overlap; disjoint allowed_files cannot be proven until T002 maps the architecture."
+      blocked_tasks: []
+      missing_evidence:
+        - "Which files and symbols own single and collective translate, resize, rotate, selection overlays, pointer lifecycle, and modifier changes during an active gesture?"
+        - "Which coordinate spaces are used for pointer input, zoom, SVG/viewBox geometry, object bounds, collective oriented bounds, resize handles, nested transforms, and mixed-parent selections; where are conversions performed?"
+        - "How are authored transform lists composed and preserved today, and which operations risk flattening, reordering, or drifting rotated/nested geometry?"
+        - "Where are eligible snap targets enumerated, and how are hidden, locked, selected, nested, incompatible-parent, defs/editor-only, and agent-pending objects represented or excluded?"
+        - "What existing preference storage, settings UI, inspector-field, keyboard-modifier, accessibility, and sidebar patterns should snapping and numeric controls extend?"
+        - "Where are gesture start/commit/cancel/no-op and numeric edit commit/cancel boundaries connected to Undo/Redo, Reset, agent acceptance, and rollback?"
+        - "What exact serialization and agent-submission paths strip editor-only overlays/state, and which tests prove saved SVG structure remains clean?"
+        - "Which checked-in files and helpers load the complex Seatify constellation, select stable object sets, drive multi-selection transforms, change zoom/collapse sidebars, save/reload, and inspect geometry/guides?"
+        - "What repository commands provide focused interaction, serialization, Seatify E2E, complete check, build, and full Chromium verification; are any currently red or flaky?"
+        - "What current semantics exist for X/Y reference points, width/height of rotated selections, collective rotation, aspect-ratio handling, negative/zero sizes, invalid input, mixed values, and incompatible selections?"
+        - "Which modifier combinations are already reserved across platforms, and can Shift be observed continuously so snap mode changes mid-rotation without restarting or adding history?"
+        - "What DOM/rendering layer can display non-serializing, zoom-stable, accessible guides without intercepting pointer input or occluding handles?"
+      required_board_updates:
+        - "Record this receipt on T001 and mark T001 completed."
+        - "Activate T002 as the sole active task."
+        - "Require T002 to answer every targeted evidence question with file-and-symbol references, exact verification commands, compatibility hazards, and candidate allowed_files."
+        - "Do not authorize implementation or define a Worker package until T003 resolves semantics using the T001 and T002 receipts."
+      harness: codex
+  - id: T002
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: low
+    objective: "Map the current transform, selection, preferences, history, serialization, and E2E architecture needed to implement precision transforms safely."
+    inputs:
+      - "T001 receipt"
+      - "Current client editor and styling sources"
+      - "Current interaction, serialization, and Playwright tests"
+      - "Existing complex Seatify fixture and rotation-feedback QA"
+    constraints:
+      - "Read-only."
+      - "Keep searches inside the repository boundary and follow AGENTS.md."
+      - "Trace actual coordinate spaces and event paths; do not infer from UI appearance alone."
+      - "Identify existing preference and inspector patterns that can be extended instead of duplicated."
+    expected_output:
+      - "File-and-symbol map for translate, resize, rotate, collective selection, inspector, preferences, history, and save/agent paths"
+      - "Current coordinate-space and transform-composition model"
+      - "Existing test fixtures/helpers and exact verification commands"
+      - "Compatibility hazards and candidate allowed_files for each implementation slice"
+      - "Pre-existing red or flaky checks, if any"
+    receipt:
+      result: done
+      summary: "Mapped the editor architecture and verified the current transform model. Direct manipulation is centralized in SvgEditor, with reusable matrix/gesture primitives in transform.ts, persisted selection settings, snapshot-based atomic history, and clean clone-based serialization. The Seatify fixture and existing interaction/E2E suites provide strong reusable coverage. Main hazards are two separate single-versus-collective event paths, screen/root/oriented/local coordinate conversions, authored transform replacement with matrix attributes, incomplete multi-selection inspector semantics, CSS-transform rejection, and editor overlays living inside the SVG. The repository check was started from a worktree whose only visible untracked content was the GoalBuddy plan; typecheck passed and Vitest began, but terminal completion was not observed within the bounded Scout command budget."
+      evidence:
+        - path: src/client/canvas/editor.ts
+          symbols: "SvgEditor.#setSelection,#bindSelectionDragSource,#beginInteractiveMutation,#finishInteractiveMutation,#cancelInteractiveMutation,#renderCollectiveTransformOverlay,#bindCollectiveHandle,#moveCollectiveTransform,#moveSelection,#scaleSelection,#rotateSelection,#snapshot,#restore,serializeSvg"
+          detail: "Owns selection installation, plugin and pointer lifecycle, direct transforms, inspector edits, history boundaries, agent blocking, overlay rendering, snapshot restoration, and clean serialization."
+        - path: src/client/canvas/transform.ts
+          symbols: "transformVectorToLocal,transformPointToLocal,composeRootTranslation,SelectionTranslationGesture,collectiveScaleMatrix,collectiveRotationMatrix,composeCollectiveRootTransform,CollectiveTransformGesture,GroupTransformGesture"
+          detail: "Provides bounded affine-matrix composition and cancel/complete semantics for root-space translation, collective transforms across parents, and group transforms."
+        - path: src/client/selection-preferences.ts
+          symbols: "SelectionPreferences,SelectionPreferencesStore,DEFAULT_SELECTION_PREFERENCES,SELECTION_PREFERENCES_STORAGE_KEY"
+          detail: "Versioned localStorage-backed settings pattern with strict schema parsing, legacy migration, defaults, reset, and in-memory fallback."
+        - path: src/client/main.ts
+          symbols: "selection-preferences fieldset,position-x,position-y,scale,rotation,setZoom"
+          detail: "Existing inspector exposes single-selection X/Y/Scale/Rotation; settings UI and sidebar/zoom controls are constructed here. Zoom is an artboard CSS scale."
+        - path: src/client/history/history.ts
+          symbols: "History.checkpoint,History.undo,History.redo,History.reset"
+          detail: "Stores serialized editor snapshots; SvgEditor checkpoints the pre-gesture/pre-edit snapshot once and restores it atomically."
+        - path: tests/editor-interactions.test.ts
+          detail: "Covers coordinate conversion, matrix bounds, collective drag/resize/rotation, cancellation/no-op, history, locked/hidden/nested/CSS-transform rejection, agent replacement/rollback, keyboard controls, and a complete complex Seatify history sequence."
+        - path: tests/editor-serialization.test.ts
+          detail: "Proves selection halos and collective overlays are stripped from snapshots and clean saves, editor data is stripped only for clean output, and save/reopen preserves authored SVG."
+        - path: tests/fixtures/workspace/concepts/complex-seatify.svg
+          detail: "Checked-in principal complex fixture with nested and transformed venue-logo geometry."
+        - path: tests/e2e/multi-selection-arrangement.spec.ts
+          detail: "Reusable Seatify loader/helpers cover selection, geometry, history controls, agent pending/revert, 125% zoom, collapsed sidebars, named save, transform preservation, and editor-state leakage."
+        - path: tests/e2e/rotation-feedback.spec.ts
+          detail: "Real Seatify rotation QA selects stable labeled objects, drives the collective rotation handle, inspects CTMs/frame orientation and angle feedback, and verifies persistence."
+        - path: playwright.config.ts
+          detail: "Chromium-only deterministic E2E configuration uses one worker and a descriptive localhost origin."
+      facts:
+        - fact: "Pointer input begins in client/screen coordinates. screenMatrix(root) is inverted by transformPointToLocal for root-space points; screen deltas are converted with transformVectorToLocal. This naturally includes the artboard CSS zoom."
+        - fact: "Each selected node retains its own parent coordinate space. translationTargets captures initial local matrix plus parent-to-root CTM; collective application computes inverse(parentToRoot) × collectiveRoot × parentToRoot × initial."
+        - fact: "Collective rotated bounds are calculated in an oriented root space by applying the inverse cached collective rotation before unioning node getBBox geometry transformed through screen-derived relative matrices."
+        - fact: "Collective resize currently rounds the oriented pointer to integer document coordinates and applies one uniform factor around the opposite handle anchor. Single resize/rotate is delegated to svg.resize.js; group resize is intercepted by GroupTransformGesture."
+        - fact: "Shift is already available continuously on PointerEvent/keyboard events, but current collective pointer rotation rounds to whole degrees and does not inspect event.shiftKey. Single-object rotation is plugin-owned and needs a separate snapping integration strategy."
+        - fact: "Eligibility is all-or-nothing through translationAvailability/collectiveTransformAvailability: disconnected, unsupported, hidden, locked, ancestor+descendant, CSS-transformed, singular/non-finite, and agent-blocked selections are rejected. Cross-parent selections are supported when coordinate spaces are invertible."
+        - fact: "InspectorEditSession permits one checkpoint per focus session. X/Y use selected.rbox(drawing), scale/rotation use bbox pivots and data-lineage metadata; controls are disabled for multi-selection, so width/height and exact/mixed multi-selection semantics do not yet exist."
+        - fact: "Editor overlays are appended inside the live SVG. serializeSvg clones and removes handle/halo/collective selectors; stripEditorState additionally removes lineage/agent/review/transport data and legacy metadata. Any new guide selector must be included in both snapshot and clean-save stripping."
+        - fact: "Candidate snapping-and-guides allowed files: src/client/canvas/transform.ts, src/client/canvas/editor.ts, src/client/selection-preferences.ts, src/client/main.ts, src/client/styles.css, tests/editor-interactions.test.ts, tests/editor-serialization.test.ts, tests/selection-preferences.test.ts, tests/client-ux.test.ts, tests/e2e/rotation-feedback.spec.ts, tests/e2e/collective-translation.spec.ts, tests/e2e/collective-transforms.spec.ts, tests/e2e/multi-selection-arrangement.spec.ts."
+        - fact: "Candidate numeric-controls allowed files: src/client/canvas/transform.ts, src/client/canvas/editor.ts, src/client/main.ts, src/client/styles.css, tests/editor-interactions.test.ts, tests/editor-serialization.test.ts, tests/client-ux.test.ts, tests/e2e/multi-selection-arrangement.spec.ts."
+        - fact: "Exact verification commands: npm run typecheck; npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/selection-preferences.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts; npx playwright test tests/e2e/rotation-feedback.spec.ts tests/e2e/collective-translation.spec.ts tests/e2e/collective-transforms.spec.ts tests/e2e/multi-selection-arrangement.spec.ts --project=chromium; npm run check; npx playwright test --project=chromium."
+      contradictions:
+        - detail: "The desired numeric X/Y/width/height/rotation contract exceeds the existing inspector: width/height are absent, Scale is percent-based, and all transform fields are single-selection-only."
+        - detail: "The desired free resize plus optional smart snapping conflicts with current collective resize's unconditional Math.round document-unit quantization."
+        - detail: "Existing alignment permits only same-parent selections, while collective movement/transforms support compatible cross-parent selections; snap-target eligibility cannot simply reuse alignmentAvailability."
+      ambiguity_requiring_judge:
+        - detail: "Define whether X/Y and width/height refer to root-space axis-aligned visual bounds, the cached oriented collective frame, or an individual node's local bbox when rotated/nested."
+        - detail: "Define object snap-target enumeration: selectable leaves versus logical groups, ancestor/descendant suppression, and whether targets under different transformed parents are eligible after projection to root space."
+        - detail: "Define deterministic priority among canvas edges/centers and object edges/centers, independent-axis versus paired snaps, equal-distance tie-breaking, and whether selected objects are excluded collectively."
+        - detail: "Define how Shift rotation snapping is integrated with svg.resize.js for single selection and whether keyboard collective rotation remains 1-degree steps or adopts 15-degree Shift steps."
+        - detail: "Define the settings schema/version migration for global snapping enabled state, tolerance, object/canvas guide toggles, and temporary override modifier without colliding with Shift rotation or marquee Control-left."
+        - detail: "Define whether numeric multi-selection rotation sets an absolute collective-frame angle or applies a delta to each object, and how mixed values are represented and committed."
+      commands:
+        - "git rev-parse --show-toplevel; rg --files <repo> -g AGENTS.md -g AGENTS.override.md"
+        - "read AGENTS.md, state.yaml, and goal.md"
+        - "rg --files src tests"
+        - "targeted symbol search across editor, transform, inspector, preferences, and history"
+        - "read transform gesture implementations and editor interaction lifecycle"
+        - "search serialization, agent, inspector, collective overlay, and test symbols"
+        - "read serialization, snapshot/restore, collective overlay/pointer math, and preferences storage"
+        - "inspect package scripts, Playwright config, fixture/E2E/unit coverage"
+        - "inspect main UI/styles, History, and availability rules"
+        - "git status --short; npm run check"
+        - "poll npm run check session twice"
+      note_needed: false
+      harness: codex
+  - id: T003
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Turn the validated plan and repository evidence into an exact interaction, geometry, and verification contract, then specify the largest safe first Worker package."
+    inputs:
+      - "T001 receipt"
+      - "T002 receipt"
+      - "docs/goals/precision-transforms-snapping/goal.md"
+    constraints:
+      - "Read-only."
+      - "Resolve semantics before implementation: modifier behavior, screen-pixel tolerance, candidates, priority, tie-breaking, guide rendering, rotated bounds, mixed values, validation, history, and serialization."
+      - "Prefer one coherent snapping-and-guides vertical slice over helper-by-helper tasks."
+      - "Do not expand the existing guarded Group/Ungroup behavior or add rulers, grids, or transform normalization."
+    expected_output:
+      - "Normative UX and geometry contract with concrete examples"
+      - "Decision on snapping enablement/preferences and temporary modifier overrides"
+      - "Deterministic snap-candidate priority and tie-breaking rules"
+      - "Exact first Worker objective, allowed_files, verify commands, and stop_if conditions"
+      - "Deferred numeric-controls package contract"
+      - "Oracle coverage matrix"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "T001 and T002 establish enough architectural evidence to authorize one coherent snapping-and-guides vertical slice. The contract keeps free transforms primary, uses a perceptually stable six-CSS-pixel tolerance, resolves deterministic candidates and ties in root space, preserves oriented resize/rotation behavior, and makes guides transient and truthful. Smart alignment is enabled by default with persisted canvas/object preferences; Alt/Option temporarily suspends snapping, while Shift activates absolute 15-degree rotation snapping. Numeric controls remain a second vertical slice because their rotated-frame, mixed-value, validation, and commit semantics require distinct inspector work. No subgoal or parallel Worker is justified because the central editor paths overlap."
+      worker_package:
+        objective: "Implement the complete snapping-and-live-guides vertical slice for eligible single and collective translation, resize, and rotation: persisted smart-alignment preferences, six-screen-pixel canvas/object snapping, Alt/Option temporary suspension, Shift-based absolute 15-degree rotation snapping, deterministic root-space candidate selection, rotated-selection-safe geometry, transient accessible guides that exactly match applied transforms, atomic history/cancel/no-op behavior, clean serialization, and focused plus real Seatify regression coverage."
+        allowed_files:
+          - src/client/canvas/transform.ts
+          - src/client/canvas/editor.ts
+          - src/client/selection-preferences.ts
+          - src/client/main.ts
+          - src/client/styles.css
+          - tests/editor-interactions.test.ts
+          - tests/editor-serialization.test.ts
+          - tests/selection-preferences.test.ts
+          - tests/client-ux.test.ts
+          - tests/e2e/precision-snapping.spec.ts
+          - tests/e2e/rotation-feedback.spec.ts
+          - tests/e2e/collective-translation.spec.ts
+          - tests/e2e/collective-transforms.spec.ts
+          - tests/e2e/multi-selection-arrangement.spec.ts
+        verify:
+          - "git diff --check"
+          - "npm run typecheck"
+          - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/selection-preferences.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          - "npx playwright test tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts tests/e2e/collective-translation.spec.ts tests/e2e/collective-transforms.spec.ts tests/e2e/multi-selection-arrangement.spec.ts --project=chromium"
+          - "npm run check"
+          - "npx playwright test --project=chromium"
+        stop_if:
+          - "Implementation requires any file outside allowed_files."
+          - "Single-selection plugin integration cannot expose raw pointer geometry and modifier changes without vendoring a dependency, normalizing authored transforms, or creating a second conflicting gesture lifecycle."
+          - "The current runtime cannot derive finite invertible root-to-screen geometry needed to measure tolerance in CSS pixels for an otherwise eligible selection."
+          - "A proposed solution would snap only part of a selected set, admit hidden/locked/incompatible targets, or weaken existing all-or-nothing availability rules."
+          - "Guide nodes or snap state cannot be excluded from snapshots, clean saves, and agent submissions through the existing serialization boundary."
+          - "A required verify command fails twice for a cause outside allowed_files or reveals a contradictory interaction contract."
+      evidence:
+        - "Enablement: smart alignment for move and resize defaults ON. Persist alignmentSnappingEnabled=true, snapToCanvas=true, snapToObjects=true, and snapTolerancePx=6 through the existing versioned preferences pattern. Settings expose master, canvas/object toggles, and integer tolerance 2..20; invalid persisted values fall back to 6. Preference changes apply immediately and never create history."
+        - "Modifiers: Alt/Option during a pointer gesture suspends every snap and guide; release resumes evaluation from the raw pointer without restarting. Control-left remains marquee. Shift only affects rotation, snapping absolute root-space frame angle to 15-degree multiples. Alt/Option plus Shift means free rotation. Modifier changes add no history."
+        - "Tolerance: compare candidate correction along its screen-space normal against snapTolerancePx using the current root-to-screen matrix on every pointer move. At 125% zoom six pixels is 4.8 root units; at 50% it is 12. Do not round document coordinates before evaluation or application."
+        - "Sources: translation uses left/center/right and top/middle/bottom from the post-raw-transform root-space AABB union. Rotated/nested nodes use transformed bbox corners. Non-uniform resize evaluates changed axes. Uniform resize derives candidate scales from both axes, applies one winner, and renders only satisfied alignments."
+        - "Targets: canvas viewBox min/center/max; object anchors from outermost eligible selectable objects in root space. Exclude selected set plus ancestors/descendants, disconnected/editor-only/defs, hidden/locked, transform-ineligible, singular/non-finite nodes. Cross-parent targets are eligible when root projection is finite and invertible."
+        - "Resolution: X and Y translation resolve independently. Lowest absolute CSS-pixel correction wins; ties within 0.001 use canvas center, object center, canvas edge, object edge, then document order, target min before max, and source center/min/max. Uniform resize uses smallest handle correction, same ranks, then X before Y; never combine incompatible scale factors."
+        - "Rotation: normalize absolute visible frame orientation to [-180,180). Shift chooses nearest 15-degree multiple; exact 7.5 midpoint follows most recent nonzero drag direction, or away from zero if none. Single and collective rotation share semantics."
+        - "Guides: only render applied winners. Canvas guides span viewBox; object guides span selection/target union plus 12 CSS pixels, clipped to artboard. Guides sit above artwork below handles, purple, one-CSS-pixel non-scaling dashed, pointer-events none, aria-hidden. A non-SVG polite status announces target changes."
+        - "Guide state: metadata records axis, target family/anchor, source anchor, and target key. Clear when tolerance is exceeded, Option is held, preference disabled, gesture ends/cancels, selection unavailable, agent review starts, or document restores. Do not show incidental alignments."
+        - "Rotated bounds: smart guides use actual post-transform root AABB. Collective resize retains cached oriented frame/opposite anchor; candidate scale is evaluated by applying the proposed oriented transform then measuring AABB. No flattening or normalization."
+        - "History: one pointer-down owns one pre-mutation snapshot. Completed geometry change creates one checkpoint. Cancel, Escape, agent interruption, unavailable selection, or final no-op restores initial geometry and creates none. Preference changes are not history. Undo/Redo/Reset never restore transient guides."
+        - "Serialization: candidate, target, modifier, status, and preferences are editor-only. Guide selectors are stripped from snapshots, clean saves, and agent SVG. Save persists only ordinary geometry; reload has no guide/preference/editor metadata."
+        - "Move example: at 125% zoom a proposed center x=249.2 versus canvas x=250 needs one screen pixel, so canvas center wins over a two-pixel object edge; Option applies raw 249.2 and removes guide."
+        - "Tie example: equal canvas/object centers choose canvas; equal object centers choose earlier document order; equal source center/edge chooses source center; X/Y independent."
+        - "Resize example: oriented uniform scale candidates 1.240 on X and 1.245 on Y choose 1.240 by smaller handle correction, preserve opposite oriented corner, and render only X."
+        - "Deferred numeric contract: X/Y/width/height/rotation describe an explicitly labeled oriented selection frame. X/Y are root coordinates of frame origin; dimensions are positive in frame; rotation normalized root angle. Single shows Exact; compatible multi shows aggregate plus Mixed members. Aggregate edits preserve relative geometry; unsupported selections disable rather than approximate."
+        - "Deferred numeric validation: finite decimals only; X/Y in [-1000000,1000000], dimensions >0 and <=1000000, rotation normalized. Empty/malformed/non-finite/out-of-range preserves geometry with inline error. Display rounding does not round storage. Enter/blur commit one edit, Escape cancels, unchanged is no-op, and all targets preflight."
+        - "Deferred sizing: width/height act in frame axes about opposite corner. Aspect lock defaults ON for collective selection; unlocked nonuniform scaling only when compatibility allows without normalization. Rotation is absolute frame angle applying one collective delta and preserving member differences."
+        - "Deferred numeric scope: transform.ts, editor.ts, main.ts, styles.css, interaction/serialization/client UX tests, and Seatify E2E. Stop on normalization, partial mutation, or extra files."
+        - "Oracle: preferences/client UX cover defaults, migration, invalid tolerance, settings, and Option discoverability; precision E2E covers live modifier transitions."
+        - "Oracle: interaction tests cover pixel conversion across zoom, candidates/exclusions, cross-parent projection, rotated AABBs, independent axes, resize scoring, ties, cancel, and no-op."
+        - "Oracle: interaction/serialization tests prove winning metadata/lifecycle and absence from snapshots, clean save, and agent submission; precision E2E matches guide coordinate to applied geometry."
+        - "Oracle: rotation unit/E2E proves free and Shift-snapped single/collective rotation, midpoint, modifier changes, Option suspension, upright feedback, oriented frame, and atomic Undo/Redo."
+        - "Oracle: real Seatify precision and arrangement E2E repeat move/resize/rotation at 125% with collapsed sidebars, save/reload, and agent-pending rejection; npm run check plus full Chromium cover regressions."
+        - "Oracle deferred numeric: interaction/client UX cover exact/aggregate/mixed/unavailable, aspect lock, validation, commit/cancel, history, all-or-nothing; Seatify E2E covers fields, Undo/Redo, zoom/sidebar, and clean save/reload."
+      parallel_safety:
+        safe: false
+        rationale: "Snapping geometry, gesture integration, guide lifecycle, preferences, serialization, and focused tests converge on SvgEditor and shared interaction suites. Disjoint write scopes are not provable."
+      blocked_tasks: []
+      missing_evidence: []
+      required_board_updates:
+        - "Record this receipt on T003 and mark T003 done."
+        - "Activate T004 as sole active task."
+        - "T004 must create one Worker card by copying worker_package exactly."
+        - "Keep numeric controls deferred until snapping-and-guides passes."
+        - "Do not create subgoal, parallel Worker, or out-of-scope features."
+      harness: codex
+  - id: T004
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Create and activate the bounded snapping-and-live-guides Worker package specified by T003, preserving its exact allowed files and verification contract."
+    inputs:
+      - "T003 receipt"
+    constraints:
+      - "Do not implement product code in this PM task."
+      - "Create one coherent Worker package covering snap geometry, direct-manipulation integration, live guides, preferences/discoverability, and focused tests."
+      - "Require atomic history, cancellation/no-op behavior, zoom-stable tolerance, deterministic target choice, and clean serialization."
+    expected_output:
+      - "New active Worker task with explicit allowed_files"
+      - "Focused and regression verify commands"
+      - "Stop conditions for ambiguity or architectural conflict"
+    receipt:
+      result: done
+      summary: "Materialized the exact T003 snapping-and-live-guides Worker package as T009 without splitting its overlapping geometry, gesture, guide, preference, serialization, and test responsibilities."
+      spawned_tasks:
+        - T009
+      harness: codex
+
+  - id: T005
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review the completed snapping-and-live-guides milestone against the geometry contract and Seatify oracle, and specify corrective work or the numeric-controls Worker package."
+    inputs:
+      - "T003 geometry and UX contract"
+      - "Snapping Worker receipt"
+      - "Focused verification output"
+      - "Current diff"
+    constraints:
+      - "Read-only."
+      - "Reject decorative-only guides, zoom-dependent tolerance, nondeterministic snapping, partial mutation, history inflation, or serialization leakage."
+      - "If the milestone is sound, define one coherent numeric-controls vertical slice with explicit files and verification."
+    expected_output:
+      - "Milestone accepted | corrective Worker required"
+      - "Contract-to-evidence mapping"
+      - "Exact next Worker objective, allowed_files, verify, and stop_if"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "The milestone is not contract-complete despite green gates. Absolute rotation snapping is integrated only in the collective pointer path; single selection sets the plugin’s degree increment, which does not prove absolute root-frame snapping. Translation uses a gesture-start screen matrix instead of the current matrix per move. Tests prove helpers and one Seatify canvas-translation flow, but not object snapping, rotated/nested/cross-parent exclusions, resize guides, single/collective Shift+Alt rotation, or full guide/history lifecycles. Invalid v3 tolerance also resets the entire preference record rather than only falling back to six. One corrective vertical slice is required before numeric controls."
+      worker_package:
+        objective: "Correct and fully prove the snapping-and-live-guides milestone: implement absolute root-frame 15-degree snapping for both single and collective rotation with live Shift and Alt transitions; evaluate translation and resize tolerance using current root-to-screen geometry on every move; preserve valid persisted preferences when only tolerance is invalid; and add deterministic integration coverage for canvas/object snapping, exclusions, rotated/nested/cross-parent geometry, single/collective resize and rotation, truthful guide lifecycle, atomic history, cancellation/no-op, and clean serialization using the real Seatify constellation."
+        allowed_files:
+          - src/client/canvas/transform.ts
+          - src/client/canvas/editor.ts
+          - src/client/selection-preferences.ts
+          - src/client/main.ts
+          - src/client/styles.css
+          - tests/editor-interactions.test.ts
+          - tests/editor-serialization.test.ts
+          - tests/selection-preferences.test.ts
+          - tests/client-ux.test.ts
+          - tests/e2e/precision-snapping.spec.ts
+          - tests/e2e/rotation-feedback.spec.ts
+          - tests/e2e/collective-translation.spec.ts
+          - tests/e2e/collective-transforms.spec.ts
+          - tests/e2e/multi-selection-arrangement.spec.ts
+        verify:
+          - "git diff --check"
+          - "npm run typecheck"
+          - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/selection-preferences.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          - "npx playwright test tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts tests/e2e/collective-translation.spec.ts tests/e2e/collective-transforms.spec.ts tests/e2e/multi-selection-arrangement.spec.ts --project=chromium"
+          - "npm run check"
+          - "npx playwright test --project=chromium"
+        stop_if:
+          - "Any correction requires files outside allowed_files, dependency vendoring, or authored-transform normalization."
+          - "Single-selection absolute root-frame rotation cannot be implemented without creating a second conflicting gesture lifecycle or partial mutation."
+          - "Current finite root-to-screen geometry cannot be obtained on each eligible pointer move."
+          - "Tests cannot prove both single and collective Shift snapping, Alt suspension/resumption, object targets, rotated geometry, guide truthfulness, and atomic history."
+          - "A required verification command fails twice for an out-of-scope cause or exposes a contradictory interaction contract."
+      evidence:
+        - "T009 stayed within allowed files and reported all focused and full gates green."
+        - "Preferences, helper math, deterministic ranking, Alt suspension, guides, selection-wide translation, serialization stripping, and a Seatify 125% canvas-alignment flow are implemented."
+        - "Single-selection rotation only sets a plugin degree increment; absolute root-frame semantics are not established."
+        - "Translation evaluates with the root-to-screen matrix captured at gesture start, not current geometry per pointer move."
+        - "Seatify E2E covers one single-object canvas translation but not the required object, resize, rotation, exclusion, or collective scenarios."
+        - "The v3 preference parser resets the whole record when only tolerance is invalid."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "Corrections overlap the shared editor gesture state, transform geometry, preferences, serialization, and tests."
+      blocked_tasks: []
+      missing_evidence:
+        - "Single absolute root-frame Shift snapping with Alt transitions."
+        - "Single and collective resize snapping with truthful rotated guides."
+        - "Object target eligibility/exclusion integration."
+        - "Current-matrix tolerance with nested and cross-parent selection."
+        - "Atomic history/cancel/no-op for snapped resize and rotation."
+        - "Invalid tolerance fallback preserving other preferences."
+      required_board_updates:
+        - "Record this receipt on T005 and mark done."
+        - "Do not activate T006 or numeric controls."
+        - "Create and activate one corrective Worker task exactly from worker_package."
+        - "Return corrected milestone to Judge before numeric controls."
+  - id: T006
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Create and activate the bounded numeric precision-controls Worker package approved by T005."
+    inputs:
+      - "T005 receipt"
+    constraints:
+      - "Do not implement product code in this PM task."
+      - "The Worker package must cover X, Y, width, height, and rotation; exact versus mixed values; validation; commit/cancel/no-op; single history checkpoint; and single/multi-selection."
+      - "Require explicit behavior for rotated selections, incompatible selections, locked/hidden state, and agent-pending state."
+    expected_output:
+      - "New active Worker task with explicit allowed_files"
+      - "Focused and regression verify commands"
+      - "Stop conditions for ambiguous numeric semantics or transform-structure risk"
+    receipt:
+      result: done
+      summary: "Materialized one bounded numeric precision-controls Worker task by copying the T011-approved objective, allowed files, verification commands, stop conditions, and normative control semantics exactly. Numeric geometry, inspector state, history, serialization, and Seatify evidence remain one coherent vertical slice."
+      spawned_tasks:
+        - T012
+  - id: T007
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Review numeric precision controls and decide whether the combined feature is ready for adversarial Seatify hardening."
+    inputs:
+      - "Numeric-controls Worker receipt"
+      - "Focused verification output"
+      - "Current diff"
+    constraints:
+      - "Read-only."
+      - "Reject ambiguous mixed-value behavior, silent invalid-input coercion, non-atomic history, geometry drift, or clean-SVG regressions."
+      - "Specify a corrective Worker if needed; otherwise define exact adversarial E2E gaps."
+    expected_output:
+      - "Milestone accepted | corrective Worker required"
+      - "Evidence for every numeric field and state"
+      - "Remaining E2E and manual-QA gaps"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "The numeric implementation is structurally coherent and 232 focused unit tests support validation, oriented-frame scaling, commit/cancel/no-op, and atomic history. Inspection maps all five fields, aggregate/Mixed feedback, availability preflight, and clean serialization without a product defect. The required focused Chromium gate is red because its Seatify scenario interacts with controls inside a collapsed Geometry disclosure. Readiness remains gated until that bounded test-visibility defect is repaired and all deferred full gates pass."
+      worker_package:
+        objective: "Repair and verify the numeric-controls Seatify browser oracle without changing product behavior: explicitly open the Geometry disclosure before inspecting or editing its controls, preserve every existing aggregate/Mixed, aspect-lock, geometry, unrelated-layer, Undo, no-op, and invalid-input assertion, then rerun the complete numeric milestone verification contract."
+        allowed_files:
+          - tests/e2e/multi-selection-arrangement.spec.ts
+        verify:
+          - "git diff --check"
+          - "npm run typecheck"
+          - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          - "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium"
+          - "npm run check"
+          - "npx playwright test --project=chromium"
+        stop_if:
+          - "Opening #geometry-group does not make the existing numeric scenario pass without weakening, skipping, conditionally bypassing, or deleting assertions."
+          - "Any product-source change is required; return to Judge with the observed implementation failure instead."
+          - "The repaired scenario exposes incorrect X/Y/width/height/rotation geometry, Mixed feedback, validation, history, or availability behavior."
+          - "A required verification command fails twice for a cause outside the allowed file or reveals nondeterministic browser behavior."
+      evidence:
+        - "All five numeric fields, strict validation, oriented transforms, Mixed feedback, preflight, history, and serialization are structurally coherent and unit-proven."
+        - "Focused units pass 232 tests."
+        - "Focused Chromium passes 22/23; sole failure is hidden Width inside collapsed Geometry."
+        - "Full repository and Chromium gates remain unrun."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "One test-only change; no useful disjoint parallel slice."
+      blocked_tasks:
+        - T008
+      missing_evidence:
+        - "Green focused Chromium after opening Geometry."
+        - "Green repository check."
+        - "Green full Chromium."
+        - "T008 adversarial numeric browser coverage."
+      required_board_updates:
+        - "Record T007 done."
+        - "Keep T008 queued."
+        - "Create one corrective test Worker."
+        - "Re-audit before T008."
+  - id: T008
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: medium
+    objective: "Create and activate one final QA-hardening Worker package for uncovered Seatify and regression scenarios, then run the full local verification gate."
+    inputs:
+      - "T007 receipt"
+      - "All implementation receipts"
+    constraints:
+      - "Do not rewrite working implementation merely to satisfy screenshots."
+      - "Use the real complex Seatify constellation for the principal browser oracle."
+      - "Cover free and snapped translation/resize/rotation, live guide entry/exit, modifier changes mid-gesture, numeric fields, mixed values, Undo/Redo, Escape/no-op, Reset, save/reload, 125% zoom, collapsed sidebars, and locked/hidden/agent-pending rejection."
+      - "Run npm run check and the complete Chromium project after focused tests pass."
+    expected_output:
+      - "New bounded QA-hardening Worker task if gaps exist, or documented proof that no Worker is needed"
+      - "Passing focused Seatify browser oracle"
+      - "Passing npm run check"
+      - "Passing full Chromium Playwright project"
+      - "Clean git diff check and explicit remaining limitations"
+    receipt:
+      result: done
+      summary: "Materialized exactly one final test-only Seatify QA-hardening Worker from the T014-approved package, preserving its integrated objective, one-file scope, repeated-browser stability gate, full verification, and stop conditions."
+      spawned_tasks:
+        - T015
+  - id: T009
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Implement the complete snapping-and-live-guides vertical slice for eligible single and collective translation, resize, and rotation: persisted smart-alignment preferences, six-screen-pixel canvas/object snapping, Alt/Option temporary suspension, Shift-based absolute 15-degree rotation snapping, deterministic root-space candidate selection, rotated-selection-safe geometry, transient accessible guides that exactly match applied transforms, atomic history/cancel/no-op behavior, clean serialization, and focused plus real Seatify regression coverage."
+    inputs:
+      - "T003 normative interaction, geometry, history, guide, and serialization contract"
+      - "T002 architecture and verification map"
+      - "Current repository implementation and test fixtures"
+    constraints:
+      - "Implement the T003 contract as one coherent vertical slice; do not narrow it to collective-only behavior or decorative-only guides."
+      - "Do not expand the existing guarded Group/Ungroup behavior or add rulers, grids, arbitrary pivots, transform normalization, or numeric inspector controls in this task."
+      - "Preserve free transforms, all-or-nothing selection availability, one-checkpoint history, modifier changes mid-gesture, and clean SVG boundaries."
+    allowed_files:
+      - src/client/canvas/transform.ts
+      - src/client/canvas/editor.ts
+      - src/client/selection-preferences.ts
+      - src/client/main.ts
+      - src/client/styles.css
+      - tests/editor-interactions.test.ts
+      - tests/editor-serialization.test.ts
+      - tests/selection-preferences.test.ts
+      - tests/client-ux.test.ts
+      - tests/e2e/precision-snapping.spec.ts
+      - tests/e2e/rotation-feedback.spec.ts
+      - tests/e2e/collective-translation.spec.ts
+      - tests/e2e/collective-transforms.spec.ts
+      - tests/e2e/multi-selection-arrangement.spec.ts
+    verify:
+      - git diff --check
+      - npm run typecheck
+      - npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/selection-preferences.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts
+      - npx playwright test tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts tests/e2e/collective-translation.spec.ts tests/e2e/collective-transforms.spec.ts tests/e2e/multi-selection-arrangement.spec.ts --project=chromium
+      - npm run check
+      - npx playwright test --project=chromium
+    stop_if:
+      - "Implementation requires any file outside allowed_files."
+      - "Single-selection plugin integration cannot expose raw pointer geometry and modifier changes without vendoring a dependency, normalizing authored transforms, or creating a second conflicting gesture lifecycle."
+      - "The current runtime cannot derive finite invertible root-to-screen geometry needed to measure tolerance in CSS pixels for an otherwise eligible selection."
+      - "A proposed solution would snap only part of a selected set, admit hidden/locked/incompatible targets, or weaken existing all-or-nothing availability rules."
+      - "Guide nodes or snap state cannot be excluded from snapshots, clean saves, and agent submissions through the existing serialization boundary."
+      - "A required verify command fails twice for a cause outside allowed_files or reveals a contradictory interaction contract."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - src/client/canvas/transform.ts
+        - src/client/main.ts
+        - src/client/selection-preferences.ts
+        - src/client/styles.css
+        - tests/client-ux.test.ts
+        - tests/e2e/collective-transforms.spec.ts
+        - tests/e2e/collective-translation.spec.ts
+        - tests/e2e/precision-snapping.spec.ts
+        - tests/editor-interactions.test.ts
+        - tests/editor-serialization.test.ts
+        - tests/selection-preferences.test.ts
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/selection-preferences.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          status: pass
+        - cmd: "npx playwright test tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts tests/e2e/collective-translation.spec.ts tests/e2e/collective-transforms.spec.ts tests/e2e/multi-selection-arrangement.spec.ts --project=chromium"
+          status: pass
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npx playwright test --project=chromium"
+          status: pass
+      summary: "Implemented persisted smart-alignment preferences, deterministic six-screen-pixel canvas/object snapping, Alt suspension, Shift 15-degree rotation, single/collective translate and resize integration, rotated-safe geometry, truthful transient guides, serialization stripping, atomic history, and Seatify coverage. Final verification passed: 236 focused unit tests, 29 focused Chromium tests, 425 repository tests plus build, and all 35 Chromium tests."
+      deviations:
+        - "Updated legacy free-transform browser expectations to hold Alt and removed obsolete integer-coordinate resize rounding assumptions, matching the normative contract."
+      remaining_blockers: []
+      verification_attempts: 3
+      stopped_because: null
+  - id: T010
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Correct and fully prove the snapping-and-live-guides milestone: implement absolute root-frame 15-degree snapping for both single and collective rotation with live Shift and Alt transitions; evaluate translation and resize tolerance using current root-to-screen geometry on every move; preserve valid persisted preferences when only tolerance is invalid; and add deterministic integration coverage for canvas/object snapping, exclusions, rotated/nested/cross-parent geometry, single/collective resize and rotation, truthful guide lifecycle, atomic history, cancellation/no-op, and clean serialization using the real Seatify constellation."
+    inputs:
+      - "T003 normative geometry and interaction contract"
+      - "T005 milestone audit and missing-evidence matrix"
+      - "T009 implementation and verification receipt"
+      - "Current repository diff and Seatify fixture"
+    constraints:
+      - "Correct the rejected snapping milestone as one coherent vertical slice; do not begin numeric precision controls."
+      - "Preserve free transforms, all-or-nothing mutation, existing SVG structure, and clean serialization boundaries."
+      - "Prove the corrected behaviors through integration and real Seatify coverage, not helper-only assertions."
+    allowed_files:
+      - src/client/canvas/transform.ts
+      - src/client/canvas/editor.ts
+      - src/client/selection-preferences.ts
+      - src/client/main.ts
+      - src/client/styles.css
+      - tests/editor-interactions.test.ts
+      - tests/editor-serialization.test.ts
+      - tests/selection-preferences.test.ts
+      - tests/client-ux.test.ts
+      - tests/e2e/precision-snapping.spec.ts
+      - tests/e2e/rotation-feedback.spec.ts
+      - tests/e2e/collective-translation.spec.ts
+      - tests/e2e/collective-transforms.spec.ts
+      - tests/e2e/multi-selection-arrangement.spec.ts
+    verify:
+      - git diff --check
+      - npm run typecheck
+      - npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/selection-preferences.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts
+      - npx playwright test tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts tests/e2e/collective-translation.spec.ts tests/e2e/collective-transforms.spec.ts tests/e2e/multi-selection-arrangement.spec.ts --project=chromium
+      - npm run check
+      - npx playwright test --project=chromium
+    stop_if:
+      - "Any correction requires files outside allowed_files, dependency vendoring, or authored-transform normalization."
+      - "Single-selection absolute root-frame rotation cannot be implemented without creating a second conflicting gesture lifecycle or partial mutation."
+      - "Current finite root-to-screen geometry cannot be obtained on each eligible pointer move."
+      - "Tests cannot prove both single and collective Shift snapping, Alt suspension/resumption, object targets, rotated geometry, guide truthfulness, and atomic history."
+      - "A required verification command fails twice for an out-of-scope cause or exposes a contradictory interaction contract."
+    receipt:
+      result: done
+      changed_files:
+        - src/client/canvas/editor.ts
+        - src/client/canvas/transform.ts
+        - src/client/selection-preferences.ts
+        - tests/editor-interactions.test.ts
+        - tests/selection-preferences.test.ts
+        - tests/e2e/precision-snapping.spec.ts
+        - tests/e2e/rotation-feedback.spec.ts
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/selection-preferences.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          status: pass
+        - cmd: "npx playwright test tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts tests/e2e/collective-translation.spec.ts tests/e2e/collective-transforms.spec.ts tests/e2e/multi-selection-arrangement.spec.ts --project=chromium"
+          status: pass
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npx playwright test --project=chromium"
+          status: pass
+      summary: "Implemented absolute root-frame single rotation through the existing gesture lifecycle, live Shift/Alt transitions, and per-move root-to-screen translation tolerance. Invalid persisted tolerance now falls back independently. Added deterministic integration and Seatify coverage for object eligibility, nested geometry, current-scale tolerance, single/cross-parent resize guides, single/collective rotation transitions, cancellation, guide cleanup, atomic Undo, and preference preservation. Verification passed: 240 focused tests, 32 focused Chromium tests, 429 full repository tests plus build, and all 38 Chromium tests."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T011
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Re-audit the corrected snapping-and-live-guides milestone against T003 and T005, then approve the exact numeric-controls Worker package or specify remaining corrective work."
+    inputs:
+      - "T003 normative geometry and interaction contract"
+      - "T005 rejected milestone audit"
+      - "T009 and T010 Worker receipts"
+      - "Current diff, integration tests, and full verification evidence"
+    constraints:
+      - "Read-only."
+      - "Require integration evidence for single and collective rotation, live modifiers, current-matrix tolerance, object eligibility, truthful guides, atomic history, and clean serialization."
+      - "If accepted, copy the coherent numeric-controls package from the normative contract with exact allowed files, verify, and stop_if."
+    expected_output:
+      - "Corrected milestone accepted | corrective Worker required"
+      - "Contract-to-evidence mapping"
+      - "Exact next Worker objective, allowed_files, verify, and stop_if"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "The corrected snapping milestone now satisfies T003 and closes every T005 rejection with integrated evidence. Single and collective rotation use absolute root-frame snapping with live Shift/Alt transitions; translation and resize consult current screen geometry; object candidates enforce eligibility; guides match applied geometry and clear correctly; history is atomic; and serialization strips transient state. Verification passed 240 focused tests, 32 focused Chromium scenarios, the 429-test repository check plus build, and all 38 Chromium scenarios. Numeric controls are the largest safe next slice."
+      worker_package:
+        objective: "Implement the complete numeric precision-controls vertical slice for eligible single and compatible multi-selection: explicitly labeled oriented-frame X, Y, width, height, and rotation controls; Exact versus aggregate/Mixed feedback; finite validation and inline errors; aspect-locked and compatible unlocked sizing; absolute collective rotation; all-or-nothing preflight; Enter/blur commit, Escape cancel, unchanged no-op; one history checkpoint per committed edit; clean serialization; and focused plus real Seatify regression coverage."
+        allowed_files:
+          - src/client/canvas/transform.ts
+          - src/client/canvas/editor.ts
+          - src/client/main.ts
+          - src/client/styles.css
+          - tests/editor-interactions.test.ts
+          - tests/editor-serialization.test.ts
+          - tests/client-ux.test.ts
+          - tests/e2e/multi-selection-arrangement.spec.ts
+        verify:
+          - "git diff --check"
+          - "npm run typecheck"
+          - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          - "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium"
+          - "npm run check"
+          - "npx playwright test --project=chromium"
+        stop_if:
+          - "Implementation requires any file outside allowed_files."
+          - "The oriented-frame origin, dimensions, absolute rotation, Exact/Mixed display, or aggregate-edit semantics cannot be implemented exactly from current finite geometry."
+          - "A proposed edit would normalize authored structure beyond existing matrix composition, mutate only part of a selection, or weaken locked, hidden, incompatible, singular, or agent-pending availability."
+          - "Nonuniform width or height editing cannot preserve relative geometry for every eligible target without approximation."
+          - "The implementation cannot preflight all selected targets before mutation or cannot guarantee one checkpoint for commit and none for cancel/no-op."
+          - "Numeric inspector state or validation metadata cannot be excluded from snapshots, clean saves, and agent submissions."
+          - "A required verification command fails twice for an out-of-scope cause or exposes a contradictory numeric interaction contract."
+      evidence:
+        - "Single and collective rotation share absolute root-frame snapping with live Shift/Alt transitions and atomic Undo."
+        - "Translation and resize use current screen geometry per move; dynamic-scale integration proves six-CSS-pixel tolerance."
+        - "Object snapping covers eligibility, nested rotated geometry, cross-parent projection, and guide truthfulness on Seatify."
+        - "Single and collective resize coverage proves guides, cancellation, Undo, zoom/sidebar independence, and clean reload."
+        - "Guide lifecycle, history, serialization, and invalid-tolerance preference preservation are proven."
+        - "All focused and full unit/browser gates passed."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "Numeric geometry, inspector state, history, serialization, and Seatify coverage converge on SvgEditor and shared tests."
+      blocked_tasks: []
+      missing_evidence: []
+      required_board_updates:
+        - "Record T011 done."
+        - "Activate T006."
+        - "T006 materializes one numeric Worker package exactly."
+        - "Do not start T007 before that complete slice passes."
+  - id: T012
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Implement the complete numeric precision-controls vertical slice for eligible single and compatible multi-selection: explicitly labeled oriented-frame X, Y, width, height, and rotation controls; Exact versus aggregate/Mixed feedback; finite validation and inline errors; aspect-locked and compatible unlocked sizing; absolute collective rotation; all-or-nothing preflight; Enter/blur commit, Escape cancel, unchanged no-op; one history checkpoint per committed edit; clean serialization; and focused plus real Seatify regression coverage."
+    inputs:
+      - "T003 normative numeric controls contract"
+      - "T011 approved Worker package"
+      - "Current snapping implementation and shared transform geometry"
+      - "Real Seatify constellation fixture and regression suites"
+    constraints:
+      - "X/Y are root coordinates of the explicitly labeled oriented-frame origin; width/height are positive frame dimensions; rotation is normalized absolute root-frame angle."
+      - "Single selection shows Exact; compatible multi-selection shows aggregate values and Mixed members when member properties differ."
+      - "All aggregate edits preserve member-relative geometry and rotation differences; unsupported or unavailable selections disable mutation."
+      - "Accept finite decimals only with the T003 bounds; invalid input preserves geometry and shows inline errors."
+      - "Enter or blur commits once, Escape cancels, unchanged normalized values are no-ops, and all targets preflight before mutation."
+      - "Aspect lock defaults on for collective selection; unlocked nonuniform sizing is allowed only when exact composition is compatible."
+    allowed_files:
+      - src/client/canvas/transform.ts
+      - src/client/canvas/editor.ts
+      - src/client/main.ts
+      - src/client/styles.css
+      - tests/editor-interactions.test.ts
+      - tests/editor-serialization.test.ts
+      - tests/client-ux.test.ts
+      - tests/e2e/multi-selection-arrangement.spec.ts
+    verify:
+      - git diff --check
+      - npm run typecheck
+      - npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts
+      - npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium
+      - npm run check
+      - npx playwright test --project=chromium
+    stop_if:
+      - "Implementation requires any file outside allowed_files."
+      - "The oriented-frame origin, dimensions, absolute rotation, Exact/Mixed display, or aggregate-edit semantics cannot be implemented exactly from current finite geometry."
+      - "A proposed edit would normalize authored structure beyond existing matrix composition, mutate only part of a selection, or weaken locked, hidden, incompatible, singular, or agent-pending availability."
+      - "Nonuniform width or height editing cannot preserve relative geometry for every eligible target without approximation."
+      - "The implementation cannot preflight all selected targets before mutation or cannot guarantee one checkpoint for commit and none for cancel/no-op."
+      - "Numeric inspector state or validation metadata cannot be excluded from snapshots, clean saves, and agent submissions."
+      - "A required verification command fails twice for an out-of-scope cause or exposes a contradictory numeric interaction contract."
+    receipt:
+      result: blocked
+      blocked_reason: "Focused Chromium still failed after two fix attempts because the new Seatify numeric scenario tries to fill #position-width while the Geometry disclosure remains collapsed."
+      changed_files:
+        - src/client/canvas/transform.ts
+        - src/client/canvas/editor.ts
+        - src/client/main.ts
+        - src/client/styles.css
+        - tests/editor-interactions.test.ts
+        - tests/client-ux.test.ts
+        - tests/e2e/multi-selection-arrangement.spec.ts
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          status: fail
+        - cmd: "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          status: pass
+        - cmd: "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium"
+          status: fail
+        - cmd: "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium"
+          status: fail
+      summary: "Implemented numeric oriented-frame controls with strict validation, Exact/Aggregate/Mixed feedback, atomic commits, aspect sizing, absolute rotation, preflight, and tests. Unit verification passes 232 tests. Focused Chromium passes 22/23; the new Seatify test times out because Geometry remains collapsed, making #position-width non-visible. Remaining full gates were not run after the retry limit."
+      remaining_blockers:
+        - "Open #geometry-group in the new Seatify numeric test before filling #position-width, then rerun focused Chromium, npm run check, and full Chromium."
+      verification_attempts: 2
+      stopped_because: "Focused Chromium verification still failed after two fix attempts, triggering the T012 stop condition."
+  - id: T013
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Repair and verify the numeric-controls Seatify browser oracle without changing product behavior: explicitly open the Geometry disclosure before inspecting or editing its controls, preserve every existing aggregate/Mixed, aspect-lock, geometry, unrelated-layer, Undo, no-op, and invalid-input assertion, then rerun the complete numeric milestone verification contract."
+    inputs:
+      - "T007 Judge audit"
+      - "T012 numeric controls implementation and blocked receipt"
+      - "Current Seatify multi-selection arrangement scenario"
+    constraints:
+      - "Test-only correction; do not change product behavior."
+      - "Do not weaken, skip, bypass, or delete existing assertions."
+      - "Explicitly open Geometry before inspecting or editing its controls."
+    allowed_files:
+      - tests/e2e/multi-selection-arrangement.spec.ts
+    verify:
+      - git diff --check
+      - npm run typecheck
+      - npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts
+      - npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium
+      - npm run check
+      - npx playwright test --project=chromium
+    stop_if:
+      - "Opening #geometry-group does not make the existing numeric scenario pass without weakening, skipping, conditionally bypassing, or deleting assertions."
+      - "Any product-source change is required; return to Judge with the observed implementation failure instead."
+      - "The repaired scenario exposes incorrect X/Y/width/height/rotation geometry, Mixed feedback, validation, history, or availability behavior."
+      - "A required verification command fails twice for a cause outside the allowed file or reveals nondeterministic browser behavior."
+    receipt:
+      result: done
+      changed_files:
+        - tests/e2e/multi-selection-arrangement.spec.ts
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          status: pass
+        - cmd: "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium"
+          status: pass
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npx playwright test --project=chromium"
+          status: pass
+      summary: "Explicitly opened #geometry-group and verified it is open before the Seatify numeric scenario inspects or edits controls. Preserved every existing assertion. Focused units passed 232 tests, focused Chromium passed 23 scenarios, npm run check passed 433 tests and build, and full Chromium passed 39 scenarios."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T014
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Re-audit the now-green numeric precision-controls milestone and authorize the exact final Seatify QA-hardening package or remaining corrective work."
+    inputs:
+      - "T007 numeric milestone audit"
+      - "T012 implementation receipt and T013 corrected oracle receipt"
+      - "Current diff and all focused/full verification evidence"
+    constraints:
+      - "Read-only."
+      - "Require green focused and full gates and intact Seatify assertions."
+      - "If accepted, specify one coherent final adversarial QA Worker package covering all remaining numeric browser gaps."
+    expected_output:
+      - "Numeric milestone accepted | corrective Worker required"
+      - "Field/state/history/serialization evidence mapping"
+      - "Exact final QA objective, allowed_files, verify, and stop_if"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "The numeric milestone is accepted. T013 repaired only collapsed-disclosure test setup without weakening assertions. Focused units, focused Chromium, repository check/build, and full Chromium are green. Evidence covers every field implementation, aggregate/Mixed state, strict validation, availability preflight, exact collective composition, atomic history, and serialization. Browser proof remains narrow, so one coherent Seatify E2E hardening slice must cover remaining fields, unlocked sizing, lifecycle states, unavailability, zoom/sidebar independence, and save/reload."
+      worker_package:
+        objective: "Extend the real complex Seatify constellation browser oracle into one adversarial numeric-precision workflow. Preserve the existing aggregate/Mixed and aspect-locked width scenario, then prove valid X, Y, height, and absolute rotation edits; unlocked width and height edits with exact nonuniform frame scaling; changed-value blur commit; Escape cancellation; normalized no-op; inline invalid-input recovery; one atomic Undo/Redo checkpoint per commit; Reset; all-or-nothing disabled behavior for locked, hidden, incompatible, and agent-pending selections; unchanged unrelated layers; correctness at 125% zoom with both sidebars collapsed; and named save/reload preserving exact geometry while emitting no editor-only numeric state. Reuse stable Seatify labels and existing helpers, make no product changes, and keep every existing assertion intact."
+        allowed_files:
+          - tests/e2e/multi-selection-arrangement.spec.ts
+        verify:
+          - "git diff --check"
+          - "npm run typecheck"
+          - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          - "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium"
+          - "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --repeat-each=2"
+          - "npm run check"
+          - "npx playwright test --project=chromium"
+        stop_if:
+          - "Any required behavior fails and fixing it would require a product-source, fixture, helper, configuration, or dependency change outside allowed_files; report the exact product defect to Judge instead."
+          - "Any scenario requires weakening, deleting, skipping, conditionally bypassing, or replacing an existing geometry, history, validation, unrelated-layer, or serialization assertion."
+          - "Stable Seatify selectors cannot prove all selected members, the unrelated layer, control availability, history depth, and saved/reloaded geometry without screenshot-only or timing-dependent inference."
+          - "Unlocked nonuniform sizing, absolute rotation, changed blur, Escape, unavailable-state rejection, zoom/sidebar independence, or save/reload produces partial mutation, geometry drift, extra history, or editor-state leakage."
+          - "A required verification command fails twice for an out-of-scope cause or the repeated focused Chromium run exposes nondeterministic behavior."
+      evidence:
+        - "All current focused/full gates are green: 232 focused units, 23 focused Chromium, 433 repository tests/build, 39 full Chromium."
+        - "Implementation evidence covers X/Y, dimensions, rotation, Exact/Aggregate/Mixed, validation, preflight, history, and serialization."
+        - "Current browser proof covers aggregate/Mixed, locked aspect width, validation/no-op, unrelated layer, and Undo."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "One integrated Seatify workflow in one E2E file."
+      blocked_tasks:
+        - T999
+      missing_evidence:
+        - "Adversarial real Seatify browser coverage detailed in worker package."
+      required_board_updates:
+        - "Record T014 done."
+        - "Activate T008."
+        - "T008 materializes exactly one QA Worker."
+        - "Keep T999 queued until all gates pass."
+  - id: T015
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Extend the real complex Seatify constellation browser oracle into one adversarial numeric-precision workflow. Preserve the existing aggregate/Mixed and aspect-locked width scenario, then prove valid X, Y, height, and absolute rotation edits; unlocked width and height edits with exact nonuniform frame scaling; changed-value blur commit; Escape cancellation; normalized no-op; inline invalid-input recovery; one atomic Undo/Redo checkpoint per commit; Reset; all-or-nothing disabled behavior for locked, hidden, incompatible, and agent-pending selections; unchanged unrelated layers; correctness at 125% zoom with both sidebars collapsed; and named save/reload preserving exact geometry while emitting no editor-only numeric state. Reuse stable Seatify labels and existing helpers, make no product changes, and keep every existing assertion intact."
+    inputs:
+      - "T014 approved QA Worker package"
+      - "T012/T013 numeric implementation and browser oracle"
+      - "Current complex Seatify fixture and helpers"
+    constraints:
+      - "Test-only hardening; no product, fixture, helper, configuration, or dependency changes."
+      - "Preserve every existing assertion and use stable geometry/state evidence rather than screenshot inference."
+      - "Cover the complete browser gap set in one integrated workflow."
+    allowed_files:
+      - tests/e2e/multi-selection-arrangement.spec.ts
+    verify:
+      - git diff --check
+      - npm run typecheck
+      - npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts
+      - npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium
+      - npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --repeat-each=2
+      - npm run check
+      - npx playwright test --project=chromium
+    stop_if:
+      - "Any required behavior fails and fixing it would require a product-source, fixture, helper, configuration, or dependency change outside allowed_files; report the exact product defect to Judge instead."
+      - "Any scenario requires weakening, deleting, skipping, conditionally bypassing, or replacing an existing geometry, history, validation, unrelated-layer, or serialization assertion."
+      - "Stable Seatify selectors cannot prove all selected members, the unrelated layer, control availability, history depth, and saved/reloaded geometry without screenshot-only or timing-dependent inference."
+      - "Unlocked nonuniform sizing, absolute rotation, changed blur, Escape, unavailable-state rejection, zoom/sidebar independence, or save/reload produces partial mutation, geometry drift, extra history, or editor-state leakage."
+      - "A required verification command fails twice for an out-of-scope cause or the repeated focused Chromium run exposes nondeterministic behavior."
+    receipt:
+      result: blocked
+      blocked_reason: "The focused adversarial Seatify run still failed after two fix attempts because collapsing both sidebars at 125% changed a browser-measured unrelated caption edge by 0.0297544 root units; resolving whether this is measurement noise or product drift requires Judge direction."
+      changed_files:
+        - tests/e2e/multi-selection-arrangement.spec.ts
+      commands:
+        - cmd: "git diff --check && npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --grep \"Seatify numeric oriented-frame\""
+          status: fail
+          detail: "X delta differed by 0.0000477 because displayed numeric inputs round to four decimals."
+        - cmd: "git diff --check && npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --grep \"Seatify numeric oriented-frame\""
+          status: fail
+          detail: "selectFocus-only agent transaction auto-accepted instead of exposing pending review."
+        - cmd: "git diff --check && npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --grep \"Seatify numeric oriented-frame\""
+          status: fail
+          detail: "Collapsing sidebars at 125% changed Venue caption measured right edge by 0.0297544 root units."
+      summary: "Extended the existing Seatify numeric oracle across valid numeric edits, locked/unlocked sizing, blur, Escape, normalized no-op, invalid recovery, atomic history, Reset, unavailable selections, zoom/sidebar behavior, and clean named save/reload. Stopped after the retry limit when the focused run exposed unrelated-layer measured geometry drift after collapsing both sidebars at 125%; the seven full gates were not run."
+      remaining_blockers:
+        - "Judge must decide whether the 0.0297544 root-unit browser measurement change is a product defect or measurement tolerance issue and specify the exact correction."
+        - "All seven T015 gates remain to be run."
+      verification_attempts: 3
+      stopped_because: "T015 stop_if: zoom/sidebar independence produced measured geometry drift, and focused verification remained red after two fix attempts."
+  - id: T016
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Repair and complete the final adversarial Seatify oracle without changing product behavior. Replace only the strict cross-layout getCTM/getBBox AABB equality at 125% zoom and collapsed sidebars with exact authored-geometry fingerprints for every selected member, their geometry-bearing ancestor transforms, Venue caption, Seatify wordmark, and venue-logo ancestors; exclude only known transient editor attributes. Reopen the inspector and prove the oriented-frame numeric values and selection are unchanged. Preserve all same-layout rendered-geometry, field, Mixed, validation, history, Reset, unavailable-state, unrelated-layer, Agent, save/reload, and serialization assertions. Then run every prescribed gate, including repeated Chromium stability."
+    inputs:
+      - "T999 not-complete audit and renderer-noise evidence"
+      - "T015 expanded adversarial Seatify scenario"
+      - "Current trace-authored geometry fingerprints"
+    constraints:
+      - "Test-only correction in the existing integrated oracle."
+      - "Replace only the unstable cross-layout AABB equality; preserve every other assertion."
+      - "Use exact authored geometry and inspector evidence, excluding only known transient editor attributes."
+    allowed_files:
+      - tests/e2e/multi-selection-arrangement.spec.ts
+    verify:
+      - git diff --check
+      - npm run typecheck
+      - npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts
+      - npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium
+      - npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --repeat-each=2
+      - npm run check
+      - npx playwright test --project=chromium
+    stop_if:
+      - "Any selected or unrelated authored geometry attribute, geometry-bearing ancestor transform, selection identity, or oriented-frame numeric value actually changes across zoom/sidebar reflow."
+      - "The correction requires product, fixture, helper, configuration, dependency, or any file outside allowed_files."
+      - "Any existing assertion must be deleted, skipped, conditionally bypassed, replaced with screenshot-only inference, or relaxed with an arbitrary broad tolerance."
+      - "The focused scenario or repeated run fails twice, or any full gate fails twice for an out-of-scope cause."
+    receipt:
+      result: blocked
+      blocked_reason: "The corrected integrated browser scenario reached save/reload but exceeded its existing 30-second test timeout on the second focused attempt; retry limit forbade a timing adjustment."
+      changed_files:
+        - tests/e2e/multi-selection-arrangement.spec.ts
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          status: pass
+        - cmd: "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium"
+          status: fail
+          detail: "Second cross-layout Venue caption AABB assertion remained."
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          status: pass
+        - cmd: "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium"
+          status: fail
+          detail: "30-second timeout awaiting complex-seatify during save/reload; 22 other tests passed."
+      summary: "Replaced both unstable cross-layout AABB comparisons with exact authored fingerprints covering selected members, Venue caption, Seatify wordmark, and transformed ancestors, excluding only data-lineage metadata. Reopened-inspector numeric values and selection are exact. The second run reached save/reload but timed out under the existing 30-second scenario budget. Repeat/full gates remain unrun."
+      remaining_blockers:
+        - "Judge direction for a bounded per-test timeout adjustment."
+        - "Repeated, repository, and full Chromium gates."
+      verification_attempts: 2
+      stopped_because: "T016 stop_if: focused scenario failed twice; second was a 30-second timeout during save/reload."
+  - id: T017
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the corrected authored-geometry oracle and its 30-second save/reload timeout, then specify the exact bounded final correction and verification path."
+    inputs:
+      - "T999 not-complete audit"
+      - "T016 blocked receipt and current E2E diff"
+      - "Focused run traces and timing evidence"
+    constraints:
+      - "Read-only."
+      - "Distinguish deterministic expanded-workflow duration from product hang or nondeterminism."
+      - "Authorize only a bounded same-file correction that preserves every behavioral and geometry assertion."
+    expected_output:
+      - "Corrective Worker package | product defect"
+      - "Exact timeout/timing contract"
+      - "Required focused, repeated, repository, and full gates"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "The timeout is not expanded duration or a product hang. Trace timing reaches the final file-switch click in about 6.3 seconds after save succeeds; the locator waits because the left workspace sidebar was collapsed and never reopened. Keep the 30-second budget. Authorize one same-file correction to reopen the left sidebar and assert expansion before existing file clicks, preserving every assertion, then run all gates."
+      worker_package:
+        objective: "Complete the adversarial Seatify oracle without changing product behavior. In tests/e2e/multi-selection-arrangement.spec.ts only, reopen the collapsed left workspace sidebar immediately before the existing save/reload file-switch sequence and assert aria-expanded=true before clicking complex-seatify and the saved iteration. Keep the per-test timeout at exactly 30,000 ms; do not add sleeps, retries, locator timeouts, or a larger test timeout. Preserve every current assertion, including collapsed-sidebar proof, authored fingerprints, same-layout rendered geometry, numeric fields, Mixed state, validation, atomic history, Reset, unavailable states, Agent lifecycle, saved SVG cleanliness, and exact reload geometry/transforms. Run the complete verification sequence."
+        allowed_files:
+          - tests/e2e/multi-selection-arrangement.spec.ts
+        verify:
+          - "git diff --check"
+          - "npm run typecheck"
+          - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          - "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --grep \"Seatify numeric oriented-frame\""
+          - "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium"
+          - "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --repeat-each=2"
+          - "npm run check"
+          - "npx playwright test --project=chromium"
+        stop_if:
+          - "Correction requires files outside allowed or product/config/dependency change."
+          - "Any existing assertion is removed, skipped, weakened, or replaced with screenshot/timing inference."
+          - "Left sidebar reports expanded but file remains inaccessible."
+          - "Scenario exceeds 30 seconds twice after correction; do not increase timeout."
+          - "Any geometry, transform, selection, numeric, history, or clean reload invariant fails."
+          - "Any gate fails twice out-of-scope or nondeterministically."
+      evidence:
+        - "Save completes around 5.5 seconds and UI remains responsive."
+        - "Click begins around 6.3 seconds but left sidebar remains collapsed."
+        - "Snapshot exposes Expand workspace panel, not file list."
+        - "Current diff reopens only right sidebar before later left-sidebar file click."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "One integrated E2E file."
+      blocked_tasks:
+        - T015
+        - T016
+      missing_evidence:
+        - "All corrected gates."
+        - "Owner manual walkthrough."
+      required_board_updates:
+        - "Record T017 done."
+        - "Create exact corrective Worker."
+        - "Fresh final audit after green gates."
+        - "Manual walkthrough required."
+  - id: T018
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Complete the adversarial Seatify oracle without changing product behavior. In tests/e2e/multi-selection-arrangement.spec.ts only, reopen the collapsed left workspace sidebar immediately before the existing save/reload file-switch sequence and assert aria-expanded=true before clicking complex-seatify and the saved iteration. Keep the per-test timeout at exactly 30,000 ms; do not add sleeps, retries, locator timeouts, or a larger test timeout. Preserve every current assertion, including collapsed-sidebar proof, authored fingerprints, same-layout rendered geometry, numeric fields, Mixed state, validation, atomic history, Reset, unavailable states, Agent lifecycle, saved SVG cleanliness, and exact reload geometry/transforms. Run the complete verification sequence."
+    inputs:
+      - "T017 trace-based timeout audit"
+      - "T016 corrected authored-geometry oracle"
+    constraints:
+      - "Same-file test correction only."
+      - "Keep exact 30-second budget and add no timing workarounds."
+      - "Reopen and assert left sidebar before file-switch sequence; preserve all assertions."
+    allowed_files:
+      - tests/e2e/multi-selection-arrangement.spec.ts
+    verify:
+      - git diff --check
+      - npm run typecheck
+      - npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts
+      - npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --grep "Seatify numeric oriented-frame"
+      - npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium
+      - npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --repeat-each=2
+      - npm run check
+      - npx playwright test --project=chromium
+    stop_if:
+      - "Correction requires files outside allowed or product/config/dependency change."
+      - "Any existing assertion is removed, skipped, weakened, or replaced with screenshot/timing inference."
+      - "Left sidebar reports expanded but file remains inaccessible."
+      - "Scenario exceeds 30 seconds twice after correction; do not increase timeout."
+      - "Any geometry, transform, selection, numeric, history, or clean reload invariant fails."
+      - "Any gate fails twice out-of-scope or nondeterministically."
+    receipt:
+      result: blocked
+      blocked_reason: "After reopening the left sidebar, the focused scenario reached reload but failed a preserved exact rendered-bound invariant for the unrelated Venue caption: expected right 1020.8468627929685, received 1020.6259765624998."
+      changed_files:
+        - tests/e2e/multi-selection-arrangement.spec.ts
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          status: pass
+        - cmd: "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --grep \"Seatify numeric oriented-frame\""
+          status: fail
+          detail: "Exact reload Venue caption rendered right edge differs by 0.220886 root units."
+      summary: "Added required left-sidebar reopen and aria-expanded assertion. Diff, typecheck, and 232 focused units passed. The single browser scenario reached reload and then failed its exact rendered-bound invariant for the unrelated Venue caption. No timing workaround, assertion weakening, or out-of-scope change was made."
+      remaining_blockers:
+        - "Judge must define layout-invariant reload evidence for unchanged unrelated authored geometry."
+      verification_attempts: 1
+      stopped_because: "T018 stop_if requires immediate stop when any geometry invariant fails."
+  - id: T019
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the post-reload Venue caption rendered-bound mismatch and define the exact layout-invariant reload oracle needed to finish verification."
+    inputs:
+      - "T017 timeout audit"
+      - "T018 blocked reload receipt and trace"
+      - "Current exact authored-fingerprint helpers and save/reload assertions"
+    constraints:
+      - "Read-only."
+      - "Determine whether saved authored caption/ancestors changed or only renderer layout matrices differ."
+      - "Authorize only a same-file invariant correction preserving selected-object exact reload geometry and all behavioral assertions."
+    expected_output:
+      - "Exact corrective Worker package | product defect"
+      - "Reload oracle contract"
+      - "All required gates"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "Trace and saved-payload evidence rule out product mutation. Caption attributes/text and wordmark/logo transforms are byte-equivalent in source and reloaded SVG. Exact selected-seat reload geometry passes. Only renderer-derived text AABB changes between save and reload layouts. Replace only that cross-layout caption AABB with exact authored fingerprint; retain selected geometry/transforms, all behavior, and 30-second budget."
+      worker_package:
+        objective: "Finish the adversarial Seatify oracle without changing product behavior. In tests/e2e/multi-selection-arrangement.spec.ts only, preserve the existing saved geometry and capture an exact saved selected-member geometry subset plus the exact Venue caption/Seatify wordmark authored fingerprint, including geometry-bearing ancestor transforms. After reload, compare rendered geometry exactly for alignmentLabels only, compare every selected transform attribute exactly with savedTransforms, and compare the reloaded Venue caption/Seatify wordmark authored fingerprint exactly with its save-time fingerprint. Remove only Venue caption from the cross-layout getCTM/getBBox AABB comparison. Preserve the 30,000 ms timeout, sidebar reopen assertion, save/reload file switch, SVG cleanliness assertion, and every existing numeric, Mixed, validation, history, Reset, unavailable-state, Agent, zoom/sidebar, selection, and same-layout geometry assertion."
+        allowed_files:
+          - tests/e2e/multi-selection-arrangement.spec.ts
+        verify:
+          - "git diff --check"
+          - "npm run typecheck"
+          - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          - "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --grep \"Seatify numeric oriented-frame\""
+          - "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium"
+          - "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --repeat-each=2"
+          - "npm run check"
+          - "npx playwright test --project=chromium"
+        stop_if:
+          - "Any caption/wordmark/ancestor authored attribute differs between save and reload."
+          - "Any selected rendered geometry or transform differs after reload."
+          - "Correction requires out-of-scope file/product/config/timing change."
+          - "Any assertion other than single cross-layout caption AABB is removed or weakened."
+          - "Focused/repeated/full gate fails twice out-of-scope or nondeterministically."
+      evidence:
+        - "Saved payload authored geometry is byte-equivalent."
+        - "Selected reload geometry passes before caption assertion."
+        - "Caption AABB varies only across viewport layouts."
+        - "Existing fingerprint helper captures attributes/text/transformed ancestors."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "One integrated reload oracle file."
+      blocked_tasks:
+        - T018
+      missing_evidence:
+        - "All gates and fresh final audit."
+        - "Owner manual walkthrough."
+      required_board_updates:
+        - "Record T019 done."
+        - "Create one corrective Worker."
+        - "Fresh T999 after green gates."
+  - id: T020
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Finish the adversarial Seatify oracle without changing product behavior. In tests/e2e/multi-selection-arrangement.spec.ts only, preserve the existing saved geometry and capture an exact saved selected-member geometry subset plus the exact Venue caption/Seatify wordmark authored fingerprint, including geometry-bearing ancestor transforms. After reload, compare rendered geometry exactly for alignmentLabels only, compare every selected transform attribute exactly with savedTransforms, and compare the reloaded Venue caption/Seatify wordmark authored fingerprint exactly with its save-time fingerprint. Remove only Venue caption from the cross-layout getCTM/getBBox AABB comparison. Preserve the 30,000 ms timeout, sidebar reopen assertion, save/reload file switch, SVG cleanliness assertion, and every existing numeric, Mixed, validation, history, Reset, unavailable-state, Agent, zoom/sidebar, selection, and same-layout geometry assertion."
+    inputs:
+      - "T019 reload oracle audit"
+      - "T018 current integrated scenario"
+    constraints:
+      - "Only replace the single cross-layout caption rendered AABB comparison."
+      - "Preserve exact selected geometry/transforms and all behavior assertions."
+      - "Use exact authored fingerprint; retain 30-second timing and no workarounds."
+    allowed_files:
+      - tests/e2e/multi-selection-arrangement.spec.ts
+    verify:
+      - git diff --check
+      - npm run typecheck
+      - npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts
+      - npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --grep "Seatify numeric oriented-frame"
+      - npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium
+      - npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --repeat-each=2
+      - npm run check
+      - npx playwright test --project=chromium
+    stop_if:
+      - "Any caption/wordmark/ancestor authored attribute differs between save and reload."
+      - "Any selected rendered geometry or transform differs after reload."
+      - "Correction requires out-of-scope file/product/config/timing change."
+      - "Any assertion other than single cross-layout caption AABB is removed or weakened."
+      - "Focused/repeated/full gate fails twice out-of-scope or nondeterministically."
+    receipt:
+      result: done
+      changed_files:
+        - tests/e2e/multi-selection-arrangement.spec.ts
+      commands:
+        - cmd: "git diff --check"
+          status: pass
+        - cmd: "npm run typecheck"
+          status: pass
+        - cmd: "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          status: pass
+        - cmd: "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --grep \"Seatify numeric oriented-frame\""
+          status: pass
+        - cmd: "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium"
+          status: pass
+        - cmd: "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --repeat-each=2"
+          status: pass
+        - cmd: "npm run check"
+          status: pass
+        - cmd: "npx playwright test --project=chromium"
+          status: pass
+      summary: "Replaced only the reload-time cross-layout Venue caption rendered-AABB comparison. Reload now compares exact rendered geometry for selected alignment members, exact selected transform attributes, and exact caption/wordmark authored fingerprints including transformed ancestors. Preserved 30-second budget, sidebar reopen, file switch, cleanliness check, and all behavior. All eight gates passed: 232 focused units, 1 single scenario, 23 focused Chromium, 34 repeated scenarios, 433 repository tests/build, and 39 full Chromium."
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T021
+    type: judge
+    assignee: Judge
+    status: blocked
+    reasoning_hint: high
+    objective: "Perform the fresh final completion audit after all automated precision-transform, snapping, numeric-control, repeated Seatify, repository, and full Chromium gates passed."
+    inputs:
+      - "All task receipts through T020"
+      - "Normative contract and current diff"
+      - "Latest focused, repeated, repository, and full Chromium evidence"
+      - "Manual walkthrough requirement from goal.md"
+    constraints:
+      - "Read-only."
+      - "Set full_outcome_complete true only if the entire oracle, including required owner manual evidence, is satisfied."
+      - "If only owner manual walkthrough remains, specify the exact bounded checklist and terminal wait state; do not invent approval."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete true | false"
+      - "Final oracle evidence matrix"
+      - "Exact remaining human checklist if any"
+      - "PR-readiness"
+    receipt:
+      result: blocked
+      decision: not_complete
+      full_outcome_complete: false
+      waiting_for_user_approval: true
+      required_reply: "Precision transforms Seatify manual QA passed"
+      rationale: "The complete automated oracle is green on the real Seatify constellation and the diff matches the normative contract. Charter completion still requires the matching owner manual walkthrough, for which no receipt exists. No safe local work remains before that approval."
+      evidence:
+        - "T011 accepted snapping semantics, deterministic targets, truthful guides, atomic history, and clean serialization."
+        - "T013 and T014 proved oriented-frame numeric controls, Exact/Aggregate/Mixed feedback, validation, cancellation/no-op behavior, and all-or-nothing availability."
+        - "T020 passed 232 focused unit tests, 23 focused Chromium scenarios, 34 repeated scenarios, 433 repository tests plus build, and all 39 Chromium scenarios."
+        - "The integrated Seatify oracle covers Undo/Redo, Reset, Escape, invalid recovery, unavailable selections, 125% zoom, collapsed sidebars, named save/reload, exact selected transforms, unrelated authored geometry, and editor-state cleanliness."
+      blocked_tasks:
+        - T021
+      missing_evidence:
+        - "Owner manual walkthrough of free and snapped single/multi transforms, truthful guides, live Alt/Option suspension, and Shift absolute 15-degree rotation snapping."
+        - "Owner manual walkthrough of X, Y, width, height, rotation, Exact/Aggregate/Mixed feedback, aspect lock, invalid recovery, Escape, no-op, and one-step Undo/Redo."
+        - "Owner manual walkthrough at 125% zoom with collapsed sidebars, followed by named save/reload and visual integrity confirmation."
+      required_board_updates:
+        - "Keep the goal and T021 blocked with no active task until the exact required reply is received."
+        - "After the exact reply, record the owner walkthrough evidence and perform a fresh completion audit."
+        - "Do not create, publish, or merge a pull request without separate explicit owner authorization."
+  - id: T022
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Fix the manual-QA regression where selection bounding boxes and handles remain at gesture-start geometry while selected artwork moves, covering both single-object and multi-selection translation with continuous live synchronization."
+    inputs:
+      - "Owner manual QA report on the 44-layer Seatify constellation"
+      - "Current SvgEditor drag lifecycle, single select/resize overlay, collective transform overlay, snap guides, and atomic history behavior"
+      - "Existing Seatify constellation and complex Seatify Chromium helpers"
+    constraints:
+      - "Preserve exact transform math, snapping, live guides, pointer targeting, selection identity, cancellation, no-op behavior, and one-checkpoint history."
+      - "The bounding outline and every visible handle must track the selected artwork before pointerup; do not hide the overlay as a workaround."
+      - "Do not recreate or replace an active resize/rotation handle during its own gesture."
+      - "Cover single and multi-selection at 100% and 125% zoom, including collapsed sidebars, using real pointer input and a mid-drag oracle sampled while the pointer remains down."
+      - "Use the checked-in 44-layer Seatify constellation for the principal live-overlay browser proof."
+      - "Do not change unrelated product behavior or weaken existing assertions."
+    allowed_files:
+      - src/client/canvas/editor.ts
+      - tests/editor-interactions.test.ts
+      - tests/e2e/live-drag-overlay.spec.ts
+      - tests/e2e/rotation-feedback.spec.ts
+      - tests/e2e/collective-translation.spec.ts
+    verify:
+      - "git diff --check"
+      - "npm run typecheck"
+      - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+      - "npx playwright test tests/e2e/live-drag-overlay.spec.ts tests/e2e/collective-translation.spec.ts --project=chromium --repeat-each=3"
+      - "npm run check"
+      - "npx playwright test --project=chromium"
+    stop_if:
+      - "The correction requires a file outside allowed_files."
+      - "Live synchronization would require changing authored SVG structure or serializing editor-only overlay state."
+      - "Any active resize/rotation pointer target must be replaced or loses capture during its gesture."
+      - "Any focused or full verification gate fails twice for an out-of-scope or nondeterministic cause."
+    expected_output:
+      - "Live single-selection bounding-box and handle synchronization during drag"
+      - "Live multi-selection collective overlay synchronization during drag"
+      - "Real-pointer mid-drag regression coverage at 100% and 125% zoom"
+      - "Focused and full green verification"
+    receipt:
+      result: blocked
+      changed_files:
+        - src/client/canvas/editor.ts
+        - tests/editor-interactions.test.ts
+        - tests/e2e/live-drag-overlay.spec.ts
+      commands:
+        - "git rev-parse --show-toplevel"
+        - "rg --files /Users/neonwatty/Desktop/lineage-logo -g 'AGENTS.md' -g 'AGENTS.override.md'"
+        - "git status --short"
+        - "npm run typecheck"
+        - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts"
+        - "npx playwright test tests/e2e/live-drag-overlay.spec.ts --project=chromium"
+      summary: "Implemented synchronous single-selection handler refresh and in-place collective overlay translation, with unit coverage preserving overlay identity. Added four real-pointer Seatify mid-drag cases across 100%/125% zoom and collapsed sidebars. Typecheck and 94 focused interaction tests pass. The new browser gate failed twice: its handle oracle incorrectly counts the collective connector as a tenth handle, and the 125% single-selection handle centers diverge from artwork by about 3.6 px. Per stop_if, no further fixes or full verification were attempted."
+      deviations:
+        - "Full verify sequence was not run because the focused live-overlay Chromium gate failed twice."
+      remaining_blockers:
+        - "Correct the browser oracle's collective handle filtering."
+        - "Determine whether the 125% single-selection discrepancy reflects handle geometry measurement or incomplete live synchronization."
+      verification_attempts: 2
+      stopped_because: "The focused live-drag-overlay Chromium verification gate failed twice, triggering the task stop condition."
+  - id: T023
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the blocked live-drag overlay implementation and failing Chromium evidence, distinguish oracle defects from product defects, and specify one bounded corrective Worker package."
+    inputs:
+      - "T022 receipt and current allowed-file diff"
+      - "Focused live-drag Chromium failure output and artifacts"
+      - "Single-selection svg.select.js handler geometry and collective overlay geometry"
+      - "Owner requirement that the complete bounding box and visible handles track artwork continuously before pointerup"
+    constraints:
+      - "Read-only."
+      - "Do not accept hiding, post-pointerup-only assertions, arbitrary broad tolerances, screenshot-only inference, or final-geometry substitution."
+      - "Preserve active resize/rotation handle identity and pointer capture."
+      - "Require a real-pointer mid-drag oracle at 100% and 125% zoom for both single and multi-selection."
+    expected_output:
+      - "approved | rejected"
+      - "Root cause of the collective connector count and 125% single-selection discrepancy"
+      - "Exact corrective Worker objective, allowed_files, verify, and stop_if"
+      - "Whether existing T022 edits are safe to retain"
+    receipt:
+      result: done
+      decision: rejected
+      full_outcome_complete: false
+      rationale: "T022 cannot be accepted while Chromium is red, but both failures are oracle defects rather than evidence of stale product geometry. The collective selector counts a decorative connector as a tenth handle. At 125%, the baseline and live samples span the CSS zoom transition: trace knob radii change from 23.5590349896 to 18.8472279917, an exact 1.25 ratio, so corner handles cannot share the artwork-center screen delta. Retain the in-place product synchronization, correct the oracle using stable/same-frame geometry, and run focused, repeated, repository, and full-browser gates."
+      worker_package:
+        objective: "Retain the T022 editor and unit-test changes. Correct tests/e2e/live-drag-overlay.spec.ts only: identify the nine interactive collective handles through [data-lineage-collective-handle], excluding the decorative connector; establish a deterministic settled 100% or 125% root screen transform before the baseline and prove it remains stable through the live sample; and strengthen the real-pointer, pointer-still-down oracle to compare the complete live outline and every visible handle with the selected artwork in the same frame, while preserving marked DOM identity. Keep all four Seatify cases: single and multi-selection at 100% and 125%, including collapsed sidebars. Preserve Undo atomicity and do not substitute pointerup/final geometry, hiding, screenshots, sleeps, or broad tolerances."
+        allowed_files:
+          - tests/e2e/live-drag-overlay.spec.ts
+        verify:
+          - "git diff --check"
+          - "npm run typecheck"
+          - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+          - "npx playwright test tests/e2e/live-drag-overlay.spec.ts --project=chromium --repeat-each=5"
+          - "npx playwright test tests/e2e/live-drag-overlay.spec.ts tests/e2e/collective-translation.spec.ts --project=chromium --repeat-each=3"
+          - "npm run check"
+          - "npx playwright test --project=chromium"
+        stop_if:
+          - "A same-frame oracle sampled while the real pointer remains down shows any actual artwork/outline/handle misalignment after the root screen transform is stable."
+          - "The correction needs product, fixture, configuration, dependency, or any file outside tests/e2e/live-drag-overlay.spec.ts."
+          - "Any interactive handle is hidden, omitted, replaced, reordered, or loses identity; the connector may only be excluded because it is non-interactive and lacks data-lineage-collective-handle."
+          - "The implementation requires a fixed sleep, post-pointerup or final-geometry substitution, screenshot-only inference, deleted coverage, or an arbitrary broad tolerance."
+          - "Any focused, repeated, repository, or full Chromium gate fails twice for an out-of-scope or nondeterministic cause."
+      evidence:
+        - "T022 receipt: typecheck and 94 focused interaction tests pass; four real-pointer Seatify cases exist, but three browser cases are red."
+        - "src/client/canvas/editor.ts #syncLiveTranslationOverlay invokes svg.select.js mutationHandler synchronously for one selection and translates the existing collective overlay group in place for multiple selections."
+        - "svg.select.js SelectHandler.mutationHandler updates points, outline, eight resize handles, and rotation handle in place; it does not recreate the active nodes."
+        - "The collective overlay has eight resize circles and one rotation group carrying data-lineage-collective-handle; its decorative connector line carries class svg_select_handle but no handle data attribute, explaining the count of 10."
+        - "The 125% trace records rotation-knob radii 23.559034989614954 before and 18.847227991691963 live; their ratio is exactly 1.25, proving the test sampled across the 100-to-125 CSS zoom transition."
+        - "The same trace shows the live outline assertions pass before handle 0 fails by 3.60357666015625 CSS px, consistent with scale change around different root-space positions rather than a stationary overlay."
+        - "The single-selection 100% case passed; both collective cases fail at the precondition count, before testing live tracking."
+        - "Existing T022 edits preserve collective overlay identity in unit coverage and update svg.select.js geometry through its in-place handler, so they are safe to retain pending corrected full verification."
+      blocked_tasks:
+        - T022
+        - T021
+      missing_evidence:
+        - "Green real-pointer mid-drag proof for complete outline and all nine interactive handles at 100% and 125% for single and multi-selection."
+        - "Repeated focused stability, repository check, and full Chromium results after correcting the oracle."
+        - "Renewed owner manual Seatify walkthrough after the regression fix is fully green."
+      required_board_updates:
+        - "Record T023 as done with this rejected milestone decision."
+        - "Create and activate one corrective Worker task from worker_package; do not reactivate or widen T022."
+        - "Keep T021 blocked because its earlier manual-approval request predates this newly discovered regression; require a fresh owner walkthrough only after the corrective gates pass."
+        - "After the Worker is green, perform a fresh Judge completion audit before requesting the exact owner approval phrase again."
+  - id: T024
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Retain the T022 product and unit-test changes and correct the live-drag Chromium oracle so all four single/multi Seatify cases prove same-frame outline and interactive-handle synchronization while the real pointer remains down."
+    inputs:
+      - "T022 blocked receipt and retained implementation"
+      - "T023 Judge receipt and exact worker package"
+      - "Current tests/e2e/live-drag-overlay.spec.ts"
+    constraints:
+      - "Identify the nine interactive collective handles through [data-lineage-collective-handle], excluding only the decorative connector."
+      - "Establish a deterministic settled 100% or 125% root screen transform before baseline and prove it remains stable through the live sample."
+      - "Compare the complete live outline and every visible interactive handle with selected artwork in the same frame while preserving marked DOM identity."
+      - "Keep all four Seatify cases: single and multi-selection at 100% and 125%, including collapsed sidebars."
+      - "Preserve Undo atomicity; do not substitute pointerup/final geometry, hiding, screenshots, sleeps, or broad tolerances."
+    allowed_files:
+      - tests/e2e/live-drag-overlay.spec.ts
+    verify:
+      - "git diff --check"
+      - "npm run typecheck"
+      - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+      - "npx playwright test tests/e2e/live-drag-overlay.spec.ts --project=chromium --repeat-each=5"
+      - "npx playwright test tests/e2e/live-drag-overlay.spec.ts tests/e2e/collective-translation.spec.ts --project=chromium --repeat-each=3"
+      - "npm run check"
+      - "npx playwright test --project=chromium"
+    stop_if:
+      - "A same-frame oracle sampled while the real pointer remains down shows any actual artwork, outline, or handle misalignment after the root screen transform is stable."
+      - "The correction needs any file outside tests/e2e/live-drag-overlay.spec.ts."
+      - "Any interactive handle is hidden, omitted, replaced, reordered, or loses identity."
+      - "The implementation requires a fixed sleep, post-pointerup or final-geometry substitution, screenshot-only inference, deleted coverage, or an arbitrary broad tolerance."
+      - "Any focused, repeated, repository, or full Chromium gate fails twice for an out-of-scope or nondeterministic cause."
+    expected_output:
+      - "Four green same-frame real-pointer Seatify cases"
+      - "Repeated focused stability"
+      - "Green repository and full Chromium gates"
+    receipt:
+      result: blocked
+      changed_files:
+        - tests/e2e/live-drag-overlay.spec.ts
+      commands:
+        - "git diff --check"
+        - "npm run typecheck"
+        - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+        - "npx playwright test tests/e2e/live-drag-overlay.spec.ts --project=chromium --repeat-each=5"
+        - "npx playwright test tests/e2e/live-drag-overlay.spec.ts tests/e2e/collective-translation.spec.ts --project=chromium --repeat-each=3"
+      summary: "Corrected the oracle to select exactly nine interactive collective handles, sample every outline point and handle, preserve marked DOM identity, and prove the root screen matrix remains stable from baseline through the pointer-down live sample. All 20 focused repetitions passed. The combined gate's live-overlay cases also passed, but collective-translation's save test failed twice because repeat runs persisted iteration-1, producing iteration-2 and iteration-3. Per stop_if, verification stopped before repository/full Chromium gates."
+      deviations:
+        - "npm run check and full Chromium were not run after the combined repeated gate hit the out-of-scope twice-failing stop condition."
+      remaining_blockers:
+        - "The mandated repeat-each=3 combined gate is incompatible with collective-translation.spec.ts expecting every persisted save to be iterations/iteration-1.svg; fixing it requires an outside-allowed file or isolated workspace state."
+      verification_attempts: 1
+      stopped_because: "The out-of-scope collective-translation save assertion failed on two repeat runs, triggering T024 stop_if."
+  - id: T025
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit T024's green live-overlay evidence and the repeat-incompatible legacy save assertion, then specify the smallest honest verification recovery that proves the product fix without weakening coverage."
+    inputs:
+      - "T024 receipt and current live-drag overlay spec"
+      - "Twenty passing repeated live-overlay cases"
+      - "collective-translation iteration naming and E2E workspace lifecycle"
+      - "Original T022 product fix and full goal oracle"
+    constraints:
+      - "Read-only."
+      - "Do not change production behavior to satisfy a test harness artifact."
+      - "Do not skip the legacy collective-translation suite or weaken its save assertions."
+      - "Require repository check and full Chromium before acceptance."
+    expected_output:
+      - "approved | rejected"
+      - "Whether live-overlay behavior is proven"
+      - "Exact verification-recovery Worker objective, allowed_files, verify, and stop_if"
+      - "Whether a harness correction is required or a non-repeated legacy run is the correct gate"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "Live-overlay behavior is proven: all four real-pointer, pointer-still-down Seatify cases passed five times, covering single/multi selection, 100%/125%, collapsed sidebars, complete outline points, nine interactive handles, stable root geometry, DOM identity, and atomic Undo. The remaining failure is a repeat-harness artifact: Playwright repeat-each reuses one temporary workspace, while the legacy save test intentionally requires a clean workspace and exact iteration-1 naming. Repetitions therefore correctly allocate iteration-2 and iteration-3. Do not change code or assertions; run that legacy suite once in a fresh invocation, then repository and full Chromium gates."
+      worker_package:
+        objective: "Perform verification recovery without changing source, tests, configuration, or product behavior. Re-run the corrected live-overlay spec five times in its own fresh Playwright invocation. Then run live-drag-overlay.spec.ts together with the complete collective-translation.spec.ts once, without repeat-each, so the legacy save assertion executes against a newly created clean E2E workspace and must still prove the exact iterations/iteration-1.svg path and clean saved SVG. Finish with repository check and the complete Chromium suite. Report any genuine failure rather than editing around it."
+        allowed_files: []
+        verify:
+          - "git diff --check"
+          - "npm run typecheck"
+          - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+          - "npx playwright test tests/e2e/live-drag-overlay.spec.ts --project=chromium --repeat-each=5"
+          - "npx playwright test tests/e2e/live-drag-overlay.spec.ts tests/e2e/collective-translation.spec.ts --project=chromium"
+          - "npm run check"
+          - "npx playwright test --project=chromium"
+        stop_if:
+          - "Any tracked source, test, fixture, configuration, dependency, or GoalBuddy file would need modification."
+          - "Any of the twenty repeated live-overlay cases fails, including outline points, nine interactive handles, root-matrix stability, DOM identity, pointer-down sampling, or Undo atomicity."
+          - "The single-run legacy suite does not save exactly iterations/iteration-1.svg in its fresh workspace, or any existing save-integrity assertion fails."
+          - "Recovery would require skipping a legacy test, intercepting or renaming its save, weakening its exact iteration-1 or clean-SVG assertions, changing production naming, or adding repeat-specific behavior."
+          - "npm run check or full Chromium fails twice for an out-of-scope or nondeterministic cause."
+          - "The E2E server does not create and remove its exact temporary workspace for each separate Playwright invocation."
+      evidence:
+        - "T024 passed all 20 live-overlay repetitions: four Seatify scenarios multiplied by repeat-each=5."
+        - "The corrected oracle samples while page.mouse remains down, compares every outline point and nine visible interactive handles, asserts an unchanged root screen matrix, and verifies marked overlay-node identity before pointerup."
+        - "The combined repeated invocation also passed its live-overlay cases; only the legacy collective-translation save test failed on later repetitions."
+        - "tests/e2e/collective-translation.spec.ts intentionally asserts exact iteration-1 naming and clean serialization; those assertions remain unchanged."
+        - "A separate non-repeated Playwright invocation preserves the legacy clean-workspace precondition without harness or product changes."
+      blocked_tasks:
+        - T024
+        - T021
+      missing_evidence:
+        - "Fresh non-repeated collective-translation run passing exact iteration-1 and clean SVG assertions."
+        - "Current green npm run check."
+        - "Current green complete Chromium result."
+        - "Fresh completion audit and renewed owner manual Seatify walkthrough."
+      required_board_updates:
+        - "Record T025 as done with live-overlay milestone approved and full_outcome_complete false."
+        - "Create and activate one verification-only Worker from worker_package with an empty allowed_files list."
+        - "Leave T024 blocked as superseded truthful verification evidence."
+        - "After every recovery gate passes, perform a fresh Judge completion audit before requesting renewed owner manual QA."
+  - id: T026
+    type: pm
+    assignee: PM
+    status: blocked
+    reasoning_hint: medium
+    objective: "Perform verification recovery without modifying files: prove the corrected live overlay repeatedly, run the legacy collective-translation suite once in a fresh workspace, then pass repository and full Chromium gates."
+    inputs:
+      - "T025 approved verification-recovery package"
+      - "Current T022/T024 implementation and tests"
+    constraints:
+      - "Do not modify source, tests, fixtures, configuration, dependencies, or GoalBuddy files."
+      - "Keep exact legacy iteration-1 and clean-SVG assertions unchanged."
+      - "Report genuine failures rather than editing around them."
+    verify:
+      - "git diff --check"
+      - "npm run typecheck"
+      - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+      - "npx playwright test tests/e2e/live-drag-overlay.spec.ts --project=chromium --repeat-each=5"
+      - "npx playwright test tests/e2e/live-drag-overlay.spec.ts tests/e2e/collective-translation.spec.ts --project=chromium"
+      - "npm run check"
+      - "npx playwright test --project=chromium"
+    stop_if:
+      - "Any file would need modification."
+      - "Any of the twenty repeated live-overlay cases fails."
+      - "The single-run legacy suite does not save exactly iterations/iteration-1.svg or fails any save-integrity assertion."
+      - "Recovery would require weakening, skipping, renaming, or repeat-specific behavior."
+      - "npm run check or full Chromium fails twice for an out-of-scope or nondeterministic cause."
+      - "The E2E server does not create and remove its exact temporary workspace for each separate Playwright invocation."
+    expected_output:
+      - "All seven verification commands pass"
+      - "No changed files"
+    receipt:
+      result: blocked
+      summary: "Verification recovery passed diff check, typecheck, 200 focused unit tests, all 20 repeated live-overlay cases, all 10 single-run live-overlay plus collective-translation cases, repository check/build, and a second complete 43-test Chromium run. The first complete Chromium run failed before pointerdown because the test's settlement helper returned before a final 0.015625 CSS-pixel root-position change; no live-drag product assertion failed. A deterministic no-sleep test-only settlement correction is required before this can be accepted as stable."
+      changed_files: []
+      verification:
+        - command: "git diff --check"
+          status: pass
+        - command: "npm run typecheck"
+          status: pass
+        - command: "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+          status: pass
+        - command: "npx playwright test tests/e2e/live-drag-overlay.spec.ts --project=chromium --repeat-each=5"
+          status: pass
+        - command: "npx playwright test tests/e2e/live-drag-overlay.spec.ts tests/e2e/collective-translation.spec.ts --project=chromium"
+          status: pass
+        - command: "npm run check"
+          status: pass
+        - command: "npx playwright test --project=chromium (attempt 1)"
+          status: fail
+        - command: "npx playwright test --project=chromium (attempt 2)"
+          status: pass
+      verification_attempts: 2
+      stopped_because: "The complete suite exposed nondeterministic pre-gesture settlement evidence, triggering the no-nondeterminism stop condition despite a subsequent green run."
+  - id: T027
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the flaky pre-drag root-transform settlement in the live-overlay browser oracle and specify the smallest deterministic test-only correction."
+    inputs:
+      - "T026 verification evidence: every focused/repository gate passed; the first full Chromium run failed before pointerdown on a 0.015625 CSS-pixel root e drift, and the second full run passed all 43 tests."
+      - "Current tests/e2e/live-drag-overlay.spec.ts"
+      - "T025 approved same-frame live-overlay contract"
+    constraints:
+      - "Read-only."
+      - "Do not weaken the exact root-stability assertion between the settled baseline and pointer-still-down live sample."
+      - "Do not add fixed sleeps, broad tolerances, retries, skipped cases, or product changes."
+      - "Preserve all four Seatify scenarios, complete outline/handle checks, DOM identity, pointer-still-down sampling, and Undo atomicity."
+    expected_output:
+      - "approve | reject"
+      - "Root-cause assessment"
+      - "Exact bounded Worker package with allowed_files, verification, and stop_if"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "This is a pre-drag settlement-oracle defect, not a product failure. The current helper declares stability after three identical frames, but quantized layout can plateau and then advance one final 1/64 CSS-pixel step. The failure occurred before pointerdown. Replace heuristic frame detection with the actual CSS animation lifecycle while preserving exact baseline-to-live root stability and every interaction assertion."
+      worker_package:
+        objective: "Replace the heuristic settlement with a deterministic CSS animation lifecycle barrier in the live-overlay spec only, then run every prescribed gate once without retries."
+        allowed_files:
+          - tests/e2e/live-drag-overlay.spec.ts
+        verify:
+          - "git diff --check"
+          - "npm run typecheck"
+          - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+          - "npx playwright test tests/e2e/live-drag-overlay.spec.ts --project=chromium --repeat-each=10"
+          - "npx playwright test tests/e2e/live-drag-overlay.spec.ts tests/e2e/collective-translation.spec.ts --project=chromium"
+          - "npm run check"
+          - "npx playwright test --project=chromium"
+        stop_if:
+          - "Any file other than the live-overlay spec is required."
+          - "An animation is canceled or root CTM changes after the barrier."
+          - "Any sleep, retry, polling loop, skip, tolerance increase, or weakened assertion is required."
+          - "Any verification gate fails."
+      evidence:
+        - "T026 passed every focused and repository gate."
+        - "The sole first-run full-suite failure occurred at settled-to-baseline equality before pointerdown with an exact 0.015625 CSS-pixel delta."
+        - "A second source-identical full run passed 43 tests."
+        - "The current helper infers completion from only three identical animation-frame signatures."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - T026
+        - T021
+      missing_evidence:
+        - "Forty green focused live-overlay cases after correction."
+        - "Green combined legacy-save run, repository check, and complete Chromium run."
+        - "Fresh Judge audit and renewed manual Seatify walkthrough."
+      required_board_updates:
+        - "Record T027 done."
+        - "Activate T028 from the approved worker package."
+        - "Leave T026 blocked as truthful pre-correction evidence."
+  - id: T028
+    type: worker
+    assignee: Worker
+    status: blocked
+    reasoning_hint: medium
+    objective: "Replace the live-overlay oracle's heuristic root-transform settling with a deterministic CSS animation lifecycle barrier, then run the complete correction contract once without retries."
+    inputs:
+      - "T027 approved Worker package"
+      - "Current tests/e2e/live-drag-overlay.spec.ts"
+    allowed_files:
+      - "tests/e2e/live-drag-overlay.spec.ts"
+    constraints:
+      - "Edit only tests/e2e/live-drag-overlay.spec.ts."
+      - "Await the active CSS animations/transitions affecting #canvas-shell and its subtree through the Web Animations API, without swallowing cancellation."
+      - "After animation completion, flush style/layout on the next requestAnimationFrame and capture the root CTM."
+      - "No fixed sleeps, polling loops, retries, skipped cases, tolerance increases, or production changes."
+      - "Preserve exact settled-to-baseline equality, exact baseline-to-live root stability, all four Seatify scenarios, full outline/handle tracking, DOM identity, pointer-still-down sampling, transform restoration, and Undo atomicity."
+    verify:
+      - "git diff --check"
+      - "npm run typecheck"
+      - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+      - "npx playwright test tests/e2e/live-drag-overlay.spec.ts --project=chromium --repeat-each=10"
+      - "npx playwright test tests/e2e/live-drag-overlay.spec.ts tests/e2e/collective-translation.spec.ts --project=chromium"
+      - "npm run check"
+      - "npx playwright test --project=chromium"
+    stop_if:
+      - "The correction requires any file other than tests/e2e/live-drag-overlay.spec.ts."
+      - "A relevant viewport animation is canceled or the root CTM still changes after the lifecycle barrier."
+      - "Any assertion or scenario would need weakening or removal."
+      - "Any verification gate fails; do not rerun a red gate to convert it into green evidence."
+    expected_output:
+      - "Deterministic lifecycle-based settlement oracle"
+      - "All seven verification commands pass on their first invocation"
+    receipt:
+      result: blocked
+      changed_files:
+        - tests/e2e/live-drag-overlay.spec.ts
+      commands:
+        - "git diff --check"
+        - "npm run typecheck"
+      summary: "Replaced equal-frame polling with a Web Animations lifecycle barrier over #canvas-shell and its subtree, followed by next-frame layout flushing and root CTM capture. The first prescribed verification stopped at typecheck because this repository's DOM typings exclude pending from Animation.playState, producing TS2367 in both active-animation filters. No further gate was run."
+      deviations:
+        - "Focused and full test gates were not reached because verification stopped at the first failure."
+      remaining_blockers:
+        - "Use Animation.playState values supported by this repository's DOM typings while preserving lifecycle and cancellation behavior."
+      verification_attempts: 1
+      stopped_because: "The first verification sequence failed at npm run typecheck; T028 forbids rerunning a red gate."
+  - id: T029
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: medium
+    objective: "Make the approved animation lifecycle barrier compatible with this repository's DOM typings, preserving its runtime behavior, then execute the entire verification contract once."
+    inputs:
+      - "T028 blocked receipt and current live-overlay spec"
+      - "TypeScript TS2367 on comparisons to Animation.playState pending"
+    allowed_files:
+      - "tests/e2e/live-drag-overlay.spec.ts"
+    constraints:
+      - "Edit only tests/e2e/live-drag-overlay.spec.ts."
+      - "Identify active animations using the repository-supported Animation.playState values without weakening cancellation handling or the post-barrier active-animation check."
+      - "No sleeps, polling loops, retries, skips, tolerance changes, assertion changes, or production edits."
+      - "Preserve the full T027/T028 interaction oracle."
+    verify:
+      - "git diff --check"
+      - "npm run typecheck"
+      - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+      - "npx playwright test tests/e2e/live-drag-overlay.spec.ts --project=chromium --repeat-each=10"
+      - "npx playwright test tests/e2e/live-drag-overlay.spec.ts tests/e2e/collective-translation.spec.ts --project=chromium"
+      - "npm run check"
+      - "npx playwright test --project=chromium"
+    stop_if:
+      - "Any file outside allowed_files is required."
+      - "The correction changes runtime semantics or weakens the lifecycle barrier."
+      - "Any verification gate fails; do not rerun it."
+    expected_output:
+      - "Type-safe lifecycle barrier"
+      - "All seven verification commands green on first invocation"
+    receipt:
+      result: done
+      changed_files:
+        - tests/e2e/live-drag-overlay.spec.ts
+      commands:
+        - command: "git diff --check"
+          status: pass
+        - command: "npm run typecheck"
+          status: pass
+        - command: "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts"
+          status: pass
+        - command: "npx playwright test tests/e2e/live-drag-overlay.spec.ts --project=chromium --repeat-each=10"
+          status: pass
+        - command: "npx playwright test tests/e2e/live-drag-overlay.spec.ts tests/e2e/collective-translation.spec.ts --project=chromium"
+          status: pass
+        - command: "npm run check"
+          status: pass
+        - command: "npx playwright test --project=chromium"
+          status: pass
+      summary: "Made the lifecycle barrier type-safe by detecting pending animations through Animation.pending while retaining running-state detection, cancellation propagation, post-barrier validation, next-frame layout flush, and exact CTM assertions. All gates passed once: 200 focused unit tests, 40 repeated live-overlay cases, 10 combined Chromium cases, 434 repository tests plus build, and all 43 Chromium scenarios."
+      deviations: []
+      remaining_blockers: []
+      verification_attempts: 1
+      stopped_because: null
+  - id: T030
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the live drag-overlay fix and post-correction verification evidence, and decide whether it is ready for renewed owner Seatify QA."
+    inputs:
+      - "T022 through T029 receipts"
+      - "Current editor implementation, unit coverage, and live-drag browser oracle"
+      - "T029 first-attempt green focused, repeated, repository, and full Chromium evidence"
+    constraints:
+      - "Read-only."
+      - "Reject if the selection box or handles can remain stale during pointer-down translation, if the oracle is timing-based or weakened, or if evidence excludes the real Seatify constellation."
+      - "Treat renewed manual owner walkthrough as a separate remaining completion gate."
+    expected_output:
+      - "approved | rejected"
+      - "Evidence matrix for live single/multi drag at 100%/125% and collapsed sidebars"
+      - "Manual QA readiness and any remaining blocker"
+    receipt:
+      result: done
+      decision: approved
+      full_outcome_complete: false
+      rationale: "The live drag-overlay fix is ready for renewed owner Seatify QA. Product code synchronizes the single-selection plugin handler and existing collective overlay during each dragmove, before pointerup. Units prove synchronous geometry and collective overlay identity. Real-pointer tests use the 44-layer Seatify constellation and prove every outline point, all nine visible handles, DOM identity, stable root geometry, exact transform restoration, and atomic Undo across single/multi, 100%/125%, and collapsed sidebars. Only renewed owner walkthrough evidence remains."
+      worker_package: null
+      evidence:
+        - "Single and multi-selection live pointer-down tracking passes at 100% and 125% with collapsed-sidebar coverage."
+        - "The browser oracle checks all outline points, all nine visible handles, DOM identity, stable root CTM, exact transform restoration, and one-step Undo."
+        - "The lifecycle barrier awaits actual canvas-shell animations, propagates cancellation, flushes layout, and rejects remaining activity without sleeps or polling."
+        - "T029 passed first-attempt diff check, typecheck, 200 focused units, 40 repeated live-overlay cases, 10 combined cases, 434 repository tests/build, and all 43 Chromium scenarios."
+      subgoal_contract: null
+      parallel_safety: null
+      blocked_tasks:
+        - T021
+      missing_evidence:
+        - "Renewed owner manual confirmation that single and multi-selection boxes and handles visibly follow artwork continuously during drag."
+        - "Exact required owner reply: Precision transforms Seatify manual QA passed"
+      required_board_updates:
+        - "Record T030 done."
+        - "Do not create another Worker."
+        - "Return to terminal owner approval wait with no active task."
+        - "Present the Seatify constellation canvas for manual QA."
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: high
+    objective: "Audit the complete precision-transforms-and-snapping outcome against the original request and oracle."
+    inputs:
+      - "All completed task receipts"
+      - "Normative interaction and geometry contract"
+      - "Latest focused and full verification results"
+      - "Current diff and serialization evidence"
+      - "Seatify manual walkthrough evidence"
+    constraints:
+      - "Read-only."
+      - "Reject completion if any required Worker task remains queued, active, or blocked without a justified owner decision."
+      - "Reject completion if evidence covers toy SVGs but not the real Seatify constellation."
+      - "Reject completion if snapping is not optional, guides are untruthful, numeric mixed values are ambiguous, history is non-atomic, or editor state leaks into SVG."
+      - "Treat PR creation and merge as separate owner-authorized follow-up work, not as a completion requirement."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "Oracle-to-receipt evidence matrix"
+      - "Missing evidence or exact next task if not complete"
+      - "PR-readiness assessment"
+    receipt:
+      result: done
+      decision: not_complete
+      full_outcome_complete: false
+      rationale: "Completion is rejected because T015 is blocked, its focused Seatify scenario remains red, all current gates are unrun, and no matching manual walkthrough receipt exists. The 0.0297544-unit caption delta is renderer measurement noise, not authored geometry drift: the helper reconstructs root bounds across viewport reflow while trace snapshots preserve identical authored caption, wordmark, and venue-logo geometry. The earlier failures were valid oracle corrections for four-decimal display precision and auto-accepted selectFocus semantics. One test-only correction can use exact authored fingerprints, then run every gate."
+      worker_package:
+        objective: "Repair and complete the final adversarial Seatify oracle without changing product behavior. Replace only the strict cross-layout getCTM/getBBox AABB equality at 125% zoom and collapsed sidebars with exact authored-geometry fingerprints for every selected member, their geometry-bearing ancestor transforms, Venue caption, Seatify wordmark, and venue-logo ancestors; exclude only known transient editor attributes. Reopen the inspector and prove the oriented-frame numeric values and selection are unchanged. Preserve all same-layout rendered-geometry, field, Mixed, validation, history, Reset, unavailable-state, unrelated-layer, Agent, save/reload, and serialization assertions. Then run every prescribed gate, including repeated Chromium stability."
+        allowed_files:
+          - tests/e2e/multi-selection-arrangement.spec.ts
+        verify:
+          - "git diff --check"
+          - "npm run typecheck"
+          - "npx vitest run --config vitest.config.ts tests/editor-interactions.test.ts tests/editor-serialization.test.ts tests/client-ux.test.ts tests/complex-seatify-fixture.test.ts"
+          - "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts tests/e2e/precision-snapping.spec.ts tests/e2e/rotation-feedback.spec.ts --project=chromium"
+          - "npx playwright test tests/e2e/multi-selection-arrangement.spec.ts --project=chromium --repeat-each=2"
+          - "npm run check"
+          - "npx playwright test --project=chromium"
+        stop_if:
+          - "Any selected or unrelated authored geometry attribute, geometry-bearing ancestor transform, selection identity, or oriented-frame numeric value actually changes across zoom/sidebar reflow."
+          - "The correction requires product, fixture, helper, configuration, dependency, or any file outside allowed_files."
+          - "Any existing assertion must be deleted, skipped, conditionally bypassed, replaced with screenshot-only inference, or relaxed with an arbitrary broad tolerance."
+          - "The focused scenario or repeated run fails twice, or any full gate fails twice for an out-of-scope cause."
+      evidence:
+        - "Prior snapping and numeric milestones passed all focused/full gates."
+        - "T015 expanded the adversarial workflow but stopped before full gates."
+        - "Trace snapshots prove identical authored transforms/geometry for caption, wordmark, and venue logo across layout reflow."
+        - "The cross-layout getCTM/getBBox delta is renderer quantization; authored fingerprint is the correct invariant."
+        - "Current diff check passes."
+      subgoal_contract: null
+      parallel_safety:
+        safe: false
+        rationale: "One integrated oracle in one file."
+      blocked_tasks:
+        - T015
+      missing_evidence:
+        - "Green corrected focused/repeated/full gates."
+        - "Expanded clean save/reload proof."
+        - "Matching owner manual Seatify walkthrough."
+      required_board_updates:
+        - "Record T999 not_complete."
+        - "Create one corrective Worker exactly from worker_package."
+        - "Fresh final audit after gates."
+        - "Manual walkthrough required before completion."
+checks:
+  dirty_fingerprint: unknown
+  last_verification:
+    result: unknown
+    task: null
+    commands: []
