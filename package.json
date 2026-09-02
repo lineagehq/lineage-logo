@@ -21,6 +21,7 @@
     "saxes": "6.0.0"
   },
   "devDependencies": {
+    "@lineagehq/workflows": "file:../workflows/.worktrees/cli-studio-dogfood-readiness/.workflows/local/candidates/build-c-83b499b/candidate.tgz",
     "@playwright/test": "^1.62.1",
     "@types/node": "^22.18.0",
     "happy-dom": "^20.11.6",
