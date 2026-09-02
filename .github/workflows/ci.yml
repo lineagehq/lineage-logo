@@ -64,7 +64,7 @@ jobs:
 
   critical-browsers:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:

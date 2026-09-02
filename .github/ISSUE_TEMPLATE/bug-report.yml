@@ -1,0 +1,72 @@
+name: Public beta bug
+description: Report a reproducible problem in the Lineage Logo public beta.
+title: "[Bug]: "
+labels:
+  - bug
+  - beta-feedback
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing the beta. Do not include bearer tokens, private paths, registry files, unpublished SVG contents, credentials, or confidential vulnerability details.
+  - type: input
+    id: version
+    attributes:
+      label: Lineage Logo version
+      placeholder: 0.1.0-beta.1
+    validations:
+      required: true
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows or another unsupported system
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      placeholder: 22.x
+    validations:
+      required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser engine
+      options:
+        - Chromium
+        - Firefox
+        - WebKit
+        - Not applicable
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal safe reproduction
+      description: Include the command, exit code, and steps using only non-sensitive sample data.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: safe-report
+    attributes:
+      label: Safe disclosure confirmation
+      options:
+        - label: I confirm this report contains no secrets, private SVG content, private workspace paths, or confidential vulnerability details.
+          required: true

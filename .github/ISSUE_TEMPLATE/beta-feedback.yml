@@ -1,0 +1,63 @@
+name: Public beta feedback
+description: Tell us where the CLI, editor, or agent handoff helped or got in your way.
+title: "[Beta feedback]: "
+labels:
+  - beta-feedback
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Concrete workflow feedback is especially useful. Do not include bearer tokens, private paths, registry files, unpublished SVG contents, credentials, or confidential vulnerability details.
+  - type: input
+    id: version
+    attributes:
+      label: Lineage Logo version
+      placeholder: 0.1.0-beta.1
+    validations:
+      required: true
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      placeholder: 22.x
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Workflow area
+      options:
+        - Installation and launch
+        - CLI diagnostics and routing
+        - Manual canvas editing
+        - Agent proposal review
+        - Accept, revert, and save lifecycle
+        - Documentation or support
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: What were you trying to accomplish?
+    validations:
+      required: true
+  - type: textarea
+    id: friction
+    attributes:
+      label: What helped or caused friction?
+    validations:
+      required: true
+  - type: textarea
+    id: improvement
+    attributes:
+      label: What would make the workflow clearer or safer?
+    validations:
+      required: true
+  - type: checkboxes
+    id: safe-report
+    attributes:
+      label: Safe disclosure confirmation
+      options:
+        - label: I confirm this feedback contains no secrets, private SVG content, private workspace paths, or confidential vulnerability details.
+          required: true
