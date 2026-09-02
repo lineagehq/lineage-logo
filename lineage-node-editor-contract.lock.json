@@ -1,0 +1,7 @@
+{
+  "repository": "lineagehq/lineage",
+  "commit": "028636f18590a179334501e0dcd2a1746d9f7595",
+  "protocol": "1.3",
+  "schemaPath": "packages/node-editor-protocol/schemas/protocol.schema.json",
+  "schemaSha256": "59080a49571c3e214cc3f02dcf3070c583d4aeb350dd1ffbf0cb1f94f0b78667"
+}

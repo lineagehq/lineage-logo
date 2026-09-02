@@ -28,6 +28,20 @@ jobs:
       - name: Typecheck, test, and build
         run: npm run check
 
+      - name: Check out exact Lineage node-editor contract
+        uses: actions/checkout@v7
+        with:
+          repository: lineagehq/lineage
+          ref: 028636f18590a179334501e0dcd2a1746d9f7595
+          path: .lineage-contract
+
+      - name: Build and verify node-editor plugin
+        run: |
+          npm run node-editor-plugin:build
+          npm run node-editor-plugin:test
+          npm run node-editor-plugin:conformance -- --lineage-contract-root "$GITHUB_WORKSPACE/.lineage-contract"
+          npm run node-editor-plugin:artifact:repro
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
@@ -51,7 +65,10 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run browser QA
-        run: npm run test:e2e
+        run: |
+          npm run node-editor-plugin:build
+          npm run node-editor-plugin:browser-smoke
+          npm run test:e2e
 
       - name: Upload browser diagnostics
         if: failure()

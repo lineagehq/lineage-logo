@@ -11,6 +11,11 @@
     "start": "tsx src/server/index.ts",
     "test": "vitest run --config vitest.config.ts",
     "test:e2e": "playwright test",
+    "node-editor-plugin:build": "node scripts/build-lineage-node-editor-plugin.mjs",
+    "node-editor-plugin:test": "node --test test/node-editor-plugin.test.mjs && node scripts/test-lineage-node-editor-artifact.mjs",
+    "node-editor-plugin:conformance": "node scripts/check-lineage-node-editor-contract.mjs",
+    "node-editor-plugin:artifact:repro": "node scripts/test-lineage-node-editor-artifact.mjs --repro",
+    "node-editor-plugin:browser-smoke": "node scripts/node-editor-plugin-browser-smoke.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

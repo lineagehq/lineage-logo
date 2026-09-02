@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "pluginId": "lineage.logo.editor",
+  "packageName": "@mean-weasel/lineage-logo-node-editor-plugin",
+  "packageVersion": "0.1.0",
+  "displayName": "Lineage Logo editor",
+  "protocol": [
+    {
+      "major": 1,
+      "minMinor": 3,
+      "maxMinor": 3,
+      "features": ["document-read", "document-content", "save-proposal", "proposal-status", "proposal-cancel", "terminal-close"],
+      "requiredFeatures": ["document-read", "document-content", "save-proposal", "terminal-close"]
+    }
+  ],
+  "nodeEditors": [
+    {
+      "kind": "nodeEditor",
+      "id": "lineage.logo.editor",
+      "displayName": "Lineage Logo editor",
+      "accepts": { "mimeTypes": ["image/svg+xml"], "maxBytes": 10000000 },
+      "editor": { "entrypoint": "editor/index.html", "origin": "http://lineage-logo-editor.localhost:4174" },
+      "minimumViewport": { "width": 960, "height": 640 },
+      "requestedCapabilities": ["document.read", "proposal.create", "proposal.status", "proposal.cancel", "session.close"],
+      "health": { "kind": "process-heartbeat", "intervalMs": 5000, "timeoutMs": 1000 }
+    }
+  ]
+}
