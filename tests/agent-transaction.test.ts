@@ -33,6 +33,22 @@ function rejectedCode(root: SVGSVGElement, operations: AgentOperation[], locked 
 }
 
 describe("detached agent transaction evaluator", () => {
+  it("computes semantic current and proposed evidence without mutating the canonical SVG", () => {
+    const root = document('<svg><g data-lineage-key="group"><path aria-label="Old &amp; safe" fill="#111" data-lineage-key="a"/><path data-lineage-key="b"/></g></svg>');
+    const staged = evaluateAgentTransaction(root, transaction([
+      { type: "renameLayer", operationId: "rename", target: { sessionKey: "a" }, name: "<New>" },
+      { type: "setPaint", operationId: "paint", target: { sessionKey: "a" }, property: "fill", value: "#fff" },
+      { type: "reorderLayer", operationId: "move", target: { sessionKey: "a" }, placement: { after: { sessionKey: "b" } } },
+    ]), context);
+    expect(staged.evidence).toEqual([
+      expect.objectContaining({ operationId: "rename", current: "Old & safe", proposed: "<New>" }),
+      expect.objectContaining({ operationId: "paint", current: "#111", proposed: "#fff" }),
+      expect.objectContaining({ operationId: "move", current: "Position 1 of 2", proposed: "Position 2 of 2" }),
+    ]);
+    expect(root.querySelector('[data-lineage-key="a"]')?.getAttribute("aria-label")).toBe("Old & safe");
+    expect(root.querySelector('[data-lineage-key="a"]')?.getAttribute("fill")).toBe("#111");
+  });
+
   it("does not confuse hexadecimal paints with local resource references", () => {
     const root = document('<svg xmlns="http://www.w3.org/2000/svg"><g data-lineage-key="logo"><path fill="#000" stroke="#12345678" /></g></svg>');
     const staged = evaluateAgentTransaction(root, transaction([{

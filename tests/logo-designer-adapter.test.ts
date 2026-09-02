@@ -98,7 +98,7 @@ describe("logo-designer public protocol adapter", () => {
   it("uses strict preflight envelopes without fabricating transaction or document identity", async () => {
     const invalidArguments = await runLogoDesignerAdapter(["--token", "do-not-echo"]);
     expect(invalidArguments).toEqual({
-      exitCode: 64,
+      exitCode: 2,
       receipt: {
         receiptVersion: 1, kind: LOGO_DESIGNER_RECEIPT_KIND,
         outcome: { status: "invalid", diagnostic: "invalid_arguments" },
@@ -109,7 +109,7 @@ describe("logo-designer public protocol adapter", () => {
     const unavailableClient = { manifest: async () => { throw new Error("secret diagnostic"); } } as unknown as AgentProducerClient;
     const unavailable = await runLogoDesignerAdapter(["--mode", "set-paint", "--target-name", "logo"], unavailableClient);
     expect(unavailable).toEqual({
-      exitCode: 24,
+      exitCode: 4,
       receipt: {
         receiptVersion: 1, kind: LOGO_DESIGNER_RECEIPT_KIND,
         outcome: { status: "unavailable", diagnostic: "canvas_unavailable" },
@@ -121,7 +121,7 @@ describe("logo-designer public protocol adapter", () => {
   it("normalizes failures after manifest discovery into consumable receipts", async () => {
     const invalidArtifactClient = { manifest: async () => manifest } as unknown as AgentProducerClient;
     await expect(runLogoDesignerAdapter(["--mode", "replace", "--target-name", "logo"], invalidArtifactClient))
-      .resolves.toMatchObject({ exitCode: 64, receipt: { outcome: { status: "invalid", diagnostic: "invalid_artifact" } } });
+      .resolves.toMatchObject({ exitCode: 2, receipt: { outcome: { status: "invalid", diagnostic: "invalid_artifact" } } });
 
     const submissionClient = {
       manifest: async () => manifest,
@@ -129,7 +129,7 @@ describe("logo-designer public protocol adapter", () => {
     } as unknown as AgentProducerClient;
     const submitted = await runLogoDesignerAdapter(["--mode", "set-paint", "--target-name", "logo", "--transaction-id", "bounded"], submissionClient);
     expect(submitted).toMatchObject({
-      exitCode: 0,
+      exitCode: 4,
       receipt: { transaction: { transactionId: "bounded" }, outcome: { status: "unavailable", message: "Canvas is unavailable." } },
     });
     expect(JSON.stringify(submitted)).not.toContain("must-not-escape");
@@ -140,8 +140,8 @@ describe("logo-designer public protocol adapter", () => {
     const tsx = fileURLToPath(new URL("../node_modules/.bin/tsx", import.meta.url));
     const script = fileURLToPath(new URL("../scripts/logo-designer-adapter.ts", import.meta.url));
     for (const invocation of [
-      { args: [script, "--token", "cli-secret"], code: 64, status: "invalid" },
-      { args: [script, "--context", "/definitely/missing/lineage-context.json", "--mode", "set-paint", "--target-name", "logo"], code: 24, status: "unavailable" },
+      { args: [script, "--token", "cli-secret"], code: 2, status: "invalid" },
+      { args: [script, "--context", "/definitely/missing/lineage-context.json", "--mode", "set-paint", "--target-name", "logo"], code: 4, status: "unavailable" },
     ]) {
       let failure: { code?: number; stdout?: string; stderr?: string } | undefined;
       try { await execute(tsx, invocation.args); }

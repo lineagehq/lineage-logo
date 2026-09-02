@@ -100,6 +100,14 @@ export class AgentSession {
     return true;
   }
 
+  continueFromSavedArtifact(sourcePath: string): boolean {
+    if (this.#pending || !sourcePath) return false;
+    this.#sourcePath = sourcePath;
+    this.#revision = 0;
+    this.#onRevisionChange?.();
+    return true;
+  }
+
   convergeAcceptedArtifact(transactionId: string, candidate: SVGSVGElement): boolean {
     const pending = this.#pending;
     if (!pending?.provisional || pending.transaction.transactionId !== transactionId) return false;

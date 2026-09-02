@@ -14,7 +14,7 @@ export const AGENT_MAX_ACKNOWLEDGEMENT_BYTES = AGENT_MAX_PAYLOAD_BYTES * 2 + 128
 
 export interface AgentProducer {
   kind: string;
-  name: string;
+  name?: string;
   version?: string;
 }
 
@@ -70,6 +70,7 @@ export interface AgentTransactionV1 {
   protocolVersion: typeof AGENT_PROTOCOL_VERSION;
   transactionId: string;
   producer: AgentProducer;
+  intent?: string;
   document: AgentDocumentTarget;
   operations: AgentOperation[];
 }
@@ -110,6 +111,8 @@ export interface AgentAcceptedArtifact {
   sourcePath: string;
   revision: number;
   svg: string;
+  durablePath?: string;
+  digest?: string;
 }
 
 export type AgentTerminalDecision = {
@@ -261,10 +264,10 @@ export function parseAgentTransaction(payload: unknown): AgentTransactionV1 {
     if (textEncoder.encode(encoded).byteLength > AGENT_MAX_PAYLOAD_BYTES) fail("payload_too_large", "Transaction exceeds the 5 MiB encoded payload limit");
   }
   const input = record(value, "transaction");
-  exact(input, ["protocolVersion", "transactionId", "producer", "document", "operations"], ["protocolVersion", "transactionId", "producer", "document", "operations"], "transaction");
+  exact(input, ["protocolVersion", "transactionId", "producer", "intent", "document", "operations"], ["protocolVersion", "transactionId", "producer", "document", "operations"], "transaction");
   if (input.protocolVersion !== AGENT_PROTOCOL_VERSION) fail("unsupported_version", `Unsupported protocol version ${String(input.protocolVersion)}`, "transaction.protocolVersion");
   const producer = record(input.producer, "transaction.producer");
-  exact(producer, ["kind", "name", "version"], ["kind", "name"], "transaction.producer");
+  exact(producer, ["kind", "name", "version"], ["kind"], "transaction.producer");
   const document = record(input.document, "transaction.document");
   exact(document, ["sessionId", "sourcePath", "baseRevision"], ["sessionId", "sourcePath", "baseRevision"], "transaction.document");
   if (!Number.isSafeInteger(document.baseRevision) || Number(document.baseRevision) < 0) fail("invalid_payload", "baseRevision must be a non-negative safe integer", "transaction.document.baseRevision");
@@ -275,9 +278,10 @@ export function parseAgentTransaction(payload: unknown): AgentTransactionV1 {
     transactionId: identifier(input.transactionId, "transaction.transactionId"),
     producer: {
       kind: boundedText(producer.kind, "transaction.producer.kind", 128),
-      name: boundedText(producer.name, "transaction.producer.name", 128),
+      ...(producer.name === undefined ? {} : { name: boundedText(producer.name, "transaction.producer.name", 128) }),
       ...(producer.version === undefined ? {} : { version: boundedText(producer.version, "transaction.producer.version", 128) }),
     },
+    ...(input.intent === undefined ? {} : { intent: boundedText(input.intent, "transaction.intent", 1024) }),
     document: {
       sessionId: identifier(document.sessionId, "transaction.document.sessionId"),
       sourcePath: boundedText(document.sourcePath, "transaction.document.sourcePath", AGENT_MAX_SOURCE_PATH_CHARACTERS),

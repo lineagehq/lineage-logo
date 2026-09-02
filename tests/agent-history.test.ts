@@ -94,24 +94,25 @@ describe("agent transaction history and revision", () => {
     expect(editor.blocked).toBe(true);
     expect(editor.history.checkpointCount).toBe(0);
     expect(session.finalizeAccept("tx")).toBe(true);
+    expect(session.continueFromSavedArtifact("iterations/concept-agent-deadbeef.svg")).toBe(true);
     expect(editor.acceptCalls).toBe(1);
     expect(editor.history.checkpointCount).toBe(1);
     expect(editor.state.markup).toContain('aria-label="Changed"');
     expect(editor.state.selection).toEqual(acceptedSelection);
-    expect(session.revision).toBe(1);
+    expect(session.context).toMatchObject({ sourcePath: "iterations/concept-agent-deadbeef.svg", revision: 0 });
 
     expect(editor.undo()).toBe(true);
     session.documentChanged();
     expect(editor.state.markup).toBe(initialMarkup);
     expect(editor.state.selection).toEqual(initialSelection);
-    expect(session.revision).toBe(2);
+    expect(session.revision).toBe(1);
 
     expect(editor.redo()).toBe(true);
     session.documentChanged();
     expect(editor.state.markup).toContain('aria-label="Changed"');
     expect(editor.state.selection).toEqual(acceptedSelection);
-    expect(session.revision).toBe(3);
-    expect(revisionNotifications).toBe(3);
+    expect(session.revision).toBe(2);
+    expect(revisionNotifications).toBe(4);
   });
 
   it("applies navigation immediately without history/revision and rejects a second pending mutation", () => {

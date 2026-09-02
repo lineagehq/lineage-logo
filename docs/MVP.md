@@ -167,9 +167,13 @@ phase to offer the canvas when a user asks for manual adjustment.
 Exit criterion: one end-to-end session moves from AI concept to manual correction
 to further AI refinement and final export.
 
-## MVP acceptance criteria
+## MVP acceptance criteria and current evidence
 
-- Works on current Chrome, Safari, and Firefox through localhost.
+- Runs through a descriptive `.localhost` address with the complete automated
+  suite passing in Playwright Chromium.
+- Passes one critical keyboard and semantic-control smoke path in Playwright
+  Firefox and WebKit. This is engine-smoke evidence, not full Firefox support or
+  native Safari evidence.
 - Opens both 512x512 icons and 1024x512 combination marks.
 - A no-op load/save retains visual fidelity and important SVG structure.
 - A selected group can be moved, resized, rotated, recolored, and undone.
@@ -189,8 +193,8 @@ to further AI refinement and final export.
 3. Decide whether transformations should remain as `transform` attributes or be
    baked into geometry for MVP interoperability.
 4. Prototype group selection and drill-down behavior on a complex logo.
-5. Test atomic next-iteration saves and path-containment checks on macOS, Linux,
-   and Windows.
+5. Observe the configured macOS and Linux package/install CI jobs; Windows is
+   outside the initial beta target.
 
 ## Open questions
 
@@ -200,3 +204,5 @@ to further AI refinement and final export.
 - Should save normalize formatting, or preserve original whitespace when
   possible?
 - Is point-level path editing valuable enough for the first post-MVP milestone?
+- What evidence threshold should promote Firefox or native Safari from a known
+  limitation to a supported browser?

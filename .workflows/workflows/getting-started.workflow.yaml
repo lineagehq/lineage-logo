@@ -1,0 +1,131 @@
+schema: agent-workflow/v1
+kind: Workflow
+
+metadata:
+  id: "lineage-logo.getting-started"
+  name: "Getting started with Lineage Logo"
+  description: Verify the initial product surface and preserve a reviewable screenshot.
+  lifecycle: candidate
+  candidateRevision: 1
+  tags:
+    - getting-started
+    - browser
+
+promotion:
+  immutableAfterPromotion: true
+  requires:
+    - successful-supervised-replay
+    - human-approval
+
+evaluation:
+  resetStepId: establish-fresh-start
+  cleanupStepId: restore-fresh-start
+
+target:
+  app: "lineage-logo"
+  supportedPlatforms:
+    - id: desktop-web
+      adapterCapability: browser
+      viewport: default-desktop
+  identity:
+    requirement: anonymous
+    note: This local getting-started workflow does not rely on account state.
+
+start:
+  isolation: fresh-page
+  route: "/"
+  expectedState: The initial product surface is visible and ready for inspection.
+  preflightCapabilities:
+    - screenshot
+
+execution:
+  approvalPolicy:
+    mode: risk-based
+  topology: linear-with-bounded-conditions
+  agentFreedom: goal-bounded
+  onUnexpectedState: recover-and-log
+  environmentChange: taint-run
+  failureContinuation: stop
+  recoveryBudget:
+    maxActionsPerStep: 1
+    maxDurationSecondsPerStep: 30
+
+evidencePolicy:
+  default:
+    - declared-checkpoint-screenshots
+  onFailure:
+    - screenshot
+    - video-or-trace
+  retainVerifiedDownloads: false
+
+optionalStateHandlers: []
+
+steps:
+  - id: establish-fresh-start
+    name: Establish a fresh start
+    action: Navigate to the declared starting route in a fresh local state.
+    routineActionBatches:
+      - id: navigate-fresh-start
+        actions:
+          - kind: navigate
+            description: Navigate to the declared starting route.
+            target: declared-start-url
+        requestedCapabilities:
+          - browser.control
+    expected:
+      - The initial product surface is visible at the declared starting route.
+      - No persistent or production state is required.
+    evidence:
+      - type: screenshot
+        checkpoint: fresh-start-before
+        required: true
+
+  - id: inspect-starting-surface
+    name: Inspect the starting surface
+    dependsOn:
+      - establish-fresh-start
+    action: Observe the initial product surface without changing application data.
+    routineActionBatches:
+      - id: inspect-initial-product-surface
+        actions:
+          - kind: observe
+            description: Inspect the visible initial product surface.
+            target: initial-product-surface
+        requestedCapabilities:
+          - browser.control
+    expected:
+      - The product surface is visible.
+      - The page presents enough product language to describe what is available.
+    evidence:
+      - type: screenshot
+        checkpoint: initial-product-surface
+        required: true
+
+  - id: restore-fresh-start
+    name: Restore the fresh start
+    dependsOn:
+      - inspect-starting-surface
+    action: Navigate back to the declared starting route without preserving application data.
+    routineActionBatches:
+      - id: navigate-cleanup-start
+        actions:
+          - kind: navigate
+            description: Navigate back to the declared starting route.
+            target: declared-start-url
+        requestedCapabilities:
+          - browser.control
+    expected:
+      - The initial product surface remains available with no persistent mutation.
+    evidence:
+      - type: screenshot
+        checkpoint: fresh-start-after
+        required: true
+
+completion:
+  successRequires:
+    - every-step-passed
+    - required-evidence-verified
+  cleanup:
+    alwaysAttempt: true
+    actions:
+      - Reset the browser surface after the final screenshot.

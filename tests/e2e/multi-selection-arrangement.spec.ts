@@ -16,7 +16,7 @@ type Axis = "horizontal" | "vertical";
 async function openFixture(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page).toHaveURL(/^http:\/\/marquee-qa\.localhost:/);
-  await page.getByRole("button", { name: "complex-seatify" }).click();
+  await page.locator('[data-path="concepts/complex-seatify.svg"]').click();
   await expect(page.locator("#artboard svg[aria-label='Complex Seatify venue logo']")).toBeVisible();
   await expect.poll(async () => {
     const response = await page.request.get("/api/agent/document", {
@@ -522,14 +522,17 @@ test("Seatify numeric oriented-frame edits are aggregate, validated, and atomic"
   await page.route(`**/api/svg?path=${encodeURIComponent(savedPath)}`, async (route) => {
     await route.fulfill({ status: 200, contentType: "image/svg+xml", body: savedSvg });
   });
-  await page.getByRole("button", { name: "Save iteration" }).click();
+  const numericSave = page.locator("#save-iteration");
+  await expect(numericSave).toHaveText(/^Save complex-seatify-iteration-\d+$/);
+  await expect(numericSave).toHaveAttribute("title", /^Create iterations\/complex-seatify-iteration-\d+\.svg$/);
+  await numericSave.click();
   await expect(page.locator("#status")).toHaveText(`Saved ${savedPath}`);
   await expect(page.locator(".file-button[aria-current='true']")).toHaveAttribute("data-path", savedPath);
   expect(savedSvg).not.toMatch(/data-(?:lineage|agent|review|transport)-|lineage-(?:collective|numeric)|svg_select|selection-halo|transactionId|agent-token/i);
 
   await page.locator("#toggle-left-sidebar").click();
   await expect(page.locator("#toggle-left-sidebar")).toHaveAttribute("aria-expanded", "true");
-  await page.getByRole("button", { name: "complex-seatify" }).click();
+  await page.locator('[data-path="concepts/complex-seatify.svg"]').click();
   await expect(page.locator(".file-button[aria-current='true']")).toHaveAttribute("data-path", "concepts/complex-seatify.svg");
   await page.locator(`.file-button[data-path=${JSON.stringify(savedPath)}]`).click();
   await expect(page.locator(".file-button[aria-current='true']")).toHaveAttribute("data-path", savedPath);
@@ -780,13 +783,17 @@ test("multi-selection arrangement named Save preserves exact authored structure 
     if (!node?.id) throw new Error(`Live transform target is unavailable for ${label}.`);
     return [node.id, node.getAttribute("transform")];
   })), distributionLabels);
-  await page.getByRole("button", { name: "Save iteration" }).click();
-  await expect(page.locator("#status")).toHaveText(/^Saved iterations\/iteration-\d+\.svg$/);
-  const savedPath = (await page.locator("#status").textContent())?.replace(/^Saved /, "");
-  if (!savedPath) throw new Error("The named Save result path is unavailable.");
+  const save = page.locator("#save-iteration");
+  await expect(save).toHaveText(/^Save complex-seatify-iteration-\d+$/);
+  const saveTitle = await save.getAttribute("title");
+  expect(saveTitle).toMatch(/^Create iterations\/complex-seatify-iteration-\d+\.svg$/);
+  const savedPath = saveTitle!.replace(/^Create /, "");
+  await save.click();
+  await expect(page.locator("#status")).toHaveText(`Saved ${savedPath}`);
   const savedResponse = await page.request.get(`/api/svg?path=${encodeURIComponent(savedPath)}`);
   expect(savedResponse.ok()).toBe(true);
   const saved = await savedResponse.text();
+  expect(await (await page.request.get("/api/svg?path=concepts%2Fcomplex-seatify.svg")).text()).toBe(source);
   const comparison = await page.evaluate(({ sourceSvg, savedSvg, targetLabels }) => {
     const parse = (markup: string) => new DOMParser().parseFromString(markup, "image/svg+xml");
     const sourceDocument = parse(sourceSvg);

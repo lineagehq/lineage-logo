@@ -1,5 +1,5 @@
 import type { AgentTransactionV1 } from "../../shared/agent-protocol";
-import type { StagedAgentTransaction } from "./transaction";
+import type { AgentOperationEvidence, StagedAgentTransaction } from "./transaction";
 
 export type AgentReviewStatus = "pending" | "accepted" | "reverted" | "failed" | "stale" | "disconnected";
 
@@ -16,7 +16,14 @@ export interface AgentReviewModel {
   status: AgentReviewStatus;
   transactionId?: string;
   producer?: string;
+  producerVersion?: string;
+  intent?: string;
   summary: string;
+  riskSummary: string;
+  operationCount: number;
+  mutationCount: number;
+  selectionCount: number;
+  operationGroups: Array<{ label: string; operations: AgentOperationEvidence[] }>;
   layers: AgentReviewLayer[];
 }
 
@@ -57,22 +64,54 @@ export function buildPendingReview(
     };
   });
   const mutationCount = transaction.operations.filter((operation) => operation.type !== "selectFocus").length;
+  const selectionCount = transaction.operations.length - mutationCount;
+  const producer = transaction.producer.name ?? transaction.producer.kind;
+  const operationGroups: AgentReviewModel["operationGroups"] = [];
+  const evidence = staged.evidence ?? [];
+  const groupSize = transaction.operations.length > 10 ? 10 : Math.max(1, transaction.operations.length);
+  for (let index = 0; index < evidence.length; index += groupSize) {
+    const operations = evidence.slice(index, index + groupSize);
+    operationGroups.push({
+      label: transaction.operations.length > 10
+        ? `Operations ${index + 1}–${index + operations.length} of ${transaction.operations.length}`
+        : `Operations (${transaction.operations.length})`,
+      operations,
+    });
+  }
+  const replacements = transaction.operations.filter((operation) => operation.type === "replaceLayer").length;
+  const additions = transaction.operations.filter((operation) => operation.type === "addLayer").length;
+  const risk = [
+    replacements ? `${replacements} full layer replacement${replacements === 1 ? "" : "s"}` : "",
+    additions ? `${additions} new layer${additions === 1 ? "" : "s"}` : "",
+    layers.some((layer) => layer.hidden) ? "hidden layers affected" : "",
+    layers.some((layer) => layer.locked) ? "locked context present" : "",
+  ].filter(Boolean);
   return {
     status: "pending",
     transactionId: transaction.transactionId,
-    producer: transaction.producer.name,
-    summary: `${transaction.producer.name} proposed ${mutationCount} change${mutationCount === 1 ? "" : "s"} affecting ${layers.length} layer${layers.length === 1 ? "" : "s"}. Accept or revert before editing.`,
+    producer,
+    producerVersion: transaction.producer.version,
+    intent: transaction.intent,
+    summary: `${producer} proposed ${transaction.operations.length} operation${transaction.operations.length === 1 ? "" : "s"}: ${mutationCount} document change${mutationCount === 1 ? "" : "s"}, ${selectionCount} focus change${selectionCount === 1 ? "" : "s"}, affecting ${layers.length} layer${layers.length === 1 ? "" : "s"}. Accept or revert before editing.`,
+    riskSummary: risk.length ? `Review carefully: ${risk.join("; ")}.` : "No full-layer replacement or addition is proposed.",
+    operationCount: transaction.operations.length,
+    mutationCount,
+    selectionCount,
+    operationGroups,
     layers,
   };
 }
 
 export function outcomeReview(status: Exclude<AgentReviewStatus, "pending">, transactionId?: string, message?: string): AgentReviewModel {
   const defaults: Record<Exclude<AgentReviewStatus, "pending">, string> = {
-    accepted: "Agent changes were accepted as one undoable edit.",
+    accepted: "Agent changes were applied and saved as one undoable continuation.",
     reverted: "Agent changes were reverted without changing the document.",
     failed: "The agent transaction failed validation and was not applied.",
     stale: "The agent transaction was based on an older document revision and was not applied.",
     disconnected: "The agent connection was interrupted. The accepted document remains unchanged.",
   };
-  return { status, transactionId, summary: message ?? defaults[status], layers: [] };
+  return {
+    status, transactionId, summary: message ?? defaults[status], riskSummary: "", operationCount: 0,
+    mutationCount: 0, selectionCount: 0, operationGroups: [], layers: [],
+  };
 }

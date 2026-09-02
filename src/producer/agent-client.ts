@@ -1,4 +1,4 @@
-import { readAgentConnectionContext, type AgentConnectionContext } from "./connection-context.js";
+import { readAgentConnectionContext, resolveAgentConnectionContext, type AgentConnectionContext } from "./connection-context.js";
 import {
   AGENT_MAX_PAYLOAD_BYTES,
   isAgentErrorCode, validateCleanAgentSvg,
@@ -14,6 +14,7 @@ export type AgentProducerOutcome =
 export interface AgentProducerClientOptions {
   context?: AgentConnectionContext;
   contextPath?: string;
+  binding?: { instanceId: string; workspaceId: string };
   pollIntervalMs?: number;
   timeoutMs?: number;
   fetch?: typeof fetch;
@@ -91,19 +92,23 @@ function parseResult(value: unknown, transaction: AgentTransactionV1): AgentTran
   return result as unknown as AgentTransactionStatus["result"];
 }
 
-function parseArtifact(value: unknown, transaction: AgentTransactionV1): AgentAcceptedArtifact {
+function parseArtifact(value: unknown, transaction: AgentTransactionV1, requireDurable: boolean): AgentAcceptedArtifact {
   const artifact = object(value, "Accepted artifact");
-  exact(artifact, ["sourcePath", "revision", "svg"], ["sourcePath", "revision", "svg"], "Accepted artifact");
+  exact(artifact, ["sourcePath", "revision", "svg", "durablePath", "digest"], ["sourcePath", "revision", "svg"], "Accepted artifact");
   if (artifact.sourcePath !== transaction.document.sourcePath || artifact.revision !== transaction.document.baseRevision + 1
     || typeof artifact.svg !== "string"
     || new TextEncoder().encode(artifact.svg).byteLength > AGENT_MAX_PAYLOAD_BYTES) {
     throw new Error("Accepted artifact does not match the submitted document revision.");
   }
+  if (requireDurable && isMutating(transaction) && (typeof artifact.durablePath !== "string" || !/^iterations\/[A-Za-z0-9._-]+\.svg$/.test(artifact.durablePath)
+    || typeof artifact.digest !== "string" || !/^[a-f0-9]{64}$/.test(artifact.digest))) {
+    throw new Error("Accepted artifact has no valid durable continuation receipt.");
+  }
   validateCleanAgentSvg(artifact.svg);
   return artifact as unknown as AgentAcceptedArtifact;
 }
 
-function parseStatus(value: unknown, transaction: AgentTransactionV1): AgentTransactionStatus {
+function parseStatus(value: unknown, transaction: AgentTransactionV1, requireDurable = false): AgentTransactionStatus {
   const input = object(value, "Transaction status");
   exact(input, ["transactionId", "status", "result", "artifact"], ["transactionId", "status"], "Transaction status");
   if (input.transactionId !== transaction.transactionId || typeof input.status !== "string"
@@ -111,7 +116,7 @@ function parseStatus(value: unknown, transaction: AgentTransactionV1): AgentTran
     throw new Error("Transaction status identity or state is malformed.");
   }
   const result = input.result === undefined ? undefined : parseResult(input.result, transaction);
-  const artifact = input.artifact === undefined ? undefined : parseArtifact(input.artifact, transaction);
+  const artifact = input.artifact === undefined ? undefined : parseArtifact(input.artifact, transaction, requireDurable);
   if (input.status === "accepted" && isMutating(transaction) && !artifact) throw new Error("Accepted mutation has no transaction-bound artifact receipt.");
   if (input.status !== "accepted" && artifact) throw new Error("A non-accepted status cannot include an artifact receipt.");
   if (input.status === "pending_review" && result?.status !== "staged") throw new Error("Pending review status requires a staged result.");
@@ -131,15 +136,28 @@ export class AgentProducerClient {
   readonly #options: AgentProducerClientOptions;
   constructor(options: AgentProducerClientOptions = {}) { this.#options = options; }
 
-  async #context(): Promise<AgentConnectionContext> {
-    return this.#options.context ?? await readAgentConnectionContext(this.#options.contextPath);
+  async #context(): Promise<{ context: AgentConnectionContext; binding?: { instanceId: string; workspaceId: string } }> {
+    if (this.#options.context) return { context: this.#options.context, binding: this.#options.binding };
+    if (this.#options.contextPath) return { context: await readAgentConnectionContext(this.#options.contextPath) };
+    const resolved = await resolveAgentConnectionContext();
+    return {
+      context: resolved.context,
+      binding: { instanceId: resolved.instanceId, workspaceId: resolved.workspaceId },
+    };
   }
 
-  async #request(context: AgentConnectionContext, pathname: string, init: RequestInit = {}): Promise<Response> {
+  async #request(resolved: { context: AgentConnectionContext; binding?: { instanceId: string; workspaceId: string } }, pathname: string, init: RequestInit = {}): Promise<Response> {
     const request = this.#options.fetch ?? fetch;
-    return await request(`${context.apiOrigin}${pathname}`, {
+    return await request(`${resolved.context.apiOrigin}${pathname}`, {
       ...init,
-      headers: { Authorization: `Bearer ${context.token}`, ...init.headers },
+      headers: {
+        Authorization: `Bearer ${resolved.context.token}`,
+        ...(resolved.binding ? {
+          "X-Lineage-Instance-ID": resolved.binding.instanceId,
+          "X-Lineage-Workspace-ID": resolved.binding.workspaceId,
+        } : {}),
+        ...init.headers,
+      },
     });
   }
 
@@ -162,7 +180,7 @@ export class AgentProducerClient {
     }
     if (response.status === 409) return { status: "conflict", transactionId: transaction.transactionId, message: "Transaction ID conflicts with an existing payload." };
     if (!response.ok) return { status: "unavailable", transactionId: transaction.transactionId, message: `Transaction submission failed (${response.status}).` };
-    try { parseStatus(await response.json(), transaction); }
+    try { parseStatus(await response.json(), transaction, Boolean(context.binding)); }
     catch { return { status: "conflict", transactionId: transaction.transactionId, message: "Transaction submission response is malformed." }; }
 
     const deadline = Date.now() + (this.#options.timeoutMs ?? 30 * 60_000 + 20_000);
@@ -175,7 +193,7 @@ export class AgentProducerClient {
         return { status: "unavailable", transactionId: transaction.transactionId, message: "Canvas is unavailable." };
       }
       if (!statusResponse.ok) return { status: "unavailable", transactionId: transaction.transactionId, message: `Transaction status failed (${statusResponse.status}).` };
-      try { state = parseStatus(await statusResponse.json(), transaction); }
+      try { state = parseStatus(await statusResponse.json(), transaction, Boolean(context.binding)); }
       catch { return { status: "conflict", transactionId: transaction.transactionId, message: "Transaction status is malformed." }; }
       if (state.status === "accepted") return { status: "accepted", transactionId: transaction.transactionId, ...(state.artifact ? { artifact: state.artifact } : {}) };
       if (state.status === "reverted" || state.status === "stale") return { status: state.status, transactionId: transaction.transactionId };

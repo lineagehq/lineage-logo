@@ -17,6 +17,16 @@ const stagedResult = {
 };
 
 describe("public agent producer client", () => {
+  it("sends immutable instance and workspace binding headers on every request", async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(json({ sessionId: "session", sourcePath: "concept.svg", revision: 4, layers: [] }));
+    const binding = { instanceId: "22222222-2222-4222-8222-222222222222", workspaceId: "a".repeat(64) };
+    await new AgentProducerClient({ context, binding, fetch: request }).manifest();
+    const headers = new Headers(request.mock.calls[0][1]?.headers);
+    expect(headers.get("X-Lineage-Instance-ID")).toBe(binding.instanceId);
+    expect(headers.get("X-Lineage-Workspace-ID")).toBe(binding.workspaceId);
+    expect(headers.get("Authorization")).toBe(`Bearer ${context.token}`);
+  });
+
   it("submits, waits through review, and returns the exact accepted artifact", async () => {
     const artifact = { sourcePath: "concept.svg", revision: 5, svg: '<svg xmlns="http://www.w3.org/2000/svg"><g id="logo" /></svg>' };
     const request = vi.fn<typeof fetch>()
@@ -26,6 +36,22 @@ describe("public agent producer client", () => {
     const client = new AgentProducerClient({ context, fetch: request, pollIntervalMs: 1, timeoutMs: 100 });
     await expect(client.submitAndWait(transaction)).resolves.toEqual({ status: "accepted", transactionId: transaction.transactionId, artifact });
     expect(request.mock.calls.every((call) => (call[1]?.headers as Record<string, string>).Authorization === `Bearer ${context.token}`)).toBe(true);
+  });
+
+  it("requires a durable receipt for a registry-bound producer before reporting success", async () => {
+    const binding = { instanceId: "22222222-2222-4222-8222-222222222222", workspaceId: "a".repeat(64) };
+    const legacyArtifact = { sourcePath: "concept.svg", revision: 5, svg: '<svg xmlns="http://www.w3.org/2000/svg" />' };
+    const missing = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(json({ transactionId: transaction.transactionId, status: "queued" }, 202))
+      .mockResolvedValueOnce(json({ transactionId: transaction.transactionId, status: "accepted", result: stagedResult, artifact: legacyArtifact }));
+    await expect(new AgentProducerClient({ context, binding, fetch: missing }).submitAndWait(transaction))
+      .resolves.toMatchObject({ status: "conflict" });
+    const durableArtifact = { ...legacyArtifact, durablePath: "iterations/concept-agent-deadbeef.svg", digest: "a".repeat(64) };
+    const durable = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(json({ transactionId: transaction.transactionId, status: "queued" }, 202))
+      .mockResolvedValueOnce(json({ transactionId: transaction.transactionId, status: "accepted", result: stagedResult, artifact: durableArtifact }));
+    await expect(new AgentProducerClient({ context, binding, fetch: durable }).submitAndWait(transaction))
+      .resolves.toEqual({ status: "accepted", transactionId: transaction.transactionId, artifact: durableArtifact });
   });
 
   it("fails closed on accepted mutations without a receipt and reports terminal/recovery outcomes", async () => {

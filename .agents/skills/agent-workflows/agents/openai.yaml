@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Workflows"
+  short_description: "Run leased, evidence-backed app walkthroughs"
+  default_prompt: "Use $agent-workflows to resolve my product-language request through CLI JSON, keep IDs internal, and preserve the attached-terminal authority boundary."

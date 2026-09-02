@@ -1,0 +1,39 @@
+schema: agent-workflow-config/v1
+
+project:
+  id: "lineage-logo"
+  appName: "Lineage Logo"
+  defaultTargetId: local-preview
+  targets:
+    - id: local-preview
+      label: Local preview
+      environment: local
+      baseUrl: "http://lineage-logo.localhost:5173/"
+      healthPath: "/"
+
+
+paths:
+  definitions: .workflows/workflows
+  runStore: .workflows/local
+
+platforms:
+  desktop-web:
+    adapter: browser
+    viewport: default-desktop
+
+evidence:
+  screenshots: declared-checkpoints
+  failureRecording: video-or-trace
+  retainVerifiedDownloads: false
+
+studio:
+  host: localhost
+  port: auto
+  openBrowser: false
+
+security:
+  omitHeaders:
+    - authorization
+    - cookie
+    - set-cookie
+  rejectPathTraversal: true

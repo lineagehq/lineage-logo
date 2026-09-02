@@ -11,9 +11,18 @@ const REFERENCE_ATTRIBUTES = new Set(["href", "xlink:href", "fill", "stroke", "c
 
 export interface AgentDocumentContext { sessionId: string; sourcePath: string; revision: number }
 export interface AgentSelectionIntent { targetSessionKeys: string[]; primarySessionKey?: string; scopeSessionKey?: string }
+export interface AgentOperationEvidence {
+  operationId: string;
+  type: AgentOperation["type"];
+  label: string;
+  current: string;
+  proposed: string;
+  context: string;
+}
 export interface StagedAgentTransaction {
   candidate?: SVGSVGElement;
   selection?: AgentSelectionIntent;
+  evidence?: AgentOperationEvidence[];
   result: AgentTransactionResult;
 }
 
@@ -175,6 +184,19 @@ function affectedKeys(node: Element): string[] {
   return nodesWithSelf(node).map((item) => item.getAttribute("data-lineage-key")).filter((key): key is string => Boolean(key));
 }
 
+function nodeName(node: Element): string {
+  return node.getAttribute("aria-label")?.trim() || node.id || node.localName;
+}
+
+function nodeSummary(node: Element): string {
+  return `${nodeName(node)} (${node.localName})`;
+}
+
+function positionSummary(node: Element): string {
+  const siblings = node.parentElement ? Array.from(node.parentElement.children) : [node];
+  return `Position ${Math.max(0, siblings.indexOf(node)) + 1} of ${siblings.length}`;
+}
+
 export function evaluateAgentTransaction(
   canonical: SVGSVGElement,
   transaction: AgentTransactionV1,
@@ -192,6 +214,7 @@ export function evaluateAgentTransaction(
     const beforeRefs = referenceIds(candidate);
     const results = new Map<string, SVGGraphicsElement>();
     const impact: Array<{ operationId: string; affectedSessionKeys: string[]; resultSessionKey?: string }> = [];
+    const evidence: AgentOperationEvidence[] = [];
     let selection: AgentSelectionIntent | undefined;
     let hasMutation = false;
     let lastMutationId: string | undefined;
@@ -213,6 +236,12 @@ export function evaluateAgentTransaction(
         const scope = operation.scope === undefined || operation.scope === null ? undefined : resolve(candidate, results, operation.scope, operationId);
         selection = { targetSessionKeys: targets.map(assignKey), primarySessionKey: assignKey(primary), ...(scope ? { scopeSessionKey: assignKey(scope) } : {}) };
         impact.push({ operationId, affectedSessionKeys: selection.targetSessionKeys });
+        evidence.push({
+          operationId, type: operation.type, label: "Change focus",
+          current: "Current canvas focus remains unchanged until this proposal is applied.",
+          proposed: `Focus ${targets.length} layer${targets.length === 1 ? "" : "s"}: ${targets.map(nodeName).join(", ")}`,
+          context: scope ? `Within ${nodeSummary(scope)}` : "Within the document root",
+        });
         continue;
       }
       hasMutation = true;
@@ -231,8 +260,13 @@ export function evaluateAgentTransaction(
         const key = assignKey(fragment);
         results.set(operationId, fragment);
         impact.push({ operationId, affectedSessionKeys: affectedKeys(fragment), resultSessionKey: key });
+        evidence.push({
+          operationId, type: operation.type, label: "Add layer", current: "No layer",
+          proposed: nodeSummary(fragment), context: `In ${parent === candidate ? "document root" : nodeSummary(parent)}`,
+        });
       } else if (operation.type === "replaceLayer") {
         const target = resolve(candidate, results, operation.target, operationId);
+        const current = nodeSummary(target);
         assertMutable(target, candidate, lockedKeys, operationId);
         const targetIds = idCounts(target);
         const outsideRefs = new Set(referencesOutside(candidate, target));
@@ -247,27 +281,46 @@ export function evaluateAgentTransaction(
         const key = assignKey(fragment);
         results.set(operationId, fragment);
         impact.push({ operationId, affectedSessionKeys: affectedKeys(fragment), resultSessionKey: key });
+        evidence.push({
+          operationId, type: operation.type, label: "Replace layer", current,
+          proposed: nodeSummary(fragment), context: `Keeps session identity ${key}`,
+        });
       } else {
         const target = resolve(candidate, results, operation.target, operationId);
         assertMutable(target, candidate, lockedKeys, operationId);
         const key = assignKey(target);
         if (operation.type === "renameLayer") {
+          const current = target.getAttribute("aria-label")?.trim() || "Unnamed";
           const name = operation.name?.trim() ?? "";
           if (name) target.setAttribute("aria-label", name); else target.removeAttribute("aria-label");
+          evidence.push({
+            operationId, type: operation.type, label: "Rename layer", current,
+            proposed: name || "Unnamed", context: `${nodeSummary(target)} · session ${key}`,
+          });
         } else if (operation.type === "setPaint") {
+          const current = target.getAttribute(operation.property) ?? "Inherited";
           if (operation.value !== null && !validPaint(operation.value)) fail("invalid_paint", `Invalid ${operation.property} paint`, operationId);
           if (operation.value === null) target.removeAttribute(operation.property); else target.setAttribute(operation.property, operation.value.trim());
+          evidence.push({
+            operationId, type: operation.type, label: `Set ${operation.property}`, current,
+            proposed: target.getAttribute(operation.property) ?? "Inherited", context: nodeSummary(target),
+          });
         } else {
+          const current = positionSummary(target);
           const anchor = siblingAnchor(candidate, results, operation.placement, operationId);
           if (anchor.sibling === target || anchor.sibling.parentElement !== target.parentElement) fail("invalid_reference", "Reorder target and sibling must be distinct siblings", operationId);
           target.parentElement!.insertBefore(target, anchor.before ? anchor.sibling : anchor.sibling.nextSibling);
+          evidence.push({
+            operationId, type: operation.type, label: "Reorder layer", current,
+            proposed: positionSummary(target), context: nodeSummary(target.parentElement ?? candidate),
+          });
         }
         impact.push({ operationId, affectedSessionKeys: [key] });
       }
     }
     validateReferences(beforeCounts, beforeRefs, candidate, relaxedReplacementIds, lastMutationId);
     if (hasMutation && candidate.outerHTML === beforeMarkup) fail("no_op", "Mutating transaction has no document effect", lastMutationId);
-    return { candidate, selection, result: { transactionId, status: hasMutation ? "staged" : "applied", impact } };
+    return { candidate, selection, evidence, result: { transactionId, status: hasMutation ? "staged" : "applied", impact } };
   } catch (error) {
     if (error instanceof EvaluationError) return reject(transactionId, error);
     throw error;

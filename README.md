@@ -4,7 +4,7 @@ An experimental visual correction canvas for AI-generated SVG logos.
 
 ## Examples
 
-- [`examples/seatify-constellation.svg`](examples/seatify-constellation.svg) — a 44-layer Seatify concept built from six abstract seats arranged as an optimized constellation around a circular table.
+- [`examples/seatify-constellation.svg`](examples/seatify-constellation.svg) — the canonical 44-layer Seatify constellation test fixture, built from six abstract seats arranged around a circular table. Unit tests read this file directly; browser QA uses only a byte-identical temporary workspace copy.
 
 The project explores a hybrid workflow: AI generates structured SVG concepts,
 a person makes precise visual corrections in a browser, and the corrected SVG
@@ -79,7 +79,7 @@ the exact recovery record, opens or mutates nothing, and retries on the next rel
 authoritative unknown result or exact 4xx identity conflict discards stale tab state.
 
 SVGs produced by the logo-designer skill can enter this same public boundary through
-the thin local adapter. See [docs/agent-canvas.md](docs/agent-canvas.md) for the artifact
+the thin local adapter. See the [agent canvas guide](https://github.com/lineagehq/lineage-logo/blob/main/docs/agent-canvas.md) for the artifact
 contract and authenticated invocation. The adapter extracts a stable SVG group and its
 referenced resources, then uses only the manifest and transaction endpoints; it never
 imports editor internals or bypasses review.
@@ -99,7 +99,7 @@ The first release focuses on a deliberately small editing surface:
 - Inspect the result at favicon sizes
 - Save the correction as the next numbered SVG iteration
 
-The detailed scope and acceptance criteria are in [docs/MVP.md](docs/MVP.md).
+The detailed scope and acceptance criteria are in the [MVP document](https://github.com/lineagehq/lineage-logo/blob/main/docs/MVP.md).
 
 ## Status
 
@@ -125,6 +125,49 @@ local API when available and automatically selects the next available API or
 editor port when either default is occupied. Pass `--port 4273` to request a
 different starting API port.
 
+## Public beta CLI
+
+The public executable is `lineage-logo`. Until a package is published to a
+registry, build and install a reviewed repository artifact rather than assuming
+that `npm install -g lineage-logo` is available:
+
+```bash
+npm ci
+npm pack
+npm install -g ./lineage-logo-0.1.0-beta.1.tgz
+lineage-logo --help
+lineage-logo doctor
+lineage-logo launch --workspace /absolute/path/to/logos
+```
+
+`launch` stays attached to the local editor process and prints a descriptive
+`lineage-logo.localhost` address. The server listens on loopback only. Use
+`--no-open` when a browser should not open automatically. `doctor`, `launch`,
+and `submit` support a versioned `--json` result; normal progress is written to
+stderr and does not include bearer tokens, absolute registry paths, or SVG
+contents. `submit` omits accepted SVG bytes unless `--include-svg` is explicit.
+
+The initial beta target is Node.js 22 or newer on macOS and Linux. The complete
+browser suite is exercised with Playwright Chromium. Firefox and Playwright
+WebKit currently receive one critical keyboard and semantic-control smoke path;
+that is not evidence of full Firefox support, native Safari compatibility, or
+WCAG conformance. Windows is not an initial beta target.
+
+The repository release check packs the exact npm artifact, enforces its file
+allowlist, installs it in an isolated temporary project, repeats installation of
+the same artifact, and exercises the installed help, version, and doctor paths.
+It does not prove a public npm-registry install or an upgrade from an older
+version. Before publishing a beta, observe the configured Ubuntu and macOS CI
+jobs and complete the [repository public beta checklist](https://github.com/lineagehq/lineage-logo/blob/main/docs/public-beta/README.md).
+
+Public beta issues and usage questions belong in the
+[GitHub issue tracker](https://github.com/lineagehq/lineage-logo/issues) and are
+handled on a best-effort basis without a response-time SLA. Do not use public
+issues for confidential vulnerability details. The beta intentionally provides
+no private security-reporting channel, so reports that require confidentiality
+cannot currently be accepted. Non-sensitive hardening discussions may use the
+public tracker with secrets, private paths, and exploit details omitted.
+
 Run the focused Chromium marquee QA with:
 
 ```bash
@@ -140,10 +183,14 @@ npm run test:e2e -- --grep 'collective translation'
 ```
 
 The command reserves dedicated strict ports, opens
-`http://marquee-qa.localhost:43118`, and copies the complex Seatify fixture
+`http://marquee-qa.localhost:43118`, and copies the distinct complex Seatify
+geometry fixture plus the canonical `examples/seatify-constellation.svg`
 byte-for-byte into a validated `mkdtemp` workspace. It removes that exact
 workspace and both child-process groups when Playwright stops. Successful runs
-retain no trace or screenshot; failures retain both under `test-results/`.
+retain no trace or screenshot. Failures retain only a private-permission,
+sanitized JSON summary under `test-results/`; it contains the engine, static
+test title, and result status, not workspace paths, SVG contents, screenshots,
+or traces.
 The Chromium suite covers live preview entry/exit and exact Layers parity,
 Shift-additive and Escape cancellation behavior, contain/touch preferences,
 125% zoom, collapsed sidebars, visual affordance styling, and document/history
@@ -154,14 +201,9 @@ Every gesture is derived from live SVG transforms rather than viewport
 coordinates. CI runs it as a separate `browser-qa` job and uploads
 `test-results/` only when that job fails.
 
-To inspect the failure-only diagnostics locally without changing tracked files,
-run the supported intentional diagnostic mode, inspect the generated screenshot
-and trace, then rerun the ordinary green command to clear them:
-
-```bash
-LINEAGE_LOGO_E2E_FORCE_FAILURE=1 npm run test:e2e -- --grep 'live marquee preview'
-npm run test:e2e
-```
+For a failing browser run, inspect `test-results/release-diagnostics.json` for
+the bounded metadata summary, then reproduce the named test locally. Rich visual
+failure artifacts are intentionally not collected in the current beta gate.
 
 Hover the canvas to preview exactly which layer a normal click will select.
 Use `Edit inside` to make a selected group the active scope, `Back to group` to

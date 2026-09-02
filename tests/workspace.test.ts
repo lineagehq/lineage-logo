@@ -4,8 +4,10 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   getNextIterationPath,
+  continuationStem,
   listSvgFiles,
   readWorkspaceSvg,
+  saveAgentContinuation,
   saveNextIteration,
   validateSvg,
 } from "../src/server/workspace.js";
@@ -69,6 +71,7 @@ describe("logo workspace", () => {
     const resolvedRoot = await realpath(root);
 
     await expect(getNextIterationPath(resolvedRoot)).resolves.toBe("iterations/iteration-1.svg");
+    await expect(getNextIterationPath(resolvedRoot, "concepts/concept-1.svg")).resolves.toBe("iterations/concept-1-iteration-1.svg");
     const first = await saveNextIteration(
       resolvedRoot,
       "concepts/concept-1.svg",
@@ -80,13 +83,56 @@ describe("logo workspace", () => {
       source.replace("#fff", "#ff00ff"),
     );
 
-    expect(first.path).toBe("iterations/iteration-1.svg");
-    expect(second.path).toBe("iterations/iteration-2.svg");
+    expect(first.path).toBe("iterations/concept-1-iteration-1.svg");
+    expect(second.path).toBe("iterations/concept-1-iteration-2.svg");
     expect(await readFile(path.join(root, "concepts", "concept-1.svg"), "utf8")).toBe(source);
     const saved = await readFile(path.join(root, first.path), "utf8");
     expect(saved).not.toContain('id="lineage-logo-edit"');
     expect(saved).toContain('fill="#00ff00"');
-    await expect(getNextIterationPath(resolvedRoot)).resolves.toBe("iterations/iteration-3.svg");
+    await expect(getNextIterationPath(resolvedRoot)).resolves.toBe("iterations/iteration-1.svg");
+    await expect(getNextIterationPath(resolvedRoot, second.path)).resolves.toBe("iterations/concept-1-iteration-3.svg");
+  });
+
+  it("allocates sanitized continuation ordinals per concept while preserving legacy flat reads", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lineage-logo-concepts-"));
+    await mkdir(path.join(root, "concepts"));
+    await mkdir(path.join(root, "iterations"));
+    await writeFile(path.join(root, "concepts", "Seatify Final!.svg"), "<svg/>");
+    await writeFile(path.join(root, "concepts", "Other.svg"), "<svg/>");
+    await writeFile(path.join(root, "iterations", "iteration-8.svg"), "<svg></svg>");
+    await writeFile(path.join(root, "iterations", "Seatify-Final-iteration-2.svg"), "<svg/>");
+    await writeFile(path.join(root, "iterations", "Other-iteration-7.svg"), "<svg/>");
+    const resolvedRoot = await realpath(root);
+
+    expect(continuationStem("concepts/Seatify Final!.svg")).toBe("Seatify-Final");
+    expect(continuationStem("iterations/Seatify-Final-iteration-2.svg")).toBe("Seatify-Final");
+    expect(continuationStem("iterations/iteration-8.svg")).toBe("legacy-iteration-8");
+    await expect(getNextIterationPath(resolvedRoot)).resolves.toBe("iterations/iteration-9.svg");
+    await expect(getNextIterationPath(resolvedRoot, "concepts/Seatify Final!.svg")).resolves.toBe("iterations/Seatify-Final-iteration-3.svg");
+    await expect(getNextIterationPath(resolvedRoot, "concepts/Other.svg")).resolves.toBe("iterations/Other-iteration-8.svg");
+    await expect(readWorkspaceSvg(resolvedRoot, "iterations/iteration-8.svg")).resolves.toBe("<svg></svg>");
+  });
+
+  it("saves one transaction-bound continuation idempotently and rejects conflicting retry bytes", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "lineage-logo-agent-save-"));
+    await mkdir(path.join(root, "concepts"));
+    const source = '<svg xmlns="http://www.w3.org/2000/svg"><path fill="#111"/></svg>';
+    await writeFile(path.join(root, "concepts", "seatify-logo.svg"), source);
+    const binding = {
+      instanceId: "22222222-2222-4222-8222-222222222222", transactionId: "save-once",
+      sourcePath: "concepts/seatify-logo.svg", revision: 1,
+      svg: source.replace("#111", "#fff"),
+    };
+    const first = await saveAgentContinuation(root, binding);
+    const retry = await saveAgentContinuation(root, binding);
+    expect(retry).toEqual(first);
+    expect(first.path).toMatch(/^iterations\/seatify-logo-agent-[a-f0-9]{16}\.svg$/);
+    expect(first.digest).toMatch(/^[a-f0-9]{64}$/);
+    expect(await readFile(path.join(root, binding.sourcePath), "utf8")).toBe(source);
+    await expect(saveAgentContinuation(root, { ...binding, svg: source.replace("#111", "#f00") }))
+      .rejects.toThrow("conflicts");
+    const other = await saveAgentContinuation(root, { ...binding, transactionId: "save-other", svg: source.replace("#111", "#f00") });
+    expect(other.path).not.toBe(first.path);
   });
 
   it("saves clean input exactly without injecting or replacing unrelated metadata", async () => {
