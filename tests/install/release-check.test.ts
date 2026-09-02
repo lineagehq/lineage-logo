@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isValidPackageVersion, parsePackResult, safeDiagnostic, validatePackedFiles } from "../../scripts/release-check";
 
@@ -29,5 +30,10 @@ describe("public release package enforcement", () => {
     expect(parsePackResult(`build output\n[{"filename":"lineage-logo.tgz","files":[]}]`)).toEqual([
       { filename: "lineage-logo.tgz", files: [] },
     ]);
+  });
+
+  it("keeps the Chromium CI job scoped to its installed browser", () => {
+    const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
+    expect(workflow).toContain("run: npm run test:e2e -- --project=chromium");
   });
 });

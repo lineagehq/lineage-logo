@@ -51,7 +51,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run browser QA
-        run: npm run test:e2e
+        run: npm run test:e2e -- --project=chromium
 
       - name: Upload metadata-only browser diagnostics
         if: failure()
