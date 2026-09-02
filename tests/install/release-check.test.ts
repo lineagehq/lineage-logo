@@ -36,4 +36,21 @@ describe("public release package enforcement", () => {
     const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
     expect(workflow).toContain("run: npm run test:e2e -- --project=chromium");
   });
+
+  it("gives the critical-browser matrix enough installation margin", () => {
+    const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
+    expect(workflow).toMatch(/critical-browsers:[\s\S]*?timeout-minutes: 15/);
+  });
+
+  it("ships structured beta intake without inviting confidential reports", () => {
+    const bug = readFileSync(".github/ISSUE_TEMPLATE/bug-report.yml", "utf8");
+    const feedback = readFileSync(".github/ISSUE_TEMPLATE/beta-feedback.yml", "utf8");
+    const config = readFileSync(".github/ISSUE_TEMPLATE/config.yml", "utf8");
+    for (const template of [bug, feedback]) {
+      expect(template).toContain("Do not include");
+      expect(template).toContain("Node.js version");
+      expect(template).toContain("Lineage Logo version");
+    }
+    expect(config).toContain("blank_issues_enabled: false");
+  });
 });
