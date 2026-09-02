@@ -12,9 +12,10 @@ const PROXIED_EDITOR_ORIGIN = `http://127.0.0.1:${CLIENT_PORT}`;
 const AGENT_TOKEN = "lineage-logo-e2e-agent-token";
 const WORKSPACE_PREFIX = "lineage-logo-marquee-qa-";
 const repositoryRoot = process.cwd();
+const canonicalSeatifyConstellationFixture = path.join(repositoryRoot, "examples/seatify-constellation.svg");
 const fixtures = [
   path.join(repositoryRoot, "tests/fixtures/workspace/concepts/complex-seatify.svg"),
-  path.join(repositoryRoot, "examples/seatify-constellation.svg"),
+  canonicalSeatifyConstellationFixture,
 ];
 const executable = (name: string) => path.join(repositoryRoot, "node_modules", ".bin", name);
 const detached = process.platform !== "win32";
@@ -46,16 +47,16 @@ async function removeExactWorkspace(): Promise<void> {
   const resolved = await realpath(createdPath);
   if (!info.isDirectory() || info.isSymbolicLink() || path.dirname(resolved) !== temporaryRoot
     || resolved !== createdPath || !path.basename(resolved).startsWith(WORKSPACE_PREFIX)) {
-    throw new Error(`Refusing to remove unexpected e2e workspace: ${createdPath}`);
+    throw new Error("Refusing to remove an unexpected e2e workspace.");
   }
   await rm(resolved, { recursive: true });
   await access(resolved, constants.F_OK).then(
-    () => { throw new Error(`E2E workspace still exists after cleanup: ${resolved}`); },
+    () => { throw new Error("The isolated e2e workspace still exists after cleanup."); },
     (error: NodeJS.ErrnoException) => {
       if (error.code !== "ENOENT") throw error;
     },
   );
-  console.log(`Removed exact e2e workspace: ${resolved}`);
+  console.log("Removed the isolated e2e workspace.");
   workspace = undefined;
 }
 
@@ -88,6 +89,7 @@ async function main(): Promise<void> {
     const [sourceBytes, copiedBytes] = await Promise.all([readFile(fixture), readFile(copiedFixture)]);
     if (!sourceBytes.equals(copiedBytes)) throw new Error(`The e2e fixture copy is not byte-for-byte exact: ${path.basename(fixture)}`);
   }
+  console.log("Canonical Seatify constellation fixture: examples/seatify-constellation.svg");
 
   const environment = {
     ...process.env,
@@ -97,7 +99,10 @@ async function main(): Promise<void> {
     // listener. Keep the descriptive hostname for the public browser URL while
     // validating the exact internal Origin that reaches the API server.
     LINEAGE_LOGO_EDITOR_ORIGIN: PROXIED_EDITOR_ORIGIN,
+    LINEAGE_LOGO_PUBLIC_EDITOR_ORIGIN: EDITOR_ORIGIN,
     LINEAGE_LOGO_AGENT_TOKEN: AGENT_TOKEN,
+    LINEAGE_LOGO_REGISTRY_DIR: path.join(workspace, ".lineage-registry"),
+    LINEAGE_LOGO_E2E_ALLOW_UNBOUND_AGENT: "1",
   };
   children.push(
     spawn(executable("vite"), ["--host", "127.0.0.1", "--port", String(CLIENT_PORT), "--strictPort"], {
@@ -115,8 +120,8 @@ async function main(): Promise<void> {
   );
 
   for (const child of children) {
-    child.once("error", (error) => {
-      console.error(error);
+    child.once("error", () => {
+      console.error("An e2e child process could not start.");
       void shutdown(1);
     });
     child.once("exit", (code, signal) => {
@@ -126,7 +131,7 @@ async function main(): Promise<void> {
     });
   }
   console.log(`Marquee QA editor: ${EDITOR_ORIGIN}`);
-  console.log(`Exact fixture workspace: ${workspace}`);
+  console.log("Created an isolated fixture workspace and registry.");
 }
 
 process.once("SIGINT", () => { void shutdown(130, "SIGINT"); });
@@ -136,7 +141,7 @@ if (process.platform !== "win32") {
   process.once("SIGQUIT", () => { void shutdown(0); });
 }
 
-main().catch(async (error) => {
-  console.error(error);
-  await shutdown(1).catch((cleanupError) => console.error(cleanupError));
+main().catch(async () => {
+  console.error("The isolated e2e environment could not start.");
+  await shutdown(1).catch(() => console.error("The isolated e2e environment could not be cleaned up."));
 });

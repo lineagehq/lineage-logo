@@ -85,9 +85,11 @@ The grammar gate is the shared strict, namespace-aware `saxes` parser pinned exa
 parser error aborts validation before semantic events can produce acceptance; DTDs,
 entity declarations, and non-declaration processing instructions are rejected, and no
 external entity resolver or recovery path is installed. The dependency is ISC-licensed
-and its only transitive package is MIT-licensed `xmlchars` 2.2.0. Lock integrity,
-production audit, single-copy installation, and browser bundle ceilings are verified as
-part of the integration gate.
+and its only transitive package is MIT-licensed `xmlchars` 2.2.0. The integration gate
+verifies the lockfile through `npm ci`, runs a point-in-time production dependency
+audit, builds the browser and CLI, and exercises the packed CLI from an isolated
+installation. It does not claim a formal bundle-size ceiling or prove an upgrade from
+a prior published version.
 
 Accepted decision bodies use a fixed `2 × 5 MiB + 128 KiB` encoded-envelope ceiling.
 Strict clean XML can at most double when JSON escapes its raw SVG characters; the

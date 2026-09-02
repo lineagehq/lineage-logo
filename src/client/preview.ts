@@ -560,6 +560,33 @@ export function eligiblePreviewTargetIds(source: string): string[] {
     .filter((id, index, ids) => Boolean(id) && ids.indexOf(id) === index);
 }
 
+export function automaticPreviewTargetId(source: string): string | undefined {
+  const parsed = new DOMParser().parseFromString(source, "image/svg+xml");
+  const root = parsed.documentElement as unknown as SVGSVGElement;
+  if (root.localName !== "svg" || parsed.querySelector("parsererror")) return undefined;
+  const candidates = Array.from(root.querySelectorAll<SVGGraphicsElement>("[id][aria-label]"))
+    .filter((node) => ELIGIBLE_TARGETS.has(node.localName)
+      && targetsById(root, node.id).length === 1
+      && !node.closest("defs, clipPath, mask, filter, pattern, marker, symbol")
+      && !hiddenBySvgPresentation(node, root));
+  const score = (node: SVGGraphicsElement): number => {
+    const label = (node.getAttribute("aria-label") ?? "").trim().toLocaleLowerCase();
+    if (!label) return Number.NEGATIVE_INFINITY;
+    const descendants = Array.from(node.querySelectorAll<SVGGraphicsElement>("g, path, rect, circle, ellipse, polygon, polyline, line, text, use"))
+      .filter((candidate) => !hiddenBySvgPresentation(candidate, root));
+    const textCount = descendants.filter((candidate) => candidate.localName === "text").length;
+    const semantic = /\b(?:icon|symbol|emblem)\b/.test(label) ? 55
+      : /\bmark\b/.test(label) && !/\bwordmark\b/.test(label) ? 40
+        : 0;
+    const textPenalty = /\b(?:wordmark|tagline|descriptor|caption|text)\b/.test(label) ? 120 : textCount * 30;
+    return semantic + (node.localName === "g" ? 24 : 0) + Math.min(descendants.length + 1, 48) - textPenalty;
+  };
+  return candidates
+    .map((node, order) => ({ id: node.id, order, score: score(node) }))
+    .filter((candidate) => Number.isFinite(candidate.score))
+    .sort((left, right) => right.score - left.score || left.order - right.order)[0]?.id;
+}
+
 export function createSvgPreview(
   source: string,
   requestedTarget = "#icon",

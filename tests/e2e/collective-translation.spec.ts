@@ -27,7 +27,7 @@ async function openFixture(page: Page): Promise<void> {
   });
   await page.goto("/");
   await expect(page).toHaveURL(/^http:\/\/marquee-qa\.localhost:/);
-  await page.getByRole("button", { name: "complex-seatify" }).click();
+  await page.locator('[data-path="concepts/complex-seatify.svg"]').click();
   await expect(page.locator("#artboard svg[aria-label='Complex Seatify venue logo']")).toBeVisible();
   await expect.poll(async () => {
     const response = await page.request.get("/api/agent/document", {
@@ -445,13 +445,51 @@ test("collective translation is publicly agent-blocked, Revert is clean, and nam
   await page.keyboard.press("ArrowRight");
   const savedGeometry = await rootGeometry(page);
   expectTranslation(baseline, savedGeometry, { x: 1, y: 0 });
-  await page.getByRole("button", { name: "Save iteration" }).click();
-  await expect(page.locator("#status")).toHaveText("Saved iterations/iteration-1.svg");
-  await expect(page.locator(".file-button[aria-current='true']")).toHaveAttribute("data-path", "iterations/iteration-1.svg");
+
+  const workspaceBeforeResponse = await page.request.get("/api/workspace");
+  expect(workspaceBeforeResponse.ok()).toBe(true);
+  const workspaceBefore = await workspaceBeforeResponse.json() as { files: Array<{ path: string }> };
+  const priorPaths = workspaceBefore.files.map((file) => file.path).sort();
+  expect(new Set(priorPaths).size).toBe(priorPaths.length);
+  const priorBytes = new Map(await Promise.all(priorPaths.map(async (path) => {
+    const response = await page.request.get(`/api/svg?path=${encodeURIComponent(path)}`);
+    expect(response.ok()).toBe(true);
+    return [path, await response.text()] as const;
+  })));
+  const sourcePath = "concepts/complex-seatify.svg";
+  const sourceBefore = priorBytes.get(sourcePath);
+  expect(sourceBefore).toBeDefined();
+  const existingOrdinals = priorPaths.flatMap((path) => {
+    const match = /^iterations\/complex-seatify-iteration-(\d+)\.svg$/.exec(path);
+    return match ? [Number(match[1])] : [];
+  });
+  const expectedPath = `iterations/complex-seatify-iteration-${Math.max(0, ...existingOrdinals) + 1}.svg`;
+
+  const save = page.locator("#save-iteration");
+  await expect(save).toHaveText(`Save ${expectedPath.split("/").at(-1)!.replace(/\.svg$/, "")}`);
+  await expect(save).toHaveAttribute("title", `Create ${expectedPath}`);
+  await save.click();
+  await expect(page.locator("#status")).toHaveText(`Saved ${expectedPath}`);
+  await expect(page.locator(".file-button[aria-current='true']")).toHaveAttribute("data-path", expectedPath);
   expectSameGeometry(await rootGeometry(page), savedGeometry);
   expect(await controls(page)).toEqual({ redo: true, "reset-edits": true, "save-iteration": true, undo: true });
 
-  const savedResponse = await page.request.get("/api/svg?path=iterations%2Fiteration-1.svg");
+  const workspaceAfterResponse = await page.request.get("/api/workspace");
+  expect(workspaceAfterResponse.ok()).toBe(true);
+  const workspaceAfter = await workspaceAfterResponse.json() as { files: Array<{ path: string }> };
+  const afterPaths = workspaceAfter.files.map((file) => file.path).sort();
+  expect(afterPaths.filter((path) => !priorBytes.has(path))).toEqual([expectedPath]);
+  expect(afterPaths).toEqual([...priorPaths, expectedPath].sort());
+  for (const [path, bytes] of priorBytes) {
+    const response = await page.request.get(`/api/svg?path=${encodeURIComponent(path)}`);
+    expect(response.ok()).toBe(true);
+    expect(await response.text()).toBe(bytes);
+  }
+  const sourceAfterResponse = await page.request.get(`/api/svg?path=${encodeURIComponent(sourcePath)}`);
+  expect(sourceAfterResponse.ok()).toBe(true);
+  expect(await sourceAfterResponse.text()).toBe(sourceBefore);
+
+  const savedResponse = await page.request.get(`/api/svg?path=${encodeURIComponent(expectedPath)}`);
   expect(savedResponse.ok()).toBe(true);
   const saved = await savedResponse.text();
   expect(saved).toContain("Ticket accent star");

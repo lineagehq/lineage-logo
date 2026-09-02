@@ -209,27 +209,35 @@ export async function runLogoDesignerAdapter(
 ): Promise<{ receipt: LogoDesignerCliReceiptV1; exitCode: number }> {
   let options: AdapterOptions;
   try { options = parseArguments(argv); }
-  catch { return { receipt: buildPreflightReceipt("invalid", "invalid_arguments"), exitCode: 64 }; }
+  catch { return { receipt: buildPreflightReceipt("invalid", "invalid_arguments"), exitCode: 2 }; }
 
   const client = injectedClient ?? new AgentProducerClient({ contextPath: options.contextPath, timeoutMs: options.timeoutMs });
   let manifest: AgentDocumentManifest;
   try { manifest = await client.manifest(); }
-  catch { return { receipt: buildPreflightReceipt("unavailable", "canvas_unavailable"), exitCode: 24 }; }
+  catch { return { receipt: buildPreflightReceipt("unavailable", "canvas_unavailable"), exitCode: 4 }; }
 
   let transaction: AgentTransactionV1;
   try { transaction = await buildLogoDesignerTransaction(options, manifest); }
-  catch { return { receipt: buildPreflightReceipt("invalid", "invalid_artifact"), exitCode: 64 }; }
+  catch { return { receipt: buildPreflightReceipt("invalid", "invalid_artifact"), exitCode: 2 }; }
 
   let outcome: AgentProducerOutcome;
   try { outcome = await client.submitAndWait(transaction); }
   catch { outcome = { status: "unavailable", transactionId: transaction.transactionId, message: "Canvas is unavailable." }; }
-  try { return { receipt: buildLogoDesignerReceipt(transaction, outcome), exitCode: 0 }; }
+  try {
+    const receipt = buildLogoDesignerReceipt(transaction, outcome);
+    const exitCode = outcome.status === "accepted" ? 6
+      : outcome.status === "reverted" ? 5
+        : outcome.status === "rejected" ? 2
+          : outcome.status === "unavailable" || outcome.status === "disconnected" ? 4
+            : 6;
+    return { receipt, exitCode };
+  }
   catch {
     return {
       receipt: buildLogoDesignerReceipt(transaction, {
         status: "conflict", transactionId: transaction.transactionId, message: "Transaction outcome identity is malformed.",
       }),
-      exitCode: 0,
+      exitCode: 6,
     };
   }
 }

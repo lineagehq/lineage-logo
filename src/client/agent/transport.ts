@@ -115,8 +115,11 @@ function decisionState(value: unknown, transactionId: string): (AgentTransaction
     if (input.artifact !== undefined) {
       if (!input.artifact || typeof input.artifact !== "object" || Array.isArray(input.artifact)) return undefined;
       const raw = input.artifact as Record<string, unknown>;
-      if (Object.keys(raw).some((key) => !["sourcePath", "revision", "svg"].includes(key))
+      if (Object.keys(raw).some((key) => !["sourcePath", "revision", "svg", "durablePath", "digest"].includes(key))
         || typeof raw.sourcePath !== "string" || !Number.isSafeInteger(raw.revision) || typeof raw.svg !== "string") return undefined;
+      if ((raw.durablePath !== undefined || raw.digest !== undefined)
+        && (typeof raw.durablePath !== "string" || !/^iterations\/[A-Za-z0-9._-]+\.svg$/.test(raw.durablePath)
+          || typeof raw.digest !== "string" || !/^[a-f0-9]{64}$/.test(raw.digest))) return undefined;
       validateCleanAgentSvg(raw.svg);
       artifact = raw as unknown as AgentAcceptedArtifact;
     }
@@ -255,7 +258,8 @@ export class AgentCanvasTransport {
           throw new AgentDecisionError(message, response.status >= 500 || !state, state);
         }
         if (!state || state.status !== status) throw new AgentDecisionError(`Agent decision did not converge to ${status}.`, false, state);
-        if (status === "accepted" && JSON.stringify(state.artifact) !== JSON.stringify(artifact)) {
+        if (status === "accepted" && (!artifact || state.artifact?.sourcePath !== artifact.sourcePath
+          || state.artifact.revision !== artifact.revision || state.artifact.svg !== artifact.svg)) {
           throw new AgentDecisionError("Accepted artifact receipt does not match the applied candidate.", false, state);
         }
         return state;

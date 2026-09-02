@@ -5,7 +5,7 @@ const selectedLabel = "Venue caption";
 async function openSeatify(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page).toHaveURL(/^http:\/\/marquee-qa\.localhost:/);
-  await page.getByRole("button", { name: "complex-seatify" }).click();
+  await page.locator('[data-path="concepts/complex-seatify.svg"]').click();
   await expect(page.locator("#artboard svg[aria-label='Complex Seatify venue logo']")).toBeVisible();
 }
 

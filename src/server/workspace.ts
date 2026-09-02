@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { link, mkdir, realpath, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -11,6 +11,10 @@ export interface SvgFileEntry {
   collection: Collection;
   name: string;
   path: string;
+}
+
+export interface DurableAgentContinuation extends SvgFileEntry {
+  digest: string;
 }
 
 function isInside(root: string, candidate: string): boolean {
@@ -61,8 +65,36 @@ export async function listSvgFiles(root: string): Promise<SvgFileEntry[]> {
   );
 }
 
-export async function getNextIterationPath(root: string): Promise<string> {
+function escapedPattern(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function continuationStem(sourcePath: string): string {
+  let source = path.basename(sourcePath, path.extname(sourcePath));
+  if (/^iteration-\d+$/i.test(source)) source = `legacy-${source}`;
+  else source = source.replace(/-iteration-\d+$/i, "").replace(/-agent-[a-f0-9]{16}$/i, "");
+  const sanitized = source.normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[._-]+|[._-]+$/g, "")
+    .slice(0, 64)
+    .replace(/[._-]+$/g, "");
+  return sanitized || "logo";
+}
+
+export async function getNextIterationPath(root: string, sourcePath?: string): Promise<string> {
   const files = await listSvgFiles(root);
+  if (sourcePath) {
+    const stem = continuationStem(sourcePath);
+    const pattern = new RegExp(`^${escapedPattern(stem)}-iteration-(\\d+)\\.svg$`, "i");
+    const highest = files
+      .filter((file) => file.collection === "iterations")
+      .map((file) => pattern.exec(file.name))
+      .filter((match): match is RegExpExecArray => match !== null)
+      .reduce((maximum, match) => Math.max(maximum, Number(match[1])), 0);
+    return `iterations/${stem}-iteration-${highest + 1}.svg`;
+  }
   const highest = files
     .filter((file) => file.collection === "iterations")
     .map((file) => /^iteration-(\d+)\.svg$/i.exec(file.name))
@@ -90,7 +122,7 @@ export async function saveNextIteration(
   }
 
   for (let attempt = 0; attempt < 100; attempt += 1) {
-    const relativePath = await getNextIterationPath(root);
+    const relativePath = await getNextIterationPath(root, sourcePath);
     const name = path.basename(relativePath);
     const target = path.join(root, relativePath);
     const temporary = path.join(resolvedIterations, `.lineage-logo-${randomUUID()}.tmp`);
@@ -107,6 +139,45 @@ export async function saveNextIteration(
   }
 
   throw new Error("Unable to allocate the next iteration filename.");
+}
+
+export async function saveAgentContinuation(
+  root: string,
+  binding: { instanceId: string; transactionId: string; sourcePath: string; revision: number; svg: string },
+): Promise<DurableAgentContinuation> {
+  const canonicalRoot = await realpath(root);
+  const clean = stripReservedEditMetadata(binding.svg);
+  if (Buffer.byteLength(clean, "utf8") > SVG_LIMIT_BYTES) throw new Error("Edited SVG exceeds the 5 MB document limit.");
+  validateSvg(clean);
+  await readWorkspaceSvg(canonicalRoot, binding.sourcePath);
+  const digest = createHash("sha256").update(clean).digest("hex");
+  const identity = createHash("sha256").update(JSON.stringify({
+    instanceId: binding.instanceId,
+    transactionId: binding.transactionId,
+    sourcePath: binding.sourcePath,
+    revision: binding.revision,
+  })).digest("hex").slice(0, 16);
+  const sourceName = continuationStem(binding.sourcePath).slice(0, 40).replace(/[._-]+$/g, "") || "logo";
+  const relativePath = `iterations/${sourceName}-agent-${identity}.svg`;
+  const iterationsDirectory = path.join(canonicalRoot, "iterations");
+  await mkdir(iterationsDirectory, { recursive: true });
+  const resolvedIterations = await realpath(iterationsDirectory);
+  if (!isInside(canonicalRoot, resolvedIterations)) throw new Error("Iterations directory escapes the selected workspace.");
+  const target = path.join(canonicalRoot, relativePath);
+  const temporary = path.join(resolvedIterations, `.lineage-logo-${randomUUID()}.tmp`);
+  await writeFile(temporary, clean, { encoding: "utf8", flag: "wx" });
+  try {
+    await link(temporary, target);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    const existing = await readFile(target, "utf8");
+    if (createHash("sha256").update(existing).digest("hex") !== digest) {
+      throw new Error("Transaction continuation conflicts with its existing durable artifact.");
+    }
+  } finally {
+    await unlink(temporary).catch(() => undefined);
+  }
+  return { collection: "iterations", name: path.basename(relativePath), path: relativePath, digest };
 }
 
 export function stripReservedEditMetadata(svg: string): string {

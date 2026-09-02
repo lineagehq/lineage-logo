@@ -1,5 +1,8 @@
-import { createServer, type Server } from "node:http";
+import { createServer, request as requestHttp, type Server } from "node:http";
 import { once } from "node:events";
+import { mkdir, mkdtemp, readFile, readdir, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { createServer as createViteServer, type ViteDevServer } from "vite";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Window } from "happy-dom";
@@ -143,7 +146,108 @@ async function openEvents(base: string, lastEventId?: number) {
   return { response, controller, next, nextFrame, closed: reader.closed };
 }
 
+async function rawRequestStatus(base: string, headers: Record<string, string>, method = "GET", body?: string): Promise<number> {
+  return await new Promise((resolve, reject) => {
+    const request = requestHttp(`${base}/api/agent/${method === "GET" ? "events" : "document"}`, { method, headers }, (response) => {
+      resolve(response.statusCode ?? 0);
+      response.destroy();
+    });
+    request.once("error", reject);
+    request.end(body);
+  });
+}
+
 describe("real HTTP agent transport", () => {
+  it("accepts a mutation only after one durable transaction-bound continuation exists", async () => {
+    const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), "lineage-agent-transport-save-"));
+    await mkdir(path.join(workspaceRoot, "concepts"));
+    const source = '<svg xmlns="http://www.w3.org/2000/svg"><path data-lineage-key="layer" aria-label="Layer"/></svg>';
+    await writeFile(path.join(workspaceRoot, "concepts/logo.svg"), source);
+    const identity = {
+      schemaVersion: 1 as const, instanceId: "22222222-2222-4222-8222-222222222222", workspaceId: "a".repeat(64),
+      protocolVersion: 1 as const, apiOrigin: "http://127.0.0.1:4173", editorOrigin: origin,
+    };
+    const base = await harness({ identity, workspaceRoot });
+    const boundProducer = {
+      ...producerHeaders, "X-Lineage-Instance-ID": identity.instanceId, "X-Lineage-Workspace-ID": identity.workspaceId,
+    };
+    expect((await fetch(`${base}/api/agent/document`, {
+      method: "POST", headers: browserHeaders,
+      body: JSON.stringify({ sessionId: "session", sourcePath: "concepts/logo.svg", revision: 0, layers: [{ sessionKey: "layer", name: "Layer", type: "path", locked: false }] }),
+    })).status).toBe(200);
+    const events = await openEvents(base);
+    const body = payload("durable-save", "Saved").replace('"sourcePath":"concept.svg"', '"sourcePath":"concepts/logo.svg"');
+    expect((await submit(base, body, boundProducer)).status).toBe(202);
+    await events.next();
+    expect((await acknowledge(base, "durable-save", staged("durable-save"))).status).toBe(200);
+    const artifact = { sourcePath: "concepts/logo.svg", revision: 1, svg: '<svg xmlns="http://www.w3.org/2000/svg"><path aria-label="Saved"/></svg>' };
+    const accepted = await acknowledge(base, "durable-save", { transactionId: "durable-save", status: "accepted", artifact });
+    expect(accepted.status).toBe(200);
+    const receipt = await accepted.json() as { artifact: { durablePath: string; digest: string } };
+    expect(receipt.artifact).toMatchObject({ durablePath: expect.stringMatching(/^iterations\//), digest: expect.stringMatching(/^[a-f0-9]{64}$/) });
+    const duplicate = await acknowledge(base, "durable-save", { transactionId: "durable-save", status: "accepted", artifact });
+    expect((await duplicate.json() as { artifact: unknown }).artifact).toEqual(receipt.artifact);
+    expect((await readdir(path.join(workspaceRoot, "iterations"))).filter((name) => name.endsWith(".svg"))).toHaveLength(1);
+    expect(await readFile(path.join(workspaceRoot, "concepts/logo.svg"), "utf8")).toBe(source);
+    events.controller.abort();
+  });
+
+  it("allows an Origin-less event stream only with exact Host and frozen same-origin Fetch Metadata", async () => {
+    const base = await harness();
+    const sameOriginStreamHeaders = {
+      Host: new URL(origin).host,
+      "Sec-Fetch-Site": "same-origin",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Dest": "empty",
+      "X-Lineage-Editor-ID": editorId,
+    };
+    expect(await rawRequestStatus(base, sameOriginStreamHeaders)).toBe(200);
+
+    const adversarialHeaders = [
+      { ...sameOriginStreamHeaders, Host: "127.0.0.1:51730" },
+      { ...sameOriginStreamHeaders, "Sec-Fetch-Site": "cross-site" },
+      { ...sameOriginStreamHeaders, "Sec-Fetch-Mode": "no-cors" },
+      { ...sameOriginStreamHeaders, "Sec-Fetch-Dest": "document" },
+      Object.fromEntries(Object.entries(sameOriginStreamHeaders).filter(([name]) => name !== "Sec-Fetch-Site")),
+      Object.fromEntries(Object.entries(sameOriginStreamHeaders).filter(([name]) => name !== "Sec-Fetch-Mode")),
+      Object.fromEntries(Object.entries(sameOriginStreamHeaders).filter(([name]) => name !== "Sec-Fetch-Dest")),
+      { ...sameOriginStreamHeaders, Origin: "http://127.0.0.1:9999" },
+    ];
+    for (const headers of adversarialHeaders) {
+      expect(await rawRequestStatus(base, headers)).toBe(403);
+    }
+
+    const manifest = { sessionId: "session", sourcePath: "concept.svg", revision: 0, layers: [] };
+    expect(await rawRequestStatus(base, { ...sameOriginStreamHeaders, "Content-Type": "application/json" }, "POST", JSON.stringify(manifest))).toBe(403);
+    expect((await fetch(`${base}/api/agent/recovery`, {
+      method: "POST", headers: { ...sameOriginStreamHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({ transactionId: "unknown", sessionId: "session", sourcePath: "concept.svg", revision: 0 }),
+    })).status).toBe(403);
+  });
+
+  it("serves authenticated public identity and binds producer requests to the selected instance", async () => {
+    const identity = {
+      schemaVersion: 1 as const,
+      instanceId: "22222222-2222-4222-8222-222222222222",
+      workspaceId: "a".repeat(64),
+      protocolVersion: 1 as const,
+      apiOrigin: "http://127.0.0.1:4173",
+      editorOrigin: "http://lineage-logo.localhost:5173",
+    };
+    const base = await harness({ identity });
+    const response = await fetch(`${base}/api/agent/identity`, { headers: { Authorization: `Bearer ${token}` } });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(identity);
+    expect(identity).not.toHaveProperty("token");
+    expect(identity).not.toHaveProperty("workspacePath");
+    expect((await fetch(`${base}/api/agent/document`, { headers: { Authorization: `Bearer ${token}` } })).status).toBe(409);
+    expect((await fetch(`${base}/api/agent/document`, { headers: {
+      Authorization: `Bearer ${token}`,
+      "X-Lineage-Instance-ID": identity.instanceId,
+      "X-Lineage-Workspace-ID": identity.workspaceId,
+    } })).status).toBe(404);
+  });
+
   it("retries a lost accepted response with byte-identical receipt and exposes definitive terminal conflict state", async () => {
     const artifact = { sourcePath: "concept.svg", revision: 1, svg: '<svg xmlns="http://www.w3.org/2000/svg" />' };
     const acceptedState = { transactionId: "lost-ack", status: "accepted", artifact };

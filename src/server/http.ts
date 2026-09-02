@@ -31,3 +31,17 @@ export async function readJsonBody(request: IncomingMessage, limit: number): Pro
 export function requireOrigin(request: IncomingMessage, expectedOrigin: string): void {
   if (request.headers.origin !== expectedOrigin) throw new HttpError(403, "Request did not originate from the configured local editor.");
 }
+
+export function requireEventStreamOrigin(request: IncomingMessage, expectedOrigin: string): void {
+  if (request.headers.origin !== undefined) {
+    requireOrigin(request, expectedOrigin);
+    return;
+  }
+  const expectedHost = new URL(expectedOrigin).host;
+  if (request.headers.host !== expectedHost
+    || request.headers["sec-fetch-site"] !== "same-origin"
+    || request.headers["sec-fetch-mode"] !== "cors"
+    || request.headers["sec-fetch-dest"] !== "empty") {
+    throw new HttpError(403, "Request did not originate from the configured local editor.");
+  }
+}

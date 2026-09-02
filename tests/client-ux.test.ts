@@ -462,6 +462,20 @@ describe("unsaved file-switch dialog", () => {
 });
 
 describe("text, preview, and inspector discoverability", () => {
+  it("exposes a named, announced, keyboard-expandable semantic agent review", () => {
+    const source = readFileSync("src/client/main.ts", "utf8");
+    const styles = readFileSync("src/client/styles.css", "utf8");
+    expect(source).toContain('id="agent-review" class="agent-review" role="region" aria-labelledby="agent-review-title"');
+    expect(source).toContain('id="agent-review-status" role="status" aria-live="polite" aria-atomic="true"');
+    expect(source).toContain('aria-label="Computed operation evidence"');
+    expect(source).toContain('[["Current", operation.current], ["Proposed", operation.proposed], ["Context", operation.context]]');
+    expect(source).toContain('agentReview.status === "accepted" ? "Applied—not saved"');
+    expect(source).toContain("summary.textContent = `${operation.label} · ${operation.operationId}`");
+    expect(source).toContain("description.textContent = value");
+    expect(source).toContain("queueMicrotask(() => agentAcceptButton.focus())");
+    expect(styles).toContain(".agent-operation > summary:focus-visible");
+  });
+
   it("exposes only the six bounded text controls and an accessible preview target/status", () => {
     const source = readFileSync("src/client/main.ts", "utf8");
     for (const id of ["text-content", "text-size", "text-weight", "text-family", "text-anchor", "text-letter-spacing"]) {
@@ -471,6 +485,18 @@ describe("text, preview, and inspector discoverability", () => {
     expect(source).toContain('id="preview-status"');
     expect(source).toContain('role="status" aria-live="polite"');
     expect(source).not.toContain("contenteditable");
+  });
+
+  it("presents actionable lifecycle states prominently with frozen vocabulary", () => {
+    const source = readFileSync("src/client/main.ts", "utf8");
+    const styles = readFileSync("src/client/styles.css", "utf8");
+    expect(source).toContain('id="lifecycle-state" class="lifecycle-state" role="status" aria-live="polite" aria-atomic="true"');
+    for (const label of ["Conflict", "Unsaved changes", "Applied—not saved", "Saved", "Disconnected"]) {
+      expect(source).toContain(`"${label}"`);
+    }
+    expect(source).toContain("Automatic target from accessible SVG structure.");
+    expect(styles).toContain('.lifecycle-state[data-state="conflict"]');
+    expect(styles).toContain('.lifecycle-state[data-state="saved"]');
   });
 
   it("keeps concise current-value summaries visible only while inspector groups are collapsed", () => {

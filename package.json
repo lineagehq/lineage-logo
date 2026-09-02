@@ -1,13 +1,38 @@
 {
   "name": "lineage-logo",
-  "version": "0.1.0",
-  "private": true,
+  "version": "0.1.0-beta.1",
+  "description": "A local, human-in-the-loop SVG logo correction canvas.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lineagehq/lineage-logo.git"
+  },
+  "homepage": "https://github.com/lineagehq/lineage-logo#readme",
+  "bugs": {
+    "url": "https://github.com/lineagehq/lineage-logo/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "beta"
+  },
   "type": "module",
+  "bin": {
+    "lineage-logo": "dist/cli/bin.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "dist/**",
+    "README.md",
+    "examples/seatify-constellation.svg"
+  ],
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && tsc -p tsconfig.cli.json",
     "agent:submit": "tsx scripts/logo-designer-adapter.ts",
     "check": "npm run typecheck && npm run test && npm run build",
     "dev": "tsx scripts/dev.ts",
+    "prepack": "npm run build",
     "start": "tsx src/server/index.ts",
     "test": "vitest run --config vitest.config.ts",
     "test:e2e": "playwright test",
@@ -21,7 +46,6 @@
     "saxes": "6.0.0"
   },
   "devDependencies": {
-    "@lineagehq/workflows": "file:../workflows/.worktrees/cli-studio-dogfood-readiness/.workflows/local/candidates/build-c-83b499b/candidate.tgz",
     "@playwright/test": "^1.62.1",
     "@types/node": "^22.18.0",
     "happy-dom": "^20.11.6",

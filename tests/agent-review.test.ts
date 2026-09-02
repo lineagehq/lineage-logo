@@ -1,7 +1,7 @@
 import { Window } from "happy-dom";
 import { describe, expect, it } from "vitest";
 import { buildPendingReview, outcomeReview } from "../src/client/agent/review";
-import type { StagedAgentTransaction } from "../src/client/agent/transaction";
+import { evaluateAgentTransaction, type StagedAgentTransaction } from "../src/client/agent/transaction";
 import { serializeSvg } from "../src/client/canvas/editor";
 import { parseAgentTransaction } from "../src/shared/agent-protocol";
 
@@ -34,7 +34,7 @@ describe("agent pending review", () => {
     };
     const review = buildPendingReview(transaction, staged, new Set(["nested"]));
     expect(review.status).toBe("pending");
-    expect(review.summary).toContain("2 changes affecting 2 layers");
+    expect(review.summary).toContain("3 operations: 2 document changes, 1 focus change, affecting 2 layers");
     expect(review.summary).toContain("Accept or revert before editing.");
     expect(review.layers).toEqual([
       expect.objectContaining({ sessionKey: "nested", name: "Nested mark", type: "path", hidden: true, locked: true, operationIds: ["rename", "focus"] }),
@@ -42,10 +42,46 @@ describe("agent pending review", () => {
     ]);
   });
 
+  it("uses computed per-operation evidence, treats producer intent only as context, and groups large proposals", () => {
+    const operations = Array.from({ length: 11 }, (_, index) => ({
+      type: "setPaint" as const, operationId: `paint-${index + 1}`, target: { sessionKey: "mark" },
+      property: "fill" as const, value: index % 2 === 0 ? "#ff0000" : "#0000ff",
+    }));
+    const transaction = parseAgentTransaction({
+      protocolVersion: 1, transactionId: "large-review",
+      producer: { kind: "agent", name: "<img src=x onerror=alert(1)>", version: "2.0" },
+      intent: "Trust me: nothing changes <script>alert(1)</script>",
+      document: { sessionId: "session", sourcePath: "concept.svg", baseRevision: 0 }, operations,
+    });
+    const canonical = svg('<svg><path aria-label="Mark" fill="#00ff00" data-lineage-key="mark"/></svg>');
+    const staged = evaluateAgentTransaction(canonical, transaction, { sessionId: "session", sourcePath: "concept.svg", revision: 0 });
+    const review = buildPendingReview(transaction, staged, new Set());
+    expect(review.operationGroups.map((group) => group.operations.length)).toEqual([10, 1]);
+    expect(review.operationGroups[0].operations[0]).toMatchObject({
+      operationId: "paint-1", label: "Set fill", current: "#00ff00", proposed: "#ff0000", context: "Mark (path)",
+    });
+    expect(review.operationGroups[0].operations[1]).toMatchObject({ current: "#ff0000", proposed: "#0000ff" });
+    expect(review.intent).toContain("Trust me");
+    expect(review.operationGroups.flatMap((group) => group.operations).map((operation) => operation.proposed)).not.toContain(review.intent);
+    expect(canonical.querySelector("path")?.getAttribute("fill")).toBe("#00ff00");
+  });
+
+  it("accepts optional bounded producer context and intent without changing protocol v1", () => {
+    const minimal = parseAgentTransaction({
+      protocolVersion: 1, transactionId: "optional-context", producer: { kind: "agent" }, intent: "Align the mark",
+      document: { sessionId: "session", sourcePath: "concept.svg", baseRevision: 0 },
+      operations: [{ type: "renameLayer", operationId: "rename", target: { sessionKey: "mark" }, name: "New" }],
+    });
+    expect(minimal).toMatchObject({ protocolVersion: 1, producer: { kind: "agent" }, intent: "Align the mark" });
+    expect(() => parseAgentTransaction({ ...minimal, intent: "x".repeat(1025) })).toThrow();
+    expect(() => parseAgentTransaction({ ...minimal, producer: { kind: "agent", name: "x".repeat(129) } })).toThrow();
+  });
+
   it.each(["accepted", "reverted", "failed", "stale", "disconnected"] as const)("represents the %s outcome", (status) => {
     const review = outcomeReview(status, "tx");
     expect(review.status).toBe(status);
     expect(review.summary.length).toBeGreaterThan(20);
+    if (status === "accepted") expect(review.summary).toContain("applied and saved");
   });
 
   it("keeps isolated preview content and review markers out of canonical export", () => {

@@ -10,7 +10,7 @@ type Geometry = Record<string, Shape>;
 async function openFixture(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page).toHaveURL(/^http:\/\/marquee-qa\.localhost:/);
-  await page.getByRole("button", { name: "complex-seatify" }).click();
+  await page.locator('[data-path="concepts/complex-seatify.svg"]').click();
   await expect(page.locator("#artboard svg[aria-label='Complex Seatify venue logo']")).toBeVisible();
   await expect.poll(async () => {
     const response = await page.request.get("/api/agent/document", { headers: { Authorization: `Bearer ${agentToken}` } });
@@ -260,7 +260,10 @@ test("collective transform remains operable at 125% with both sidebars collapsed
     savedSvgRequests += 1;
     await route.fulfill({ status: 200, contentType: "image/svg+xml", body: savedSvg });
   });
-  await page.getByRole("button", { name: "Save iteration" }).click();
+  const save = page.locator("#save-iteration");
+  await expect(save).toHaveText(/^Save complex-seatify-iteration-\d+$/);
+  await expect(save).toHaveAttribute("title", /^Create iterations\/complex-seatify-iteration-\d+\.svg$/);
+  await save.click();
   await expect(page.locator("#status")).toHaveText(`Saved ${savedPath}`);
   await expect.poll(() => savedSvgRequests).toBe(1);
   await expect(page.locator(".file-button[aria-current='true']")).toContainText("collective-transform-e2e");

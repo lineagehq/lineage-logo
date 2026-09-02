@@ -53,7 +53,7 @@ jobs:
       - name: Run browser QA
         run: npm run test:e2e
 
-      - name: Upload browser diagnostics
+      - name: Upload metadata-only browser diagnostics
         if: failure()
         uses: actions/upload-artifact@v7
         with:
@@ -61,3 +61,61 @@ jobs:
           path: test-results/
           if-no-files-found: ignore
           retention-days: 7
+
+  critical-browsers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install critical-path browser
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run critical path in ${{ matrix.browser }}
+        run: npx playwright test tests/e2e/release/critical-path.spec.ts --project=${{ matrix.browser }}-critical
+
+      - name: Upload metadata-only sanitized diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.browser }}-critical-diagnostics
+          path: test-results/release-diagnostics.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  clean-install:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Pack, clean-install, reinstall same artifact, and inspect public CLI
+        run: npx tsx scripts/release-check.ts

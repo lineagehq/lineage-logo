@@ -5,7 +5,9 @@ import {
   type AgentAcceptedArtifact, type AgentAcknowledgement, type AgentDocumentManifest, type AgentErrorCode, type AgentTerminalDecision, type AgentTransactionResult, type AgentTransactionStatus,
   type AgentTransactionV1,
 } from "../shared/agent-protocol.js";
-import { HttpError, readBody, readJsonBody, requireOrigin, sendJson } from "./http.js";
+import type { AgentInstanceIdentity } from "../shared/instance-registry.js";
+import { HttpError, readBody, readJsonBody, requireEventStreamOrigin, requireOrigin, sendJson } from "./http.js";
+import { saveAgentContinuation } from "./workspace.js";
 
 interface RegistryEntry {
   hash: string;
@@ -30,12 +32,15 @@ function exactObject(value: unknown, allowed: string[], required: string[], labe
 export interface AgentTransportOptions {
   token: string;
   editorOrigin: string;
+  identity?: AgentInstanceIdentity;
+  allowUnboundProducer?: boolean;
   deliveryTimeoutMs?: number;
   reviewTimeoutMs?: number;
   heartbeatMs?: number;
   maxRegistry?: number;
   maxBacklog?: number;
   editorReleaseMs?: number;
+  workspaceRoot?: string;
 }
 
 const EDITOR_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -44,12 +49,15 @@ const EDITOR_ID_HEADER = "x-lineage-editor-id";
 export class AgentTransport {
   readonly #token: Buffer;
   readonly #editorOrigin: string;
+  readonly #identity?: AgentInstanceIdentity;
+  readonly #allowUnboundProducer: boolean;
   readonly #deliveryTimeoutMs: number;
   readonly #reviewTimeoutMs: number;
   readonly #heartbeatMs: number;
   readonly #maxRegistry: number;
   readonly #maxBacklog: number;
   readonly #editorReleaseMs: number;
+  readonly #workspaceRoot?: string;
   readonly #registry = new Map<string, RegistryEntry>();
   readonly #events: EventRecord[] = [];
   readonly #clients = new Set<ServerResponse>();
@@ -63,6 +71,8 @@ export class AgentTransport {
     if (!options.token) throw new Error("Agent bearer token must not be empty.");
     this.#token = Buffer.from(options.token);
     this.#editorOrigin = options.editorOrigin;
+    this.#identity = options.identity;
+    this.#allowUnboundProducer = options.allowUnboundProducer ?? false;
     this.#deliveryTimeoutMs = options.deliveryTimeoutMs ?? 15_000;
     this.#reviewTimeoutMs = options.reviewTimeoutMs ?? 30 * 60_000;
     // Stay below the shortest common five-second development proxy/HTTP idle
@@ -71,12 +81,20 @@ export class AgentTransport {
     this.#maxRegistry = options.maxRegistry ?? 500;
     this.#maxBacklog = options.maxBacklog ?? 200;
     this.#editorReleaseMs = options.editorReleaseMs ?? 500;
+    const workspaceArgument = process.argv.indexOf("--workspace");
+    this.#workspaceRoot = options.workspaceRoot ?? (workspaceArgument >= 0 ? process.argv[workspaceArgument + 1] : undefined);
   }
 
   get size(): number { return this.#registry.size; }
 
   async route(request: IncomingMessage, response: ServerResponse, url: URL): Promise<boolean> {
     if (!url.pathname.startsWith("/api/agent/")) return false;
+    if (request.method === "GET" && url.pathname === "/api/agent/identity") {
+      this.#authenticate(request, false);
+      if (!this.#identity) throw new HttpError(404, "Instance identity is unavailable.");
+      sendJson(response, 200, this.#identity);
+      return true;
+    }
     if (request.method === "POST" && url.pathname === "/api/agent/transactions") {
       this.#authenticate(request);
       await this.#submit(request, response);
@@ -106,7 +124,7 @@ export class AgentTransport {
       return true;
     }
     if (request.method === "GET" && url.pathname === "/api/agent/events") {
-      requireOrigin(request, this.#editorOrigin);
+      requireEventStreamOrigin(request, this.#editorOrigin);
       const editorId = this.#claimEditor(request);
       this.#connect(request, response, editorId);
       return true;
@@ -149,11 +167,17 @@ export class AgentTransport {
     return editorId;
   }
 
-  #authenticate(request: IncomingMessage): void {
+  #authenticate(request: IncomingMessage, requireBinding = true): void {
     const header = request.headers.authorization;
     if (!header?.startsWith("Bearer ")) throw new HttpError(401, "A bearer token is required.");
     const supplied = Buffer.from(header.slice(7));
     if (supplied.length !== this.#token.length || !timingSafeEqual(supplied, this.#token)) throw new HttpError(401, "Bearer token is invalid.");
+    if (requireBinding && this.#identity && !this.#allowUnboundProducer) {
+      if (request.headers["x-lineage-instance-id"] !== this.#identity.instanceId
+        || request.headers["x-lineage-workspace-id"] !== this.#identity.workspaceId) {
+        throw new HttpError(409, "Agent request identity does not match this editor instance.");
+      }
+    }
   }
 
   async #recover(request: IncomingMessage, response: ServerResponse): Promise<void> {
@@ -405,7 +429,10 @@ export class AgentTransport {
     if (acknowledgement.status === "accepted" || acknowledgement.status === "reverted") {
       const decision = acknowledgement as AgentTerminalDecision;
       if (entry.state.status === decision.status) {
-        if (decision.status === "accepted" && JSON.stringify(entry.state.artifact) !== JSON.stringify(decision.artifact)) {
+        if (decision.status === "accepted" && (!entry.state.artifact
+          || entry.state.artifact.sourcePath !== decision.artifact.sourcePath
+          || entry.state.artifact.revision !== decision.artifact.revision
+          || entry.state.artifact.svg !== decision.artifact.svg)) {
           sendJson(response, 409, { ...entry.state, error: "Accepted artifact conflicts with the recorded receipt." });
           return;
         }
@@ -426,10 +453,23 @@ export class AgentTransport {
         throw new HttpError(409, "Accepted artifact does not match the transaction document revision.");
       }
       if (entry.timer) clearTimeout(entry.timer);
+      let artifact = decision.status === "accepted" ? decision.artifact : undefined;
+      if (decision.status === "accepted" && this.#identity) {
+        if (!this.#workspaceRoot) throw new HttpError(503, "Durable agent persistence is unavailable.");
+        try {
+          const saved = await saveAgentContinuation(this.#workspaceRoot, {
+            instanceId: this.#identity.instanceId, transactionId,
+            sourcePath: decision.artifact.sourcePath, revision: decision.artifact.revision, svg: decision.artifact.svg,
+          });
+          artifact = { ...decision.artifact, durablePath: saved.path, digest: saved.digest };
+        } catch {
+          throw new HttpError(503, "The applied proposal could not be saved. Retry or undo it in the editor.");
+        }
+      }
       entry.state = {
         ...entry.state,
         status: decision.status,
-        ...(decision.status === "accepted" ? { artifact: decision.artifact } : {}),
+        ...(artifact ? { artifact } : {}),
       };
       this.#pruneEvent(entry);
       this.#emitTerminal(transactionId, decision.status);

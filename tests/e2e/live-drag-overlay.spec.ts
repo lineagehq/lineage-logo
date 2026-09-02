@@ -16,7 +16,7 @@ type OverlayProbe = {
 async function openConstellation(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page).toHaveURL(/^http:\/\/marquee-qa\.localhost:/);
-  await page.getByRole("button", { name: "seatify-constellation" }).click();
+  await page.locator('[data-path="concepts/seatify-constellation.svg"]').click();
   await expect(page.locator("#artboard svg[aria-label='Seatify constellation logo']")).toBeVisible();
   await expect(page.locator(".layer-button")).toHaveCount(44);
 }
