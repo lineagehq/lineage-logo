@@ -36,6 +36,7 @@ or another install source. Follow these shipped documents in order:
 1. [Seatify public-beta quickstart](https://github.com/lineagehq/lineage-logo/blob/main/docs/public-beta/seatify-quickstart.md)
 2. [Public beta walkthrough protocol v1](https://github.com/lineagehq/lineage-logo/blob/main/docs/public-beta/cohort-protocol.md)
 3. [Walkthrough receipt schema v1](https://github.com/lineagehq/lineage-logo/blob/main/docs/public-beta/walkthrough-receipt.schema.json)
+4. [Non-counting receipt example](https://github.com/lineagehq/lineage-logo/blob/main/docs/public-beta/walkthrough-receipt.example.json)
 
 Complete the six protocol milestones in one independent attempt: fresh install,
 non-destructive bootstrap, proposal comprehension, review, accept and durable
@@ -52,14 +53,16 @@ it must not include your name, email, contact details, or any reidentification
 map. Return only the schema-valid JSON receipt using:
 `<OWNER_APPROVED_PRIVACY_SAFE_RETURN_INSTRUCTIONS>`.
 
-Do not include free-text feedback, credentials, tokens, private paths, SVG
-contents, screenshots, traces, browser or session data, personal data, or other
-sensitive/private information in the receipt or return message. Do not use this
-walkthrough to report confidential vulnerability details. Lineage Logo has no
-confidential vulnerability-reporting channel and cannot currently accept reports
-that require confidentiality. Non-sensitive issues may use the
-[public issue tracker](https://github.com/lineagehq/lineage-logo/issues), with
-secrets, private paths, exploit details, and personal data omitted.
+Transmit only the schema-valid JSON receipt through the owner-approved privacy-safe
+channel. Send no free-text message, feedback, credentials, tokens, private paths,
+SVG contents, screenshots, traces, browser or session data, personal data, or other
+attachment. The return handling must preserve no identity linkage to the receipt;
+do not create or retain a name-to-slot or account-to-slot map. If validation fails
+or no privacy-safe return channel is supplied, transmit nothing.
+
+Do not use this walkthrough or its receipt channel to report vulnerability details.
+Lineage Logo has no confidential vulnerability-reporting channel and cannot
+currently accept reports that require confidentiality.
 
 Thank you for considering the walkthrough.
 
@@ -69,19 +72,20 @@ Before delivery, the maintainer assigns one unused pseudonymous participant slot
 and one unique walkthrough ID without retaining a name-to-slot map. The recipient
 uses their own supported local environment, installs from the public registry,
 and completes the shipped flow without live maintainer assistance. Afterward,
-they return only the schema-valid JSON receipt through the owner-approved handling
-shown in the invitation. A coached, unsupported, incomplete, or prohibited-data
+they return only the schema-valid JSON receipt through the owner-approved privacy-safe
+handling shown in the invitation, with no identity linkage, no free-text message,
+and no attachment. A coached, unsupported, incomplete, or prohibited-data
 attempt does not count toward the three-walkthrough oracle.
 
 ## Owner approval checklist
 
 - [ ] Approve each real recipient; no recipient or contact detail is invented here.
 - [ ] Approve the delivery channel and confirm it is appropriate for this outreach.
-- [ ] Approve privacy-safe receipt-return instructions and replace that placeholder.
+- [ ] Approve privacy-safe receipt-return instructions that preserve no identity linkage, and replace that placeholder.
 - [ ] Assign a unique participant slot and walkthrough ID without a reidentification map.
 - [ ] Confirm the invitation still points to the shipped quickstart, protocol, and schema.
 - [ ] Confirm the copy requires Node.js 22+, macOS/Linux, Chromium, and published `@beta` only.
-- [ ] Confirm no coaching and no sensitive, private, personal, or free-text data collection.
+- [ ] Confirm only schema-valid controlled receipt JSON may be returned, with no coaching and no sensitive, private, personal, or free-text data collection.
 - [ ] Confirm recipients are told there is no confidential vulnerability channel.
 - [ ] Confirm the pre-outreach independent walkthrough count is still 0/3.
 - [ ] Explicitly authorize delivery of the completed copy; until then, send nothing.

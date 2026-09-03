@@ -1,0 +1,26 @@
+{
+  "receipt_version": 1,
+  "kind": "lineage-logo.public-beta.walkthrough",
+  "walkthrough_id": "W-EXAMPLE01",
+  "participant_slot": "P-001",
+  "installed_version": "0.1.0-beta.2",
+  "environment": {
+    "platform": "macos",
+    "node_major": 22,
+    "browser": "chromium"
+  },
+  "attempt_status": "incomplete",
+  "milestones": {
+    "fresh_install": { "status": "not_attempted", "duration_seconds": 0, "friction_code": "none" },
+    "non_destructive_bootstrap": { "status": "not_attempted", "duration_seconds": 0, "friction_code": "none" },
+    "proposal_comprehension": { "status": "not_attempted", "duration_seconds": 0, "friction_code": "none" },
+    "review": { "status": "not_attempted", "duration_seconds": 0, "friction_code": "none" },
+    "accept_and_durable_save": { "status": "not_attempted", "duration_seconds": 0, "friction_code": "none" },
+    "clean_reopen": { "status": "not_attempted", "duration_seconds": 0, "friction_code": "none" }
+  },
+  "recovery": {
+    "action": "none",
+    "result": "not_needed"
+  },
+  "issue_code": "none"
+}

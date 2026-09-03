@@ -137,10 +137,15 @@ Install the published beta into a fresh local project, then start the
 non-destructive Seatify walkthrough:
 
 ```bash
+set -eu
+walkthrough_root="/tmp/lineage-logo-seatify-walkthrough"
+test ! -e "$walkthrough_root"
+mkdir -p "$walkthrough_root/install" "$walkthrough_root/seatify-workspace"
+cd "$walkthrough_root/install"
 npm init -y
 npm install --save-exact lineage-logo@beta
-npx lineage-logo example seatify --workspace <directory>
-npx lineage-logo launch --workspace <directory>
+npx lineage-logo example seatify --workspace "$walkthrough_root/seatify-workspace"
+npx lineage-logo launch --workspace "$walkthrough_root/seatify-workspace"
 ```
 
 The complete public flow, provider-neutral proposal schema, explicit review,

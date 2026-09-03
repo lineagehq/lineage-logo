@@ -16,7 +16,7 @@ The maintainer must not coach, hint, take control, answer step-by-step questions
 repair the environment during an attempt. A person may use the shipped public
 instructions and normal product help only. No one should transmit screenshots, traces,
 SVG bytes, private paths, browser/session data, credentials, tokens, names, emails, or
-free-form vulnerability details as part of this protocol.
+free-form text as part of this protocol.
 
 ## Required milestones
 
@@ -68,16 +68,46 @@ Set `attempt_status` to `invalid` and stop counting the attempt if any of these 
   unsupported browser, or Node.js version below 22 is used.
 - Any required milestone is skipped, missing, or represented as successful without completing it.
 - The receipt includes personal data, credentials, tokens, private paths, SVG contents,
-  browser/session data, or free-form confidential vulnerability details.
+  browser/session data, or free-form text.
 - The workflow collects participant feedback, consent, contact information, or telemetry.
 
 Use `incomplete` for a stopped attempt that is not invalid. It is still non-counting.
 
 ## Receipt handling
 
-Create one JSON object that validates against the linked schema. It records only a neutral
-walkthrough identifier, a pseudonymous participant slot (for example `P-001`), the exact
-resolved installed version, bounded environment, bounded milestone durations and friction
-codes, one recovery result, and a controlled issue code. Assign distinct slots to establish
-three distinct participants; do not retain names, contacts, or a reidentification map. Keep it local. This protocol offers neither
-confidential handling nor a response-time commitment.
+Start from the shipped [non-counting receipt example](walkthrough-receipt.example.json).
+Copy it from the installed package while the terminal is in the install project:
+
+```bash
+cp node_modules/lineage-logo/docs/public-beta/walkthrough-receipt.example.json walkthrough-receipt.json
+```
+
+Replace only controlled fields with observed values: the invitation-supplied
+`walkthrough_id` and `participant_slot`; the exact installed version; the platform,
+Node major version, and browser enum; each milestone status, integer duration in
+seconds, and friction code; the overall attempt status; the one recovery action/result
+pair; and the one issue code. Do not add properties or narrative. The shipped example
+is intentionally `incomplete` and does not count until actual evidence supports every
+field required for a valid attempt.
+
+Validate the completed file against the shipped draft-2020-12 schema with this exact,
+pinned participant-side command:
+
+```bash
+npx --yes ajv-cli@5.0.0 validate --spec=draft2020 --strict=false -s node_modules/lineage-logo/docs/public-beta/walkthrough-receipt.schema.json -d walkthrough-receipt.json
+```
+
+The command must exit zero and report `walkthrough-receipt.json valid`.
+Do not transmit a receipt unless validation reports `valid`.
+
+The receipt records only a neutral walkthrough identifier, a pseudonymous participant slot,
+the exact resolved installed version, bounded environment and milestone values,
+one recovery result, and one controlled issue code. Assign distinct slots to establish
+three distinct participants. Maintain no identity linkage: do not retain names, contacts,
+account identifiers, or a name-to-slot/reidentification map.
+
+Keep the receipt local until the invitation supplies an owner-approved privacy-safe
+return channel that preserves that separation. Then transmit only the schema-valid JSON receipt
+through that channel, with no free-text message or other attachment. If no such channel has
+been approved, transmit nothing. This protocol offers
+neither confidential handling nor a response-time commitment and must not be used for vulnerability reports.

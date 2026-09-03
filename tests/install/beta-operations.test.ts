@@ -4,6 +4,10 @@ import { describe, expect, it } from "vitest";
 const schema = JSON.parse(readFileSync("docs/public-beta/walkthrough-receipt.schema.json", "utf8"));
 const protocol = readFileSync("docs/public-beta/cohort-protocol.md", "utf8");
 const triage = readFileSync("docs/public-beta/triage.md", "utf8");
+const invitation = readFileSync("docs/public-beta/invitation.md", "utf8");
+const quickstart = readFileSync("docs/public-beta/seatify-quickstart.md", "utf8");
+const readme = readFileSync("README.md", "utf8");
+const exampleReceipt = JSON.parse(readFileSync("docs/public-beta/walkthrough-receipt.example.json", "utf8"));
 
 function validates(value: unknown, rule: any, root = schema): boolean {
   if (rule.$ref) return validates(value, rule.$ref.split("/").slice(1).reduce((node: any, key: string) => node[key], root), root);
@@ -127,5 +131,39 @@ describe("public beta cohort operating kit", () => {
     expect(selectIssueCode(["bootstrap_safety", "safety_or_data_loss"])).toBe("safety_or_data_loss");
     expect(selectIssueCode(["accept_and_durable_save", "reopen_or_persistence"])).toBe("reopen_or_persistence");
     expect(selectIssueCode([])).toBe("none");
+  });
+
+  it("ships a schema-valid non-counting receipt starter with deterministic participant validation", () => {
+    expect(validates(exampleReceipt, schema)).toBe(true);
+    expect(exampleReceipt.attempt_status).toBe("incomplete");
+    expect(exampleReceipt.installed_version).toBe("0.1.0-beta.2");
+    expect(JSON.stringify(exampleReceipt)).not.toMatch(/name|email|detail|feedback|path|svg|token|session/i);
+    expect(protocol).toContain("walkthrough-receipt.example.json");
+    expect(protocol).toContain("ajv-cli@5.0.0 validate --spec=draft2020 --strict=false");
+    expect(protocol).toContain("Do not transmit a receipt unless validation reports `valid`");
+  });
+
+  it("permits transmission of controlled receipt JSON only through owner-approved private handling", () => {
+    for (const document of [protocol, invitation]) {
+      expect(document).toContain("only the schema-valid JSON receipt");
+      expect(document).toContain("owner-approved privacy-safe");
+      expect(document).toMatch(/no (?:name-to-slot map|identity linkage)/i);
+      expect(document).toMatch(/no free[- ]text/i);
+    }
+    expect(invitation).not.toMatch(/issue tracker|github\.com\/[^\s)]+\/issues|non-sensitive issues/i);
+  });
+
+  it("uses one concrete workspace path and no shell-active angle placeholders in runnable commands", () => {
+    for (const document of [readme, quickstart]) {
+      const shellBlocks = [...document.matchAll(/```bash\n([\s\S]*?)\n```/g)].map((match) => match[1]);
+      const betaBlocks = shellBlocks.filter((block) => block.includes("lineage-logo"));
+      expect(betaBlocks.length).toBeGreaterThan(0);
+      for (const block of betaBlocks) expect(block).not.toMatch(/<[^>]+>/);
+    }
+    expect(quickstart).toContain('walkthrough_root="/tmp/lineage-logo-seatify-walkthrough"');
+    expect(quickstart).toContain('--workspace "$walkthrough_root/seatify-workspace"');
+    expect(quickstart).toContain("--workspace /tmp/lineage-logo-seatify-walkthrough/seatify-workspace");
+    expect(quickstart).toContain("--artifact /tmp/lineage-logo-seatify-walkthrough/seatify-workspace/concepts/seatify-constellation.svg");
+    expect(quickstart).toContain("The install project and Seatify workspace are separate directories");
   });
 });
