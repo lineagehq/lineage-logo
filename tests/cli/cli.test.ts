@@ -22,7 +22,7 @@ async function submissionFiles(): Promise<{ artifact: string; proposal: string }
   await writeFile(artifact, '<svg xmlns="http://www.w3.org/2000/svg"><g id="logo" /></svg>');
   await writeFile(proposal, JSON.stringify({
     protocolVersion: 1, transactionId: "cli-test", producer: { kind: "test", name: "CLI test" },
-    document: { sessionId: "session", sourcePath: "concept.svg", baseRevision: 1 },
+    document: { sessionId: "session", baseRevision: 1 },
     operations: [{ type: "renameLayer", operationId: "rename", target: { sessionKey: "logo" }, name: "Updated" }],
   }));
   return { artifact, proposal };
@@ -31,7 +31,10 @@ async function submissionFiles(): Promise<{ artifact: string; proposal: string }
 function instance(outcome: AgentProducerOutcome | Record<string, unknown>): ResolvedInstance {
   return {
     instanceId: "12345678-secret-tail", workspaceLabel: "/private/Customers/Seatify 🚫", editorOrigin: "http://lineage-logo.localhost:4173",
-    client: { manifest: vi.fn(), submitAndWait: vi.fn().mockResolvedValue(outcome) },
+    client: {
+      manifest: vi.fn().mockResolvedValue({ sessionId: "session", sourcePath: "concept.svg", revision: 1, layers: [] }),
+      submitAndWait: vi.fn().mockResolvedValue(outcome),
+    },
   } as unknown as ResolvedInstance;
 }
 
@@ -55,6 +58,21 @@ describe("lineage-logo CLI", () => {
     expect(await runLineageCli(["launch", "--workspace", ".", "--port", "80"], capture().io, { launch })).toBe(EXIT.usage);
   });
 
+  it("creates only the Seatify starter paths and refuses a changed workspace", async () => {
+    const workspace = await mkdtemp(path.join(os.tmpdir(), "lineage-seatify-bootstrap-"));
+    await rm(workspace, { recursive: true, force: true });
+    temporary.push(workspace);
+    const first = capture();
+    expect(await runLineageCli(["example", "seatify", "--workspace", workspace], first.io)).toBe(EXIT.success);
+    expect(await readFile(path.join(workspace, "concepts", "seatify-constellation.svg"), "utf8")).toContain('aria-label="Seatify constellation logo"');
+    expect(first.stdout.join("\n")).toContain("lineage-logo launch --workspace <directory>");
+    expect(first.stdout.join("\n")).not.toContain(workspace);
+    expect(await runLineageCli(["example", "seatify", "--workspace", workspace], capture().io)).toBe(EXIT.success);
+    await writeFile(path.join(workspace, "notes.txt"), "user work");
+    expect(await runLineageCli(["example", "seatify", "--workspace", workspace, "--json"], capture().io)).toBe(EXIT.conflict);
+    expect(await readFile(path.join(workspace, "notes.txt"), "utf8")).toBe("user work");
+  });
+
   it("writes one deterministic, sanitized doctor JSON object", async () => {
     const output = capture();
     const selected = instance({ status: "reverted", transactionId: "unused" });
@@ -62,6 +80,22 @@ describe("lineage-logo CLI", () => {
     expect(output.stdout).toHaveLength(1);
     const result = JSON.parse(output.stdout[0]);
     expect(result).toMatchObject({ schemaVersion: 1, command: "doctor", ok: true, status: "ok" });
+    expect(output.stdout[0]).not.toMatch(/private|secret-tail|token/i);
+  });
+
+  it("projects live editor context without a source path or credentials", async () => {
+    const output = capture();
+    const selected = instance({ status: "reverted", transactionId: "unused" });
+    selected.client.manifest = vi.fn().mockResolvedValue({
+      sessionId: "session", sourcePath: "/private/seatify.svg", revision: 7,
+      layers: [{ sessionKey: "seatify-title", name: "Seatify title", type: "text", locked: false }],
+    });
+    expect(await runLineageCli(["context", "--json"], output.io, { resolveInstance: async () => selected })).toBe(EXIT.success);
+    const result = JSON.parse(output.stdout[0]);
+    expect(result).toMatchObject({ command: "context", ok: true, context: {
+      protocolVersion: 1, editorId: "12345678", sessionId: "session", baseRevision: 7,
+      layers: [{ layerId: "seatify-title", name: "Seatify title", type: "text", locked: false }],
+    } });
     expect(output.stdout[0]).not.toMatch(/private|secret-tail|token/i);
   });
 
@@ -75,6 +109,28 @@ describe("lineage-logo CLI", () => {
       expect(code).toBe(EXIT.selection);
       expect(JSON.parse(output.stdout[0])).toMatchObject({ schemaVersion: 1, command: "submit", ok: false, status: "not_found" });
     }
+  });
+
+  it("accepts a source-path-free public proposal and rejects a private-path field", async () => {
+    const files = await submissionFiles();
+    const output = capture();
+    const selected = instance({ status: "reverted", transactionId: "cli-test" });
+    expect(await runLineageCli(["submit", "--artifact", files.artifact, "--proposal", files.proposal, "--json"], output.io, {
+      resolveInstance: async () => selected,
+    })).toBe(EXIT.rejected);
+    expect(selected.client.submitAndWait).toHaveBeenCalledWith(expect.objectContaining({
+      document: { sessionId: "session", sourcePath: "concept.svg", baseRevision: 1 },
+    }));
+    await writeFile(files.proposal, JSON.stringify({
+      protocolVersion: 1, transactionId: "cli-test", producer: { kind: "test" },
+      document: { sessionId: "session", sourcePath: "/private/source.svg", baseRevision: 1 }, operations: [],
+    }));
+    const rejected = capture();
+    expect(await runLineageCli(["submit", "--artifact", files.artifact, "--proposal", files.proposal, "--json"], rejected.io, {
+      resolveInstance: async () => selected,
+    })).toBe(EXIT.usage);
+    expect(JSON.parse(rejected.stdout[0])).toMatchObject({ ok: false, status: "invalid" });
+    expect(rejected.stdout[0]).not.toContain("private");
   });
 
   it.each([

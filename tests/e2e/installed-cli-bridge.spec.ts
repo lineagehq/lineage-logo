@@ -1,7 +1,7 @@
 import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { createServer } from "node:net";
 import { once } from "node:events";
-import { access, copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -94,7 +94,7 @@ async function finishCommand(running: RunningCommand, timeoutMs = 30_000): Promi
   return { code: running.child.exitCode ?? 1, stdout: running.stdout, stderr: running.stderr };
 }
 
-async function openSeatify(context: BrowserContext, url: string) {
+async function openSeatify(context: BrowserContext, url: string, workspacePath = "concepts/seatify-constellation.svg") {
   const page = await context.newPage();
   const streamRequest = page.waitForRequest((request) => request.url().endsWith("/api/agent/events"));
   const streamResponse = page.waitForResponse((response) => response.url().endsWith("/api/agent/events"));
@@ -112,7 +112,7 @@ async function openSeatify(context: BrowserContext, url: string) {
     observer.observe(status, { childList: true, characterData: true, subtree: true });
     inspect();
   }));
-  await page.locator('[data-path="concepts/seatify-constellation.svg"]').click();
+  await page.locator(`[data-path="${workspacePath}"]`).click();
   const [request, response, status] = await Promise.all([streamRequest, streamResponse, connectedState]);
   const requestHeaders = await request.allHeaders();
   const responseHeaders = await response.allHeaders();
@@ -155,12 +155,7 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
   const contexts: BrowserContext[] = [];
   try {
     await Promise.all([
-      mkdir(pack), mkdir(consumer), mkdir(path.join(workspaceA, "concepts"), { recursive: true }), mkdir(path.join(workspaceB, "concepts"), { recursive: true }),
-    ]);
-    const canonical = path.join(repositoryRoot, "examples/seatify-constellation.svg");
-    await Promise.all([
-      copyFile(canonical, path.join(workspaceA, "concepts/seatify-constellation.svg")),
-      copyFile(canonical, path.join(workspaceB, "concepts/seatify-constellation.svg")),
+      mkdir(pack), mkdir(consumer),
     ]);
     expect((await command("npm", ["pack", "--json", "--pack-destination", pack])).code).toBe(0);
     const tarball = (await readdir(pack)).find((name) => name.endsWith(".tgz"));
@@ -169,6 +164,9 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     expect((await command("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund", path.join(pack, tarball!)], process.env, consumer)).code).toBe(0);
     const bin = path.join(consumer, "node_modules/.bin/lineage-logo");
     const env = { ...process.env, LINEAGE_LOGO_REGISTRY_DIR: registry };
+
+    expect((await command(bin, ["example", "seatify", "--workspace", workspaceA], env)).code).toBe(0);
+    expect((await command(bin, ["example", "seatify", "--workspace", workspaceB], env)).code).toBe(0);
 
     const help = await command(bin, ["--help"], env);
     const version = await command(bin, ["--version"], env);
@@ -203,7 +201,7 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     const proposal = path.join(root, "selection.json");
     await writeFile(proposal, JSON.stringify({
       protocolVersion: 1, transactionId: "installed-seatify-selection", producer: { kind: "test", name: "installed bridge" },
-      document: { sessionId: documentA.sessionId, sourcePath: documentA.sourcePath, baseRevision: documentA.revision },
+      document: { sessionId: documentA.sessionId, baseRevision: documentA.revision },
       operations: [{ type: "selectFocus", operationId: "focus", targets: [{ sessionKey: target!.sessionKey }] }],
     }));
     const artifact = path.join(workspaceA, "concepts/seatify-constellation.svg");
@@ -233,7 +231,7 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     const acceptedProposal = path.join(root, "accepted.json");
     await writeFile(acceptedProposal, JSON.stringify({
       protocolVersion: 1, transactionId: "installed-seatify-accepted", producer: { kind: "test", name: "installed bridge" },
-      document: { sessionId: mutatingManifestA.sessionId, sourcePath: mutatingManifestA.sourcePath, baseRevision: mutatingManifestA.revision },
+      document: { sessionId: mutatingManifestA.sessionId, baseRevision: mutatingManifestA.revision },
       operations: [{ type: "renameLayer", operationId: "rename-accepted", target: { sessionKey: titleA!.sessionKey }, name: "Installed accepted title" }],
     }));
     const accepted = startCommand(bin, ["submit", "--artifact", artifact, "--proposal", acceptedProposal, "--workspace", workspaceA, "--json", "--quiet"], env);
@@ -256,6 +254,20 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     expect(savedA).not.toContain("data-lineage-");
     expect(await readFile(artifact, "utf8")).toBe(sourceA);
 
+    await contextA.close();
+    await stopEditor(running[0]);
+    const restartPort = await availablePort();
+    const restarted = await startEditor(bin, workspaceA, registry, restartPort);
+    running.push(restarted);
+    const restartedContext = await browser.newContext();
+    contexts.push(restartedContext);
+    const reopened = await openSeatify(restartedContext, restarted.url, acceptedReceipt.artifact.path);
+    await expect(reopened.getByRole("button", { name: "text Installed accepted title" })).toBeVisible();
+    expect(await readFile(artifact, "utf8")).toBe(sourceA);
+    await reopened.close();
+    await restartedContext.close();
+    await stopEditor(restarted);
+
     const artifactB = path.join(workspaceB, "concepts/seatify-constellation.svg");
     const sourceB = await readFile(artifactB, "utf8");
     const mutatingManifestB = await manifest(entryB);
@@ -264,7 +276,7 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     const revertedProposal = path.join(root, "reverted.json");
     await writeFile(revertedProposal, JSON.stringify({
       protocolVersion: 1, transactionId: "installed-seatify-reverted", producer: { kind: "test", name: "installed bridge" },
-      document: { sessionId: mutatingManifestB.sessionId, sourcePath: mutatingManifestB.sourcePath, baseRevision: mutatingManifestB.revision },
+      document: { sessionId: mutatingManifestB.sessionId, baseRevision: mutatingManifestB.revision },
       operations: [{ type: "renameLayer", operationId: "rename-reverted", target: { sessionKey: titleB!.sessionKey }, name: "Must not persist" }],
     }));
     const reverted = startCommand(bin, ["submit", "--artifact", artifactB, "--proposal", revertedProposal, "--instance", entryB.instanceId, "--json", "--quiet"], env);
@@ -285,8 +297,6 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     expect(publicOutput.includes("<svg")).toBe(false);
     expect(running.every((editor) => /^http:\/\/lineage-logo\.localhost:\d+$/.test(editor.url))).toBe(true);
 
-    await contextA.close();
-    await stopEditor(running[0]);
     await poll(async () => {
       const current = await readAgentInstanceRegistry(registry);
       return current.length === 1 && current[0].instanceId === entryB.instanceId ? true : undefined;
