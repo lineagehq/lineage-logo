@@ -31,8 +31,12 @@ export async function bootstrapSeatifyExample(workspace: string): Promise<void> 
     const rootEntries = await readdir(workspace);
     if (rootEntries.length !== 2 || !rootEntries.includes("concepts") || !rootEntries.includes("iterations")) throw new Error("conflict");
     await Promise.all([directory(concepts), directory(iterations)]);
-    const [conceptEntries, iterationEntries, destinationInfo, installed] = await Promise.all([readdir(concepts), readdir(iterations), lstat(destination), readFile(destination)]);
-    if (conceptEntries.length !== 1 || conceptEntries[0] !== FIXTURE || iterationEntries.length !== 0 || !destinationInfo.isFile() || destinationInfo.isSymbolicLink() || !installed.equals(source)) throw new Error("conflict");
+    const [conceptEntries, iterationEntries] = await Promise.all([readdir(concepts), readdir(iterations)]);
+    if (conceptEntries.length !== 1 || conceptEntries[0] !== FIXTURE || iterationEntries.length !== 0) throw new Error("conflict");
+    const destinationInfo = await lstat(destination);
+    if (!destinationInfo.isFile() || destinationInfo.isSymbolicLink()) throw new Error("conflict");
+    const installed = await readFile(destination);
+    if (!installed.equals(source)) throw new Error("conflict");
     return;
   }
   await mkdir(workspace, { recursive: false });

@@ -107,7 +107,7 @@ describe("lineage-logo CLI", () => {
     expect(output.stdout[0]).not.toMatch(/private|secret-tail|token/i);
   });
 
-  it("fails closed with exit 3 for absent or ambiguous selection", async () => {
+  it("fails closed with exit 3 for absent or ambiguous submit selection", async () => {
     const files = await submissionFiles();
     for (const reason of ["not_found", "ambiguous"] as const) {
       const output = capture();
@@ -117,6 +117,14 @@ describe("lineage-logo CLI", () => {
       expect(code).toBe(EXIT.selection);
       expect(JSON.parse(output.stdout[0])).toMatchObject({ schemaVersion: 1, command: "submit", ok: false, status: "not_found" });
     }
+  });
+
+  it("fails closed for ambiguous public context selection", async () => {
+    const output = capture();
+    expect(await runLineageCli(["context", "--json"], output.io, {
+      resolveInstance: async () => { throw new InstanceResolutionError("ambiguous"); },
+    })).toBe(EXIT.selection);
+    expect(JSON.parse(output.stdout[0])).toMatchObject({ command: "context", ok: false, status: "not_found" });
   });
 
   it("accepts a source-path-free public proposal and rejects a private-path field", async () => {
@@ -142,19 +150,29 @@ describe("lineage-logo CLI", () => {
     expect(rejected.stdout[0]).not.toContain("private");
   });
 
-  it("fails closed for stale public context, unsupported versions, and oversized proposal input", async () => {
+  it.each([
+    ["session", "other", 1],
+    ["revision", "session", 2],
+  ] as const)("fails closed when public context %s does not match", async (_kind, sessionId, revision) => {
     const files = await submissionFiles();
     const stale = capture();
+    const selected = instance({ status: "reverted", transactionId: "cli-test" });
+    selected.client.manifest = vi.fn().mockResolvedValue({ sessionId, sourcePath: "concept.svg", revision, layers: [] });
     expect(await runLineageCli(["submit", "--artifact", files.artifact, "--proposal", files.proposal, "--json"], stale.io, {
-      resolveInstance: async () => ({ ...instance({ status: "reverted", transactionId: "cli-test" }), client: {
-        manifest: async () => ({ sessionId: "other", sourcePath: "concept.svg", revision: 2, layers: [] }),
-        submitAndWait: async () => ({ status: "reverted", transactionId: "cli-test" } as AgentProducerOutcome),
-      } }),
+      resolveInstance: async () => selected,
     })).toBe(EXIT.conflict);
+    expect(selected.client.submitAndWait).not.toHaveBeenCalled();
+  });
+
+  it("fails closed for unsupported versions and a schema-valid oversized proposal", async () => {
+    const files = await submissionFiles();
     await writeFile(files.proposal, JSON.stringify({ protocolVersion: 2, transactionId: "cli-test", producer: { kind: "test" }, document: { sessionId: "session", baseRevision: 1 }, operations: [{ type: "selectFocus", operationId: "focus", targets: [{ sessionKey: "logo" }] }] }));
     expect(await runLineageCli(["submit", "--artifact", files.artifact, "--proposal", files.proposal], capture().io)).toBe(EXIT.usage);
-    await writeFile(files.proposal, " ".repeat(5 * 1024 * 1024 + 1));
-    expect(await runLineageCli(["submit", "--artifact", files.artifact, "--proposal", files.proposal], capture().io)).toBe(EXIT.usage);
+    const valid = JSON.stringify({ protocolVersion: 1, transactionId: "cli-test", producer: { kind: "test" }, document: { sessionId: "session", baseRevision: 1 }, operations: [{ type: "selectFocus", operationId: "focus", targets: [{ sessionKey: "logo" }] }] });
+    await writeFile(files.proposal, valid + " ".repeat(5 * 1024 * 1024));
+    const output = capture();
+    expect(await runLineageCli(["submit", "--artifact", files.artifact, "--proposal", files.proposal, "--json"], output.io)).toBe(EXIT.usage);
+    expect(JSON.parse(output.stdout[0]).message).toBe("Proposal is not a valid transaction.");
   });
 
   it.each([
