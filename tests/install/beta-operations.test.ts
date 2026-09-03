@@ -31,10 +31,14 @@ function validates(value: unknown, rule: any, root = schema): boolean {
 
 function validReceipt() {
   return {
-    receipt_version: 1, kind: "lineage-logo.public-beta.walkthrough", walkthrough_id: "W-ABC123",
-    product_version: "0.1.0-beta.1", environment: { platform: "macos", node_major: 22, browser: "chromium" },
+    receipt_version: 1, kind: "lineage-logo.public-beta.walkthrough", walkthrough_id: "W-ABC123", participant_slot: "P-001",
+    installed_version: "0.1.0-beta.1", environment: { platform: "macos", node_major: 22, browser: "chromium" },
     attempt_status: "valid",
-    milestones: { fresh_install: "pass", non_destructive_bootstrap: "pass", proposal_comprehension: "pass", review: "pass", accept: "pass", save: "pass", clean_reopen: "pass" },
+    milestones: {
+      fresh_install: { status: "pass", duration_seconds: 30, friction_code: "none" }, non_destructive_bootstrap: { status: "pass", duration_seconds: 20, friction_code: "none" },
+      proposal_comprehension: { status: "pass", duration_seconds: 30, friction_code: "none" }, review: { status: "pass", duration_seconds: 45, friction_code: "none" },
+      accept_and_durable_save: { status: "pass", duration_seconds: 10, friction_code: "none" }, clean_reopen: { status: "pass", duration_seconds: 25, friction_code: "none" },
+    },
     recovery: { action: "none", result: "not_needed" }, issue_code: "none",
   };
 }
@@ -52,7 +56,7 @@ function selectIssueCode(signals: string[]) {
 describe("public beta cohort operating kit", () => {
   it("publishes a strict, versioned, privacy-minimal walkthrough receipt contract", () => {
     expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
-    expect(schema.required).toEqual(expect.arrayContaining(["receipt_version", "kind", "walkthrough_id", "product_version", "environment", "attempt_status", "milestones", "recovery", "issue_code"]));
+    expect(schema.required).toEqual(expect.arrayContaining(["receipt_version", "kind", "walkthrough_id", "participant_slot", "installed_version", "environment", "attempt_status", "milestones", "recovery", "issue_code"]));
     expect(schema.properties.receipt_version.const).toBe(1);
     expect(schema.properties.kind.const).toBe("lineage-logo.public-beta.walkthrough");
     expect(schema.additionalProperties).toBe(false);
@@ -60,24 +64,27 @@ describe("public beta cohort operating kit", () => {
     expect(schema.properties.environment.properties.platform.enum).toEqual(["macos", "linux", "windows", "other"]);
     expect(schema.properties.environment.properties.node_major.minimum).toBe(0);
     expect(schema.properties.environment.properties.browser.enum).toEqual(["chromium", "firefox", "webkit", "other"]);
-    expect(schema.properties.milestones.required).toEqual(["fresh_install", "non_destructive_bootstrap", "proposal_comprehension", "review", "accept", "save", "clean_reopen"]);
+    expect(schema.properties.participant_slot.pattern).toBe("^P-(00[1-9]|0[1-9][0-9]|[1-9][0-9]{2,})$");
+    expect(schema.properties.milestones.required).toEqual(["fresh_install", "non_destructive_bootstrap", "proposal_comprehension", "review", "accept_and_durable_save", "clean_reopen"]);
+    expect(schema.$defs.milestoneEvidence.required).toEqual(["status", "duration_seconds", "friction_code"]);
+    expect(schema.$defs.milestoneEvidence.properties.duration_seconds.maximum).toBe(3600);
     expect(schema.properties.issue_code.enum).toContain("safety_or_data_loss");
     expect(Object.keys(schema.properties)).not.toEqual(expect.arrayContaining([
-      "name", "email", "credentials", "token", "private_path", "svg", "browser_session", "details",
+      "name", "email", "credentials", "token", "private_path", "svg", "browser_session", "details", "reidentification_map",
     ]));
   });
 
   it("accepts a complete supported receipt but rejects unsupported or incoherent valid claims", () => {
     expect(validates(validReceipt(), schema)).toBe(true);
     expect(validates({ ...validReceipt(), attempt_status: "valid", environment: { platform: "windows", node_major: 20, browser: "firefox" } }, schema)).toBe(false);
-    expect(validates({ ...validReceipt(), milestones: { ...validReceipt().milestones, save: "blocked" } }, schema)).toBe(false);
+    expect(validates({ ...validReceipt(), milestones: { ...validReceipt().milestones, accept_and_durable_save: { status: "blocked", duration_seconds: 10, friction_code: "save" } } }, schema)).toBe(false);
   });
 
   it("records unsupported environments as validating, non-counting invalid receipts", () => {
     const receipt = {
       ...validReceipt(), attempt_status: "invalid", issue_code: "unsupported_environment",
       environment: { platform: "windows", node_major: 20, browser: "firefox" },
-      milestones: { fresh_install: "not_attempted", non_destructive_bootstrap: "not_attempted", proposal_comprehension: "not_attempted", review: "not_attempted", accept: "not_attempted", save: "not_attempted", clean_reopen: "not_attempted" },
+      milestones: Object.fromEntries(schema.properties.milestones.required.map((key: string) => [key, { status: "not_attempted", duration_seconds: 0, friction_code: "none" }])),
       recovery: { action: "stop", result: "not_attempted" },
     };
     expect(validates(receipt, schema)).toBe(true);
@@ -96,7 +103,11 @@ describe("public beta cohort operating kit", () => {
     expect(protocol).toContain("Node.js 22 or newer, macOS or Linux, and Chromium");
     expect(protocol).toContain("non_destructive_bootstrap");
     expect(protocol).toContain("proposal_comprehension");
-    expect(protocol).toContain("clean_reopen");
+    expect(protocol).toContain("accept_and_durable_save");
+    expect(protocol).toContain("durable path and digest");
+    expect(protocol).toContain("exact resolved installed version");
+    expect(protocol).toContain("participant slot");
+    expect(triage).toContain("accept_and_durable_save");
     expect(protocol).toContain("every required milestone is `pass`");
     expect(protocol).toContain("does not count");
   });
@@ -114,7 +125,7 @@ describe("public beta cohort operating kit", () => {
   it("selects one deterministic issue code when receipt signals overlap", () => {
     expect(selectIssueCode(["unsupported_environment", "install_failure"])).toBe("unsupported_environment");
     expect(selectIssueCode(["bootstrap_safety", "safety_or_data_loss"])).toBe("safety_or_data_loss");
-    expect(selectIssueCode(["accept_or_save", "reopen_or_persistence"])).toBe("reopen_or_persistence");
+    expect(selectIssueCode(["accept_and_durable_save", "reopen_or_persistence"])).toBe("reopen_or_persistence");
     expect(selectIssueCode([])).toBe("none");
   });
 });

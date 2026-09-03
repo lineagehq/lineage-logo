@@ -25,7 +25,8 @@
   "files": [
     "dist/**",
     "README.md",
-    "examples/seatify-constellation.svg"
+    "examples/seatify-constellation.svg",
+    "docs/public-beta/**"
   ],
   "scripts": {
     "build": "vite build && tsc -p tsconfig.cli.json",

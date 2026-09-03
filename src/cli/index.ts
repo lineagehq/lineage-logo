@@ -8,7 +8,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { AgentProducerClient, type AgentProducerOutcome } from "../producer/agent-client.js";
 import { bindPublicAgentProposal, parsePublicAgentProposal, validateCleanAgentSvg, type AgentTransactionV1 } from "../shared/agent-protocol.js";
-import { bootstrapSeatifyExample } from "./seatify-example.js";
+import { bootstrapSeatifyExample, SeatifyBootstrapError } from "./seatify-example.js";
 
 export const EXIT = {
   success: 0, usage: 2, selection: 3, unavailable: 4, rejected: 5, conflict: 6, internal: 7,
@@ -155,7 +155,10 @@ function validateCommandOptions(args: ParsedArguments): void {
 async function runSeatifyExample(args: ParsedArguments, io: CliIo): Promise<number> {
   if (args.example !== "seatify") throw new CliFailure(EXIT.usage, "invalid", "Use example seatify.");
   try { await bootstrapSeatifyExample(requireValue(args, "workspace")); }
-  catch { throw new CliFailure(EXIT.conflict, "conflict", "Seatify starter workspace conflicts with existing files."); }
+  catch (error) {
+    if (error instanceof SeatifyBootstrapError && error.kind === "conflict") throw new CliFailure(EXIT.conflict, "conflict", "Seatify starter workspace conflicts with existing files.");
+    throw new CliFailure(EXIT.internal, "error", "Seatify starter files are unavailable or could not be created.");
+  }
   const message = "Seatify starter workspace is ready. Next: lineage-logo launch --workspace <directory>; then lineage-logo context --workspace <directory> --json.";
   output(io, args.json, { schemaVersion: 1, command: "example", ok: true, status: "ok", message });
   return EXIT.success;

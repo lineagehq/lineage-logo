@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EXIT, InstanceResolutionError, runLineageCli, type CliIo, type ResolvedInstance } from "../../src/cli/index";
+import { bootstrapSeatifyExample, SeatifyBootstrapError } from "../../src/cli/seatify-example";
 import type { AgentProducerOutcome } from "../../src/producer/agent-client";
 
 const temporary: string[] = [];
@@ -79,6 +80,29 @@ describe("lineage-logo CLI", () => {
     await Promise.all([mkdir(path.join(workspace, "concepts")), mkdir(path.join(workspace, "iterations"))]);
     await symlink(path.resolve("examples/seatify-constellation.svg"), path.join(workspace, "concepts", "seatify-constellation.svg"));
     expect(await runLineageCli(["example", "seatify", "--workspace", workspace], capture().io)).toBe(EXIT.conflict);
+  });
+
+  it("reports a missing packaged fixture as unavailable without creating a workspace", async () => {
+    const parent = await mkdtemp(path.join(os.tmpdir(), "lineage-seatify-missing-fixture-"));
+    temporary.push(parent);
+    const workspace = path.join(parent, "workspace");
+    await expect(bootstrapSeatifyExample(workspace, path.join(parent, "missing.svg"))).rejects.toMatchObject({
+      name: "SeatifyBootstrapError", kind: "unavailable",
+    } satisfies Partial<SeatifyBootstrapError>);
+    await expect(readFile(workspace)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("rolls back only its new empty starter root after a copy failure", async () => {
+    const parent = await mkdtemp(path.join(os.tmpdir(), "lineage-seatify-rollback-"));
+    temporary.push(parent);
+    const fixture = path.join(parent, "fixture.svg");
+    const workspace = path.join(parent, "workspace");
+    await writeFile(fixture, "fixture");
+    await expect(bootstrapSeatifyExample(workspace, fixture, {
+      copyFile: async () => { throw new Error("disk failure"); },
+    })).rejects.toMatchObject({ name: "SeatifyBootstrapError", kind: "io" } satisfies Partial<SeatifyBootstrapError>);
+    await expect(readFile(workspace)).rejects.toMatchObject({ code: "ENOENT" });
+    expect(await readFile(fixture, "utf8")).toBe("fixture");
   });
 
   it("writes one deterministic, sanitized doctor JSON object", async () => {

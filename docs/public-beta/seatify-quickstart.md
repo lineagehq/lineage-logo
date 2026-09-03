@@ -4,9 +4,14 @@ This path uses the published beta package on Node.js 22 or newer for macOS and L
 
 ```bash
 npm install -g lineage-logo@beta
+lineage-logo --version
 lineage-logo example seatify --workspace <directory>
 lineage-logo launch --workspace <directory>
 ```
+
+Immediately record the exact version printed by `lineage-logo --version` (for example,
+`0.1.0-beta.1`). `@beta` is only the install selector; the receipt must use the exact
+installed prerelease version, never the mutable tag.
 
 Open the descriptive `lineage-logo.localhost` address printed by `launch` and open `concepts/seatify-constellation.svg`. In another terminal, retrieve the public, short-lived proposal context:
 

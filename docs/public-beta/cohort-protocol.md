@@ -20,18 +20,21 @@ free-form vulnerability details as part of this protocol.
 
 ## Required milestones
 
-Record each milestone only as `pass`, `fail`, `blocked`, or `not_attempted` in the
-versioned [receipt schema](walkthrough-receipt.schema.json). The required order is:
+Record each milestone as a controlled status plus bounded numeric duration and friction
+code in the versioned [receipt schema](walkthrough-receipt.schema.json). The required order is:
 
-1. `fresh_install`: install the exact published beta from the registry in a fresh local directory.
+1. `fresh_install`: install through `@beta` from the registry in a fresh local directory,
+   then run `lineage-logo --version` and record that exact resolved installed version.
 2. `non_destructive_bootstrap`: run the shipped bootstrap and verify it does not overwrite,
    merge, or delete existing files.
 3. `proposal_comprehension`: use the shipped, redacted agent context/proposal contract and
    identify the proposal as pending review rather than an applied change.
 4. `review`: inspect the proposal and choose a review decision without maintainer coaching.
-5. `accept`: accept the reviewed proposal.
-6. `save`: save the accepted result through the product's normal Save flow.
-7. `clean_reopen`: reopen cleanly and verify the saved accepted result remains available.
+5. `accept_and_durable_save`: choose **Accept all** once. This one atomic action must
+   return a durable path and digest, the artifact must exist, and no separate normal Save
+   action is instructed or scored.
+6. `clean_reopen`: reopen cleanly and verify the saved accepted result remains available
+   while `concepts/seatify-constellation.svg` remains unchanged.
 
 The walkthrough oracle passes only when the receipt has `attempt_status: "valid"` and
 every required milestone is `pass`. An incomplete, failed, blocked, or invalid attempt
@@ -73,6 +76,8 @@ Use `incomplete` for a stopped attempt that is not invalid. It is still non-coun
 ## Receipt handling
 
 Create one JSON object that validates against the linked schema. It records only a neutral
-walkthrough identifier, exact beta version, bounded environment, milestone statuses, one
-recovery result, and a controlled issue code. Keep it local. This protocol offers neither
+walkthrough identifier, a pseudonymous participant slot (for example `P-001`), the exact
+resolved installed version, bounded environment, bounded milestone durations and friction
+codes, one recovery result, and a controlled issue code. Assign distinct slots to establish
+three distinct participants; do not retain names, contacts, or a reidentification map. Keep it local. This protocol offers neither
 confidential handling nor a response-time commitment.
