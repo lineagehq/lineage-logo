@@ -1,0 +1,291 @@
+name: Publish beta
+
+on:
+  workflow_dispatch:
+    inputs:
+      package_version:
+        description: Exact new beta semantic version from package.json (for example, 0.1.0-beta.2)
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: publish-beta
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Verify current main and exact unpublished beta version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      package_version: ${{ steps.version.outputs.package_version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.14.0
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Require the current main commit
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main"
+          git fetch --no-tags origin main
+          test "$GITHUB_SHA" = "$(git rev-parse origin/main)"
+      - name: Require one exact new beta version and prove its absence
+        id: version
+        env:
+          PACKAGE_VERSION: ${{ inputs.package_version }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+          const version = process.env.PACKAGE_VERSION;
+          const packageVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
+          if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-beta\.(0|[1-9]\d*)$/.test(version ?? "") || packageVersion !== version) {
+            throw new Error("package_version must exactly match package.json as one beta semantic version");
+          }
+          NODE
+          set +e
+          npm view "lineage-logo@${PACKAGE_VERSION}" version --json >"$RUNNER_TEMP/version-lookup.json" 2>/dev/null
+          lookup_status=$?
+          set -e
+          if [ "$lookup_status" -eq 0 ]; then
+            echo "Refusing to reuse an existing npm version" >&2
+            exit 1
+          fi
+          node --input-type=module - "$RUNNER_TEMP/version-lookup.json" <<'NODE'
+          import { readFileSync } from "node:fs";
+
+          let payload;
+          try {
+            payload = JSON.parse(readFileSync(process.argv[2], "utf8"));
+          } catch {
+            throw new Error("npm registry lookup did not prove exact-version absence (invalid-json); failing closed");
+          }
+          if (payload.error?.code !== "E404") {
+            const code = typeof payload.error?.code === "string" && /^[A-Z0-9_]+$/.test(payload.error.code)
+              ? payload.error.code
+              : "unknown";
+            throw new Error(`npm registry lookup did not prove exact-version absence (${code}); failing closed`);
+          }
+          NODE
+          echo "package_version=${PACKAGE_VERSION}" >> "$GITHUB_OUTPUT"
+
+  candidate:
+    name: Run release gates and preserve one verified candidate tarball
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      tarball_name: ${{ steps.candidate.outputs.tarball_name }}
+      tarball_path: ${{ steps.candidate.outputs.tarball_path }}
+      tarball_sha512: ${{ steps.candidate.outputs.tarball_sha512 }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.14.0
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck, test, and build
+        run: npm run check
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Install release-test browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Run complete Chromium browser QA
+        run: npx playwright test --project=chromium
+      - name: Run Firefox critical smoke
+        run: npx playwright test tests/e2e/release/critical-path.spec.ts --project=firefox-critical
+      - name: Run WebKit critical smoke
+        run: npx playwright test tests/e2e/release/critical-path.spec.ts --project=webkit-critical
+      - name: Pack and isolate one exact candidate tarball
+        id: candidate
+        env:
+          PACKAGE_VERSION: ${{ needs.preflight.outputs.package_version }}
+        run: |
+          set -euo pipefail
+          pack_json="$(npm pack --json)"
+          TARBALL_NAME="$(node --input-type=module -e 'const result = JSON.parse(process.argv[1]); if (result.length !== 1 || typeof result[0].filename !== "string") process.exit(1); process.stdout.write(result[0].filename)' "$pack_json")"
+          case "$TARBALL_NAME" in
+            lineage-logo-*.tgz) ;;
+            *) echo "unexpected candidate tarball name" >&2; exit 1 ;;
+          esac
+          TARBALL_PATH="$GITHUB_WORKSPACE/$TARBALL_NAME"
+          test -f "$TARBALL_PATH"
+          CANDIDATE_ROOT="$RUNNER_TEMP/lineage-logo-candidate"
+          mkdir -p "$CANDIDATE_ROOT"
+          npm install --ignore-scripts --no-audit --no-fund --package-lock=false "$TARBALL_PATH" --prefix "$CANDIDATE_ROOT"
+          test "$("$CANDIDATE_ROOT/node_modules/.bin/lineage-logo" --version)" = "$PACKAGE_VERSION"
+          "$CANDIDATE_ROOT/node_modules/.bin/lineage-logo" --help | grep -F "Usage: lineage-logo"
+          TARBALL_SHA512="$(sha512sum "$TARBALL_PATH" | awk '{print $1}')"
+          {
+            echo "tarball_name=$TARBALL_NAME"
+            echo "tarball_path=$TARBALL_PATH"
+            echo "tarball_sha512=$TARBALL_SHA512"
+          } >> "$GITHUB_OUTPUT"
+          echo "Verified candidate: $TARBALL_NAME sha512:$TARBALL_SHA512"
+      - name: Preserve the exact verified candidate
+        uses: actions/upload-artifact@v7
+        with:
+          name: publish-beta-candidate-${{ needs.preflight.outputs.package_version }}
+          path: ${{ steps.candidate.outputs.tarball_name }}
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish the exact verified candidate through npm OIDC
+    needs: [preflight, candidate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      dist_tags_before: ${{ steps.dist_tags_before.outputs.dist_tags_before }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.14.0
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Verify exact trusted-publisher identity and public package contract
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+          const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+          const expectedRepository = "git+https://github.com/lineagehq/lineage-logo.git";
+          if (process.env.GITHUB_REPOSITORY !== "lineagehq/lineage-logo"
+            || process.env.GITHUB_WORKFLOW !== "Publish beta"
+            || process.env.GITHUB_WORKFLOW_REF !== "lineagehq/lineage-logo/.github/workflows/publish-beta.yml@refs/heads/main"
+            || pkg.name !== "lineage-logo"
+            || pkg.repository?.type !== "git"
+            || pkg.repository?.url !== expectedRepository
+            || pkg.publishConfig?.access !== "public"
+            || pkg.publishConfig?.tag !== "beta"
+            || Object.prototype.hasOwnProperty.call(pkg.publishConfig ?? {}, "registry")) {
+            throw new Error("trusted-publisher identity or public package contract mismatch");
+          }
+          NODE
+      - name: Download the exact verified candidate
+        uses: actions/download-artifact@v7
+        with:
+          name: publish-beta-candidate-${{ needs.preflight.outputs.package_version }}
+          path: ${{ runner.temp }}/publish-beta-candidate
+      - name: Verify downloaded candidate path and digest
+        id: verified_candidate
+        run: |
+          set -euo pipefail
+          TARBALL_PATH="$RUNNER_TEMP/publish-beta-candidate/${{ needs.candidate.outputs.tarball_name }}"
+          test -f "$TARBALL_PATH"
+          ACTUAL_SHA512="$(sha512sum "$TARBALL_PATH" | awk '{print $1}')"
+          test "$ACTUAL_SHA512" = "${{ needs.candidate.outputs.tarball_sha512 }}"
+          echo "tarball_path=$TARBALL_PATH" >> "$GITHUB_OUTPUT"
+          echo "Verified publish candidate: $TARBALL_PATH sha512:$ACTUAL_SHA512"
+      - name: Install pinned npm trusted-publishing client
+        run: npm install --global npm@11.5.1
+      - name: Verify trusted-publishing runtime
+        run: |
+          test "$(node --version)" = "v22.14.0"
+          test "$(npm --version)" = "11.5.1"
+      - name: Capture machine-readable dist-tags immediately before publication
+        id: dist_tags_before
+        run: |
+          set -euo pipefail
+          npm view lineage-logo dist-tags --json > "$RUNNER_TEMP/dist-tags-before.json"
+          DIST_TAGS_BEFORE="$(node --input-type=module - "$RUNNER_TEMP/dist-tags-before.json" <<'NODE'
+          import { readFileSync } from "node:fs";
+          const tags = JSON.parse(readFileSync(process.argv[2], "utf8"));
+          if (!tags || Array.isArray(tags) || Object.values(tags).some((value) => typeof value !== "string")) {
+            throw new Error("npm dist-tag snapshot was not a string map");
+          }
+          process.stdout.write(JSON.stringify(tags));
+          NODE
+          )"
+          echo "dist_tags_before=$DIST_TAGS_BEFORE" >> "$GITHUB_OUTPUT"
+      - name: Publish only the beta tag from the exact verified tarball
+        env:
+          TARBALL_PATH: ${{ steps.verified_candidate.outputs.tarball_path }}
+        run: |
+          git fetch --no-tags origin main
+          test "$GITHUB_SHA" = "$(git rev-parse origin/main)"
+          npm publish "$TARBALL_PATH" --tag beta --provenance
+
+  postpublish:
+    name: Retry exact published-version and tag verification
+    needs: [preflight, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.14.0
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Prove exact published version and dist-tag invariants with bounded retry
+        env:
+          PACKAGE_VERSION: ${{ needs.preflight.outputs.package_version }}
+          DIST_TAGS_BEFORE: ${{ needs.publish.outputs.dist_tags_before }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            if test "$(npm view "lineage-logo@${PACKAGE_VERSION}" version)" = "$PACKAGE_VERSION" \
+              && test "$(npm view lineage-logo@beta version)" = "$PACKAGE_VERSION" \
+              && npm view lineage-logo dist-tags --json > "$RUNNER_TEMP/dist-tags-after.json" 2>/dev/null \
+              && node --input-type=module - "$DIST_TAGS_BEFORE" "$RUNNER_TEMP/dist-tags-after.json" "$PACKAGE_VERSION" <<'NODE'
+          import { readFileSync } from "node:fs";
+          const before = JSON.parse(process.argv[2]);
+          const after = JSON.parse(readFileSync(process.argv[3], "utf8"));
+          const version = process.argv[4];
+          if (!before || !after || Array.isArray(before) || Array.isArray(after)) {
+            throw new Error("npm dist-tag snapshots were not maps");
+          }
+          if (after.beta !== version) throw new Error("beta dist-tag did not point to the exact published version");
+          for (const tag of new Set([...Object.keys(before), ...Object.keys(after)])) {
+            if (tag !== "beta" && before[tag] !== after[tag]) {
+              throw new Error(`Only the beta dist-tag may change; ${tag} changed unexpectedly`);
+            }
+          }
+          NODE
+            then
+              exit 0
+            fi
+            if [ "$attempt" -lt 5 ]; then sleep $((attempt * 5)); fi
+          done
+          echo "exact published version, beta tag, or non-beta tag invariants were not observable after bounded retry" >&2
+          exit 1
+
+  registry_qa_handoff:
+    name: Dispatch immutable public registry QA after publication
+    needs: [preflight, publish, postpublish]
+    if: ${{ always() && needs.publish.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Dispatch exact-version registry QA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_VERSION: ${{ needs.preflight.outputs.package_version }}
+        run: gh workflow run registry-qa.yml --repo lineagehq/lineage-logo --ref main -f "package_version=${PACKAGE_VERSION}"

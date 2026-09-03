@@ -7,13 +7,14 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { AgentProducerClient, type AgentProducerOutcome } from "../producer/agent-client.js";
-import { parseAgentTransaction, validateCleanAgentSvg, type AgentTransactionV1 } from "../shared/agent-protocol.js";
+import { bindPublicAgentProposal, parsePublicAgentProposal, validateCleanAgentSvg, type AgentTransactionV1 } from "../shared/agent-protocol.js";
+import { bootstrapSeatifyExample, SeatifyBootstrapError } from "./seatify-example.js";
 
 export const EXIT = {
   success: 0, usage: 2, selection: 3, unavailable: 4, rejected: 5, conflict: 6, internal: 7,
 } as const;
 
-type CommandName = "launch" | "submit" | "doctor";
+type CommandName = "launch" | "submit" | "doctor" | "context" | "example";
 type OutputStatus = "ok" | "invalid" | "not_found" | "unavailable" | "rejected" | "conflict" | "error";
 
 export interface CliResult {
@@ -57,6 +58,7 @@ export interface CliDependencies {
 
 interface ParsedArguments {
   command?: CommandName;
+  example?: "seatify";
   options: Map<string, string | true>;
   json: boolean;
   quiet: boolean;
@@ -78,6 +80,8 @@ Commands:
   launch --workspace <path> [--port <port>] [--no-open] [--json]
   submit --artifact <path> --proposal <path> [--workspace <path> | --instance <uuid>] [--json] [--include-svg]
   doctor [--workspace <path> | --instance <uuid>] [--json]
+  context [--workspace <path> | --instance <uuid>] [--json]
+  example seatify --workspace <directory> [--json]
 
 Global options:
   --help       Show command help
@@ -93,10 +97,12 @@ class CliFailure extends Error {
 function parse(argv: string[]): ParsedArguments {
   const options = new Map<string, string | true>();
   let command: CommandName | undefined;
+  let example: "seatify" | undefined;
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (!argument.startsWith("--")) {
-      if (command || !["launch", "submit", "doctor"].includes(argument)) throw new CliFailure(EXIT.usage, "invalid", "Unknown command or positional argument.");
+      if (command === "example" && !example && argument === "seatify") { example = "seatify"; continue; }
+      if (command || !["launch", "submit", "doctor", "context", "example"].includes(argument)) throw new CliFailure(EXIT.usage, "invalid", "Unknown command or positional argument.");
       command = argument as CommandName;
       continue;
     }
@@ -113,7 +119,7 @@ function parse(argv: string[]): ParsedArguments {
     options.set(name, argv[++index]);
   }
   return {
-    command, options,
+    command, example, options,
     json: options.has("json"), quiet: options.has("quiet"), help: options.has("help"), version: options.has("version"),
   };
 }
@@ -136,12 +142,44 @@ function validateCommandOptions(args: ParsedArguments): void {
     launch: new Set(["workspace", "port", "no-open", "development"]),
     submit: new Set(["artifact", "proposal", "workspace", "instance", "legacy-context", "include-svg"]),
     doctor: new Set(["workspace", "instance", "legacy-context"]),
+    context: new Set(["workspace", "instance", "legacy-context"]),
+    example: new Set(["workspace"]),
   };
   for (const option of args.options.keys()) {
     if (!global.has(option) && !commandOptions[args.command].has(option)) {
       throw new CliFailure(EXIT.usage, "invalid", `Option --${option} is not valid for ${args.command}.`);
     }
   }
+}
+
+async function runSeatifyExample(args: ParsedArguments, io: CliIo): Promise<number> {
+  if (args.example !== "seatify") throw new CliFailure(EXIT.usage, "invalid", "Use example seatify.");
+  try { await bootstrapSeatifyExample(requireValue(args, "workspace")); }
+  catch (error) {
+    if (error instanceof SeatifyBootstrapError && error.kind === "conflict") throw new CliFailure(EXIT.conflict, "conflict", "Seatify starter workspace conflicts with existing files.");
+    throw new CliFailure(EXIT.internal, "error", "Seatify starter files are unavailable or could not be created.");
+  }
+  const message = "Seatify starter workspace is ready. Next: lineage-logo launch --workspace <directory>; then lineage-logo context --workspace <directory> --json.";
+  output(io, args.json, { schemaVersion: 1, command: "example", ok: true, status: "ok", message });
+  return EXIT.success;
+}
+
+async function runContext(args: ParsedArguments, io: CliIo, dependencies: CliDependencies): Promise<number> {
+  const instance = await resolveSelected(dependencies.resolveInstance ?? defaultResolver, selector(args));
+  let manifest;
+  try { manifest = await instance.client.manifest(); }
+  catch { throw new CliFailure(EXIT.unavailable, "unavailable", "The selected editor has no active document."); }
+  output(io, args.json, {
+    schemaVersion: 1, command: "context", ok: true, status: "ok", message: "Public proposal context is ready.",
+    context: {
+      protocolVersion: 1,
+      editorId: instance.instanceId.replace(/[^A-Za-z0-9-]/g, "").slice(0, 8) || "unknown",
+      sessionId: manifest.sessionId,
+      baseRevision: manifest.revision,
+      layers: manifest.layers.map((layer) => ({ layerId: layer.sessionKey, name: layer.name, type: layer.type, locked: layer.locked })),
+    },
+  });
+  return EXIT.success;
 }
 
 function output(io: CliIo, json: boolean, result: CliResult): void {
@@ -294,10 +332,13 @@ async function runSubmit(args: ParsedArguments, io: CliIo, dependencies: CliDepe
   const proposalPath = requireValue(args, "proposal");
   const artifactSvg = await readFile(artifactPath, "utf8").catch(() => { throw new CliFailure(EXIT.usage, "invalid", "Artifact is not readable."); });
   try { validateCleanAgentSvg(artifactSvg); } catch { throw new CliFailure(EXIT.usage, "invalid", "Artifact is not a safe SVG."); }
-  let transaction: AgentTransactionV1;
-  try { transaction = parseAgentTransaction(JSON.parse(await readFile(proposalPath, "utf8")) as unknown); }
+  let proposal;
+  try { proposal = parsePublicAgentProposal(await readFile(proposalPath, "utf8")); }
   catch { throw new CliFailure(EXIT.usage, "invalid", "Proposal is not a valid transaction."); }
   const instance = await resolveSelected(dependencies.resolveInstance ?? defaultResolver, selector(args));
+  let transaction: AgentTransactionV1;
+  try { transaction = bindPublicAgentProposal(proposal, await instance.client.manifest()); }
+  catch { throw new CliFailure(EXIT.conflict, "conflict", "Proposal does not match the active editor revision."); }
   if (value(args, "legacy-context")) progress(io, args.quiet, "Warning: legacy context discovery is deprecated.");
   progress(io, args.quiet, `Selected ${sanitizedSelection(instance)}.`);
   progress(io, args.quiet, "Waiting for human review…");
@@ -356,7 +397,7 @@ export async function runLineageCli(argv: string[], io: CliIo = {
   catch (error) {
     const failure = error as CliFailure;
     if (argv.includes("--json")) {
-      const command = argv.find((argument) => ["launch", "submit", "doctor"].includes(argument)) as CommandName | undefined;
+      const command = argv.find((argument) => ["launch", "submit", "doctor", "context", "example"].includes(argument)) as CommandName | undefined;
       output(io, true, { schemaVersion: 1, command: command ?? "doctor", ok: false, status: failure.status ?? "invalid", message: failure.message });
     } else io.stderr(failure.message);
     return failure.exitCode ?? EXIT.internal;
@@ -374,6 +415,8 @@ export async function runLineageCli(argv: string[], io: CliIo = {
       return exitCode;
     }
     if (args.command === "submit") return await runSubmit(args, io, dependencies);
+    if (args.command === "context") return await runContext(args, io, dependencies);
+    if (args.command === "example") return await runSeatifyExample(args, io);
     return await runDoctor(args, io, dependencies);
   } catch (error) {
     const failure = error instanceof CliFailure ? error : new CliFailure(EXIT.internal, "error", "Unexpected internal failure.");

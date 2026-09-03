@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lineage-logo.localhost/schemas/public-beta/walkthrough-receipt-v1.json",
+  "title": "Lineage Logo public beta walkthrough receipt",
+  "description": "Versioned, privacy-minimal local receipt for one unaided public-beta walkthrough. It intentionally contains no participant identity, free text, artifact content, paths, browser/session data, or secrets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["receipt_version", "kind", "walkthrough_id", "participant_slot", "installed_version", "environment", "attempt_status", "milestones", "recovery", "issue_code"],
+  "properties": {
+    "receipt_version": { "const": 1 },
+    "kind": { "const": "lineage-logo.public-beta.walkthrough" },
+    "walkthrough_id": { "type": "string", "pattern": "^W-[A-Z0-9]{6,32}$" },
+    "participant_slot": { "type": "string", "pattern": "^P-(00[1-9]|0[1-9][0-9]|[1-9][0-9]{2,})$" },
+    "installed_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+-beta\\.[0-9]+$" },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "node_major", "browser"],
+      "properties": {
+        "platform": { "enum": ["macos", "linux", "windows", "other"] },
+        "node_major": { "type": "integer", "minimum": 0, "maximum": 999 },
+        "browser": { "enum": ["chromium", "firefox", "webkit", "other"] }
+      }
+    },
+    "attempt_status": { "enum": ["valid", "invalid", "incomplete"] },
+    "milestones": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fresh_install", "non_destructive_bootstrap", "proposal_comprehension", "review", "accept_and_durable_save", "clean_reopen"],
+      "properties": {
+        "fresh_install": { "$ref": "#/$defs/milestoneEvidence" },
+        "non_destructive_bootstrap": { "$ref": "#/$defs/milestoneEvidence" },
+        "proposal_comprehension": { "$ref": "#/$defs/milestoneEvidence" },
+        "review": { "$ref": "#/$defs/milestoneEvidence" },
+        "accept_and_durable_save": { "$ref": "#/$defs/milestoneEvidence" },
+        "clean_reopen": { "$ref": "#/$defs/milestoneEvidence" }
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "result"],
+      "properties": {
+        "action": { "enum": ["none", "retry_same_step_once", "restart_from_fresh_install", "stop" ] },
+        "result": { "enum": ["not_needed", "passed", "failed", "not_attempted" ] }
+      }
+    },
+    "issue_code": {
+      "enum": ["none", "install_failure", "bootstrap_safety", "proposal_or_review", "accept_and_durable_save", "reopen_or_persistence", "unsupported_environment", "safety_or_data_loss"]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "attempt_status": { "const": "valid" } }, "required": ["attempt_status"] },
+      "then": {
+        "properties": {
+          "environment": {
+            "properties": {
+              "platform": { "enum": ["macos", "linux"] },
+              "node_major": { "minimum": 22 },
+              "browser": { "const": "chromium" }
+            }
+          },
+          "milestones": {
+            "properties": {
+              "fresh_install": { "properties": { "status": { "const": "pass" } } },
+              "non_destructive_bootstrap": { "properties": { "status": { "const": "pass" } } },
+              "proposal_comprehension": { "properties": { "status": { "const": "pass" } } },
+              "review": { "properties": { "status": { "const": "pass" } } },
+              "accept_and_durable_save": { "properties": { "status": { "const": "pass" } } },
+              "clean_reopen": { "properties": { "status": { "const": "pass" } } }
+            }
+          },
+          "recovery": { "properties": { "action": { "const": "none" }, "result": { "const": "not_needed" } } },
+          "issue_code": { "const": "none" }
+        }
+      }
+    },
+    {
+      "if": {
+        "not": {
+          "properties": {
+            "environment": {
+              "required": ["platform", "node_major", "browser"],
+              "properties": {
+                "platform": { "enum": ["macos", "linux"] },
+                "node_major": { "minimum": 22 },
+                "browser": { "const": "chromium" }
+              }
+            }
+          }
+        }
+      },
+      "then": { "properties": { "attempt_status": { "const": "invalid" }, "issue_code": { "const": "unsupported_environment" } } }
+    },
+    {
+      "properties": {
+        "recovery": {
+          "oneOf": [
+            { "properties": { "action": { "const": "none" }, "result": { "const": "not_needed" } } },
+            { "properties": { "action": { "const": "retry_same_step_once" }, "result": { "enum": ["passed", "failed"] } } },
+            { "properties": { "action": { "const": "restart_from_fresh_install" }, "result": { "enum": ["passed", "failed"] } } },
+            { "properties": { "action": { "const": "stop" }, "result": { "const": "not_attempted" } } }
+          ]
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "milestoneEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "duration_seconds", "friction_code"],
+      "properties": {
+        "status": { "enum": ["pass", "fail", "blocked", "not_attempted"] },
+        "duration_seconds": { "type": "integer", "minimum": 0, "maximum": 3600 },
+        "friction_code": { "enum": ["none", "install", "bootstrap", "context", "proposal", "review", "accept_and_durable_save", "reopen"] }
+      }
+    }
+  }
+}

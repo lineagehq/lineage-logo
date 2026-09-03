@@ -35,12 +35,15 @@ it is not sufficient to publish a public beta.
 
 ## Owner policy decisions
 
-The owner selected the MIT license, GitHub Issues for best-effort support with no
-SLA, and version `0.1.0-beta.1` under npm's `beta` tag. The owner also explicitly
-accepted releasing without a private vulnerability-reporting channel. The beta
-cannot accept reports that require confidentiality; public issues must not
-contain sensitive vulnerability details. These policy choices do not authorize
-an npm publication by themselves.
+The owner selected the MIT license and GitHub Issues for best-effort support with
+no SLA. Version `0.1.0-beta.2` is a local release candidate intended for npm's
+`beta` tag; it has not been merged, published, provenance-proven,
+registry-QA-approved, or externally validated. This checklist does not claim
+that hosted workflows, protected environments, or trusted-publisher controls
+have succeeded. The owner also explicitly accepted releasing without a private
+vulnerability-reporting channel. The beta cannot accept reports that require
+confidentiality; public issues must not contain sensitive vulnerability details.
+These policy choices do not authorize an npm publication by themselves.
 
 ## Explicit initial limitations
 

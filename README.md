@@ -127,18 +127,20 @@ different starting API port.
 
 ## Public beta CLI
 
-The public executable is `lineage-logo`. Until a package is published to a
-registry, build and install a reviewed repository artifact rather than assuming
-that `npm install -g lineage-logo` is available:
+The public executable is `lineage-logo`. Install the published beta package
+from the registry, then start the non-destructive Seatify walkthrough:
 
 ```bash
-npm ci
-npm pack
-npm install -g ./lineage-logo-0.1.0-beta.1.tgz
-lineage-logo --help
-lineage-logo doctor
-lineage-logo launch --workspace /absolute/path/to/logos
+npm install -g lineage-logo@beta
+lineage-logo example seatify --workspace <directory>
+lineage-logo launch --workspace <directory>
 ```
+
+The complete public flow, provider-neutral proposal schema, explicit review,
+saved-iteration proof, clean restart, and source-preservation check are in the
+[Seatify quickstart](docs/public-beta/seatify-quickstart.md). Public `context`
+and proposal input intentionally omit source paths, credentials, registry
+records, SVG bytes, and browser/session secrets.
 
 `launch` stays attached to the local editor process and prints a descriptive
 `lineage-logo.localhost` address. The server listens on loopback only. Use
