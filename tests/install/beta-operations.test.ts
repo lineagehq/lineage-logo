@@ -5,6 +5,50 @@ const schema = JSON.parse(readFileSync("docs/public-beta/walkthrough-receipt.sch
 const protocol = readFileSync("docs/public-beta/cohort-protocol.md", "utf8");
 const triage = readFileSync("docs/public-beta/triage.md", "utf8");
 
+function validates(value: unknown, rule: any, root = schema): boolean {
+  if (rule.$ref) return validates(value, rule.$ref.split("/").slice(1).reduce((node: any, key: string) => node[key], root), root);
+  if (rule.const !== undefined && value !== rule.const) return false;
+  if (rule.enum && !rule.enum.includes(value)) return false;
+  if (rule.type === "object" && (!value || typeof value !== "object" || Array.isArray(value))) return false;
+  if (rule.type === "string" && typeof value !== "string") return false;
+  if (rule.type === "integer" && (!Number.isInteger(value))) return false;
+  if (rule.pattern && (typeof value !== "string" || !(new RegExp(rule.pattern).test(value)))) return false;
+  if (rule.minimum !== undefined && (typeof value !== "number" || value < rule.minimum)) return false;
+  if (rule.maximum !== undefined && (typeof value !== "number" || value > rule.maximum)) return false;
+  if (rule.required && rule.required.some((key: string) => !(key in (value as Record<string, unknown>)))) return false;
+  if (rule.properties && value && typeof value === "object" && !Array.isArray(value)) {
+    const object = value as Record<string, unknown>;
+    if (rule.additionalProperties === false && Object.keys(object).some((key) => !(key in rule.properties))) return false;
+    if (Object.entries(rule.properties).some(([key, propertyRule]) => key in object && !validates(object[key], propertyRule, root))) return false;
+  }
+  if (rule.allOf && rule.allOf.some((part: any) => !validates(value, part, root))) return false;
+  if (rule.oneOf && rule.oneOf.filter((part: any) => validates(value, part, root)).length !== 1) return false;
+  if (rule.not && validates(value, rule.not, root)) return false;
+  if (rule.if && validates(value, rule.if, root) && rule.then && !validates(value, rule.then, root)) return false;
+  if (rule.if && !validates(value, rule.if, root) && rule.else && !validates(value, rule.else, root)) return false;
+  return true;
+}
+
+function validReceipt() {
+  return {
+    receipt_version: 1, kind: "lineage-logo.public-beta.walkthrough", walkthrough_id: "W-ABC123",
+    product_version: "0.1.0-beta.1", environment: { platform: "macos", node_major: 22, browser: "chromium" },
+    attempt_status: "valid",
+    milestones: { fresh_install: "pass", non_destructive_bootstrap: "pass", proposal_comprehension: "pass", review: "pass", accept: "pass", save: "pass", clean_reopen: "pass" },
+    recovery: { action: "none", result: "not_needed" }, issue_code: "none",
+  };
+}
+
+function triagePolicy() {
+  const match = triage.match(/```json\n([\s\S]*?)\n```/);
+  if (!match) throw new Error("missing machine-readable triage precedence");
+  return JSON.parse(match[1]) as { precedence: Array<{ signal: string; issue_code: string }> };
+}
+
+function selectIssueCode(signals: string[]) {
+  return triagePolicy().precedence.find((entry) => signals.includes(entry.signal))?.issue_code ?? "none";
+}
+
 describe("public beta cohort operating kit", () => {
   it("publishes a strict, versioned, privacy-minimal walkthrough receipt contract", () => {
     expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
@@ -13,14 +57,36 @@ describe("public beta cohort operating kit", () => {
     expect(schema.properties.kind.const).toBe("lineage-logo.public-beta.walkthrough");
     expect(schema.additionalProperties).toBe(false);
     expect(schema.properties.environment.additionalProperties).toBe(false);
-    expect(schema.properties.environment.properties.platform.enum).toEqual(["macos", "linux"]);
-    expect(schema.properties.environment.properties.node_major.minimum).toBe(22);
-    expect(schema.properties.environment.properties.browser.const).toBe("chromium");
+    expect(schema.properties.environment.properties.platform.enum).toEqual(["macos", "linux", "windows", "other"]);
+    expect(schema.properties.environment.properties.node_major.minimum).toBe(0);
+    expect(schema.properties.environment.properties.browser.enum).toEqual(["chromium", "firefox", "webkit", "other"]);
     expect(schema.properties.milestones.required).toEqual(["fresh_install", "non_destructive_bootstrap", "proposal_comprehension", "review", "accept", "save", "clean_reopen"]);
     expect(schema.properties.issue_code.enum).toContain("safety_or_data_loss");
     expect(Object.keys(schema.properties)).not.toEqual(expect.arrayContaining([
       "name", "email", "credentials", "token", "private_path", "svg", "browser_session", "details",
     ]));
+  });
+
+  it("accepts a complete supported receipt but rejects unsupported or incoherent valid claims", () => {
+    expect(validates(validReceipt(), schema)).toBe(true);
+    expect(validates({ ...validReceipt(), attempt_status: "valid", environment: { platform: "windows", node_major: 20, browser: "firefox" } }, schema)).toBe(false);
+    expect(validates({ ...validReceipt(), milestones: { ...validReceipt().milestones, save: "blocked" } }, schema)).toBe(false);
+  });
+
+  it("records unsupported environments as validating, non-counting invalid receipts", () => {
+    const receipt = {
+      ...validReceipt(), attempt_status: "invalid", issue_code: "unsupported_environment",
+      environment: { platform: "windows", node_major: 20, browser: "firefox" },
+      milestones: { fresh_install: "not_attempted", non_destructive_bootstrap: "not_attempted", proposal_comprehension: "not_attempted", review: "not_attempted", accept: "not_attempted", save: "not_attempted", clean_reopen: "not_attempted" },
+      recovery: { action: "stop", result: "not_attempted" },
+    };
+    expect(validates(receipt, schema)).toBe(true);
+  });
+
+  it("allows only coherent recovery action and result pairs", () => {
+    expect(validates({ ...validReceipt(), attempt_status: "incomplete", recovery: { action: "retry_same_step_once", result: "passed" } }, schema)).toBe(true);
+    expect(validates({ ...validReceipt(), attempt_status: "incomplete", recovery: { action: "none", result: "failed" } }, schema)).toBe(false);
+    expect(validates({ ...validReceipt(), attempt_status: "incomplete", recovery: { action: "stop", result: "passed" } }, schema)).toBe(false);
   });
 
   it("requires unaided published-registry walkthroughs and complete durable milestones", () => {
@@ -43,5 +109,12 @@ describe("public beta cohort operating kit", () => {
     for (const issueCode of schema.properties.issue_code.enum) expect(triage).toContain(`\`${issueCode}\``);
     expect(triage).toContain("does not create an issue");
     expect(triage).toContain("There is no confidential-reporting channel or SLA");
+  });
+
+  it("selects one deterministic issue code when receipt signals overlap", () => {
+    expect(selectIssueCode(["unsupported_environment", "install_failure"])).toBe("unsupported_environment");
+    expect(selectIssueCode(["bootstrap_safety", "safety_or_data_loss"])).toBe("safety_or_data_loss");
+    expect(selectIssueCode(["accept_or_save", "reopen_or_persistence"])).toBe("reopen_or_persistence");
+    expect(selectIssueCode([])).toBe("none");
   });
 });

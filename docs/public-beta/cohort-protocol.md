@@ -52,6 +52,10 @@ Never recover by using a local tarball, repository checkout, linked package, man
 editing, or maintainer intervention. Do not convert a `fail`, `blocked`, or
 `not_attempted` milestone to `pass` after the fact.
 
+The receipt pairs are fixed: `none` uses `not_needed`; either retry action uses `passed`
+or `failed`; and `stop` uses `not_attempted`. A valid receipt has no recovery, so it must
+use `none` and `not_needed`.
+
 ## Invalid-attempt rules
 
 Set `attempt_status` to `invalid` and stop counting the attempt if any of these occur:

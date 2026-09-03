@@ -15,6 +15,27 @@ receipt.
 | Platform, Node version, or browser falls outside the protocol | `unsupported_environment` | Mark invalid; it cannot count. |
 | Possible data loss, secret exposure, or other safety concern | `safety_or_data_loss` | Stop immediately and retain no sensitive detail. |
 
+## Deterministic precedence
+
+When more than one receipt signal is present, select exactly the first matching signal in
+this machine-readable order. The selected code is the only `issue_code` in the receipt.
+For example, unsupported environment wins over an installation failure, and possible data
+loss wins over an unsafe bootstrap signal.
+
+```json
+{
+  "precedence": [
+    { "signal": "safety_or_data_loss", "issue_code": "safety_or_data_loss" },
+    { "signal": "unsupported_environment", "issue_code": "unsupported_environment" },
+    { "signal": "bootstrap_safety", "issue_code": "bootstrap_safety" },
+    { "signal": "reopen_or_persistence", "issue_code": "reopen_or_persistence" },
+    { "signal": "accept_or_save", "issue_code": "accept_or_save" },
+    { "signal": "proposal_or_review", "issue_code": "proposal_or_review" },
+    { "signal": "install_failure", "issue_code": "install_failure" }
+  ]
+}
+```
+
 The issue code is an outcome label, not a diagnosis. The bounded receipt schema deliberately
 has no text field for descriptions, paths, artifact contents, session data, or confidential
 reports. There is no confidential-reporting channel or SLA in this operating kit.
