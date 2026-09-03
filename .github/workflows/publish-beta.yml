@@ -1,0 +1,158 @@
+name: Publish beta
+
+on:
+  workflow_dispatch:
+    inputs:
+      package_version:
+        description: Exact new beta semantic version from package.json (for example, 0.1.0-beta.2)
+        required: true
+        type: string
+
+permissions:
+  actions: write
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-beta
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    name: Verify current main and exact unpublished beta version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      package_version: ${{ steps.version.outputs.package_version }}
+    steps:
+      - name: Check out the manually selected ref
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Require the current main commit
+        run: |
+          test "$GITHUB_REF" = "refs/heads/main"
+          git fetch --no-tags origin main
+          test "$GITHUB_SHA" = "$(git rev-parse origin/main)"
+
+      - name: Require one exact new beta version
+        id: version
+        env:
+          PACKAGE_VERSION: ${{ inputs.package_version }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+
+          const version = process.env.PACKAGE_VERSION;
+          const packageVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
+          if (!/^\d+\.\d+\.\d+-beta\.\d+$/.test(version ?? "")) {
+            throw new Error("package_version must be one exact beta semantic version, not a tag or range");
+          }
+          if (packageVersion !== version) {
+            throw new Error("package_version must exactly match package.json");
+          }
+          NODE
+          if npm view "lineage-logo@${PACKAGE_VERSION}" version --json >/dev/null 2>&1; then
+            echo "Refusing to reuse an existing npm version" >&2
+            exit 1
+          fi
+          echo "package_version=${PACKAGE_VERSION}" >> "$GITHUB_OUTPUT"
+
+  publish:
+    name: Run prepublish gates and publish through npm OIDC
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: npm-publish
+    steps:
+      - name: Check out the preflighted current main commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.14.0
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Capture dist-tags before publication
+        run: npm view lineage-logo dist-tags --json > "$RUNNER_TEMP/dist-tags-before.json"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck, test, and build
+        run: npm run check
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Install release-test browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Run complete Chromium browser QA
+        run: npx playwright test --project=chromium
+
+      - name: Run Firefox critical smoke
+        run: npx playwright test tests/e2e/release/critical-path.spec.ts --project=firefox-critical
+
+      - name: Run WebKit critical smoke
+        run: npx playwright test tests/e2e/release/critical-path.spec.ts --project=webkit-critical
+
+      - name: Prove the isolated package candidate
+        run: npx tsx scripts/release-check.ts
+
+      - name: Install pinned npm trusted-publishing client
+        run: npm install --global npm@11.5.1
+
+      - name: Verify trusted-publishing runtime
+        run: |
+          test "$(node --version)" = "v22.14.0"
+          test "$(npm --version)" = "11.5.1"
+
+      - name: Recheck current main before publication
+        run: |
+          git fetch --no-tags origin main
+          test "$GITHUB_SHA" = "$(git rev-parse origin/main)"
+
+      - name: Publish only the beta tag with npm provenance
+        env:
+          PACKAGE_VERSION: ${{ needs.preflight.outputs.package_version }}
+        run: npm publish --tag beta --provenance
+
+      - name: Prove the exact published version and dist-tag invariants
+        env:
+          PACKAGE_VERSION: ${{ needs.preflight.outputs.package_version }}
+        run: |
+          test "$(npm view "lineage-logo@${PACKAGE_VERSION}" version)" = "$PACKAGE_VERSION"
+          npm view lineage-logo dist-tags --json > "$RUNNER_TEMP/dist-tags-after.json"
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+
+          const before = JSON.parse(readFileSync(process.env.RUNNER_TEMP + "/dist-tags-before.json", "utf8"));
+          const after = JSON.parse(readFileSync(process.env.RUNNER_TEMP + "/dist-tags-after.json", "utf8"));
+          const version = process.env.PACKAGE_VERSION;
+          if (after.beta !== version) {
+            throw new Error("beta dist-tag did not point to the exact published version");
+          }
+          for (const tag of new Set([...Object.keys(before), ...Object.keys(after)])) {
+            if (tag !== "beta" && before[tag] !== after[tag]) {
+              throw new Error(`Only the beta dist-tag may change; ${tag} changed unexpectedly`);
+            }
+          }
+          NODE
+
+      - name: Dispatch immutable public registry QA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_VERSION: ${{ needs.preflight.outputs.package_version }}
+        run: gh workflow run registry-qa.yml --ref main -f package_version=${PACKAGE_VERSION}
