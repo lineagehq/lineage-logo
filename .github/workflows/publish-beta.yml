@@ -288,4 +288,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PACKAGE_VERSION: ${{ needs.preflight.outputs.package_version }}
-        run: gh workflow run registry-qa.yml --ref main -f "package_version=${PACKAGE_VERSION}"
+        run: gh workflow run registry-qa.yml --repo lineagehq/lineage-logo --ref main -f "package_version=${PACKAGE_VERSION}"

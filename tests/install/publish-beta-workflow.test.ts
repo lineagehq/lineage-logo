@@ -161,7 +161,9 @@ describe("manual beta trusted-publish workflow", () => {
     expect(postpublish).toContain("DIST_TAGS_BEFORE: ${{ needs.publish.outputs.dist_tags_before }}");
     expect(postpublish).toContain("Only the beta dist-tag may change");
     expect(handoff).toContain("always() && needs.publish.result == 'success'");
-    expect(handoff).toContain('gh workflow run registry-qa.yml --ref main -f "package_version=${PACKAGE_VERSION}"');
+    expect(handoff).toContain(
+      'gh workflow run registry-qa.yml --repo lineagehq/lineage-logo --ref main -f "package_version=${PACKAGE_VERSION}"',
+    );
   });
 
   it("honestly documents the unproven owner configuration and exact trusted-publisher identity", () => {

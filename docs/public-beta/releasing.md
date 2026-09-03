@@ -74,8 +74,11 @@ first-package `latest` anomaly instead of trying to repair it.
 
 After a successful publish, exact-version and beta-tag visibility are checked
 with a bounded retry. A separate always/conditional handoff job attempts to
-dispatch **Public registry QA** on `--ref main` with the exact immutable version
-whenever publishing succeeded—even if those later diagnostics fail. This
+dispatch **Public registry QA** to the fixed `lineagehq/lineage-logo` repository
+on `--ref main` with the exact immutable version whenever publishing
+succeeded—even if those later diagnostics fail. The explicit repository target
+keeps this dispatch executable on the handoff job's fresh runner, which has no
+checkout from which GitHub CLI could infer a repository. This
 asynchronous `gh workflow run` call only attempts to start the separate
 read-only post-publication gate; it does not wait for or enforce registry-QA
 success, and a successful handoff does not claim registry QA completed.
