@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -10,6 +10,21 @@ function runValidation(version: string, environment: NodeJS.ProcessEnv = process
     const output = execFileSync(process.execPath, ["--experimental-strip-types", "scripts/registry-release-check.ts", "--validate-version"], {
       cwd: process.cwd(),
       env: { ...environment, REGISTRY_PACKAGE_VERSION: version },
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    return { status: 0, output };
+  } catch (error) {
+    const failure = error as { status?: number; stdout?: string; stderr?: string };
+    return { status: failure.status ?? 1, output: `${failure.stdout ?? ""}${failure.stderr ?? ""}` };
+  }
+}
+
+function runRegistryCheck(environment: NodeJS.ProcessEnv): { status: number; output: string } {
+  try {
+    const output = execFileSync(process.execPath, ["--experimental-strip-types", "scripts/registry-release-check.ts"], {
+      cwd: process.cwd(),
+      env: environment,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -48,15 +63,68 @@ describe("public registry release enforcement", () => {
     }
   });
 
-  it("uses explicit installed-version capabilities and redacts sensitive diagnostics", () => {
+  it("uses explicit installed-version capabilities", () => {
     expect(installedVersionCapabilities("0.1.0-beta.1")).toEqual({ publicOnboarding: false, publicRouting: false });
     expect(installedVersionCapabilities("0.1.0-beta.2")).toEqual({ publicOnboarding: true, publicRouting: true });
-    const diagnostic = safeDiagnostic("Bearer registry-check-secret-token-value at /Users/example/private.svg <svg><text>private</text></svg>");
+  });
+
+  it("preserves lowercase hyphenated package-resolution diagnostics", () => {
+    // Break caught: treating operational package slugs as opaque tokens erases the actionable failure reason.
+    expect(safeDiagnostic("package-resolution-failed-because-registry-unavailable")).toContain("package-resolution-failed-because-registry-unavailable");
+    expect(safeDiagnostic("request failed with 8uQm3Zk1Hp9Va6Lw4Nd7Xr2Bc5Ye0TsF")).not.toContain("8uQm3Zk1Hp9Va6Lw4Nd7Xr2Bc5Ye0TsF");
+  });
+
+  it("preserves public npm error context while removing secrets, paths, SVG, and stacks", () => {
+    // Break caught: reverting to generic/truncated diagnostics hides which public package request failed.
+    const diagnostic = safeDiagnostic([
+      "npm error code E404",
+      "npm error 404 Not Found - GET https://registry.npmjs.org/lineage-logo/-/lineage-logo-1.2.3.tgz - Not found",
+      "Authorization: Bearer registry-check-secret-token-value",
+      "Authorization: Bearer short-secret",
+      "at install (/Users/example/private.svg:42:9)",
+      "<svg><text>private</text></svg>",
+    ].join("\n"));
+    expect(diagnostic).toContain("npm error code E404");
+    expect(diagnostic).toContain("https://registry.npmjs.org/lineage-logo/-/lineage-logo-1.2.3.tgz");
     expect(diagnostic).toContain("[redacted]");
-    expect(diagnostic).toContain("[path]");
     expect(diagnostic).toContain("[svg]");
     expect(diagnostic).not.toContain("secret-token");
+    expect(diagnostic).not.toContain("short-secret");
     expect(diagnostic).not.toContain("private.svg");
     expect(diagnostic).not.toContain("<svg");
+    expect(diagnostic).not.toContain("at install");
+  });
+
+  it("reports cleanup failures through the same sanitized diagnostic boundary", async () => {
+    // Break caught: cleanup exceptions bypass the public diagnostic sanitizer and leak raw error details.
+    const root = await mkdtemp(path.join(os.tmpdir(), "lineage-registry-cleanup-"));
+    const bin = path.join(root, "bin");
+    const npm = path.join(bin, "npm");
+    await mkdir(bin);
+    await writeFile(npm, [
+      "#!/bin/sh",
+      "printf 'npm error code E404\\nnpm error 404 Not Found - GET https://registry.npmjs.org/lineage-logo/-/lineage-logo-1.2.3.tgz - Not found\\n' >&2",
+      "chmod 0500 \"$TMPDIR\"",
+      "exit 1",
+    ].join("\n"));
+    await chmod(npm, 0o755);
+    try {
+      const result = runRegistryCheck({
+        ...process.env,
+        PATH: `${bin}${path.delimiter}${process.env.PATH}`,
+        REGISTRY_PACKAGE_VERSION: "1.2.3",
+        TMPDIR: root,
+      });
+      expect(result.status).toBe(1);
+      expect(result.output).toContain("Registry check failed during registry install: exact public registry install failed: npm error code E404");
+      expect(result.output).toContain("https://registry.npmjs.org/lineage-logo/-/lineage-logo-1.2.3.tgz");
+      expect(result.output).toContain("cleanup");
+      expect(result.output).not.toContain("Error:");
+      expect(result.output).not.toContain(root);
+      expect(result.output).not.toContain("at main");
+    } finally {
+      await chmod(root, 0o700);
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

@@ -17,19 +17,20 @@ seatify-constellation.svg` fixture, and public-output redaction. It is not a
 browser-UX claim.
 
 The macOS Node 22 Chromium job runs the two-editor Seatify bridge from the
-selected registry bytes. Compatibility is determined only from the installed
-package version, never from whether the package came from npm or a tarball.
-`0.1.0-beta.1` is the one compatibility version: its bridge uses the installed
-fixture and its legacy connection contract. Any later immutable version must
-exercise the supported `example seatify`, `context`, and routed `submit`
-commands, in addition to review, durable save, clean reopen, source
-preservation, and revert behavior. Version output is checked against the
-installed manifest rather than a hard-coded beta version.
+selected registry bytes. For an immutable registry version, capability is
+derived from the installed package version. `0.1.0-beta.1` is the one
+compatibility version: its bridge uses the installed fixture and its legacy
+connection contract. Any later immutable version must exercise the supported
+`example seatify`, `context`, and routed `submit` commands, in addition to
+review, durable save, clean reopen, source preservation, and revert behavior.
+Version output is checked against the installed manifest rather than a
+hard-coded beta version.
 
-The local-tarball bridge uses the same installed-version capability contract.
-It remains the pre-publication gate and is never substituted for registry
-bytes; it verifies that the selected artifact's supported behavior remains
-reliable before publication.
+The checkout-built local tarball has no new immutable version to infer from:
+its package metadata has not yet advanced. It is therefore treated as the
+current prepublish candidate and remains the pre-publication gate. It is never
+substituted for registry bytes; it verifies the candidate's supported behavior
+before publication.
 
 If either job fails, keep the published version immutable. Diagnostics identify
 the failing phase and next safe action while redacting tokens, filesystem paths,

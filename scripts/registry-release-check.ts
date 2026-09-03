@@ -29,11 +29,24 @@ export function installedVersionCapabilities(version: string): InstalledVersionC
 }
 
 export function safeDiagnostic(value: string): string {
-  return value.replace(/<svg\b[\s\S]*?<\/svg>/gi, "[svg]")
-    .replace(/(?:Bearer\s+|(?:token|authorization|password|secret)\s*[=:]\s*)[^\s,;]+/gi, "[redacted]")
-    .replace(/[A-Za-z0-9_-]{24,}/g, "[redacted]")
+  const publicRegistryUrls: string[] = [];
+  const withPreservedRegistryUrls = value
+    .replace(/https?:\/\/[^\s/@]+@/gi, "https://[redacted]@")
+    .replace(/https:\/\/registry\.npmjs\.org(?:\/[^\s<>:\"|?*]+)*/gi, (url) => {
+      const placeholder = `[registry-url-${publicRegistryUrls.length}]`;
+      publicRegistryUrls.push(url);
+      return placeholder;
+    });
+  const sanitized = withPreservedRegistryUrls
+    .split("\n")
+    .filter((line) => !/^\s*at\s+/.test(line))
+    .join("\n")
+    .replace(/<svg\b[\s\S]*?<\/svg>/gi, "[svg]")
+    .replace(/(?:Bearer\s+|(?:token|authorization|password|secret)\s*[=:]\s*(?:Bearer\s+)?)[^\s,;]+/gi, "[redacted]")
+    .replace(/\b(?=[A-Za-z0-9_-]{24,}\b)(?=[A-Za-z0-9_-]*[A-Z])(?=[A-Za-z0-9_-]*[a-z])(?=[A-Za-z0-9_-]*\d)[A-Za-z0-9_-]{24,}\b/g, "[redacted]")
     .replace(/(?:[A-Za-z]:[\\/]|\/)(?:[^\s<>:"|?*]+[\\/])+[^\s<>:"|?*]+/g, "[path]")
-    .slice(0, 240);
+    .slice(0, 1200);
+  return publicRegistryUrls.reduce((output, url, index) => output.replace(`[registry-url-${index}]`, url), sanitized);
 }
 
 export function validateRegistryPackageVersion(version: string | undefined): version is string {
@@ -50,6 +63,11 @@ async function command(commandName: string, args: string[], cwd: string, env = p
     child.once("error", reject);
     child.once("exit", (code) => resolve({ code: code ?? 1, stdout, stderr }));
   });
+}
+
+function commandFailure(summary: string, result: { stdout: string; stderr: string }): string {
+  const detail = `${result.stderr}\n${result.stdout}`.trim();
+  return detail ? `${summary}: ${detail}` : summary;
 }
 
 async function main(): Promise<void> {
@@ -70,7 +88,7 @@ async function main(): Promise<void> {
   let phase = "registry install";
   try {
     const installed = await command("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund", "--package-lock=false", "--registry=https://registry.npmjs.org", `${PACKAGE_NAME}@${version}`], installRoot);
-    if (installed.code !== 0) throw new Error("exact public registry install failed");
+    if (installed.code !== 0) throw new Error(commandFailure("exact public registry install failed", installed));
 
     const packageRoot = path.join(installRoot, "node_modules", PACKAGE_NAME);
     phase = "installed manifest";
@@ -104,12 +122,17 @@ async function main(): Promise<void> {
     process.stderr.write(`Registry check failed during ${phase}: ${safeDiagnostic(error instanceof Error ? error.message : "unknown failure")}. Verify that ${version} is published unchanged, then retry.\n`);
     process.exitCode = 1;
   } finally {
-    const info = await lstat(installRoot);
-    const resolvedInstall = await realpath(installRoot);
-    if (!info.isDirectory() || info.isSymbolicLink() || path.dirname(resolvedInstall) !== temporaryRoot || !path.basename(resolvedInstall).startsWith("lineage-logo-registry-")) {
-      throw new Error("refusing unsafe registry-check cleanup");
+    try {
+      const info = await lstat(installRoot);
+      const resolvedInstall = await realpath(installRoot);
+      if (!info.isDirectory() || info.isSymbolicLink() || path.dirname(resolvedInstall) !== temporaryRoot || !path.basename(resolvedInstall).startsWith("lineage-logo-registry-")) {
+        throw new Error("refusing unsafe registry-check cleanup");
+      }
+      await rm(resolvedInstall, { recursive: true });
+    } catch (error) {
+      process.stderr.write(`Registry check cleanup failed: ${safeDiagnostic(error instanceof Error ? error.message : "unknown failure")}. Remove the temporary registry-check directory manually.\n`);
+      process.exitCode = 1;
     }
-    await rm(resolvedInstall, { recursive: true });
   }
 }
 
