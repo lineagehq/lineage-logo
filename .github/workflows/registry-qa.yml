@@ -1,0 +1,60 @@
+name: Public registry QA
+
+on:
+  workflow_dispatch:
+    inputs:
+      package_version:
+        description: Exact published lineage-logo semantic version (for example, 0.1.0-beta.1)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  linux-registry-cli:
+    name: Node 22 Linux registry CLI, fixture, and redaction
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out registry-QA harness
+        uses: actions/checkout@v7
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install harness dependencies
+        run: npm ci
+
+      - name: Read exact public registry package
+        env:
+          REGISTRY_PACKAGE_VERSION: ${{ inputs.package_version }}
+        run: npx tsx scripts/registry-release-check.ts
+
+  macos-registry-seatify-bridge:
+    name: Node 22 macOS Chromium installed Seatify bridge
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out registry-QA harness
+        uses: actions/checkout@v7
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install harness dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install chromium
+
+      - name: Prove installed public Seatify bridge
+        env:
+          REGISTRY_PACKAGE_VERSION: ${{ inputs.package_version }}
+        run: npx playwright test tests/e2e/installed-cli-bridge.spec.ts --project=chromium
