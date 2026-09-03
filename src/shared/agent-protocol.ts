@@ -75,6 +75,16 @@ export interface AgentTransactionV1 {
   operations: AgentOperation[];
 }
 
+/** Public proposal input deliberately excludes the private workspace source path. */
+export interface PublicAgentProposalV1 {
+  protocolVersion: typeof AGENT_PROTOCOL_VERSION;
+  transactionId: string;
+  producer: AgentProducer;
+  intent?: string;
+  document: Omit<AgentDocumentTarget, "sourcePath">;
+  operations: AgentOperation[];
+}
+
 export type AgentErrorCode = "invalid_payload" | "payload_too_large" | "unsupported_version"
   | "unknown_operation" | "unknown_field" | "invalid_reference" | "stale_document"
   | "missing_target" | "ambiguous_target" | "locked_target" | "invalid_svg"
@@ -289,4 +299,26 @@ export function parseAgentTransaction(payload: unknown): AgentTransactionV1 {
     },
     operations: input.operations.map((operation, index) => parseOperation(operation, index, earlierIds)),
   };
+}
+
+export function parsePublicAgentProposal(payload: unknown): PublicAgentProposalV1 {
+  let value = payload;
+  if (typeof payload === "string") {
+    if (textEncoder.encode(payload).byteLength > AGENT_MAX_PAYLOAD_BYTES) fail("payload_too_large", "Proposal exceeds the 5 MiB encoded payload limit");
+    try { value = JSON.parse(payload) as unknown; } catch { fail("invalid_payload", "Proposal body is not valid JSON"); }
+  }
+  const input = record(value, "proposal");
+  exact(input, ["protocolVersion", "transactionId", "producer", "intent", "document", "operations"], ["protocolVersion", "transactionId", "producer", "document", "operations"], "proposal");
+  const document = record(input.document, "proposal.document");
+  exact(document, ["sessionId", "baseRevision"], ["sessionId", "baseRevision"], "proposal.document");
+  const transaction = parseAgentTransaction({ ...input, document: { ...document, sourcePath: "bound-by-editor" } });
+  const { sourcePath: _sourcePath, ...publicDocument } = transaction.document;
+  return { ...transaction, document: publicDocument };
+}
+
+export function bindPublicAgentProposal(proposal: PublicAgentProposalV1, manifest: AgentDocumentManifest): AgentTransactionV1 {
+  if (proposal.document.sessionId !== manifest.sessionId || proposal.document.baseRevision !== manifest.revision) {
+    fail("stale_document", "Proposal does not match the active editor revision.");
+  }
+  return { ...proposal, document: { ...proposal.document, sourcePath: manifest.sourcePath } };
 }
