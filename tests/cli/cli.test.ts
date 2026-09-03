@@ -65,7 +65,7 @@ describe("lineage-logo CLI", () => {
     expect(help.stdout.join("\n")).toContain("submit --artifact <path> --proposal <path>");
     const version = capture();
     expect(await runLineageCli(["--version"], version.io)).toBe(EXIT.success);
-    expect(version.stdout).toEqual(["0.1.0-beta.1"]);
+    expect(version.stdout).toEqual(["0.1.0-beta.2"]);
     expect(await runLineageCli([], capture().io)).toBe(EXIT.usage);
   });
 

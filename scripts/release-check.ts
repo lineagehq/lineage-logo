@@ -9,12 +9,14 @@ interface PackedFile { path: string }
 
 export function validatePackedFiles(files: PackedFile[]): void {
   const names = files.map((file) => file.path);
+  const isPublicBetaDoc = (name: string) => name === path.posix.normalize(name) && name.startsWith("docs/public-beta/");
   const allowed = names.every((name) => name === "package.json" || name === "README.md" || name === "LICENSE"
-    || name === "examples/seatify-constellation.svg" || name.startsWith("dist/"));
+    || name === "examples/seatify-constellation.svg" || name.startsWith("dist/") || isPublicBetaDoc(name));
   if (!allowed || !names.includes("LICENSE") || !names.includes("dist/cli/bin.js") || !names.includes("examples/seatify-constellation.svg")) {
     throw new Error("release package allowlist mismatch");
   }
-  if (names.some((name) => /(^|\/)(?:tests?|docs|scripts|\.agents|\.github|node_modules)(\/|$)/.test(name))) {
+  if (names.some((name) => /(^|\/)(?:tests?|scripts|\.agents|\.github|node_modules)(\/|$)/.test(name)
+    || (/(^|\/)docs(\/|$)/.test(name) && !isPublicBetaDoc(name)))) {
     throw new Error("release package contains an internal path");
   }
 }

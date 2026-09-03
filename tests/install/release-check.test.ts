@@ -11,6 +11,31 @@ describe("public release package enforcement", () => {
     expect(() => validatePackedFiles([{ path: "package.json" }, { path: "dist/cli/bin.js" }, { path: "tests/private.test.ts" }])).toThrow();
   });
 
+  it("accepts documentation only within the public-beta subtree", () => {
+    expect(() => validatePackedFiles([
+      { path: "package.json" }, { path: "README.md" }, { path: "LICENSE" },
+      { path: "examples/seatify-constellation.svg" }, { path: "dist/cli/bin.js" },
+      { path: "docs/public-beta/README.md" }, { path: "docs/public-beta/guides/first-run.md" },
+    ])).not.toThrow();
+  });
+
+  it.each([
+    "docs/agent-canvas.md",
+    "docs/public-beta-internal/notes.md",
+    "docs/public-beta/../private.md",
+    "tests/install/release-check.test.ts",
+    "scripts/release-check.ts",
+    ".agents/skills/internal.md",
+    ".github/workflows/publish-beta.yml",
+    "node_modules/example/index.js",
+  ])("rejects internal or dependency path %s", (internalPath) => {
+    expect(() => validatePackedFiles([
+      { path: "package.json" }, { path: "README.md" }, { path: "LICENSE" },
+      { path: "examples/seatify-constellation.svg" }, { path: "dist/cli/bin.js" },
+      { path: internalPath },
+    ])).toThrow();
+  });
+
   it("accepts bounded semantic versions including prereleases", () => {
     expect(isValidPackageVersion("0.1.0-beta.1\n")).toBe(true);
     expect(isValidPackageVersion("0.1.0\n")).toBe(true);
