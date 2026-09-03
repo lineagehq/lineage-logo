@@ -11,6 +11,7 @@ const triage = readFileSync("docs/public-beta/triage.md", "utf8");
 const invitation = readFileSync("docs/public-beta/invitation.md", "utf8");
 const quickstart = readFileSync("docs/public-beta/seatify-quickstart.md", "utf8");
 const readme = readFileSync("README.md", "utf8");
+const betaReadme = readFileSync("docs/public-beta/README.md", "utf8");
 const exampleReceipt = JSON.parse(readFileSync("docs/public-beta/walkthrough-receipt.example.json", "utf8"));
 const attestationSchema = JSON.parse(readFileSync("docs/public-beta/distinct-user-attestation.schema.json", "utf8"));
 const attestationExample = JSON.parse(readFileSync("docs/public-beta/distinct-user-attestation.example.json", "utf8"));
@@ -100,6 +101,24 @@ function selectIssueCode(signals: string[]) {
 }
 
 describe("public beta cohort operating kit", () => {
+  it("keeps immutable beta.3 release copy durable and registry-authoritative", () => {
+    for (const document of [readme, betaReadme]) {
+      expect(document).toContain("As of 2026-09-03 UTC");
+      expect(document).toContain("`lineage-logo@0.1.0-beta.2`");
+      expect(document).toMatch(/signed\s+SLSA provenance/);
+      expect(document).toContain("`latest`");
+      expect(document).toContain("`0.1.0-beta.1`");
+      expect(document).toContain("`lineage-logo@0.1.0-beta.3`");
+      expect(document).toMatch(/publication,\s+provenance,\s+and registry-QA status[^.]*current\s+npm registry\s+metadata/i);
+      expect(document).toMatch(/never inferred from (?:the )?package(?:'s)? own text/i);
+      expect(document).toMatch(/At\s+preparation time on 2026-09-03 UTC/);
+      expect(document).toContain("**0/3 independent walkthroughs**");
+      expect(document).not.toMatch(/beta\.3`? is (?:an? )?(?:unpublished|published)/i);
+      expect(document).not.toMatch(/beta\.3[^.\n]*has (?:no |signed )?provenance/i);
+      expect(document).not.toMatch(/beta\.3[^.\n]*has not been published/i);
+    }
+  });
+
   it("publishes a strict, versioned, privacy-minimal walkthrough receipt contract", () => {
     expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
     expect(schema.required).toEqual(expect.arrayContaining(["receipt_version", "kind", "walkthrough_id", "participant_slot", "installed_version", "environment", "attempt_status", "milestones", "recovery", "issue_code"]));

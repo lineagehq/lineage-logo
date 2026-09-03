@@ -34,19 +34,24 @@ it is not sufficient to publish a public beta.
   accepted bytes to a source-specific continuation, preserved both sources,
   redacted output, and cleaned up. The installed walkthrough passed twice.
 - Preserve the completed hosted publication and public-registry QA evidence for
-  `lineage-logo@0.1.0-beta.2`, including its signed SLSA provenance. The package
-  is published under `beta`; `latest` remains `0.1.0-beta.1`.
+  `lineage-logo@0.1.0-beta.2`. As of 2026-09-03 UTC, that version had signed
+  SLSA provenance, npm's `beta` dist-tag pointed to it, and `latest` pointed to
+  `0.1.0-beta.1`. These are dated historical facts, not evidence for another
+  version.
 
 ## Owner policy decisions
 
 The owner selected the MIT license and GitHub Issues for best-effort support with
-no SLA. Version `0.1.0-beta.2` is published under npm's `beta` dist-tag with
-signed SLSA provenance; hosted publication and exact public-registry QA passed.
-The `latest` dist-tag remains `0.1.0-beta.1`. These facts do not constitute
-external-user validation: **0/3 independent walkthroughs** have been completed.
-Version `0.1.0-beta.3` is only a local candidate; it has not been published and
-has no provenance or registry-QA claim. It must ship both receipt artifacts and
-both distinct-user-attestation artifacts before owner-gated publication.
+no SLA. As of 2026-09-03 UTC, `lineage-logo@0.1.0-beta.2` had signed SLSA
+provenance, hosted publication and exact public-registry QA had passed, npm's
+`beta` dist-tag pointed to beta.2, and `latest` pointed to `0.1.0-beta.1`. These
+are dated historical facts and do not constitute external-user validation. At
+preparation time on 2026-09-03 UTC, **0/3 independent walkthroughs** had been
+completed; that count is a preparation snapshot, not a timeless project status.
+`lineage-logo@0.1.0-beta.3` is the candidate/package containing both receipt
+artifacts, both distinct-user-attestation artifacts, and the aggregate verifier.
+Its publication, provenance, and registry-QA status must be verified from current
+npm registry metadata and is never inferred from the package's own text.
 The owner also explicitly accepted releasing without a private
 vulnerability-reporting channel. The beta cannot accept reports that require
 confidentiality; public issues must not contain sensitive vulnerability details.

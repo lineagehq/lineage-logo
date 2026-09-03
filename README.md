@@ -127,15 +127,18 @@ different starting API port.
 
 ## Public beta CLI
 
-The public executable is `lineage-logo`. Version `0.1.0-beta.2` is published
-under npm's `beta` dist-tag with signed SLSA provenance. The `latest` dist-tag
-remains on `0.1.0-beta.1`. Hosted publication and public-registry QA passed for
-beta.2; independent external Seatify walkthroughs remain at **0/3**, so this is
-release evidence rather than external validation.
+The public executable is `lineage-logo`. As of 2026-09-03 UTC,
+`lineage-logo@0.1.0-beta.2` was published under npm's `beta` dist-tag with signed
+SLSA provenance, `latest` pointed to `0.1.0-beta.1`, and hosted publication plus
+public-registry QA had passed for beta.2. These are dated historical facts, not
+evidence for another version or for external-user validation.
 
-Version `0.1.0-beta.3` is an unpublished local candidate that adds the complete
-privacy-minimal receipt and aggregate-attestation kit. The beta.2 provenance and
-registry-QA evidence above is historical and is not evidence for beta.3.
+At preparation time on 2026-09-03 UTC, **0/3 independent walkthroughs** had
+been completed. That count is a preparation snapshot, not a timeless project
+status. `lineage-logo@0.1.0-beta.3` is the candidate/package containing the
+complete privacy-minimal receipt and aggregate-attestation kit. Its publication,
+provenance, and registry-QA status must be verified from current npm registry
+metadata and is never inferred from the package's own text.
 
 Install the published beta into a fresh local project, then start the
 non-destructive Seatify walkthrough:
