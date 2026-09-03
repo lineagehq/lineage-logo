@@ -133,6 +133,10 @@ remains on `0.1.0-beta.1`. Hosted publication and public-registry QA passed for
 beta.2; independent external Seatify walkthroughs remain at **0/3**, so this is
 release evidence rather than external validation.
 
+Version `0.1.0-beta.3` is an unpublished local candidate that adds the complete
+privacy-minimal receipt and aggregate-attestation kit. The beta.2 provenance and
+registry-QA evidence above is historical and is not evidence for beta.3.
+
 Install the published beta into a fresh local project, then start the
 non-destructive Seatify walkthrough:
 

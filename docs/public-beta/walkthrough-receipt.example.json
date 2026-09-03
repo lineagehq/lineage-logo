@@ -1,9 +1,9 @@
 {
   "receipt_version": 1,
   "kind": "lineage-logo.public-beta.walkthrough",
-  "walkthrough_id": "W-EXAMPLE01",
-  "participant_slot": "P-001",
-  "installed_version": "0.1.0-beta.2",
+  "walkthrough_id": "W-0123456789ABCDEF0123456789ABCDEF",
+  "participant_slot": "P-FEDCBA9876543210FEDCBA9876543210",
+  "installed_version": "0.1.0-beta.3",
   "environment": {
     "platform": "macos",
     "node_major": 22,

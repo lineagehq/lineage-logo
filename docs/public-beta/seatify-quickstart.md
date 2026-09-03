@@ -21,7 +21,7 @@ npx lineage-logo launch --workspace "$walkthrough_root/seatify-workspace"
 ```
 
 Immediately record the exact version printed by `lineage-logo --version` (for example,
-`0.1.0-beta.2`). `@beta` is only the install selector; the receipt must use the exact
+`0.1.0-beta.3` after that candidate is published). `@beta` is only the install selector; the receipt must use the exact
 installed prerelease version, never the mutable tag.
 
 Open the descriptive `lineage-logo.localhost` address printed by `launch` and open `concepts/seatify-constellation.svg`. In another terminal, retrieve the public, short-lived proposal context:

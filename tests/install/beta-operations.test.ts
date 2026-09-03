@@ -8,6 +8,8 @@ const invitation = readFileSync("docs/public-beta/invitation.md", "utf8");
 const quickstart = readFileSync("docs/public-beta/seatify-quickstart.md", "utf8");
 const readme = readFileSync("README.md", "utf8");
 const exampleReceipt = JSON.parse(readFileSync("docs/public-beta/walkthrough-receipt.example.json", "utf8"));
+const attestationSchema = JSON.parse(readFileSync("docs/public-beta/distinct-user-attestation.schema.json", "utf8"));
+const attestationExample = JSON.parse(readFileSync("docs/public-beta/distinct-user-attestation.example.json", "utf8"));
 
 function validates(value: unknown, rule: any, root = schema): boolean {
   if (rule.$ref) return validates(value, rule.$ref.split("/").slice(1).reduce((node: any, key: string) => node[key], root), root);
@@ -35,7 +37,7 @@ function validates(value: unknown, rule: any, root = schema): boolean {
 
 function validReceipt() {
   return {
-    receipt_version: 1, kind: "lineage-logo.public-beta.walkthrough", walkthrough_id: "W-ABC123", participant_slot: "P-001",
+    receipt_version: 1, kind: "lineage-logo.public-beta.walkthrough", walkthrough_id: "W-0123456789ABCDEF0123456789ABCDEF", participant_slot: "P-FEDCBA9876543210FEDCBA9876543210",
     installed_version: "0.1.0-beta.1", environment: { platform: "macos", node_major: 22, browser: "chromium" },
     attempt_status: "valid",
     milestones: {
@@ -68,7 +70,8 @@ describe("public beta cohort operating kit", () => {
     expect(schema.properties.environment.properties.platform.enum).toEqual(["macos", "linux", "windows", "other"]);
     expect(schema.properties.environment.properties.node_major.minimum).toBe(0);
     expect(schema.properties.environment.properties.browser.enum).toEqual(["chromium", "firefox", "webkit", "other"]);
-    expect(schema.properties.participant_slot.pattern).toBe("^P-(00[1-9]|0[1-9][0-9]|[1-9][0-9]{2,})$");
+    expect(schema.properties.participant_slot.pattern).toBe("^P-[A-F0-9]{32}$");
+    expect(schema.properties.walkthrough_id.pattern).toBe("^W-[A-F0-9]{32}$");
     expect(schema.properties.milestones.required).toEqual(["fresh_install", "non_destructive_bootstrap", "proposal_comprehension", "review", "accept_and_durable_save", "clean_reopen"]);
     expect(schema.$defs.milestoneEvidence.required).toEqual(["status", "duration_seconds", "friction_code"]);
     expect(schema.$defs.milestoneEvidence.properties.duration_seconds.maximum).toBe(3600);
@@ -110,7 +113,7 @@ describe("public beta cohort operating kit", () => {
     expect(protocol).toContain("accept_and_durable_save");
     expect(protocol).toContain("durable path and digest");
     expect(protocol).toContain("exact resolved installed version");
-    expect(protocol).toContain("participant slot");
+    expect(protocol).toContain("participant_slot");
     expect(triage).toContain("accept_and_durable_save");
     expect(protocol).toContain("every required milestone is `pass`");
     expect(protocol).toContain("does not count");
@@ -136,17 +139,60 @@ describe("public beta cohort operating kit", () => {
   it("ships a schema-valid non-counting receipt starter with deterministic participant validation", () => {
     expect(validates(exampleReceipt, schema)).toBe(true);
     expect(exampleReceipt.attempt_status).toBe("incomplete");
-    expect(exampleReceipt.installed_version).toBe("0.1.0-beta.2");
+    expect(exampleReceipt.installed_version).toBe("0.1.0-beta.3");
     expect(JSON.stringify(exampleReceipt)).not.toMatch(/name|email|detail|feedback|path|svg|token|session/i);
     expect(protocol).toContain("walkthrough-receipt.example.json");
     expect(protocol).toContain("ajv-cli@5.0.0 validate --spec=draft2020 --strict=false");
     expect(protocol).toContain("Do not transmit a receipt unless validation reports `valid`");
   });
 
+  it("uses participant-generated 128-bit receipt identifiers without identity claims", () => {
+    expect(protocol).toContain('randomBytes(16)');
+    expect(protocol).toContain('toString("hex").toUpperCase()');
+    expect(protocol).toContain("identifiers distinguish receipts, not humans");
+    expect(protocol).not.toContain("invitation-supplied");
+  });
+
+  it("keeps the retained invitation generic and freezes bounded intake handling", () => {
+    expect(invitation).not.toMatch(/<RECIPIENT>|<OWNER_APPROVED_CHANNEL>|<P-NNN>|<W-/);
+    expect(protocol).toContain("at most 14 days");
+    expect(protocol).toContain("private authenticated-sender");
+    expect(protocol).toMatch(/at most one counting receipt\s+per sender/);
+    expect(protocol).toContain("within 24 hours");
+    expect(protocol).toContain("transiently compare");
+    expect(protocol).toContain("no identity mapping");
+    expect(protocol).toContain("no provider deletion or anonymity claim");
+  });
+
+  it("ships a bounded three-receipt aggregate attestation contract", () => {
+    expect(attestationSchema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
+    expect(attestationSchema.additionalProperties).toBe(false);
+    expect(attestationSchema.properties.accepted_receipts.minItems).toBe(3);
+    expect(attestationSchema.properties.accepted_receipts.maxItems).toBe(3);
+    expect(attestationSchema.properties.accepted_count.const).toBe(3);
+    expect(attestationSchema.properties.channel_class.const).toBe("owner_approved_private_authenticated_deletable");
+    expect(attestationSchema.properties.collection_window_days.maximum).toBe(14);
+    expect(attestationSchema.properties.statement.const).toContain("three distinct owner-approved authenticated human senders");
+    expect(attestationSchema.properties.limitation.const).toContain("not cryptographic or independently re-auditable identity proof");
+    expect(attestationExample.accepted_receipts).toHaveLength(3);
+    expect(attestationExample.accepted_receipts.every((entry: any) => /^P-[A-F0-9]{32}$/.test(entry.participant_id) && /^W-[A-F0-9]{32}$/.test(entry.walkthrough_id) && /^[A-F0-9]{64}$/.test(entry.receipt_sha256))).toBe(true);
+    for (const field of ["participant_id", "walkthrough_id", "receipt_sha256"] as const) {
+      expect(new Set(attestationExample.accepted_receipts.map((entry: any) => entry[field])).size).toBe(3);
+    }
+    expect(Object.values(attestationExample.fixed_statements)).toEqual([true, true, true, true, true, true]);
+    expect(Object.keys(attestationExample.rejection_counts)).toEqual(["schema_invalid", "duplicate_identifier", "duplicate_sender", "prohibited_data", "unsupported_attempt", "non_passing"]);
+    const duplicateIdentifier = structuredClone(attestationExample);
+    duplicateIdentifier.accepted_receipts[1].participant_id = duplicateIdentifier.accepted_receipts[0].participant_id;
+    expect(new Set(duplicateIdentifier.accepted_receipts.map((entry: any) => entry.participant_id)).size).not.toBe(3);
+    const duplicateDigest = structuredClone(attestationExample);
+    duplicateDigest.accepted_receipts[1].receipt_sha256 = duplicateDigest.accepted_receipts[0].receipt_sha256;
+    expect(new Set(duplicateDigest.accepted_receipts.map((entry: any) => entry.receipt_sha256)).size).not.toBe(3);
+  });
+
   it("permits transmission of controlled receipt JSON only through owner-approved private handling", () => {
     for (const document of [protocol, invitation]) {
-      expect(document).toContain("only the schema-valid JSON receipt");
-      expect(document).toContain("owner-approved privacy-safe");
+      expect(document).toMatch(/only (?:the )?schema-valid (?:controlled )?(?:JSON receipt|receipt JSON)/);
+      expect(document).toContain("private authenticated-sender");
       expect(document).toMatch(/no (?:name-to-slot map|identity linkage)/i);
       expect(document).toMatch(/no free[- ]text/i);
     }

@@ -41,6 +41,9 @@ no SLA. Version `0.1.0-beta.2` is published under npm's `beta` dist-tag with
 signed SLSA provenance; hosted publication and exact public-registry QA passed.
 The `latest` dist-tag remains `0.1.0-beta.1`. These facts do not constitute
 external-user validation: **0/3 independent walkthroughs** have been completed.
+Version `0.1.0-beta.3` is only a local candidate; it has not been published and
+has no provenance or registry-QA claim. It must ship both receipt artifacts and
+both distinct-user-attestation artifacts before owner-gated publication.
 The owner also explicitly accepted releasing without a private
 vulnerability-reporting channel. The beta cannot accept reports that require
 confidentiality; public issues must not contain sensitive vulnerability details.

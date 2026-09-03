@@ -97,13 +97,13 @@ describe("manual beta trusted-publish workflow", () => {
   });
 
   it("allows only the requested beta change in before/after dist-tag maps", () => {
-    const before = { beta: "0.1.0-beta.1", latest: "0.1.0-beta.1", canary: "0.1.0-beta.1" };
-    expect(() => assertDistTagInvariant(before, { ...before, beta: "0.1.0-beta.2" }, "0.1.0-beta.2")).not.toThrow();
-    expect(() => assertDistTagInvariant(before, { ...before, beta: "0.1.0-beta.2", latest: "0.1.0-beta.2" }, "0.1.0-beta.2"))
+    const before = { beta: "0.1.0-beta.2", latest: "0.1.0-beta.1", canary: "0.1.0-beta.1" };
+    expect(() => assertDistTagInvariant(before, { ...before, beta: "0.1.0-beta.3" }, "0.1.0-beta.3")).not.toThrow();
+    expect(() => assertDistTagInvariant(before, { ...before, beta: "0.1.0-beta.3", latest: "0.1.0-beta.3" }, "0.1.0-beta.3"))
       .toThrow("latest changed unexpectedly");
-    expect(() => assertDistTagInvariant(before, { ...before, beta: "0.1.0-beta.2", next: "0.1.0-beta.2" }, "0.1.0-beta.2"))
+    expect(() => assertDistTagInvariant(before, { ...before, beta: "0.1.0-beta.3", next: "0.1.0-beta.3" }, "0.1.0-beta.3"))
       .toThrow("next changed unexpectedly");
-    expect(() => assertDistTagInvariant(before, { beta: "0.1.0-beta.2", latest: "0.1.0-beta.1" }, "0.1.0-beta.2"))
+    expect(() => assertDistTagInvariant(before, { beta: "0.1.0-beta.3", latest: "0.1.0-beta.1" }, "0.1.0-beta.3"))
       .toThrow("canary changed unexpectedly");
   });
 
@@ -161,21 +161,21 @@ describe("manual beta trusted-publish workflow", () => {
 
   it("parses one terminal npm-pack array after colored prepack output and fails closed otherwise", () => {
     const prefix = [
-      "\u001b[36m> lineage-logo@0.1.0-beta.2 prepack\u001b[0m",
+      "\u001b[36m> lineage-logo@0.1.0-beta.3 prepack\u001b[0m",
       "\u001b[36m> npm run build\u001b[0m",
       "\u001b[32m✓ built in 1.23s\u001b[0m",
     ].join("\n");
-    const packed = JSON.stringify([{ filename: "lineage-logo-0.1.0-beta.2.tgz" }], null, 2);
+    const packed = JSON.stringify([{ filename: "lineage-logo-0.1.0-beta.3.tgz" }], null, 2);
 
     const valid = runCandidatePackParser(`${prefix}\n${packed}\n`);
     expect(valid.status).toBe(0);
-    expect(valid.stdout).toBe("lineage-logo-0.1.0-beta.2.tgz");
+    expect(valid.stdout).toBe("lineage-logo-0.1.0-beta.3.tgz");
 
     for (const output of [
       "",
       prefix,
       `${prefix}\n[{ malformed`,
-      `${prefix}\n${JSON.stringify({ filename: "lineage-logo-0.1.0-beta.2.tgz" })}`,
+      `${prefix}\n${JSON.stringify({ filename: "lineage-logo-0.1.0-beta.3.tgz" })}`,
       `${prefix}\n${packed}\n${packed}`,
     ]) {
       const invalid = runCandidatePackParser(output);

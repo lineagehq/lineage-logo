@@ -22,6 +22,10 @@ describe("public package contract", () => {
       "docs/public-beta/seatify-quickstart.md",
       "docs/public-beta/cohort-protocol.md",
       "docs/public-beta/walkthrough-receipt.schema.json",
+      "docs/public-beta/walkthrough-receipt.example.json",
+      "docs/public-beta/distinct-user-attestation.schema.json",
+      "docs/public-beta/distinct-user-attestation.example.json",
+      "docs/public-beta/invitation.md",
       "docs/public-beta/triage.md",
     ]));
   });
