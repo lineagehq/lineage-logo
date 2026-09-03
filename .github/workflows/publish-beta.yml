@@ -118,7 +118,7 @@ jobs:
         run: |
           set -euo pipefail
           pack_json="$(npm pack --json)"
-          TARBALL_NAME="$(node --input-type=module -e 'const result = JSON.parse(process.argv[1]); if (result.length !== 1 || typeof result[0].filename !== "string") process.exit(1); process.stdout.write(result[0].filename)' "$pack_json")"
+          TARBALL_NAME="$(node --input-type=module -e 'const output = process.argv[1]; const start = Math.max(output.lastIndexOf("\n["), output.startsWith("[") ? 0 : -1); if (start < 0) process.exit(1); const jsonStart = start === 0 ? 0 : start + 1; if (/(?:^|\n)\s*\[/.test(output.slice(0, jsonStart))) process.exit(1); let result; try { result = JSON.parse(output.slice(jsonStart)); } catch { process.exit(1); } if (!Array.isArray(result) || result.length !== 1 || typeof result[0].filename !== "string") process.exit(1); process.stdout.write(result[0].filename)' "$pack_json")"
           case "$TARBALL_NAME" in
             lineage-logo-*.tgz) ;;
             *) echo "unexpected candidate tarball name" >&2; exit 1 ;;

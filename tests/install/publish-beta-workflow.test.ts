@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
@@ -12,6 +13,13 @@ function job(workflow: string, name: string) {
   const match = workflow.match(new RegExp(`^  ${name}:\\n([\\s\\S]*?)(?=^  [a-z_]+:|(?![\\s\\S]))`, "m"));
   expect(match, `missing ${name} job`).not.toBeNull();
   return match![0];
+}
+
+function runCandidatePackParser(output: string) {
+  const candidate = job(read(workflowPath), "candidate");
+  const match = candidate.match(/TARBALL_NAME="\$\(node --input-type=module -e '([^']+)' "\$pack_json"\)"/);
+  expect(match, "missing candidate npm-pack parser").not.toBeNull();
+  return spawnSync(process.execPath, ["--input-type=module", "-e", match![1], output], { encoding: "utf8" });
 }
 
 function classifyVersionLookup(stdout: string, exitCode: number): { absent: true } | { absent: false; diagnostic: string } {
@@ -149,6 +157,31 @@ describe("manual beta trusted-publish workflow", () => {
       /- name: Publish only the beta tag from the exact verified tarball[\s\S]*?run: \|\n\s+git fetch --no-tags origin main\n\s+test "\$GITHUB_SHA" = "\$\(git rev-parse origin\/main\)"\n\s+npm publish "\$TARBALL_PATH" --tag beta --provenance/,
     );
     expect(publish).not.toContain("- name: Recheck current main before publication");
+  });
+
+  it("parses one terminal npm-pack array after colored prepack output and fails closed otherwise", () => {
+    const prefix = [
+      "\u001b[36m> lineage-logo@0.1.0-beta.2 prepack\u001b[0m",
+      "\u001b[36m> npm run build\u001b[0m",
+      "\u001b[32m✓ built in 1.23s\u001b[0m",
+    ].join("\n");
+    const packed = JSON.stringify([{ filename: "lineage-logo-0.1.0-beta.2.tgz" }], null, 2);
+
+    const valid = runCandidatePackParser(`${prefix}\n${packed}\n`);
+    expect(valid.status).toBe(0);
+    expect(valid.stdout).toBe("lineage-logo-0.1.0-beta.2.tgz");
+
+    for (const output of [
+      "",
+      prefix,
+      `${prefix}\n[{ malformed`,
+      `${prefix}\n${JSON.stringify({ filename: "lineage-logo-0.1.0-beta.2.tgz" })}`,
+      `${prefix}\n${packed}\n${packed}`,
+    ]) {
+      const invalid = runCandidatePackParser(output);
+      expect(invalid.status, `unexpectedly accepted ${JSON.stringify(output)}`).not.toBe(0);
+      expect(invalid.stdout).toBe("");
+    }
   });
 
   it("retries postpublish verification and always attempts exact-version registry QA after a successful publish", () => {
