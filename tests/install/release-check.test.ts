@@ -20,6 +20,23 @@ describe("public release package enforcement", () => {
   });
 
   it.each([
+    "dist/../secret.txt",
+    "dist//secret.txt",
+    "dist/./secret.txt",
+    "dist/sub/../../secret.txt",
+    "docs/public-beta//README.md",
+    "docs/public-beta/./README.md",
+    "docs/public-beta/guides/../README.md",
+  ])("rejects non-canonical packed path %s", (nonCanonicalPath) => {
+    expect(() => validatePackedFiles([
+      { path: "package.json" }, { path: "README.md" }, { path: "LICENSE" },
+      { path: "examples/seatify-constellation.svg" }, { path: "dist/cli/bin.js" },
+      { path: "dist/client/index.html" }, { path: "docs/public-beta/README.md" },
+      { path: nonCanonicalPath },
+    ])).toThrow();
+  });
+
+  it.each([
     "docs/agent-canvas.md",
     "docs/public-beta-internal/notes.md",
     "docs/public-beta/../private.md",
