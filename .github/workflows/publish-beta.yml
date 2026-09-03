@@ -47,7 +47,7 @@ jobs:
           import { readFileSync } from "node:fs";
           const version = process.env.PACKAGE_VERSION;
           const packageVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
-          if (!/^\d+\.\d+\.\d+-beta\.\d+$/.test(version ?? "") || packageVersion !== version) {
+          if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-beta\.(0|[1-9]\d*)$/.test(version ?? "") || packageVersion !== version) {
             throw new Error("package_version must exactly match package.json as one beta semantic version");
           }
           NODE
@@ -176,8 +176,11 @@ jobs:
             || process.env.GITHUB_WORKFLOW !== "Publish beta"
             || process.env.GITHUB_WORKFLOW_REF !== "lineagehq/lineage-logo/.github/workflows/publish-beta.yml@refs/heads/main"
             || pkg.name !== "lineage-logo"
+            || pkg.repository?.type !== "git"
             || pkg.repository?.url !== expectedRepository
-            || pkg.publishConfig?.access !== "public") {
+            || pkg.publishConfig?.access !== "public"
+            || pkg.publishConfig?.tag !== "beta"
+            || Object.prototype.hasOwnProperty.call(pkg.publishConfig ?? {}, "registry")) {
             throw new Error("trusted-publisher identity or public package contract mismatch");
           }
           NODE
@@ -202,10 +205,6 @@ jobs:
         run: |
           test "$(node --version)" = "v22.14.0"
           test "$(npm --version)" = "11.5.1"
-      - name: Recheck current main before publication
-        run: |
-          git fetch --no-tags origin main
-          test "$GITHUB_SHA" = "$(git rev-parse origin/main)"
       - name: Capture machine-readable dist-tags immediately before publication
         id: dist_tags_before
         run: |
@@ -224,7 +223,10 @@ jobs:
       - name: Publish only the beta tag from the exact verified tarball
         env:
           TARBALL_PATH: ${{ steps.verified_candidate.outputs.tarball_path }}
-        run: npm publish "$TARBALL_PATH" --tag beta --provenance
+        run: |
+          git fetch --no-tags origin main
+          test "$GITHUB_SHA" = "$(git rev-parse origin/main)"
+          npm publish "$TARBALL_PATH" --tag beta --provenance
 
   postpublish:
     name: Retry exact published-version and tag verification
@@ -286,4 +288,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PACKAGE_VERSION: ${{ needs.preflight.outputs.package_version }}
-        run: gh workflow run registry-qa.yml --ref "$GITHUB_SHA" -f "package_version=${PACKAGE_VERSION}"
+        run: gh workflow run registry-qa.yml --ref main -f "package_version=${PACKAGE_VERSION}"

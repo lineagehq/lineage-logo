@@ -6,16 +6,17 @@ the repository owner has configured the `npm-publish` GitHub environment and npm
 trusted publisher for this repository and workflow. It uses GitHub OIDC and
 `npm publish --provenance`; it never receives an npm token from this repository.
 
-The intended trusted-publisher identity is exact: GitHub repository
-`lineagehq/lineage-logo`, workflow file `.github/workflows/publish-beta.yml`,
-environment `npm-publish`, npm package `lineage-logo`, and a public package
-whose observable `package.json` `repository.url` is
-`git+https://github.com/lineagehq/lineage-logo.git`. The workflow checks those
-observable repository, workflow, package, public-access, and `repository.url`
+The intended npm trusted-publisher identity is exact: GitHub repository
+`lineagehq/lineage-logo`, workflow filename `publish-beta.yml`, environment `npm-publish`,
+npm package `lineage-logo`, and allowed action exactly `npm publish`. The public package
+contract requires `repository.type` to be
+`git`, `repository.url` to be
+`git+https://github.com/lineagehq/lineage-logo.git`, `publishConfig.access` to
+be `public`, `publishConfig.tag` to be `beta`, and no `publishConfig.registry`.
+The workflow checks those observable repository, workflow, package, and publish
 values immediately before publishing. Owner configuration at npm and GitHub is
 still **unproven** until an explicitly authorized hosted run succeeds.
-The trusted publisher's allowed action must be exactly `npm publish`; do not
-configure a broader, staged, or other npm action as a substitute.
+Do not configure a broader, staged, or other npm action as a substitute.
 
 That configuration and a successful hosted run are owner-only actions. This
 repository workflow is not evidence that trusted publishing or provenance is
@@ -28,8 +29,11 @@ live validation.
 Run the workflow only from the current `main` commit. It fetches `origin/main`
 and rejects a manually selected ref or SHA that is not exactly current main.
 Enter a new exact version matching `package.json`, in the form
-`0.1.0-beta.N`. Tags such as `beta` or `latest`, version ranges, prefixes, and
-non-beta versions are refused. The workflow accepts version absence only when
+`0.1.0-beta.N`. Every major, minor, patch, and beta numeric identifier must be
+either `0` or start with `1`–`9`; leading-zero versions such as
+`00.1.0-beta.1`, `0.01.0-beta.1`, `0.1.00-beta.1`, and `0.1.0-beta.01` are
+refused. Tags such as `beta` or `latest`, version ranges, prefixes, and non-beta
+versions are also refused. The workflow accepts version absence only when
 npm returns its exact `E404` result for the fully specified `lineage-logo@version`
 lookup. Network, timeout, DNS, authentication, and other registry failures fail
 closed with bounded safe diagnostics; they are never interpreted as absence.
@@ -55,7 +59,10 @@ not part of protected publish execution.
 ## Publication and immutable follow-up
 
 The only publish command is `npm publish <verified-tarball> --tag beta --provenance`, which assigns
-the `beta` dist-tag to the newly published version. The workflow does not
+the `beta` dist-tag to the newly published version. After the dist-tag snapshot,
+the same shell step re-fetches `origin/main`, asserts the workflow SHA is still
+current main immediately before that publish command, and publishes the verified
+tarball. The workflow does not
 publish or target `latest`, and it does not invoke a separate `npm dist-tag add`
 or `npm dist-tag rm` repair. It requires `beta` to resolve to the exact new
 version after publication. It captures a machine-readable dist-tag map
@@ -67,7 +74,7 @@ first-package `latest` anomaly instead of trying to repair it.
 
 After a successful publish, exact-version and beta-tag visibility are checked
 with a bounded retry. A separate always/conditional handoff job attempts to
-dispatch **Public registry QA** with the exact immutable version and commit
+dispatch **Public registry QA** on `--ref main` with the exact immutable version
 whenever publishing succeeded—even if those later diagnostics fail. This
 asynchronous `gh workflow run` call only attempts to start the separate
 read-only post-publication gate; it does not wait for or enforce registry-QA

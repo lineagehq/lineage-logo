@@ -38,6 +38,27 @@ function assertDistTagInvariant(before: Record<string, string>, after: Record<st
 }
 
 describe("manual beta trusted-publish workflow", () => {
+  it("accepts only beta SemVer numeric identifiers without leading zeroes", () => {
+    const preflight = job(read(workflowPath), "preflight");
+    const pattern = preflight.match(/if \(!\/(\^.*\$)\/\.test\(version/);
+    expect(pattern, "missing package_version beta SemVer validation").not.toBeNull();
+    const betaVersion = new RegExp(pattern![1]);
+
+    for (const version of ["0.0.0-beta.0", "1.2.3-beta.4", "10.20.30-beta.40"]) {
+      expect(betaVersion.test(version), `${version} should be accepted`).toBe(true);
+    }
+    for (const version of [
+      "00.1.0-beta.1",
+      "0.01.0-beta.1",
+      "0.1.00-beta.1",
+      "0.1.0-beta.01",
+      "0.1.0-beta.-1",
+      "0.1.0-beta.1.0",
+    ]) {
+      expect(betaVersion.test(version), `${version} should be rejected`).toBe(false);
+    }
+  });
+
   it("classifies only structured E404 lookup failures as absence without echoing unsafe diagnostics", () => {
     expect(classifyVersionLookup(JSON.stringify({ error: { code: "E404", summary: "not found" } }), 1)).toEqual({ absent: true });
     for (const [stdout, exitCode] of [
@@ -100,7 +121,11 @@ describe("manual beta trusted-publish workflow", () => {
     expect(workflow).toContain('process.env.GITHUB_REPOSITORY !== "lineagehq/lineage-logo"');
     expect(workflow).toContain('process.env.GITHUB_WORKFLOW !== "Publish beta"');
     expect(workflow).toContain('process.env.GITHUB_WORKFLOW_REF !== "lineagehq/lineage-logo/.github/workflows/publish-beta.yml@refs/heads/main"');
+    expect(workflow).toContain('pkg.repository?.type !== "git"');
+    expect(workflow).toContain('pkg.repository?.url !== expectedRepository');
     expect(workflow).toContain('publishConfig?.access !== "public"');
+    expect(workflow).toContain('pkg.publishConfig?.tag !== "beta"');
+    expect(workflow).toContain('Object.prototype.hasOwnProperty.call(pkg.publishConfig ?? {}, "registry")');
   });
 
   it("tests and records one exact tarball, then publishes that verified file without repacking", () => {
@@ -116,6 +141,14 @@ describe("manual beta trusted-publish workflow", () => {
     expect(publish).toContain('test "$ACTUAL_SHA512" = "${{ needs.candidate.outputs.tarball_sha512 }}"');
     expect(publish).toContain('npm publish "$TARBALL_PATH" --tag beta --provenance');
     expect(publish).not.toMatch(/npm publish --tag beta/);
+    const distTagSnapshot = publish.indexOf("Capture machine-readable dist-tags immediately before publication");
+    const publishStep = publish.indexOf("Publish only the beta tag from the exact verified tarball");
+    expect(distTagSnapshot).toBeGreaterThan(-1);
+    expect(publishStep).toBeGreaterThan(distTagSnapshot);
+    expect(publish).toMatch(
+      /- name: Publish only the beta tag from the exact verified tarball[\s\S]*?run: \|\n\s+git fetch --no-tags origin main\n\s+test "\$GITHUB_SHA" = "\$\(git rev-parse origin\/main\)"\n\s+npm publish "\$TARBALL_PATH" --tag beta --provenance/,
+    );
+    expect(publish).not.toContain("- name: Recheck current main before publication");
   });
 
   it("retries postpublish verification and always attempts exact-version registry QA after a successful publish", () => {
@@ -128,14 +161,16 @@ describe("manual beta trusted-publish workflow", () => {
     expect(postpublish).toContain("DIST_TAGS_BEFORE: ${{ needs.publish.outputs.dist_tags_before }}");
     expect(postpublish).toContain("Only the beta dist-tag may change");
     expect(handoff).toContain("always() && needs.publish.result == 'success'");
-    expect(handoff).toContain('gh workflow run registry-qa.yml --ref "$GITHUB_SHA" -f "package_version=${PACKAGE_VERSION}"');
+    expect(handoff).toContain('gh workflow run registry-qa.yml --ref main -f "package_version=${PACKAGE_VERSION}"');
   });
 
   it("honestly documents the unproven owner configuration and exact trusted-publisher identity", () => {
     const guide = read(releaseGuidePath);
     expect(guide).toMatch(/lineagehq\/lineage-logo/);
     expect(guide).toMatch(/publish-beta\.yml/);
+    expect(guide).toContain("workflow filename `publish-beta.yml`");
     expect(guide).toContain("npm-publish");
+    expect(guide).toContain("environment `npm-publish`");
     expect(guide).toMatch(/trusted publisher/i);
     expect(guide).toMatch(/OIDC/);
     expect(guide).toMatch(/owner/i);
