@@ -7,17 +7,37 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const PACKAGE_NAME = "lineage-logo";
 const FIXTURE_PATH = "examples/seatify-constellation.svg";
-const EXACT_SEMVER = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
+const SEMVER_NUMBER = "(?:0|[1-9]\\d*)";
+const SEMVER_IDENTIFIER = "(?:0|[1-9]\\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)";
+const EXACT_SEMVER = new RegExp(`^${SEMVER_NUMBER}\\.${SEMVER_NUMBER}\\.${SEMVER_NUMBER}(?:-${SEMVER_IDENTIFIER}(?:\\.${SEMVER_IDENTIFIER})*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$`);
+
+export type InstalledVersionCapabilities = {
+  publicOnboarding: boolean;
+  publicRouting: boolean;
+};
 
 export function isExactRegistryVersion(value: string | undefined): value is string {
   return typeof value === "string" && EXACT_SEMVER.test(value);
 }
 
+export function installedVersionCapabilities(version: string): InstalledVersionCapabilities {
+  // 0.1.0-beta.1 predates the public bootstrap/context contract. Every later
+  // immutable version is expected to provide the supported public commands.
+  return version === "0.1.0-beta.1"
+    ? { publicOnboarding: false, publicRouting: false }
+    : { publicOnboarding: true, publicRouting: true };
+}
+
 export function safeDiagnostic(value: string): string {
-  return value.replace(/(?:Bearer\s+)?[A-Za-z0-9_-]{24,}/g, "[redacted]")
-    .replace(/(?:\/?[A-Za-z0-9._-]+){3,}/g, "[path]")
-    .replace(/<svg[\s\S]*?<\/svg>/gi, "[svg]")
+  return value.replace(/<svg\b[\s\S]*?<\/svg>/gi, "[svg]")
+    .replace(/(?:Bearer\s+|(?:token|authorization|password|secret)\s*[=:]\s*)[^\s,;]+/gi, "[redacted]")
+    .replace(/[A-Za-z0-9_-]{24,}/g, "[redacted]")
+    .replace(/(?:[A-Za-z]:[\\/]|\/)(?:[^\s<>:"|?*]+[\\/])+[^\s<>:"|?*]+/g, "[path]")
     .slice(0, 240);
+}
+
+export function validateRegistryPackageVersion(version: string | undefined): version is string {
+  return isExactRegistryVersion(version);
 }
 
 async function command(commandName: string, args: string[], cwd: string, env = process.env): Promise<{ code: number; stdout: string; stderr: string }> {
@@ -34,9 +54,14 @@ async function command(commandName: string, args: string[], cwd: string, env = p
 
 async function main(): Promise<void> {
   const version = process.env.REGISTRY_PACKAGE_VERSION;
-  if (!isExactRegistryVersion(version)) {
+  if (!validateRegistryPackageVersion(version)) {
     process.stderr.write("REGISTRY_PACKAGE_VERSION must be an exact semantic version; tags and ranges are not allowed.\n");
     process.exitCode = 1;
+    return;
+  }
+
+  if (process.argv.includes("--validate-version")) {
+    process.stdout.write(`Registry package version ${version} is an exact semantic version.\n`);
     return;
   }
 
@@ -76,7 +101,7 @@ async function main(): Promise<void> {
     }
     process.stdout.write(`Registry package ${version} CLI, fixture, and redaction checks passed.\n`);
   } catch (error) {
-    process.stderr.write(`Registry check failed during ${phase}: ${safeDiagnostic(error instanceof Error ? error.message : "unknown failure")}\n`);
+    process.stderr.write(`Registry check failed during ${phase}: ${safeDiagnostic(error instanceof Error ? error.message : "unknown failure")}. Verify that ${version} is published unchanged, then retry.\n`);
     process.exitCode = 1;
   } finally {
     const info = await lstat(installRoot);

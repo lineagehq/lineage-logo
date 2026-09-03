@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { expect, test, type BrowserContext } from "@playwright/test";
+import { installedVersionCapabilities } from "../../scripts/registry-release-check";
 import { identifyWorkspace, readAgentInstanceRegistry, type AgentInstanceRegistryEntry } from "../../src/shared/instance-registry";
 
 const execute = promisify(execFile);
@@ -184,17 +185,22 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
       });
     }
     const bin = path.join(consumer, "node_modules/.bin/lineage-logo");
+    const installedPackage = JSON.parse(await readFile(path.join(consumer, "node_modules", "lineage-logo", "package.json"), "utf8")) as { version?: unknown };
+    expect(installedPackage.version).toEqual(expect.any(String));
+    const installedPackageVersion = installedPackage.version as string;
+    if (registryPackageVersion) expect(installedPackageVersion).toBe(registryPackageVersion);
+    const capabilities = installedVersionCapabilities(installedPackageVersion);
     const installedFixture = await readFile(path.join(consumer, "node_modules", "lineage-logo", "examples", "seatify-constellation.svg"), "utf8");
     const env = { ...process.env, LINEAGE_LOGO_REGISTRY_DIR: registry };
 
-    if (registryPackageVersion) {
+    if (capabilities.publicOnboarding) {
+      expect((await command(bin, ["example", "seatify", "--workspace", workspaceA], env)).code).toBe(0);
+      expect((await command(bin, ["example", "seatify", "--workspace", workspaceB], env)).code).toBe(0);
+    } else {
       await Promise.all([workspaceA, workspaceB].map(async (workspace) => {
         await mkdir(path.join(workspace, "concepts"), { recursive: true });
         await writeFile(path.join(workspace, "concepts", "seatify-constellation.svg"), installedFixture);
       }));
-    } else {
-      expect((await command(bin, ["example", "seatify", "--workspace", workspaceA], env)).code).toBe(0);
-      expect((await command(bin, ["example", "seatify", "--workspace", workspaceB], env)).code).toBe(0);
     }
     expect(await readFile(path.join(workspaceA, "concepts", "seatify-constellation.svg"), "utf8")).toBe(installedFixture);
     expect(await readFile(path.join(workspaceB, "concepts", "seatify-constellation.svg"), "utf8")).toBe(installedFixture);
@@ -203,7 +209,7 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     const version = await command(bin, ["--version"], env);
     expect(help).toMatchObject({ code: 0, stderr: "" });
     expect(help.stdout).toContain("Usage: lineage-logo");
-    expect(version).toEqual({ code: 0, stdout: "0.1.0-beta.1\n", stderr: "" });
+    expect(version).toEqual({ code: 0, stdout: `${installedPackageVersion}\n`, stderr: "" });
 
     const [portA, portB] = await Promise.all([availablePort(), availablePort()]);
     if (portA === portB) throw new Error("Test ports must be distinct.");
@@ -226,7 +232,7 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     contexts.push(contextA, contextB);
     const pageA = await openSeatify(contextA, running[0].url);
     const pageB = await openSeatify(contextB, running[1].url);
-    const documentA = registryPackageVersion ? await installedManifest(entryA) : await publicContext(bin, workspaceA, env);
+    const documentA = capabilities.publicRouting ? await publicContext(bin, workspaceA, env) : await installedManifest(entryA);
     const target = documentA.layers.find((layer) => layer.name === "Seatify title");
     expect(target).toBeTruthy();
     const proposal = path.join(root, "selection.json");
@@ -237,7 +243,7 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     }));
     const artifact = path.join(workspaceA, "concepts/seatify-constellation.svg");
 
-    const ambiguous = registryPackageVersion ? undefined : await command(bin, ["submit", "--artifact", artifact, "--proposal", proposal, "--json", "--quiet"], env);
+    const ambiguous = capabilities.publicRouting ? await command(bin, ["submit", "--artifact", artifact, "--proposal", proposal, "--json", "--quiet"], env) : undefined;
     if (ambiguous) {
       expect(ambiguous.code).toBe(3);
       expect(JSON.parse(ambiguous.stdout)).toMatchObject({ schemaVersion: 1, command: "submit", ok: false, status: "not_found" });
@@ -251,7 +257,7 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     expect(JSON.parse(byInstance.stdout)).toMatchObject({ ok: true, status: "ok" });
 
     let routed: RunningCommand | undefined;
-    if (!registryPackageVersion) {
+    if (capabilities.publicRouting) {
       routed = startCommand(bin, ["submit", "--artifact", artifact, "--proposal", proposal, "--workspace", workspaceA, "--json", "--quiet"], env);
       auxiliary.push(routed);
       await expect(pageA.locator(".layer-button[aria-pressed='true']")).toHaveCount(1);
@@ -261,7 +267,7 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     }
 
     const sourceA = await readFile(artifact, "utf8");
-    const mutatingManifestA = registryPackageVersion ? await installedManifest(entryA) : await publicContext(bin, workspaceA, env);
+    const mutatingManifestA = capabilities.publicRouting ? await publicContext(bin, workspaceA, env) : await installedManifest(entryA);
     const titleA = mutatingManifestA.layers.find((layer) => layer.name === "Seatify title");
     expect(titleA).toBeTruthy();
     const acceptedProposal = path.join(root, "accepted.json");
@@ -272,8 +278,8 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     }));
     const accepted = startCommand(bin, ["submit", "--artifact", artifact, "--proposal", acceptedProposal, "--workspace", workspaceA, "--json", "--quiet"], env);
     auxiliary.push(accepted);
-    await expect(pageA.locator("#agent-review-status")).toHaveText(registryPackageVersion ? "Pending" : "pending");
-    if (!registryPackageVersion) await expect(pageA.locator("#agent-review-summary")).toContainText("1 operation: 1 document change");
+    await expect(pageA.locator("#agent-review-status")).toHaveText(/^(?:pending|Pending)$/);
+    if (capabilities.publicRouting) await expect(pageA.locator("#agent-review-summary")).toContainText("1 operation: 1 document change");
     await pageA.locator("#agent-accept").click();
     await expect(pageA.locator("#agent-review-status")).toHaveText("Saved");
     const acceptedResult = await finishCommand(accepted);
@@ -306,7 +312,7 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
 
     const artifactB = path.join(workspaceB, "concepts/seatify-constellation.svg");
     const sourceB = await readFile(artifactB, "utf8");
-    const mutatingManifestB = registryPackageVersion ? await installedManifest(entryB) : await publicContext(bin, workspaceB, env);
+    const mutatingManifestB = capabilities.publicRouting ? await publicContext(bin, workspaceB, env) : await installedManifest(entryB);
     const titleB = mutatingManifestB.layers.find((layer) => layer.name === "Seatify title");
     expect(titleB).toBeTruthy();
     const revertedProposal = path.join(root, "reverted.json");
@@ -317,7 +323,7 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     }));
     const reverted = startCommand(bin, ["submit", "--artifact", artifactB, "--proposal", revertedProposal, "--instance", entryB.instanceId, "--json", "--quiet"], env);
     auxiliary.push(reverted);
-    await expect(pageB.locator("#agent-review-status")).toHaveText(registryPackageVersion ? "Pending" : "pending");
+    await expect(pageB.locator("#agent-review-status")).toHaveText(/^(?:pending|Pending)$/);
     await pageB.locator("#agent-revert").click();
     await expect(pageB.locator("#agent-review-status")).toHaveText("reverted");
     const revertedResult = await finishCommand(reverted);

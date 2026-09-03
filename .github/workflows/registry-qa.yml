@@ -12,8 +12,32 @@ permissions:
   contents: read
 
 jobs:
+  exact-version-preflight:
+    name: Validate exact published version before registry access
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      package_version: ${{ steps.version.outputs.package_version }}
+    steps:
+      - name: Check out registry-QA harness
+        uses: actions/checkout@v7
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Validate exact SemVer without npm
+        id: version
+        env:
+          REGISTRY_PACKAGE_VERSION: ${{ inputs.package_version }}
+        run: |
+          node --experimental-strip-types scripts/registry-release-check.ts --validate-version
+          echo "package_version=${REGISTRY_PACKAGE_VERSION}" >> "$GITHUB_OUTPUT"
+
   linux-registry-cli:
     name: Node 22 Linux registry CLI, fixture, and redaction
+    needs: exact-version-preflight
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -31,11 +55,12 @@ jobs:
 
       - name: Read exact public registry package
         env:
-          REGISTRY_PACKAGE_VERSION: ${{ inputs.package_version }}
+          REGISTRY_PACKAGE_VERSION: ${{ needs.exact-version-preflight.outputs.package_version }}
         run: npx tsx scripts/registry-release-check.ts
 
   macos-registry-seatify-bridge:
     name: Node 22 macOS Chromium installed Seatify bridge
+    needs: exact-version-preflight
     runs-on: macos-latest
     timeout-minutes: 15
     steps:
@@ -56,5 +81,5 @@ jobs:
 
       - name: Prove installed public Seatify bridge
         env:
-          REGISTRY_PACKAGE_VERSION: ${{ inputs.package_version }}
+          REGISTRY_PACKAGE_VERSION: ${{ needs.exact-version-preflight.outputs.package_version }}
         run: npx playwright test tests/e2e/installed-cli-bridge.spec.ts --project=chromium
