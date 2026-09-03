@@ -42,7 +42,8 @@ export function safeDiagnostic(value: string): string {
     .filter((line) => !/^\s*at\s+/.test(line))
     .join("\n")
     .replace(/<svg\b[\s\S]*?<\/svg>/gi, "[svg]")
-    .replace(/(?:Bearer\s+|(?:token|authorization|password|secret)\s*[=:]\s*(?:Bearer\s+)?)[^\s,;]+/gi, "[redacted]")
+    .replace(/\bnpm_[A-Za-z0-9_-]+\b/g, "[redacted]")
+    .replace(/(?:Bearer\s+|(?:token|authorization|password|secret|_?auth)\s*[=:]\s*(?:Bearer\s+)?)[^\s,;]+/gi, "[redacted]")
     .replace(/\b(?=[A-Za-z0-9_-]{24,}\b)(?=[A-Za-z0-9_-]*[A-Z])(?=[A-Za-z0-9_-]*[a-z])(?=[A-Za-z0-9_-]*\d)[A-Za-z0-9_-]{24,}\b/g, "[redacted]")
     .replace(/(?:[A-Za-z]:[\\/]|\/)(?:[^\s<>:"|?*]+[\\/])+[^\s<>:"|?*]+/g, "[path]")
     .slice(0, 1200);

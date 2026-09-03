@@ -95,6 +95,24 @@ describe("public registry release enforcement", () => {
     expect(diagnostic).not.toContain("at install");
   });
 
+  it("redacts npm auth credentials from npm-style stderr without hiding public context", () => {
+    const npmToken = "npm_abcdefghijklmnopqrstuvwxyz0123456789";
+    const diagnostic = safeDiagnostic([
+      "npm error code E401",
+      "npm error 401 Unauthorized - GET https://registry.npmjs.org/lineage-logo - authorization required",
+      `npm error auth=${npmToken}`,
+      `npm error _auth=${npmToken}`,
+      "npm error package-resolution-failed-because-registry-unavailable",
+    ].join("\n"));
+
+    expect(diagnostic).toContain("npm error code E401");
+    expect(diagnostic).toContain("https://registry.npmjs.org/lineage-logo");
+    expect(diagnostic).toContain("package-resolution-failed-because-registry-unavailable");
+    expect(diagnostic).not.toContain(npmToken);
+    expect(diagnostic).not.toContain("auth=" + npmToken);
+    expect(diagnostic).not.toContain("_auth=" + npmToken);
+  });
+
   it("reports cleanup failures through the same sanitized diagnostic boundary", async () => {
     // Break caught: cleanup exceptions bypass the public diagnostic sanitizer and leak raw error details.
     const root = await mkdtemp(path.join(os.tmpdir(), "lineage-registry-cleanup-"));
