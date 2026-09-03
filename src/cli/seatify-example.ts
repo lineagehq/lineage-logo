@@ -17,17 +17,14 @@ export class SeatifyBootstrapError extends Error {
   }
 }
 
-export interface SeatifyBootstrapDependencies {
-  copyFile?: typeof copyFile;
-}
-
 async function directory(pathname: string): Promise<void> {
   const info = await lstat(pathname);
-  if (!info.isDirectory() || info.isSymbolicLink()) throw new Error("conflict");
+  if (!info.isDirectory() || info.isSymbolicLink()) throw new SeatifyBootstrapError("conflict");
 }
 
 /** Creates a sealed starter workspace, never merging with user-owned contents. */
-export async function bootstrapSeatifyExample(workspace: string, fixture = packageFixture(), dependencies: SeatifyBootstrapDependencies = {}): Promise<void> {
+export async function bootstrapSeatifyExample(workspace: string): Promise<void> {
+  const fixture = packageFixture();
   let source: Buffer;
   try {
     await access(fixture, constants.R_OK);
@@ -35,10 +32,14 @@ export async function bootstrapSeatifyExample(workspace: string, fixture = packa
   } catch (error) {
     throw new SeatifyBootstrapError("unavailable", error);
   }
-  const exists = await lstat(workspace).then(() => true).catch((error: NodeJS.ErrnoException) => {
-    if (error.code === "ENOENT") return false;
-    throw error;
-  });
+  let exists: boolean;
+  try {
+    await lstat(workspace);
+    exists = true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") exists = false;
+    else throw new SeatifyBootstrapError("io", error);
+  }
   const concepts = path.join(workspace, "concepts");
   const iterations = path.join(workspace, "iterations");
   const destination = path.join(concepts, FIXTURE);
@@ -46,28 +47,35 @@ export async function bootstrapSeatifyExample(workspace: string, fixture = packa
     try {
       await directory(workspace);
       const rootEntries = await readdir(workspace);
-      if (rootEntries.length !== 2 || !rootEntries.includes("concepts") || !rootEntries.includes("iterations")) throw new Error("conflict");
+      if (rootEntries.length !== 2 || !rootEntries.includes("concepts") || !rootEntries.includes("iterations")) throw new SeatifyBootstrapError("conflict");
       await Promise.all([directory(concepts), directory(iterations)]);
       const [conceptEntries, iterationEntries] = await Promise.all([readdir(concepts), readdir(iterations)]);
-      if (conceptEntries.length !== 1 || conceptEntries[0] !== FIXTURE || iterationEntries.length !== 0) throw new Error("conflict");
+      if (conceptEntries.length !== 1 || conceptEntries[0] !== FIXTURE || iterationEntries.length !== 0) throw new SeatifyBootstrapError("conflict");
       const destinationInfo = await lstat(destination);
-      if (!destinationInfo.isFile() || destinationInfo.isSymbolicLink()) throw new Error("conflict");
+      if (!destinationInfo.isFile() || destinationInfo.isSymbolicLink()) throw new SeatifyBootstrapError("conflict");
       const installed = await readFile(destination);
-      if (!installed.equals(source)) throw new Error("conflict");
+      if (!installed.equals(source)) throw new SeatifyBootstrapError("conflict");
     } catch (error) {
-      throw new SeatifyBootstrapError("conflict", error);
+      if (error instanceof SeatifyBootstrapError && error.kind === "conflict") throw error;
+      throw new SeatifyBootstrapError("io", error);
     }
     return;
   }
+  let createdWorkspace = false;
+  let createdConcepts = false;
+  let createdIterations = false;
   try {
     await mkdir(workspace, { recursive: false });
+    createdWorkspace = true;
     await mkdir(concepts);
+    createdConcepts = true;
     await mkdir(iterations);
-    await (dependencies.copyFile ?? copyFile)(fixture, destination, constants.COPYFILE_EXCL);
+    createdIterations = true;
+    await copyFile(fixture, destination, constants.COPYFILE_EXCL);
   } catch (error) {
-    await rmdir(concepts).catch(() => undefined);
-    await rmdir(iterations).catch(() => undefined);
-    await rmdir(workspace).catch(() => undefined);
+    if (createdConcepts) await rmdir(concepts).catch(() => undefined);
+    if (createdIterations) await rmdir(iterations).catch(() => undefined);
+    if (createdWorkspace) await rmdir(workspace).catch(() => undefined);
     throw new SeatifyBootstrapError("io", error);
   }
 }

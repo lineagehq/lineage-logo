@@ -1,10 +1,28 @@
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EXIT, InstanceResolutionError, runLineageCli, type CliIo, type ResolvedInstance } from "../../src/cli/index";
 import { bootstrapSeatifyExample, SeatifyBootstrapError } from "../../src/cli/seatify-example";
 import type { AgentProducerOutcome } from "../../src/producer/agent-client";
+
+const filesystem = vi.hoisted(() => ({
+  mkdirOverride: undefined as undefined | ((actual: typeof mkdir, ...args: Parameters<typeof mkdir>) => ReturnType<typeof mkdir>),
+  readdirOverride: undefined as undefined | ((actual: typeof import("node:fs/promises").readdir, ...args: Parameters<typeof import("node:fs/promises").readdir>) => ReturnType<typeof import("node:fs/promises").readdir>),
+  accessOverride: undefined as undefined | ((actual: typeof import("node:fs/promises").access, ...args: Parameters<typeof import("node:fs/promises").access>) => ReturnType<typeof import("node:fs/promises").access>),
+  copyFileOverride: undefined as undefined | ((actual: typeof import("node:fs/promises").copyFile, ...args: Parameters<typeof import("node:fs/promises").copyFile>) => ReturnType<typeof import("node:fs/promises").copyFile>),
+}));
+
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...actual,
+    mkdir: (...args: Parameters<typeof mkdir>) => filesystem.mkdirOverride ? filesystem.mkdirOverride(actual.mkdir, ...args) : actual.mkdir(...args),
+    readdir: (...args: Parameters<typeof actual.readdir>) => filesystem.readdirOverride ? filesystem.readdirOverride(actual.readdir, ...args) : actual.readdir(...args),
+    access: (...args: Parameters<typeof actual.access>) => filesystem.accessOverride ? filesystem.accessOverride(actual.access, ...args) : actual.access(...args),
+    copyFile: (...args: Parameters<typeof actual.copyFile>) => filesystem.copyFileOverride ? filesystem.copyFileOverride(actual.copyFile, ...args) : actual.copyFile(...args),
+  };
+});
 
 const temporary: string[] = [];
 afterEach(async () => Promise.all(temporary.splice(0).map((directory) => rm(directory, { recursive: true, force: true }))));
@@ -86,23 +104,67 @@ describe("lineage-logo CLI", () => {
     const parent = await mkdtemp(path.join(os.tmpdir(), "lineage-seatify-missing-fixture-"));
     temporary.push(parent);
     const workspace = path.join(parent, "workspace");
-    await expect(bootstrapSeatifyExample(workspace, path.join(parent, "missing.svg"))).rejects.toMatchObject({
-      name: "SeatifyBootstrapError", kind: "unavailable",
-    } satisfies Partial<SeatifyBootstrapError>);
+    filesystem.accessOverride = async () => { throw Object.assign(new Error("missing"), { code: "ENOENT" }); };
+    try {
+      await expect(bootstrapSeatifyExample(workspace)).rejects.toMatchObject({ name: "SeatifyBootstrapError", kind: "unavailable" } satisfies Partial<SeatifyBootstrapError>);
+    } finally {
+      filesystem.accessOverride = undefined;
+    }
     await expect(readFile(workspace)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("rolls back only its new empty starter root after a copy failure", async () => {
     const parent = await mkdtemp(path.join(os.tmpdir(), "lineage-seatify-rollback-"));
     temporary.push(parent);
-    const fixture = path.join(parent, "fixture.svg");
     const workspace = path.join(parent, "workspace");
-    await writeFile(fixture, "fixture");
-    await expect(bootstrapSeatifyExample(workspace, fixture, {
-      copyFile: async () => { throw new Error("disk failure"); },
-    })).rejects.toMatchObject({ name: "SeatifyBootstrapError", kind: "io" } satisfies Partial<SeatifyBootstrapError>);
+    filesystem.copyFileOverride = async () => { throw new Error("disk failure"); };
+    try {
+      await expect(bootstrapSeatifyExample(workspace)).rejects.toMatchObject({ name: "SeatifyBootstrapError", kind: "io" } satisfies Partial<SeatifyBootstrapError>);
+    } finally {
+      filesystem.copyFileOverride = undefined;
+    }
     await expect(readFile(workspace)).rejects.toMatchObject({ code: "ENOENT" });
-    expect(await readFile(fixture, "utf8")).toBe("fixture");
+  });
+
+  it("does not remove an empty workspace created concurrently after its own mkdir loses the race", async () => {
+    const parent = await mkdtemp(path.join(os.tmpdir(), "lineage-seatify-race-"));
+    temporary.push(parent);
+    const workspace = path.join(parent, "workspace");
+    filesystem.mkdirOverride = async (actual, pathname, options) => {
+      if (pathname === workspace) {
+        await actual(workspace, { recursive: false });
+        const error = Object.assign(new Error("already exists"), { code: "EEXIST" });
+        throw error;
+      }
+      return actual(pathname, options);
+    };
+    try {
+      await expect(bootstrapSeatifyExample(workspace)).rejects.toMatchObject({ name: "SeatifyBootstrapError", kind: "io" } satisfies Partial<SeatifyBootstrapError>);
+    } finally {
+      filesystem.mkdirOverride = undefined;
+    }
+    expect((await lstat(workspace)).isDirectory()).toBe(true);
+  });
+
+  it("classifies an existing-workspace filesystem read failure as I/O, not a conflict", async () => {
+    const parent = await mkdtemp(path.join(os.tmpdir(), "lineage-seatify-existing-io-"));
+    temporary.push(parent);
+    const workspace = path.join(parent, "workspace");
+    await mkdir(workspace);
+    await Promise.all([mkdir(path.join(workspace, "concepts")), mkdir(path.join(workspace, "iterations"))]);
+    await writeFile(path.join(workspace, "concepts", "seatify-constellation.svg"), await readFile(path.resolve("examples/seatify-constellation.svg")));
+    filesystem.readdirOverride = async (actual, pathname, options) => {
+      if (pathname === workspace) {
+        const error = Object.assign(new Error("permission denied"), { code: "EACCES" });
+        throw error;
+      }
+      return actual(pathname, options);
+    };
+    try {
+      await expect(bootstrapSeatifyExample(workspace)).rejects.toMatchObject({ name: "SeatifyBootstrapError", kind: "io" } satisfies Partial<SeatifyBootstrapError>);
+    } finally {
+      filesystem.readdirOverride = undefined;
+    }
   });
 
   it("writes one deterministic, sanitized doctor JSON object", async () => {
