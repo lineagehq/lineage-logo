@@ -1,0 +1,33 @@
+{
+  "attestation_version": 1,
+  "kind": "lineage-logo.public-beta.distinct-user-attestation",
+  "attestation_date": "2026-01-14",
+  "collection_window_start": "2026-01-01",
+  "collection_window_end": "2026-01-14",
+  "collection_window_days": 14,
+  "channel_class": "owner_approved_private_authenticated_deletable",
+  "accepted_count": 3,
+  "accepted_receipts": [
+    { "participant_id": "P-00000000000000000000000000000001", "walkthrough_id": "W-00000000000000000000000000000001", "receipt_sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" },
+    { "participant_id": "P-00000000000000000000000000000002", "walkthrough_id": "W-00000000000000000000000000000002", "receipt_sha256": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB" },
+    { "participant_id": "P-00000000000000000000000000000003", "walkthrough_id": "W-00000000000000000000000000000003", "receipt_sha256": "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC" }
+  ],
+  "rejection_counts": {
+    "schema_invalid": 0,
+    "duplicate_identifier": 0,
+    "duplicate_sender": 0,
+    "prohibited_data": 0,
+    "unsupported_attempt": 0,
+    "non_passing": 0
+  },
+  "fixed_statements": {
+    "distinct_authenticated_senders_verified": true,
+    "one_counting_receipt_per_sender": true,
+    "no_identity_mapping_retained": true,
+    "source_payloads_removed_from_project_control": true,
+    "no_maintainer_coaching": true,
+    "provider_metadata_deletion_not_claimed": true
+  },
+  "statement": "During the stated collection window, a maintainer transiently verified that the three digest-bound accepted receipts came from three distinct owner-approved authenticated human senders, with at most one counting receipt per sender. The project retained only the controlled receipt JSON, its SHA-256 digest, aggregate counts, and this dated attestation; it retained no sender, contact, account, recipient, message, thread, or sender-to-receipt mapping. Receipt-bearing source messages and attachments were removed from project-controlled channel storage. No maintainer coached, observed, controlled, or repaired a counting attempt. This attestation makes no claim about provider-controlled metadata retention and is not independently re-auditable identity proof.",
+  "limitation": "This attestation is privacy-minimal aggregate evidence, not cryptographic or independently re-auditable identity proof."
+}

@@ -42,7 +42,7 @@ describe("freshly installed public executable", () => {
       const doctor = await run(bin, ["doctor", "--json"], env);
       expect(help).toMatchObject({ code: 0, stderr: "" });
       expect(help.stdout).toContain("Usage: lineage-logo");
-      expect(version).toEqual({ code: 0, stdout: "0.1.0-beta.2\n", stderr: "" });
+      expect(version).toEqual({ code: 0, stdout: "0.1.0-beta.3\n", stderr: "" });
       expect(doctor.code).toBe(4);
       expect(JSON.parse(doctor.stdout)).toMatchObject({ schemaVersion: 1, command: "doctor", ok: false, status: "unavailable" });
       const publicOutput = `${help.stdout}${help.stderr}${version.stdout}${version.stderr}${doctor.stdout}${doctor.stderr}`;

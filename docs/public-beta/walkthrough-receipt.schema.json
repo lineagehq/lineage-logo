@@ -9,8 +9,8 @@
   "properties": {
     "receipt_version": { "const": 1 },
     "kind": { "const": "lineage-logo.public-beta.walkthrough" },
-    "walkthrough_id": { "type": "string", "pattern": "^W-[A-Z0-9]{6,32}$" },
-    "participant_slot": { "type": "string", "pattern": "^P-(00[1-9]|0[1-9][0-9]|[1-9][0-9]{2,})$" },
+    "walkthrough_id": { "type": "string", "pattern": "^W-[A-F0-9]{32}$" },
+    "participant_slot": { "type": "string", "pattern": "^P-[A-F0-9]{32}$" },
     "installed_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+-beta\\.[0-9]+$" },
     "environment": {
       "type": "object",
