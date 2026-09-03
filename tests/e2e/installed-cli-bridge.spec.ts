@@ -129,17 +129,12 @@ async function openSeatify(context: BrowserContext, url: string, workspacePath =
   return page;
 }
 
-async function manifest(entry: AgentInstanceRegistryEntry) {
-  const response = await fetch(`${entry.apiOrigin}/api/agent/document`, { headers: {
-    Authorization: `Bearer ${entry.token}`,
-    "X-Lineage-Instance-ID": entry.instanceId,
-    "X-Lineage-Workspace-ID": entry.workspaceId,
-  } });
-  if (!response.ok) throw new Error("Installed editor manifest is unavailable.");
-  return await response.json() as {
-    sessionId: string; sourcePath: string; revision: number;
-    layers: Array<{ sessionKey: string; name: string }>;
-  };
+async function publicContext(bin: string, workspace: string, env: NodeJS.ProcessEnv) {
+  const result = await command(bin, ["context", "--workspace", workspace, "--json"], env);
+  if (result.code !== 0) throw new Error("Installed public context is unavailable.");
+  const body = JSON.parse(result.stdout) as { context: { sessionId: string; baseRevision: number; layers: Array<{ layerId: string; name: string }> } };
+  if (result.stdout.includes(workspace) || result.stdout.includes("sourcePath")) throw new Error("Installed public context leaked private data.");
+  return body.context;
 }
 
 test("installed CLI bridge selects one of two live Seatify editors and cleans up safely", async ({ browser }) => {
@@ -195,14 +190,14 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     contexts.push(contextA, contextB);
     const pageA = await openSeatify(contextA, running[0].url);
     const pageB = await openSeatify(contextB, running[1].url);
-    const documentA = await manifest(entryA);
+    const documentA = await publicContext(bin, workspaceA, env);
     const target = documentA.layers.find((layer) => layer.name === "Seatify title");
     expect(target).toBeTruthy();
     const proposal = path.join(root, "selection.json");
     await writeFile(proposal, JSON.stringify({
       protocolVersion: 1, transactionId: "installed-seatify-selection", producer: { kind: "test", name: "installed bridge" },
-      document: { sessionId: documentA.sessionId, baseRevision: documentA.revision },
-      operations: [{ type: "selectFocus", operationId: "focus", targets: [{ sessionKey: target!.sessionKey }] }],
+      document: { sessionId: documentA.sessionId, baseRevision: documentA.baseRevision },
+      operations: [{ type: "selectFocus", operationId: "focus", targets: [{ sessionKey: target!.layerId }] }],
     }));
     const artifact = path.join(workspaceA, "concepts/seatify-constellation.svg");
 
@@ -225,14 +220,14 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     await stopCommand(routed);
 
     const sourceA = await readFile(artifact, "utf8");
-    const mutatingManifestA = await manifest(entryA);
+    const mutatingManifestA = await publicContext(bin, workspaceA, env);
     const titleA = mutatingManifestA.layers.find((layer) => layer.name === "Seatify title");
     expect(titleA).toBeTruthy();
     const acceptedProposal = path.join(root, "accepted.json");
     await writeFile(acceptedProposal, JSON.stringify({
       protocolVersion: 1, transactionId: "installed-seatify-accepted", producer: { kind: "test", name: "installed bridge" },
-      document: { sessionId: mutatingManifestA.sessionId, baseRevision: mutatingManifestA.revision },
-      operations: [{ type: "renameLayer", operationId: "rename-accepted", target: { sessionKey: titleA!.sessionKey }, name: "Installed accepted title" }],
+      document: { sessionId: mutatingManifestA.sessionId, baseRevision: mutatingManifestA.baseRevision },
+      operations: [{ type: "renameLayer", operationId: "rename-accepted", target: { sessionKey: titleA!.layerId }, name: "Installed accepted title" }],
     }));
     const accepted = startCommand(bin, ["submit", "--artifact", artifact, "--proposal", acceptedProposal, "--workspace", workspaceA, "--json", "--quiet"], env);
     auxiliary.push(accepted);
@@ -270,14 +265,14 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
 
     const artifactB = path.join(workspaceB, "concepts/seatify-constellation.svg");
     const sourceB = await readFile(artifactB, "utf8");
-    const mutatingManifestB = await manifest(entryB);
+    const mutatingManifestB = await publicContext(bin, workspaceB, env);
     const titleB = mutatingManifestB.layers.find((layer) => layer.name === "Seatify title");
     expect(titleB).toBeTruthy();
     const revertedProposal = path.join(root, "reverted.json");
     await writeFile(revertedProposal, JSON.stringify({
       protocolVersion: 1, transactionId: "installed-seatify-reverted", producer: { kind: "test", name: "installed bridge" },
-      document: { sessionId: mutatingManifestB.sessionId, baseRevision: mutatingManifestB.revision },
-      operations: [{ type: "renameLayer", operationId: "rename-reverted", target: { sessionKey: titleB!.sessionKey }, name: "Must not persist" }],
+      document: { sessionId: mutatingManifestB.sessionId, baseRevision: mutatingManifestB.baseRevision },
+      operations: [{ type: "renameLayer", operationId: "rename-reverted", target: { sessionKey: titleB!.layerId }, name: "Must not persist" }],
     }));
     const reverted = startCommand(bin, ["submit", "--artifact", artifactB, "--proposal", revertedProposal, "--instance", entryB.instanceId, "--json", "--quiet"], env);
     auxiliary.push(reverted);

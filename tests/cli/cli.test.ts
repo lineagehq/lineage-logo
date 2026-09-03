@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -73,6 +73,14 @@ describe("lineage-logo CLI", () => {
     expect(await readFile(path.join(workspace, "notes.txt"), "utf8")).toBe("user work");
   });
 
+  it("refuses a Seatify fixture symlink even when its bytes match", async () => {
+    const workspace = await mkdtemp(path.join(os.tmpdir(), "lineage-seatify-symlink-"));
+    temporary.push(workspace);
+    await Promise.all([mkdir(path.join(workspace, "concepts")), mkdir(path.join(workspace, "iterations"))]);
+    await symlink(path.resolve("examples/seatify-constellation.svg"), path.join(workspace, "concepts", "seatify-constellation.svg"));
+    expect(await runLineageCli(["example", "seatify", "--workspace", workspace], capture().io)).toBe(EXIT.conflict);
+  });
+
   it("writes one deterministic, sanitized doctor JSON object", async () => {
     const output = capture();
     const selected = instance({ status: "reverted", transactionId: "unused" });
@@ -123,7 +131,8 @@ describe("lineage-logo CLI", () => {
     }));
     await writeFile(files.proposal, JSON.stringify({
       protocolVersion: 1, transactionId: "cli-test", producer: { kind: "test" },
-      document: { sessionId: "session", sourcePath: "/private/source.svg", baseRevision: 1 }, operations: [],
+      document: { sessionId: "session", sourcePath: "/private/source.svg", baseRevision: 1 },
+      operations: [{ type: "selectFocus", operationId: "focus", targets: [{ sessionKey: "logo" }] }],
     }));
     const rejected = capture();
     expect(await runLineageCli(["submit", "--artifact", files.artifact, "--proposal", files.proposal, "--json"], rejected.io, {
@@ -131,6 +140,21 @@ describe("lineage-logo CLI", () => {
     })).toBe(EXIT.usage);
     expect(JSON.parse(rejected.stdout[0])).toMatchObject({ ok: false, status: "invalid" });
     expect(rejected.stdout[0]).not.toContain("private");
+  });
+
+  it("fails closed for stale public context, unsupported versions, and oversized proposal input", async () => {
+    const files = await submissionFiles();
+    const stale = capture();
+    expect(await runLineageCli(["submit", "--artifact", files.artifact, "--proposal", files.proposal, "--json"], stale.io, {
+      resolveInstance: async () => ({ ...instance({ status: "reverted", transactionId: "cli-test" }), client: {
+        manifest: async () => ({ sessionId: "other", sourcePath: "concept.svg", revision: 2, layers: [] }),
+        submitAndWait: async () => ({ status: "reverted", transactionId: "cli-test" } as AgentProducerOutcome),
+      } }),
+    })).toBe(EXIT.conflict);
+    await writeFile(files.proposal, JSON.stringify({ protocolVersion: 2, transactionId: "cli-test", producer: { kind: "test" }, document: { sessionId: "session", baseRevision: 1 }, operations: [{ type: "selectFocus", operationId: "focus", targets: [{ sessionKey: "logo" }] }] }));
+    expect(await runLineageCli(["submit", "--artifact", files.artifact, "--proposal", files.proposal], capture().io)).toBe(EXIT.usage);
+    await writeFile(files.proposal, " ".repeat(5 * 1024 * 1024 + 1));
+    expect(await runLineageCli(["submit", "--artifact", files.artifact, "--proposal", files.proposal], capture().io)).toBe(EXIT.usage);
   });
 
   it.each([

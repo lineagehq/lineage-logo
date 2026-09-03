@@ -330,7 +330,7 @@ async function runSubmit(args: ParsedArguments, io: CliIo, dependencies: CliDepe
   const artifactSvg = await readFile(artifactPath, "utf8").catch(() => { throw new CliFailure(EXIT.usage, "invalid", "Artifact is not readable."); });
   try { validateCleanAgentSvg(artifactSvg); } catch { throw new CliFailure(EXIT.usage, "invalid", "Artifact is not a safe SVG."); }
   let proposal;
-  try { proposal = parsePublicAgentProposal(JSON.parse(await readFile(proposalPath, "utf8")) as unknown); }
+  try { proposal = parsePublicAgentProposal(await readFile(proposalPath, "utf8")); }
   catch { throw new CliFailure(EXIT.usage, "invalid", "Proposal is not a valid transaction."); }
   const instance = await resolveSelected(dependencies.resolveInstance ?? defaultResolver, selector(args));
   let transaction: AgentTransactionV1;
