@@ -1,4 +1,4 @@
-import { lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, rm, rmdir, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -113,7 +113,7 @@ describe("lineage-logo CLI", () => {
     await expect(readFile(workspace)).rejects.toMatchObject({ code: "ENOENT" });
   });
 
-  it("rolls back only its new empty starter root after a copy failure", async () => {
+  it("leaves its partial starter root after a copy failure rather than deleting paths", async () => {
     const parent = await mkdtemp(path.join(os.tmpdir(), "lineage-seatify-rollback-"));
     temporary.push(parent);
     const workspace = path.join(parent, "workspace");
@@ -123,7 +123,27 @@ describe("lineage-logo CLI", () => {
     } finally {
       filesystem.copyFileOverride = undefined;
     }
-    await expect(readFile(workspace)).rejects.toMatchObject({ code: "ENOENT" });
+    expect((await lstat(workspace)).isDirectory()).toBe(true);
+    expect((await lstat(path.join(workspace, "concepts"))).isDirectory()).toBe(true);
+    expect((await lstat(path.join(workspace, "iterations"))).isDirectory()).toBe(true);
+  });
+
+  it("does not remove a concurrent replacement of a directory it created before a copy failure", async () => {
+    const parent = await mkdtemp(path.join(os.tmpdir(), "lineage-seatify-replacement-race-"));
+    temporary.push(parent);
+    const workspace = path.join(parent, "workspace");
+    const replacement = path.join(workspace, "concepts");
+    filesystem.copyFileOverride = async (_actual, _source, destination) => {
+      await rmdir(replacement);
+      await mkdir(replacement);
+      throw new Error(`copy failed for ${destination}`);
+    };
+    try {
+      await expect(bootstrapSeatifyExample(workspace)).rejects.toMatchObject({ name: "SeatifyBootstrapError", kind: "io" } satisfies Partial<SeatifyBootstrapError>);
+    } finally {
+      filesystem.copyFileOverride = undefined;
+    }
+    expect((await lstat(replacement)).isDirectory()).toBe(true);
   });
 
   it("does not remove an empty workspace created concurrently after its own mkdir loses the race", async () => {

@@ -1,5 +1,5 @@
 import { constants } from "node:fs";
-import { access, copyFile, lstat, mkdir, readdir, readFile, rmdir } from "node:fs/promises";
+import { access, copyFile, lstat, mkdir, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -61,21 +61,12 @@ export async function bootstrapSeatifyExample(workspace: string): Promise<void> 
     }
     return;
   }
-  let createdWorkspace = false;
-  let createdConcepts = false;
-  let createdIterations = false;
   try {
     await mkdir(workspace, { recursive: false });
-    createdWorkspace = true;
     await mkdir(concepts);
-    createdConcepts = true;
     await mkdir(iterations);
-    createdIterations = true;
     await copyFile(fixture, destination, constants.COPYFILE_EXCL);
   } catch (error) {
-    if (createdConcepts) await rmdir(concepts).catch(() => undefined);
-    if (createdIterations) await rmdir(iterations).catch(() => undefined);
-    if (createdWorkspace) await rmdir(workspace).catch(() => undefined);
     throw new SeatifyBootstrapError("io", error);
   }
 }
