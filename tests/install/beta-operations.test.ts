@@ -1,4 +1,8 @@
-import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { readFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 
 const schema = JSON.parse(readFileSync("docs/public-beta/walkthrough-receipt.schema.json", "utf8"));
@@ -10,6 +14,7 @@ const readme = readFileSync("README.md", "utf8");
 const exampleReceipt = JSON.parse(readFileSync("docs/public-beta/walkthrough-receipt.example.json", "utf8"));
 const attestationSchema = JSON.parse(readFileSync("docs/public-beta/distinct-user-attestation.schema.json", "utf8"));
 const attestationExample = JSON.parse(readFileSync("docs/public-beta/distinct-user-attestation.example.json", "utf8"));
+const attestationVerifier = "docs/public-beta/validate-distinct-user-attestation.mjs";
 
 function validates(value: unknown, rule: any, root = schema): boolean {
   if (rule.$ref) return validates(value, rule.$ref.split("/").slice(1).reduce((node: any, key: string) => node[key], root), root);
@@ -47,6 +52,41 @@ function validReceipt() {
     },
     recovery: { action: "none", result: "not_needed" }, issue_code: "none",
   };
+}
+
+function verifyAttestation(mutator?: (attestation: any, receipts: any[]) => boolean | void) {
+  const directory = mkdtempSync(join(tmpdir(), "lineage-logo-attestation-"));
+  try {
+    const receipts = [1, 2, 3].map((index) => ({
+      ...validReceipt(),
+      walkthrough_id: `W-${String(index).padStart(32, "0")}`,
+      participant_slot: `P-${String(index).padStart(32, "0")}`,
+      installed_version: "0.1.0-beta.3",
+    }));
+    const receiptPaths = receipts.map((receipt, index) => {
+      const path = join(directory, `receipt-${index + 1}.json`);
+      writeFileSync(path, `${JSON.stringify(receipt, null, 2)}\n`);
+      return path;
+    });
+    const attestation = structuredClone(attestationExample);
+    attestation.accepted_receipts = receiptPaths.map((path, index) => ({
+      participant_id: receipts[index].participant_slot,
+      walkthrough_id: receipts[index].walkthrough_id,
+      receipt_sha256: createHash("sha256").update(readFileSync(path)).digest("hex").toUpperCase(),
+    }));
+    const rewriteReceipts = mutator?.(attestation, receipts);
+    if (rewriteReceipts) {
+      receiptPaths.forEach((path, index) => {
+        writeFileSync(path, `${JSON.stringify(receipts[index], null, 2)}\n`);
+        attestation.accepted_receipts[index].receipt_sha256 = createHash("sha256").update(readFileSync(path)).digest("hex").toUpperCase();
+      });
+    }
+    const attestationPath = join(directory, "attestation.json");
+    writeFileSync(attestationPath, `${JSON.stringify(attestation, null, 2)}\n`);
+    return spawnSync(process.execPath, [attestationVerifier, attestationPath, ...receiptPaths], { encoding: "utf8" });
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 }
 
 function triagePolicy() {
@@ -187,6 +227,36 @@ describe("public beta cohort operating kit", () => {
     const duplicateDigest = structuredClone(attestationExample);
     duplicateDigest.accepted_receipts[1].receipt_sha256 = duplicateDigest.accepted_receipts[0].receipt_sha256;
     expect(new Set(duplicateDigest.accepted_receipts.map((entry: any) => entry.receipt_sha256)).size).not.toBe(3);
+  });
+
+  it("semantically verifies exactly three unique digest-bound counting receipts", () => {
+    const valid = verifyAttestation();
+    expect(valid.status).toBe(0);
+    expect(valid.stdout.trim()).toBe('{"ok":true,"code":"ATTESTATION_VALID"}');
+    expect(valid.stderr).toBe("");
+
+    const rejectionCases: Array<[string, (attestation: any, receipts: any[]) => boolean | void]> = [
+      ["duplicate participant ID", (value) => { value.accepted_receipts[1].participant_id = value.accepted_receipts[0].participant_id; }],
+      ["duplicate walkthrough ID", (value) => { value.accepted_receipts[1].walkthrough_id = value.accepted_receipts[0].walkthrough_id; }],
+      ["duplicate digest", (value) => { value.accepted_receipts[1].receipt_sha256 = value.accepted_receipts[0].receipt_sha256; }],
+      ["digest mismatch", (value) => { value.accepted_receipts[0].receipt_sha256 = "A".repeat(64); }],
+      ["participant identifier mismatch", (value) => { value.accepted_receipts[0].participant_id = `P-${"A".repeat(32)}`; }],
+      ["walkthrough identifier mismatch", (value) => { value.accepted_receipts[0].walkthrough_id = `W-${"A".repeat(32)}`; }],
+      ["wrong accepted count", (value) => { value.accepted_count = 2; }],
+      ["wrong receipt count", (value) => { value.accepted_receipts.pop(); }],
+      ["impossible date", (value) => { value.collection_window_start = "2026-02-30"; }],
+      ["reversed dates", (value) => { value.collection_window_start = "2026-01-15"; value.collection_window_end = "2026-01-14"; }],
+      ["inconsistent duration", (value) => { value.collection_window_days = 13; }],
+      ["attestation before window end", (value) => { value.attestation_date = "2026-01-13"; }],
+      ["non-counting receipt", (_value, receipts) => { receipts[0].attempt_status = "invalid"; return true; }],
+    ];
+    for (const [name, mutate] of rejectionCases) {
+      const result = verifyAttestation(mutate);
+      expect(result.status, name).toBe(1);
+      expect(result.stdout, name).toBe("");
+      expect(result.stderr, name).toMatch(/^\{"ok":false,"code":"[A-Z_]+"\}\n$/);
+      expect(result.stderr, name).not.toMatch(/receipt-|attestation\.json|P-|W-/);
+    }
   });
 
   it("permits transmission of controlled receipt JSON only through owner-approved private handling", () => {

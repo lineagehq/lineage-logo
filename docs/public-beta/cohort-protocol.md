@@ -138,6 +138,20 @@ only the controlled rejection counts, and retain every fixed statement, the boun
 attestation statement, and the limitation unchanged. Reject duplicate participant IDs,
 walkthrough IDs, or receipt digests; never overwrite or merge a retained receipt.
 
+Validate the completed attestation against its schema, then run the shipped semantic
+verifier against the exact three retained receipt files. From the install project, use:
+
+```bash
+npx --yes ajv-cli@5.0.0 validate --spec=draft2020 --strict=false -s node_modules/lineage-logo/docs/public-beta/distinct-user-attestation.schema.json -d distinct-user-attestation.json
+node node_modules/lineage-logo/docs/public-beta/validate-distinct-user-attestation.mjs distinct-user-attestation.json receipt-1.json receipt-2.json receipt-3.json
+```
+
+Both commands must exit zero. The verifier accepts only three individually unique
+participant IDs, walkthrough IDs, and exact-file SHA-256 digests whose embedded receipt
+identifiers match. It also enforces the counting contract and a real, ordered, inclusive
+collection window of at most 14 days. It emits only a fixed success or error code; it
+does not emit receipt contents, identifiers, sender metadata, or paths.
+
 If no owner-approved private authenticated-sender intake is active, transmit nothing.
 This protocol offers neither confidential handling nor a response-time commitment and
 must not be used for vulnerability reports.

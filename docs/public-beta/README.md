@@ -16,6 +16,9 @@ it is not sufficient to publish a public beta.
 - `npx tsx scripts/release-check.ts` accepts only intended package files,
   installs the tarball in isolation, repeats installation of the same artifact,
   validates the installed CLI, redacts public output, and cleans up safely.
+- The shipped aggregate-attestation verifier binds exactly three retained receipt
+  files to unique participant/walkthrough identifiers and exact SHA-256 digests;
+  follow its required use in `cohort-protocol.md`.
 - The canonical Seatify fixture remains `examples/seatify-constellation.svg`;
   tests consume it directly or through an ephemeral byte-identical copy.
 

@@ -15,6 +15,7 @@
     "channel_class": { "const": "owner_approved_private_authenticated_deletable" },
     "accepted_count": { "const": 3 },
     "accepted_receipts": {
+      "description": "Exactly three receipt bindings. JSON Schema validates their shape; validate-distinct-user-attestation.mjs enforces per-field uniqueness and exact-byte receipt binding.",
       "type": "array",
       "minItems": 3,
       "maxItems": 3,
