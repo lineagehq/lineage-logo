@@ -127,13 +127,20 @@ different starting API port.
 
 ## Public beta CLI
 
-The public executable is `lineage-logo`. Install the published beta package
-from the registry, then start the non-destructive Seatify walkthrough:
+The public executable is `lineage-logo`. Version `0.1.0-beta.2` is published
+under npm's `beta` dist-tag with signed SLSA provenance. The `latest` dist-tag
+remains on `0.1.0-beta.1`. Hosted publication and public-registry QA passed for
+beta.2; independent external Seatify walkthroughs remain at **0/3**, so this is
+release evidence rather than external validation.
+
+Install the published beta into a fresh local project, then start the
+non-destructive Seatify walkthrough:
 
 ```bash
-npm install -g lineage-logo@beta
-lineage-logo example seatify --workspace <directory>
-lineage-logo launch --workspace <directory>
+npm init -y
+npm install --save-exact lineage-logo@beta
+npx lineage-logo example seatify --workspace <directory>
+npx lineage-logo launch --workspace <directory>
 ```
 
 The complete public flow, provider-neutral proposal schema, explicit review,

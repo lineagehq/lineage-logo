@@ -30,20 +30,21 @@ it is not sufficient to publish a public beta.
   instance explicitly, completed human Accept and Revert, durably saved clean
   accepted bytes to a source-specific continuation, preserved both sources,
   redacted output, and cleaned up. The installed walkthrough passed twice.
-- Confirm the npm package page and global install only after publishing. Local
-  tarball installation does not prove registry availability.
+- Preserve the completed hosted publication and public-registry QA evidence for
+  `lineage-logo@0.1.0-beta.2`, including its signed SLSA provenance. The package
+  is published under `beta`; `latest` remains `0.1.0-beta.1`.
 
 ## Owner policy decisions
 
 The owner selected the MIT license and GitHub Issues for best-effort support with
-no SLA. Version `0.1.0-beta.2` is a local release candidate intended for npm's
-`beta` tag; it has not been merged, published, provenance-proven,
-registry-QA-approved, or externally validated. This checklist does not claim
-that hosted workflows, protected environments, or trusted-publisher controls
-have succeeded. The owner also explicitly accepted releasing without a private
+no SLA. Version `0.1.0-beta.2` is published under npm's `beta` dist-tag with
+signed SLSA provenance; hosted publication and exact public-registry QA passed.
+The `latest` dist-tag remains `0.1.0-beta.1`. These facts do not constitute
+external-user validation: **0/3 independent walkthroughs** have been completed.
+The owner also explicitly accepted releasing without a private
 vulnerability-reporting channel. The beta cannot accept reports that require
 confidentiality; public issues must not contain sensitive vulnerability details.
-These policy choices do not authorize an npm publication by themselves.
+No external outreach is authorized by this checklist.
 
 ## Explicit initial limitations
 

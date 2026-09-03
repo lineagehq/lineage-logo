@@ -2,21 +2,27 @@
 
 This path uses the published beta package on Node.js 22 or newer for macOS and Linux. It is local-only: do not include credentials, private paths, SVG bytes, or browser/session secrets in proposals, issues, or logs.
 
+Create a fresh local project and install only the published registry package
+selected by `@beta`:
+
 ```bash
-npm install -g lineage-logo@beta
-lineage-logo --version
-lineage-logo example seatify --workspace <directory>
-lineage-logo launch --workspace <directory>
+mkdir lineage-logo-seatify-beta
+cd lineage-logo-seatify-beta
+npm init -y
+npm install --save-exact lineage-logo@beta
+npx lineage-logo --version
+npx lineage-logo example seatify --workspace <directory>
+npx lineage-logo launch --workspace <directory>
 ```
 
 Immediately record the exact version printed by `lineage-logo --version` (for example,
-`0.1.0-beta.1`). `@beta` is only the install selector; the receipt must use the exact
+`0.1.0-beta.2`). `@beta` is only the install selector; the receipt must use the exact
 installed prerelease version, never the mutable tag.
 
 Open the descriptive `lineage-logo.localhost` address printed by `launch` and open `concepts/seatify-constellation.svg`. In another terminal, retrieve the public, short-lived proposal context:
 
 ```bash
-lineage-logo context --workspace <directory> --json
+npx lineage-logo context --workspace <directory> --json
 ```
 
 The result contains an editor ID, session ID, base revision, and layer IDs. It does not expose the workspace path, source SVG, registry records, or a token. Copy the exact `sessionId`, `baseRevision`, and `layerId` values from that command's current JSON output; the placeholders below are not literal values. For example, this mutating proposal changes the chosen layer's fill:
@@ -34,7 +40,7 @@ The result contains an editor ID, session ID, base revision, and layer IDs. It d
 Save it as `proposal.json`, then submit it with the starter SVG as the clean artifact input:
 
 ```bash
-lineage-logo submit --workspace <directory> --artifact <directory>/concepts/seatify-constellation.svg --proposal proposal.json --json
+npx lineage-logo submit --workspace <directory> --artifact <directory>/concepts/seatify-constellation.svg --proposal proposal.json --json
 ```
 
 The command refuses an ambiguous or stale editor context, malformed proposal, unsafe SVG, and any proposal containing an unexpected field such as `sourcePath`. It waits for a person to review the proposal. The person must explicitly choose **Accept all** in the editor. In this beta, that established action atomically accepts and durably saves the iteration; it counts only when the CLI returns an `iterations/...svg` path and digest.
