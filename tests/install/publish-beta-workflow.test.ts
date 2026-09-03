@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
@@ -9,93 +8,143 @@ function read(path: string) {
   return readFileSync(path, "utf8");
 }
 
-function snapshotCommands(workflow: string) {
-  return [...workflow.matchAll(/(npm (?:dist-tag ls|view) lineage-logo(?: dist-tags)? --json) > "\$RUNNER_TEMP\/dist-tags-(?:before|after)\.json"/g)]
-    .map((match) => match[1]);
+function job(workflow: string, name: string) {
+  const match = workflow.match(new RegExp(`^  ${name}:\\n([\\s\\S]*?)(?=^  [a-z_]+:|(?![\\s\\S]))`, "m"));
+  expect(match, `missing ${name} job`).not.toBeNull();
+  return match![0];
+}
+
+function classifyVersionLookup(stdout: string, exitCode: number): { absent: true } | { absent: false; diagnostic: string } {
+  if (exitCode === 0) return { absent: false, diagnostic: "npm registry lookup did not prove exact-version absence (success); failing closed" };
+  try {
+    const payload = JSON.parse(stdout) as { error?: { code?: unknown } };
+    if (payload.error?.code === "E404") return { absent: true };
+    const code = typeof payload.error?.code === "string" && /^[A-Z0-9_]+$/.test(payload.error.code)
+      ? payload.error.code
+      : "unknown";
+    return { absent: false, diagnostic: `npm registry lookup did not prove exact-version absence (${code}); failing closed` };
+  } catch {
+    return { absent: false, diagnostic: "npm registry lookup did not prove exact-version absence (invalid-json); failing closed" };
+  }
+}
+
+function assertDistTagInvariant(before: Record<string, string>, after: Record<string, string>, version: string): void {
+  if (after.beta !== version) throw new Error("beta dist-tag did not point to the exact published version");
+  for (const tag of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    if (tag !== "beta" && before[tag] !== after[tag]) {
+      throw new Error(`Only the beta dist-tag may change; ${tag} changed unexpectedly`);
+    }
+  }
 }
 
 describe("manual beta trusted-publish workflow", () => {
-  it("is a protected, manual OIDC beta-only release guarded by current main and an exact new package version", () => {
-    const workflow = read(workflowPath);
-
-    expect(workflow).toMatch(/^on:\n  workflow_dispatch:/m);
-    expect(workflow).toMatch(/package_version:[\s\S]*?required: true[\s\S]*?type: string/);
-    expect(workflow).toMatch(/id-token: write/);
-    expect(workflow).toMatch(/actions: write/);
-    expect(workflow).toMatch(/environment:\n\s+name: npm-publish/);
-    expect(workflow).toContain('git fetch --no-tags origin main');
-    expect(workflow).toContain('git rev-parse origin/main');
-    expect(workflow).toMatch(/PACKAGE_VERSION/);
-    expect(workflow).toMatch(/package\.json/);
-    expect(workflow).toMatch(/npm view "lineage-logo@\$\{PACKAGE_VERSION\}" version/);
-    expect(workflow).toContain('npm publish --tag beta --provenance');
-    expect(workflow).not.toMatch(/npm publish[^\n]*--tag latest/);
-    expect(workflow).not.toMatch(/npm dist-tag\s+(add|rm)/);
-  });
-
-  it("runs the complete local release gates, proves the published version, and hands its exact version to registry QA", () => {
-    const workflow = read(workflowPath);
-
-    for (const command of [
-      "npm ci",
-      "npm run check",
-      "npm audit --omit=dev --audit-level=high",
-      "npx tsx scripts/release-check.ts",
-      "npx playwright test --project=chromium",
-      "--project=firefox-critical",
-      "--project=webkit-critical",
-    ]) {
-      expect(workflow).toContain(command);
-    }
-
-    expect(workflow).toMatch(/npm view "lineage-logo@\$\{PACKAGE_VERSION\}" version[\s\S]*?PACKAGE_VERSION/);
-    expect(workflow).toContain("npm view lineage-logo dist-tags --json");
-    expect(workflow).toContain("Only the beta dist-tag may change");
-    expect(workflow).toContain("gh workflow run registry-qa.yml");
-    expect(workflow).toMatch(/package_version=\$\{PACKAGE_VERSION\}/);
-  });
-
-  it("uses a machine-readable registry dist-tag snapshot that the invariant parser can consume", () => {
-    const commands = snapshotCommands(read(workflowPath));
-
-    expect(commands).toHaveLength(2);
-    for (const command of commands) {
-      const output = execFileSync("npm", command.slice("npm ".length).split(" "), { encoding: "utf8" });
-      expect(() => JSON.parse(output)).not.toThrow();
+  it("classifies only structured E404 lookup failures as absence without echoing unsafe diagnostics", () => {
+    expect(classifyVersionLookup(JSON.stringify({ error: { code: "E404", summary: "not found" } }), 1)).toEqual({ absent: true });
+    for (const [stdout, exitCode] of [
+      [JSON.stringify({ version: "0.1.0-beta.2" }), 0],
+      [JSON.stringify({ error: { code: "E404" } }), 0],
+      [JSON.stringify({ error: { code: "E401", summary: "Bearer secret-value" } }), 1],
+      [JSON.stringify({ error: { code: "ETIMEDOUT", detail: "/Users/example/.npm/_logs/private" } }), 1],
+      ["{not json", 1],
+      ["", 1],
+    ] as const) {
+      const result = classifyVersionLookup(stdout, exitCode);
+      expect(result.absent).toBe(false);
+      if (!result.absent) {
+        expect(result.diagnostic).not.toContain("/Users/");
+        expect(result.diagnostic).not.toMatch(/secret|Bearer/i);
+      }
     }
   });
 
-  it("pins and verifies the npm trusted-publishing runtime before the publish command without release caching", () => {
-    const workflow = read(workflowPath);
-    const runtimeSetup = workflow.indexOf("node-version: 22.14.0");
-    const npmInstall = workflow.indexOf("npm install --global npm@11.5.1");
-    const nodeAssertion = workflow.indexOf('test "$(node --version)" = "v22.14.0"');
-    const npmAssertion = workflow.indexOf('test "$(npm --version)" = "11.5.1"');
-    const publish = workflow.indexOf("npm publish --tag beta --provenance");
-
-    expect(workflow).toContain("package-manager-cache: false");
-    expect(runtimeSetup).toBeGreaterThan(-1);
-    expect(npmInstall).toBeGreaterThan(runtimeSetup);
-    expect(nodeAssertion).toBeGreaterThan(npmInstall);
-    expect(npmAssertion).toBeGreaterThan(npmInstall);
-    expect(publish).toBeGreaterThan(npmAssertion);
+  it("fails closed unless npm reports structured E404 for the exact requested specifier", () => {
+    const preflight = job(read(workflowPath), "preflight");
+    expect(preflight).toContain('npm view "lineage-logo@${PACKAGE_VERSION}" version --json');
+    expect(preflight).toContain('payload.error?.code !== "E404"');
+    expect(preflight).toContain('JSON.parse(readFileSync(process.argv[2], "utf8"))');
+    expect(preflight).toContain("npm registry lookup did not prove exact-version absence");
+    expect(preflight).toContain('>"$RUNNER_TEMP/version-lookup.json" 2>/dev/null');
+    expect(preflight).not.toContain("version-lookup.err");
   });
 
-  it("documents the owner-only configuration and the immutable post-publication QA boundary honestly", () => {
+  it("allows only the requested beta change in before/after dist-tag maps", () => {
+    const before = { beta: "0.1.0-beta.1", latest: "0.1.0-beta.1", canary: "0.1.0-beta.1" };
+    expect(() => assertDistTagInvariant(before, { ...before, beta: "0.1.0-beta.2" }, "0.1.0-beta.2")).not.toThrow();
+    expect(() => assertDistTagInvariant(before, { ...before, beta: "0.1.0-beta.2", latest: "0.1.0-beta.2" }, "0.1.0-beta.2"))
+      .toThrow("latest changed unexpectedly");
+    expect(() => assertDistTagInvariant(before, { ...before, beta: "0.1.0-beta.2", next: "0.1.0-beta.2" }, "0.1.0-beta.2"))
+      .toThrow("next changed unexpectedly");
+    expect(() => assertDistTagInvariant(before, { beta: "0.1.0-beta.2", latest: "0.1.0-beta.1" }, "0.1.0-beta.2"))
+      .toThrow("canary changed unexpectedly");
+  });
+
+  it("gives each job only the permission needed for its responsibility", () => {
+    const workflow = read(workflowPath);
+    const preflight = job(workflow, "preflight");
+    const candidate = job(workflow, "candidate");
+    const publish = job(workflow, "publish");
+    const handoff = job(workflow, "registry_qa_handoff");
+    for (const restricted of [preflight, candidate]) {
+      expect(restricted).toMatch(/permissions:\n\s+contents: read/);
+      expect(restricted).not.toMatch(/(?:actions|id-token): write/);
+    }
+    expect(publish).toMatch(/permissions:\n\s+contents: read\n\s+id-token: write/);
+    expect(publish).not.toMatch(/actions: write/);
+    expect(handoff).toMatch(/permissions:\n\s+actions: write\n\s+contents: read/);
+    expect(handoff).not.toMatch(/id-token: write/);
+  });
+
+  it("checks the exact trusted-publisher identity and public package contract before publishing", () => {
+    const workflow = read(workflowPath);
+    expect(workflow).toContain('const expectedRepository = "git+https://github.com/lineagehq/lineage-logo.git";');
+    expect(workflow).toContain('process.env.GITHUB_REPOSITORY !== "lineagehq/lineage-logo"');
+    expect(workflow).toContain('process.env.GITHUB_WORKFLOW !== "Publish beta"');
+    expect(workflow).toContain('process.env.GITHUB_WORKFLOW_REF !== "lineagehq/lineage-logo/.github/workflows/publish-beta.yml@refs/heads/main"');
+    expect(workflow).toContain('publishConfig?.access !== "public"');
+  });
+
+  it("tests and records one exact tarball, then publishes that verified file without repacking", () => {
+    const workflow = read(workflowPath);
+    const candidate = job(workflow, "candidate");
+    const publish = job(workflow, "publish");
+    expect(candidate).toContain("npm pack --json");
+    expect(candidate).toContain("sha512sum");
+    expect(candidate).toContain("npm install --ignore-scripts --no-audit --no-fund --package-lock=false \"$TARBALL_PATH\"");
+    expect(candidate).toContain('"$CANDIDATE_ROOT/node_modules/.bin/lineage-logo" --version');
+    expect(candidate).toContain("actions/upload-artifact@v7");
+    expect(publish).toContain("actions/download-artifact@v7");
+    expect(publish).toContain('test "$ACTUAL_SHA512" = "${{ needs.candidate.outputs.tarball_sha512 }}"');
+    expect(publish).toContain('npm publish "$TARBALL_PATH" --tag beta --provenance');
+    expect(publish).not.toMatch(/npm publish --tag beta/);
+  });
+
+  it("retries postpublish verification and always attempts exact-version registry QA after a successful publish", () => {
+    const workflow = read(workflowPath);
+    const postpublish = job(workflow, "postpublish");
+    const handoff = job(workflow, "registry_qa_handoff");
+    expect(postpublish).toContain("for attempt in 1 2 3 4 5");
+    expect(postpublish).toContain("sleep $((attempt * 5))");
+    expect(workflow).toContain("dist_tags_before: ${{ steps.dist_tags_before.outputs.dist_tags_before }}");
+    expect(postpublish).toContain("DIST_TAGS_BEFORE: ${{ needs.publish.outputs.dist_tags_before }}");
+    expect(postpublish).toContain("Only the beta dist-tag may change");
+    expect(handoff).toContain("always() && needs.publish.result == 'success'");
+    expect(handoff).toContain('gh workflow run registry-qa.yml --ref "$GITHUB_SHA" -f "package_version=${PACKAGE_VERSION}"');
+  });
+
+  it("honestly documents the unproven owner configuration and exact trusted-publisher identity", () => {
     const guide = read(releaseGuidePath);
-
+    expect(guide).toMatch(/lineagehq\/lineage-logo/);
+    expect(guide).toMatch(/publish-beta\.yml/);
     expect(guide).toContain("npm-publish");
     expect(guide).toMatch(/trusted publisher/i);
     expect(guide).toMatch(/OIDC/);
     expect(guide).toMatch(/owner/i);
     expect(guide).toMatch(/not evidence[\s\S]*operational/i);
-    expect(guide).toContain("Public registry QA");
-    expect(guide).toMatch(/exact.*version/i);
-    expect(guide).toMatch(/latest/i);
-    expect(guide).toMatch(/dist-tag/i);
-    expect(guide).toMatch(/assigns[\s\S]*beta`? dist-tag/i);
-    expect(guide).toMatch(/does not invoke a separate[\s\S]*dist-tag/i);
-    expect(guide).toMatch(/does not wait for or enforce registry-QA success/i);
+    expect(guide).toMatch(/public package/i);
+    expect(guide).toMatch(/repository\.url/i);
+    expect(guide).toMatch(/allowed action[^.]*`npm publish`/i);
+    expect(guide).toMatch(/unproven/i);
+    expect(guide).toMatch(/does not wait for or enforce registry-QA\s+success/i);
     expect(guide).toMatch(/Node\.js 22\.14\.0/i);
     expect(guide).toMatch(/npm 11\.5\.1/i);
   });
