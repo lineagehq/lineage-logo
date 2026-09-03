@@ -130,7 +130,14 @@ async function openSeatify(context: BrowserContext, url: string, workspacePath =
   return page;
 }
 
-async function publicContext(bin: string, workspace: string, env: NodeJS.ProcessEnv) {
+type BridgeDocument = {
+  sessionId: string;
+  baseRevision: number;
+  sourcePath?: string;
+  layers: Array<{ layerId: string; name: string }>;
+};
+
+async function publicContext(bin: string, workspace: string, env: NodeJS.ProcessEnv): Promise<BridgeDocument> {
   const result = await command(bin, ["context", "--workspace", workspace, "--json"], env);
   if (result.code !== 0) throw new Error("Installed public context is unavailable.");
   const body = JSON.parse(result.stdout) as { context: { sessionId: string; baseRevision: number; layers: Array<{ layerId: string; name: string }> } };
@@ -138,7 +145,7 @@ async function publicContext(bin: string, workspace: string, env: NodeJS.Process
   return body.context;
 }
 
-async function installedManifest(entry: AgentInstanceRegistryEntry) {
+async function installedManifest(entry: AgentInstanceRegistryEntry): Promise<BridgeDocument> {
   const response = await fetch(`${entry.apiOrigin}/api/agent/document`, {
     headers: {
       Authorization: `Bearer ${entry.token}`,
@@ -147,8 +154,13 @@ async function installedManifest(entry: AgentInstanceRegistryEntry) {
     },
   });
   if (!response.ok) throw new Error("Installed legacy manifest is unavailable.");
-  const body = await response.json() as { sessionId: string; revision: number; layers: Array<{ sessionKey: string; name: string }> };
-  return { sessionId: body.sessionId, baseRevision: body.revision, layers: body.layers.map((layer) => ({ layerId: layer.sessionKey, name: layer.name })) };
+  const body = await response.json() as { sessionId: string; sourcePath: string; revision: number; layers: Array<{ sessionKey: string; name: string }> };
+  return {
+    sessionId: body.sessionId,
+    sourcePath: body.sourcePath,
+    baseRevision: body.revision,
+    layers: body.layers.map((layer) => ({ layerId: layer.sessionKey, name: layer.name })),
+  };
 }
 
 test("installed CLI bridge selects one of two live Seatify editors and cleans up safely", async ({ browser }) => {
@@ -189,7 +201,9 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     expect(installedPackage.version).toEqual(expect.any(String));
     const installedPackageVersion = installedPackage.version as string;
     if (registryPackageVersion) expect(installedPackageVersion).toBe(registryPackageVersion);
-    const capabilities = installedVersionCapabilities(installedPackageVersion);
+    const capabilities = registryPackageVersion
+      ? installedVersionCapabilities(installedPackageVersion)
+      : { publicOnboarding: true, publicRouting: true };
     const installedFixture = await readFile(path.join(consumer, "node_modules", "lineage-logo", "examples", "seatify-constellation.svg"), "utf8");
     const env = { ...process.env, LINEAGE_LOGO_REGISTRY_DIR: registry };
 
@@ -238,7 +252,9 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     const proposal = path.join(root, "selection.json");
     await writeFile(proposal, JSON.stringify({
       protocolVersion: 1, transactionId: "installed-seatify-selection", producer: { kind: "test", name: "installed bridge" },
-      document: { sessionId: documentA.sessionId, baseRevision: documentA.baseRevision },
+      document: capabilities.publicRouting
+        ? { sessionId: documentA.sessionId, baseRevision: documentA.baseRevision }
+        : { sessionId: documentA.sessionId, sourcePath: documentA.sourcePath!, baseRevision: documentA.baseRevision },
       operations: [{ type: "selectFocus", operationId: "focus", targets: [{ sessionKey: target!.layerId }] }],
     }));
     const artifact = path.join(workspaceA, "concepts/seatify-constellation.svg");
@@ -273,13 +289,17 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     const acceptedProposal = path.join(root, "accepted.json");
     await writeFile(acceptedProposal, JSON.stringify({
       protocolVersion: 1, transactionId: "installed-seatify-accepted", producer: { kind: "test", name: "installed bridge" },
-      document: { sessionId: mutatingManifestA.sessionId, baseRevision: mutatingManifestA.baseRevision },
+      document: capabilities.publicRouting
+        ? { sessionId: mutatingManifestA.sessionId, baseRevision: mutatingManifestA.baseRevision }
+        : { sessionId: mutatingManifestA.sessionId, sourcePath: mutatingManifestA.sourcePath!, baseRevision: mutatingManifestA.baseRevision },
       operations: [{ type: "renameLayer", operationId: "rename-accepted", target: { sessionKey: titleA!.layerId }, name: "Installed accepted title" }],
     }));
     const accepted = startCommand(bin, ["submit", "--artifact", artifact, "--proposal", acceptedProposal, "--workspace", workspaceA, "--json", "--quiet"], env);
     auxiliary.push(accepted);
-    await expect(pageA.locator("#agent-review-status")).toHaveText(/^(?:pending|Pending)$/);
-    if (capabilities.publicRouting) await expect(pageA.locator("#agent-review-summary")).toContainText("1 operation: 1 document change");
+    const acceptedReviewSummary = pageA.locator("#agent-review-summary");
+    await expect(acceptedReviewSummary).toBeVisible();
+    await expect(acceptedReviewSummary).toContainText("1 operation: 1 document change");
+    await expect(pageA.locator("#agent-accept")).toBeVisible();
     await pageA.locator("#agent-accept").click();
     await expect(pageA.locator("#agent-review-status")).toHaveText("Saved");
     const acceptedResult = await finishCommand(accepted);
@@ -318,12 +338,17 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     const revertedProposal = path.join(root, "reverted.json");
     await writeFile(revertedProposal, JSON.stringify({
       protocolVersion: 1, transactionId: "installed-seatify-reverted", producer: { kind: "test", name: "installed bridge" },
-      document: { sessionId: mutatingManifestB.sessionId, baseRevision: mutatingManifestB.baseRevision },
+      document: capabilities.publicRouting
+        ? { sessionId: mutatingManifestB.sessionId, baseRevision: mutatingManifestB.baseRevision }
+        : { sessionId: mutatingManifestB.sessionId, sourcePath: mutatingManifestB.sourcePath!, baseRevision: mutatingManifestB.baseRevision },
       operations: [{ type: "renameLayer", operationId: "rename-reverted", target: { sessionKey: titleB!.layerId }, name: "Must not persist" }],
     }));
     const reverted = startCommand(bin, ["submit", "--artifact", artifactB, "--proposal", revertedProposal, "--instance", entryB.instanceId, "--json", "--quiet"], env);
     auxiliary.push(reverted);
-    await expect(pageB.locator("#agent-review-status")).toHaveText(/^(?:pending|Pending)$/);
+    const revertedReviewSummary = pageB.locator("#agent-review-summary");
+    await expect(revertedReviewSummary).toBeVisible();
+    await expect(revertedReviewSummary).toContainText("1 operation: 1 document change");
+    await expect(pageB.locator("#agent-revert")).toBeVisible();
     await pageB.locator("#agent-revert").click();
     await expect(pageB.locator("#agent-review-status")).toHaveText("reverted");
     const revertedResult = await finishCommand(reverted);
