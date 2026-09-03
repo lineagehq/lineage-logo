@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lineage-logo.localhost/schemas/public-beta/walkthrough-receipt-v1.json",
+  "title": "Lineage Logo public beta walkthrough receipt",
+  "description": "Versioned, privacy-minimal local receipt for one unaided public-beta walkthrough. It intentionally contains no participant identity, free text, artifact content, paths, browser/session data, or secrets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["receipt_version", "kind", "walkthrough_id", "product_version", "environment", "attempt_status", "milestones", "recovery", "issue_code"],
+  "properties": {
+    "receipt_version": { "const": 1 },
+    "kind": { "const": "lineage-logo.public-beta.walkthrough" },
+    "walkthrough_id": { "type": "string", "pattern": "^W-[A-Z0-9]{6,32}$" },
+    "product_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+-beta\\.[0-9]+$" },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "node_major", "browser"],
+      "properties": {
+        "platform": { "enum": ["macos", "linux"] },
+        "node_major": { "type": "integer", "minimum": 22 },
+        "browser": { "const": "chromium" }
+      }
+    },
+    "attempt_status": { "enum": ["valid", "invalid", "incomplete"] },
+    "milestones": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fresh_install", "non_destructive_bootstrap", "proposal_comprehension", "review", "accept", "save", "clean_reopen"],
+      "properties": {
+        "fresh_install": { "$ref": "#/$defs/milestoneStatus" },
+        "non_destructive_bootstrap": { "$ref": "#/$defs/milestoneStatus" },
+        "proposal_comprehension": { "$ref": "#/$defs/milestoneStatus" },
+        "review": { "$ref": "#/$defs/milestoneStatus" },
+        "accept": { "$ref": "#/$defs/milestoneStatus" },
+        "save": { "$ref": "#/$defs/milestoneStatus" },
+        "clean_reopen": { "$ref": "#/$defs/milestoneStatus" }
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "result"],
+      "properties": {
+        "action": { "enum": ["none", "retry_same_step_once", "restart_from_fresh_install", "stop" ] },
+        "result": { "enum": ["not_needed", "passed", "failed", "not_attempted" ] }
+      }
+    },
+    "issue_code": {
+      "enum": ["none", "install_failure", "bootstrap_safety", "proposal_or_review", "accept_or_save", "reopen_or_persistence", "unsupported_environment", "safety_or_data_loss"]
+    }
+  },
+  "$defs": {
+    "milestoneStatus": { "enum": ["pass", "fail", "blocked", "not_attempted"] }
+  }
+}
