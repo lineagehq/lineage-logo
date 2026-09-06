@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "sha256",
+  "provenance": "Repository Seatify copies and synthetic public SVGs; no private artwork",
+  "fixtures": [
+    {
+      "path": "tests/fixtures/ux-audit/seatify-44.svg",
+      "sha256": "0ce112d615c992b7e079527da731d98e55a3f176983172ebe25d9caaa21757f3",
+      "bytes": 6768,
+      "cases": [
+        "examples/seatify-constellation.svg"
+      ]
+    },
+    {
+      "path": "tests/fixtures/ux-audit/seatify-transformed.svg",
+      "sha256": "c374e51fee2094d46a3cb44bc308062a1dde4d94cc31ee46d6e892188e80f0f8",
+      "bytes": 6796,
+      "cases": [
+        "tests/fixtures/workspace/concepts/complex-seatify.svg"
+      ]
+    },
+    {
+      "path": "tests/fixtures/ux-audit/wide.svg",
+      "sha256": "d3fc4d7a2966bbe4aeb99b96a34807276fabd3e2e4065dc676e2d4a8595b1167",
+      "bytes": 170,
+      "cases": [
+        "wide bounds"
+      ]
+    },
+    {
+      "path": "tests/fixtures/ux-audit/tall.svg",
+      "sha256": "b56f16b3b8fbc872738b6c4dc4869d5b7cd08e60ea8e0a753dc49aa7617eabc2",
+      "bytes": 170,
+      "cases": [
+        "tall bounds"
+      ]
+    },
+    {
+      "path": "tests/fixtures/ux-audit/transparent-white.svg",
+      "sha256": "f3f03525de492745b1b5150e3c4cad29f59a23889d5519a0b22123ae3adfb52e",
+      "bytes": 172,
+      "cases": [
+        "transparent",
+        "white"
+      ]
+    },
+    {
+      "path": "tests/fixtures/ux-audit/transparent-dark.svg",
+      "sha256": "07e129e2890b003cac267dcbf6a98fdf5faa6453eb700687b5ef00570776dfb0",
+      "bytes": 171,
+      "cases": [
+        "transparent",
+        "dark"
+      ]
+    },
+    {
+      "path": "tests/fixtures/ux-audit/authored-background.svg",
+      "sha256": "f770947fff3783a0196abd290bc1d7e17001ff6b593a0682809a8c1693b52a2c",
+      "bytes": 234,
+      "cases": [
+        "authored background"
+      ]
+    },
+    {
+      "path": "tests/fixtures/ux-audit/inherited-paint.svg",
+      "sha256": "5a4423bda30a3339052344db2f67eed100fc9fb8cf540c5e60ca2b87b19a6fd6",
+      "bytes": 298,
+      "cases": [
+        "inherited paint",
+        "parent-child normalization"
+      ]
+    },
+    {
+      "path": "tests/fixtures/ux-audit/resources.svg",
+      "sha256": "62266ba059c485e083ca1835a4620f780836d105ed9048f08cee118e773b8928",
+      "bytes": 458,
+      "cases": [
+        "gradient",
+        "mask",
+        "use"
+      ]
+    },
+    {
+      "path": "tests/fixtures/ux-audit/text-heavy.svg",
+      "sha256": "63e74742b99878893f09e81325f17d7f7e78265ceb2a02bc9309208395c3a67b",
+      "bytes": 2106,
+      "cases": [
+        "text-heavy"
+      ]
+    },
+    {
+      "path": "tests/fixtures/ux-audit/unnamed.svg",
+      "sha256": "10c0f442ae4ad04264a320bd5fc57b1da03d707cb29ed80f804f9114c312c715",
+      "bytes": 188,
+      "cases": [
+        "unnamed layers"
+      ]
+    },
+    {
+      "path": "tests/fixtures/ux-audit/empty.svg",
+      "sha256": "397d577a3934e151d96bcec34fbf571221b0079b0a87e9a182c60f90b31ab9ca",
+      "bytes": 101,
+      "cases": [
+        "empty SVG"
+      ]
+    },
+    {
+      "path": "tests/fixtures/ux-audit/unsafe.svg",
+      "sha256": "cc30ab4ce0df70107fc5755a4c2eb7a8bceb2f673c63fd640d5a5a10b9c2f3e9",
+      "bytes": 191,
+      "cases": [
+        "unsafe script and event handler; must reject or sanitize without execution"
+      ]
+    },
+    {
+      "path": "tests/fixtures/ux-audit/malformed.svg",
+      "sha256": "344a694d43ea30c8f55d533eab6bfb72253fba7f64d1cdc2924e0b6b8a85be11",
+      "bytes": 50,
+      "cases": [
+        "malformed XML; must reject"
+      ]
+    },
+    {
+      "path": "tests/fixtures/ux-audit/layers-100.svg",
+      "sha256": "166664c15cb082703eee71fc8dbdad28eb74031ed868b2e177c5aaf2ca117d93",
+      "bytes": 10048,
+      "cases": [
+        "100 independently named rect layers",
+        "deterministic performance grid"
+      ]
+    },
+    {
+      "path": "tests/fixtures/ux-audit/layers-500.svg",
+      "sha256": "2ebfd78b992ed4746f7bd8a7cef49c949c0026687bc2c0525afe9e5c1850b0d6",
+      "bytes": 50288,
+      "cases": [
+        "500 independently named rect layers",
+        "deterministic performance grid"
+      ]
+    },
+    {
+      "path": "tests/fixtures/ux-audit/layers-1000.svg",
+      "sha256": "eb163761b676a1dd7e1a02104c799f51f9db2fb03da558b33c9d81987d72945b",
+      "bytes": 100717,
+      "cases": [
+        "1000 independently named rect layers",
+        "deterministic performance grid"
+      ]
+    }
+  ]
+}

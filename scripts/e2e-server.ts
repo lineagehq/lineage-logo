@@ -4,6 +4,8 @@ import { access, copyFile, lstat, mkdir, mkdtemp, readFile, realpath, rm } from 
 import { tmpdir } from "node:os";
 import path from "node:path";
 import process from "node:process";
+import { createServer } from "node:net";
+import { validatedPublicFixtures } from "./qa-fixtures";
 
 const API_PORT = 43117;
 const CLIENT_PORT = 43118;
@@ -77,7 +79,17 @@ async function shutdown(exitCode: number, signal: NodeJS.Signals = "SIGTERM"): P
   process.exitCode = exitCode;
 }
 
+async function assertPortAvailable(port: number): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const probe = createServer();
+    probe.once("error", () => reject(new Error("E2E port unavailable.")));
+    probe.listen(port, "127.0.0.1", () => probe.close(error => error ? reject(error) : resolve()));
+  });
+}
+
 async function main(): Promise<void> {
+  await Promise.all([assertPortAvailable(API_PORT), assertPortAvailable(CLIENT_PORT)]);
+  const publicFixtures = await validatedPublicFixtures(repositoryRoot);
   await Promise.all(fixtures.map((fixture) => access(fixture, constants.R_OK)));
   const temporaryRoot = await realpath(tmpdir());
   workspace = await mkdtemp(path.join(temporaryRoot, WORKSPACE_PREFIX));
@@ -88,6 +100,11 @@ async function main(): Promise<void> {
     await copyFile(fixture, copiedFixture, constants.COPYFILE_EXCL);
     const [sourceBytes, copiedBytes] = await Promise.all([readFile(fixture), readFile(copiedFixture)]);
     if (!sourceBytes.equals(copiedBytes)) throw new Error(`The e2e fixture copy is not byte-for-byte exact: ${path.basename(fixture)}`);
+  }
+  for (const fixture of publicFixtures) {
+    const destination = path.join(concepts, fixture.destination);
+    await copyFile(fixture.source, destination, constants.COPYFILE_EXCL);
+    if (!(await readFile(fixture.source)).equals(await readFile(destination))) throw new Error("Public fixture copy mismatch.");
   }
   console.log("Canonical Seatify constellation fixture: examples/seatify-constellation.svg");
 
