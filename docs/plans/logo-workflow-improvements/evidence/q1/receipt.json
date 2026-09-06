@@ -1,0 +1,37 @@
+{
+  "node": "Q1",
+  "status": "implemented-awaiting-review-ci",
+  "baseline": "fbfa870c0f7fb174c58fbb34e3fa0531e8971770",
+  "checks": {
+    "privacyIntegrityCleanupTests": 7,
+    "normalSurfaceRun": "passed",
+    "deliberateFailureRuns": [
+      "default: exit 1, canaries absent, sanitized receipt retained",
+      "public-fixtures: exit 1, canaries absent, usable digest-verified PNG retained"
+    ],
+    "ports": "Occupied port fails closed; both rebind after runs",
+    "fixtureHashes": "17 unchanged",
+    "finalLocalCheck": "607 tests, typecheck and build passed after merging C1"
+  },
+  "visualReview": "Public screenshot visually inspected; records original square framing defect, addressed separately by A2",
+  "limitations": [
+    "Rich capture is opt-in, limited to the exact synthetic/public corpus.",
+    "No concurrent fixed-port browser isolation introduced; runs remain serialized.",
+    "Full check, independent review and CI recorded separately before qualification."
+  ],
+  "review": {
+    "roles": [
+      "correctness",
+      "tests",
+      "silent-failures",
+      "contracts-types",
+      "comments-docs"
+    ],
+    "findingsFixed": [
+      "Cancellation of performance runner now cleans owned services/workspace; real SIGINT/SIGTERM and occupied-port tests passed",
+      "Overall global timeout status preserves Playwright timedout separately from individual timedOut; reporter regression passed"
+    ],
+    "independentValidation": "Both fixes independently revalidated",
+    "nativeReview": "Attempted installed native CLI; model/version compatibility prevented startup. Independent focused review completed under skill fallback."
+  }
+}
