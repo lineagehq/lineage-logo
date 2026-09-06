@@ -1,19 +1,20 @@
 {
   "node": "C2",
-  "status": "local-acceptance-passed-review-pending",
-  "base": "a596c6a30a48292e935f4b5cf1bb04e9159a9dcb",
-  "testedHead": "93dbe9f",
+  "status": "local-acceptance-and-focused-review-passed",
+  "base": "780bc9ba4fa51d2200738bf3d25e125eb3df04dd",
+  "testedHead": "87c2835819f34831ad1b5cfc3ad6272921d45c58",
   "local": {
     "mac": {
-      "unitIntegration": 640,
+      "unitIntegration": 668,
       "typecheck": "passed",
       "productionBuild": "passed",
-      "installedChromiumJourney": "passed"
+      "installedChromiumJourney": "passed",
+      "browserScenarios": 81
     },
     "linux": {
       "environment": "mcr.microsoft.com/playwright:v1.62.1-noble, pwuser, exact git archive",
-      "unitIntegration": 640,
-      "browserScenarios": 72,
+      "unitIntegration": 668,
+      "browserScenarios": 81,
       "typecheck": "passed",
       "productionBuild": "passed"
     }
@@ -37,7 +38,7 @@
     "Active/external SVG and CSS escapes or at-rules are explicitly refused."
   ],
   "review": {
-    "status": "fixes-under-verification",
+    "status": "passed",
     "roles": [
       "correctness",
       "tests",
@@ -49,8 +50,14 @@
       "activeGesture": "Fresh local Chromium reproduction exported different SVGs at the same session/revision while a resize remained provisional. The renderer now refuses snapshot_busy until gesture completion or cancellation.",
       "producerBindingClaim": "Fresh archived-source producer harness confirmed only digest and optional instance/workspace are independently checked by the producer; corrected the evidence assertion. Server enforces editor/session/revision."
     },
-    "remaining": "Post-fix review and complete validation on current main integration."
+    "remaining": null,
+    "postFix": "accurate_preview reviewed exact87c2835 against780bc9b; no remaining correctness candidates. Distinct tests, silent-failures, contracts-types and comments-docs roles completed. All candidates freshly validated; active-gesture defect fixed, evidence assertion corrected.",
+    "native": "Installed CLI cannot use configured model; focused-review fallback used with independently available base and diff."
   },
-  "pr": null,
-  "ci": null
+  "pr": "https://github.com/lineagehq/lineage-logo/pull/30",
+  "ci": {
+    "integratedRun": 34067367476,
+    "codeqlRun": 34067365229,
+    "status": "Check final head before merging; no CI success inferred from local tests."
+  }
 }
