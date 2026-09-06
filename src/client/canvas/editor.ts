@@ -1373,6 +1373,17 @@ export class SvgEditor {
     if (savedBaseline !== undefined) this.#callbacks.onDirtyChange(!cleanSvgsEqualForDirtyComparison(this.serializeClean(), this.#baseline));
   }
 
+  captureSavePoint(): { svg: string; snapshot: string } {
+    return { svg: this.serializeClean(), snapshot: this.#snapshot() };
+  }
+
+  markSaved(point: { svg: string; snapshot: string }): void {
+    this.#baseline = point.svg;
+    this.#initialSnapshot = point.snapshot;
+    this.#callbacks.onDirtyChange(!cleanSvgsEqualForDirtyComparison(this.serializeClean(), this.#baseline));
+    this.#notifyHistory();
+  }
+
   selectNode(node: SVGGraphicsElement, extend = false): void {
     const root = this.svgNode;
     if (!root || !node.isConnected || !isSelectableNode(node, root)) return;
@@ -1747,6 +1758,8 @@ export class SvgEditor {
     if (!this.#drawing || this.#agentMutationBlocked) return;
     this.#lockedKeys.clear();
     if (cleanSvgsEqualForDirtyComparison(this.serializeClean(), this.#baseline)) {
+      this.#history.reset();
+      this.#notifyHistory();
       this.#scope = this.svgNode;
       this.#setSelection([]);
       this.#callbacks.onStatus("Cleared the editing context");
@@ -1756,7 +1769,9 @@ export class SvgEditor {
     this.#restore(this.#initialSnapshot);
     this.#baseline = this.serializeClean();
     this.#callbacks.onDirtyChange(false);
-    this.#callbacks.onStatus("Reset to the originally loaded SVG");
+    this.#scope = this.svgNode;
+    this.#setSelection([]);
+    this.#callbacks.onStatus("Reset to the latest saved SVG; editing history cleared");
   }
 
   serializeClean(): string {

@@ -1,4 +1,5 @@
 import "./styles.css";
+import { SaveAuthority } from "./save-authority";
 import {
   getSelectableParent,
   getSelectionAncestry,
@@ -128,7 +129,7 @@ app.innerHTML = `
         <div class="toolbar-group">
           <button type="button" id="undo" disabled>Undo</button>
           <button type="button" id="redo" disabled>Redo</button>
-          <button type="button" id="reset-edits" disabled>Reset edits</button>
+          <button type="button" id="reset-edits" title="Restore the latest saved SVG and clear selection, locks and undo history" disabled>Reset edits</button>
           <span class="toolbar-divider"></span>
           <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
           <span id="zoom-label">100%</span>
@@ -453,7 +454,7 @@ let currentWorkspaceName: string | undefined;
 let workspaceSessionInitialized = false;
 let restoringWorkspaceSession = false;
 let dirty = false;
-let agentSavedBaseline: string | undefined;
+const saveAuthority = new SaveAuthority();
 let currentSourceBaseline = "";
 let offeredAgentDraft: string | undefined;
 let nextIterationPath = "iterations/iteration-1.svg";
@@ -574,10 +575,9 @@ const editor = new SvgEditor(
       }
     },
     onDirtyChange: (nextDirty) => {
-      if (agentSavedBaseline !== undefined) nextDirty = editor.serializeClean() !== agentSavedBaseline;
       const changed = dirty !== nextDirty;
       dirty = nextDirty;
-      saveButton.disabled = Boolean(agentSession?.pending) || !dirty;
+      saveButton.disabled = saveAuthority.saving || Boolean(agentSession?.pending) || !dirty;
       resetEditsButton.disabled = Boolean(agentSession?.pending) || (!dirty && editor.selectionContext.lockedKeys.size === 0);
       if (nextDirty) {
         setStatus("Unsaved manual corrections");
@@ -686,6 +686,7 @@ const agentTransport = new AgentCanvasTransport({
         return rejected;
       }
       if (!pendingBeforeStage && agentSession.pending?.transaction.transactionId === transaction.transactionId) {
+        saveAuthority.invalidate();
         fileOpenCoordinator.invalidate();
         fileSwitchCoordinator.invalidate();
         if (unsavedDialog.preempt()) agentReviewReturnFocus = saveButton;
@@ -741,9 +742,15 @@ const agentTransport = new AgentCanvasTransport({
       renderAgentReview();
       setLifecycleState(dirty ? "dirty" : undefined, dirty ? "Unsaved changes" : "", dirty ? `Save ${nextIterationPath} to preserve these corrections, or reset edits.` : "");
     } else if (state === "connected") {
-      setLifecycleState(dirty ? "dirty" : undefined, dirty ? "Unsaved changes" : "", dirty ? `Save ${nextIterationPath} to preserve these corrections, or reset edits.` : "");
+      if (dirty) {
+        setLifecycleState("dirty", "Unsaved changes", `Save ${nextIterationPath} to preserve these corrections, or reset edits.`);
+      } else if (currentFile?.collection === "iterations") {
+        setLifecycleState("saved", "Saved", `Created ${currentFile.path}. The source SVG remains unchanged.`);
+      } else setLifecycleState();
     }
-    setStatus(message);
+    if (state === "connected" && !agentSession?.pending && currentFile?.collection === "iterations") {
+      setStatus(dirty ? "Unsaved manual corrections" : `Saved ${currentFile.path}`);
+    } else setStatus(message);
   },
 });
 
@@ -860,7 +867,7 @@ function renderAgentReview(): void {
     button.disabled = pending;
     button.title = pending ? "Accept or revert the pending agent proposal before switching files." : "";
   }
-  saveButton.disabled = pending || !dirty;
+  saveButton.disabled = saveAuthority.saving || pending || !dirty;
   resetEditsButton.disabled = pending || (!dirty && editor.selectionContext.lockedKeys.size === 0);
 }
 
@@ -912,7 +919,7 @@ function finishAgentReview(status: "accepted" | "reverted", artifact?: AgentAcce
   if (status === "accepted" && artifact?.durablePath && artifact.digest && agentSession) {
     agentReview.summary = `Applied and saved ${artifact.durablePath} as one undoable continuation.`;
     currentFile = { collection: "iterations", name: artifact.durablePath.split("/").at(-1)!, path: artifact.durablePath };
-    agentSavedBaseline = artifact.svg;
+    editor.markSaved({ ...editor.captureSavePoint(), svg: artifact.svg });
     currentSourceBaseline = artifact.svg;
     dirty = false;
     if (!agentSession.continueFromSavedArtifact(artifact.durablePath)) throw new Error("Saved continuation could not become the active baseline.");
@@ -921,6 +928,7 @@ function finishAgentReview(status: "accepted" | "reverted", artifact?: AgentAcce
   }
   renderAgentReview();
   if (status === "accepted" && artifact?.durablePath) {
+    setStatus(`Saved ${artifact.durablePath}`);
     setLifecycleState("saved", "Saved", `Applied all changes to ${artifact.durablePath}. The source SVG remains unchanged.`);
   } else if (dirty) {
     setLifecycleState("dirty", "Unsaved changes", `Save ${nextIterationPath} to preserve these corrections, or reset edits.`);
@@ -1334,6 +1342,7 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement, restoratio
     },
     onEligibleError: (error) => setStatus(error instanceof Error ? error.message : "Unable to open SVG."),
     commit: (svg) => {
+      saveAuthority.invalidate();
       workspaceRefreshGeneration += 1;
       const storedRecovery = readPendingReviewRecovery();
       if (recovery && JSON.stringify(storedRecovery) !== JSON.stringify(recovery)) {
@@ -1367,7 +1376,6 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement, restoratio
       layerSearch.value = "";
       layerSearch.disabled = false;
       clearLayerSearchButton.disabled = true;
-      agentSavedBaseline = undefined;
       dirty = false;
       saveButton.disabled = true;
       artboard.replaceChildren(document.importNode(svg, true));
@@ -2078,37 +2086,64 @@ for (const button of document.querySelectorAll<HTMLButtonElement>(".background-b
   });
 }
 
-async function saveIteration(openSaved = true): Promise<boolean> {
+async function saveIteration(advanceSaved = true): Promise<boolean> {
   if (!currentFile || !dirty || agentSession?.pending) {
     if (agentSession?.pending) setStatus("Accept or revert the pending agent proposal before saving.");
     return false;
   }
+  const request = saveAuthority.begin();
+  if (request === undefined) return false;
+  const source = currentFile;
+  const sessionId = agentSession?.context.sessionId;
+  const point = editor.captureSavePoint();
+  const eligible = () => saveAuthority.owns(request) && currentFile === source
+    && agentSession?.context.sessionId === sessionId && !agentSession?.pending;
+  saveButton.disabled = true;
   setStatus(`Saving ${nextIterationPath}…`);
   try {
     const response = await fetch("/api/iterations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sourcePath: currentFile.path,
-        svg: editor.serializeClean(),
-      }),
+      body: JSON.stringify({ sourcePath: source.path, svg: point.svg }),
     });
-    const result = await response.json() as {
-      error?: string;
-      file?: SvgFileEntry;
-      nextIterationPath?: string;
-    };
-    if (!response.ok || !result.file) {
-      throw new Error(result.error ?? "Unable to save the iteration.");
+    const result = await response.json() as { error?: string; file?: SvgFileEntry; nextIterationPath?: string };
+    if (!eligible()) return false;
+    if (!response.ok || !result.file) throw new Error(result.error ?? "Unable to save the iteration.");
+    // A successful save is a new baseline, never a reload of the live editor.
+    if (advanceSaved) {
+      currentFile = result.file;
+      currentSourceBaseline = point.svg;
+      if (agentSession && !agentSession.continueFromSavedArtifact(result.file.path)) {
+        throw new Error("The saved continuation could not become active.");
+      }
+      editor.markSaved(point);
+      updateIterationSuggestion(result.file.path, [...fileButtons.keys(), result.file.path]);
+      publishAgentDocument();
+      persistWorkspaceSession();
+      const savedSource = currentFile;
+      const generation = ++workspaceRefreshGeneration;
+      void fetchWorkspace().then((workspace) => {
+        if (generation === workspaceRefreshGeneration && currentFile === savedSource && !agentSession?.pending) {
+          commitWorkspaceSnapshot(workspace, savedSource.path);
+        }
+      }).catch(() => { /* The durable save remains valid; a later refresh reconciles the list. */ });
     }
-    if (openSaved) await loadWorkspace(result.file.path);
-    setStatus(`Saved ${result.file.path}`);
-    setLifecycleState("saved", "Saved", `Created ${result.file.path}. The source SVG remains unchanged.`);
+    if (dirty && advanceSaved) {
+      setStatus(`Saved ${result.file.path}; newer corrections remain unsaved`);
+      setLifecycleState("dirty", "Unsaved changes", `Saved ${result.file.path}. Save again to preserve your newer corrections.`);
+    } else {
+      setStatus(`Saved ${result.file.path}`);
+      setLifecycleState("saved", "Saved", `Created ${result.file.path}. The source SVG remains unchanged.`);
+    }
     return true;
   } catch (error) {
+    if (!eligible()) return false;
     setStatus(error instanceof Error ? error.message : "Unable to save the iteration.");
     setLifecycleState("conflict", "Conflict", "The continuation was not saved. Keep your edits, resolve the reported issue, then try Save again.");
     return false;
+  } finally {
+    saveAuthority.finish(request);
+    saveButton.disabled = Boolean(agentSession?.pending) || !dirty;
   }
 }
 
