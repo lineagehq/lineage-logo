@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 2,
+  "status": "failed",
+  "durationMs": 8684,
+  "counts": {
+    "passed": 0,
+    "failed": 1,
+    "timedOut": 0,
+    "skipped": 0,
+    "interrupted": 0
+  },
+  "tests": [
+    {
+      "id": "1cbcfdac5b3c6385",
+      "project": "chromium",
+      "status": "failed",
+      "durationMs": 5775
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "occupiedPortExitCode": 1,
+  "occupiedPortFailureSanitized": true,
+  "bothPortsRebindAfterRuns": true
+}

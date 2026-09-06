@@ -1,0 +1,1 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" aria-label="UX audit unsafe.svg"><script>alert("public-fixture")</script><rect width="50" height="50" onclick="alert(1)"/></svg>

@@ -1,0 +1,44 @@
+{
+  "nodeId": "B0",
+  "baseCommit": "fbfa870c0f7fb174c58fbb34e3fa0531e8971770",
+  "testedCommit": "fbfa870c0f7fb174c58fbb34e3fa0531e8971770",
+  "completedAt": "2026-09-06T17:20:12.136960+00:00",
+  "contracts": "../contracts.md",
+  "fixtures": "baseline-fixtures.json",
+  "performance": "performance-baseline.json",
+  "localCheck": {
+    "result": "passed",
+    "tests": 548,
+    "files": 29,
+    "node": "22.22.3",
+    "log": "/tmp/lineage-logo-execution-baseline.log"
+  },
+  "browserBaseline": {
+    "result": "passed",
+    "chromiumScenarios": 48,
+    "criticalEngines": [
+      "firefox",
+      "webkit"
+    ],
+    "provenance": "Prior audit in this same session at exact unchanged commit; no new application changes before measurements"
+  },
+  "ci": {
+    "url": "https://github.com/lineagehq/lineage-logo/actions/runs/34046429173",
+    "headSha": "fbfa870c0f7fb174c58fbb34e3fa0531e8971770",
+    "allSixJobsPassed": true
+  },
+  "protection": {
+    "strictRequiredChecks": [
+      "verify",
+      "browser-qa"
+    ],
+    "enforceAdmins": true,
+    "requiredConversationResolution": true,
+    "allowForcePushes": false,
+    "additionalRulesets": []
+  },
+  "limitations": [
+    "Performance measures development DOM updates and rendering opportunities, not guaranteed pixel decode.",
+    "No user study performed."
+  ]
+}

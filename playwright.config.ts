@@ -1,5 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const diagnostics = process.env.LINEAGE_LOGO_QA_DIAGNOSTICS;
+if (diagnostics && diagnostics !== "public-fixtures") throw new Error("Unknown QA diagnostics mode; capture refused.");
+// Rich screenshots are captured only by the workspace-validating public fixture helper.
+// Keep global capture disabled even in rich mode to prevent failed private tests leaking.
 const origin = "http://marquee-qa.localhost:43118";
 
 export default defineConfig({

@@ -1,0 +1,1 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" aria-label="UX audit inherited-paint.svg"><g id="parent" fill="#4263eb" stroke="#111" stroke-width="2"><rect id="inherited" x="10" y="10" width="60" height="60"/><circle id="override" cx="120" cy="100" r="40" fill="#ee7700"/></g></svg>

@@ -1,0 +1,306 @@
+{
+  "schemaVersion": 1,
+  "planVersion": 1,
+  "plan": "plan.md",
+  "auditedCommit": "fbfa870c0f7fb174c58fbb34e3fa0531e8971770",
+  "executionStatus": "active",
+  "approval": {
+    "status": "adopted",
+    "actualUserMessage": "Approve plan v1 and execute, including merging qualifying PRs.",
+    "approvedAt": "2026-09-06T17:11:15.307494+00:00",
+    "mergeAuthorized": true,
+    "statementLocation": "plan.md#standing-execution-approval"
+  },
+  "nodes": [
+    {
+      "id": "B0",
+      "title": "Baseline, fixtures and contracts",
+      "dependsOn": [],
+      "lane": "foundation",
+      "status": "verified",
+      "acceptanceContract": "plan.md#b0--capture-the-baseline-and-freeze-contracts",
+      "receipt": "evidence/baseline.json"
+    },
+    {
+      "id": "Q1",
+      "title": "Test harness and safe diagnostics",
+      "dependsOn": [
+        "B0"
+      ],
+      "lane": "quality",
+      "status": "active",
+      "acceptanceContract": "plan.md#q1--build-useful-safe-qa-evidence",
+      "receipt": null
+    },
+    {
+      "id": "A1",
+      "title": "Save continuity and one status model",
+      "dependsOn": [
+        "B0"
+      ],
+      "lane": "trust",
+      "status": "active",
+      "acceptanceContract": "plan.md#a1--save-continuity-and-consistent-document-state",
+      "receipt": null
+    },
+    {
+      "id": "A2",
+      "title": "Accurate canvas and backgrounds",
+      "dependsOn": [
+        "B0"
+      ],
+      "lane": "trust",
+      "status": "active",
+      "acceptanceContract": "plan.md#a2--accurate-document-bounds-and-preview-surfaces",
+      "receipt": null
+    },
+    {
+      "id": "C1",
+      "title": "Agent schema and actionable errors",
+      "dependsOn": [
+        "B0"
+      ],
+      "lane": "agent",
+      "status": "active",
+      "acceptanceContract": "plan.md#c1--discoverable-agent-schema-and-recoverable-errors",
+      "receipt": null
+    },
+    {
+      "id": "G1",
+      "title": "Trust tranche passes",
+      "dependsOn": [
+        "Q1",
+        "A1",
+        "A2"
+      ],
+      "lane": "gate",
+      "status": "pending",
+      "acceptanceContract": "plan.md#tranche-acceptance-gates",
+      "receipt": null
+    },
+    {
+      "id": "B1",
+      "title": "Atomic bulk actions",
+      "dependsOn": [
+        "G1"
+      ],
+      "lane": "manual",
+      "status": "pending",
+      "acceptanceContract": "plan.md#b1--complete-atomic-bulk-editing",
+      "receipt": null
+    },
+    {
+      "id": "B2",
+      "title": "Selection, layers and inspector",
+      "dependsOn": [
+        "B1"
+      ],
+      "lane": "manual",
+      "status": "pending",
+      "acceptanceContract": "plan.md#b2--stable-selection-layers-and-inspector",
+      "receipt": null
+    },
+    {
+      "id": "B3",
+      "title": "Manual draft recovery",
+      "dependsOn": [
+        "G1"
+      ],
+      "lane": "manual",
+      "status": "pending",
+      "acceptanceContract": "plan.md#b3--recover-manual-work-safely",
+      "receipt": null
+    },
+    {
+      "id": "G2",
+      "title": "Manual editing tranche passes",
+      "dependsOn": [
+        "B2",
+        "B3"
+      ],
+      "lane": "gate",
+      "status": "pending",
+      "acceptanceContract": "plan.md#tranche-acceptance-gates",
+      "receipt": null
+    },
+    {
+      "id": "C2",
+      "title": "Revision-bound live snapshot",
+      "dependsOn": [
+        "A1",
+        "C1",
+        "Q1"
+      ],
+      "lane": "agent",
+      "status": "pending",
+      "acceptanceContract": "plan.md#c2--explicit-current-document-handoff",
+      "receipt": null
+    },
+    {
+      "id": "C3",
+      "title": "Artifact submission and narrow edits",
+      "dependsOn": [
+        "C2",
+        "B1"
+      ],
+      "lane": "agent",
+      "status": "pending",
+      "acceptanceContract": "plan.md#c3--structural-artifact-submission-and-narrow-corrections",
+      "receipt": null
+    },
+    {
+      "id": "C4",
+      "title": "Visual review and revision feedback",
+      "dependsOn": [
+        "C3",
+        "B2",
+        "A2"
+      ],
+      "lane": "agent",
+      "status": "pending",
+      "acceptanceContract": "plan.md#c4--visual-review-and-request-revision-feedback",
+      "receipt": null
+    },
+    {
+      "id": "C5",
+      "title": "Create/import and agent handoff",
+      "dependsOn": [
+        "C3",
+        "B2"
+      ],
+      "lane": "agent",
+      "status": "pending",
+      "acceptanceContract": "plan.md#c5--guided-creationimport-and-agent-entry",
+      "receipt": null
+    },
+    {
+      "id": "G3",
+      "title": "Agent iteration tranche passes",
+      "dependsOn": [
+        "G2",
+        "C4",
+        "C5"
+      ],
+      "lane": "gate",
+      "status": "pending",
+      "acceptanceContract": "plan.md#tranche-acceptance-gates",
+      "receipt": null
+    },
+    {
+      "id": "D1",
+      "title": "Named versions and exports",
+      "dependsOn": [
+        "G2",
+        "A2"
+      ],
+      "lane": "finishing",
+      "status": "pending",
+      "acceptanceContract": "plan.md#d1--named-versions-and-useful-asset-export",
+      "receipt": null
+    },
+    {
+      "id": "D2",
+      "title": "Browser, accessibility and CI gates",
+      "dependsOn": [
+        "G3",
+        "D1",
+        "Q1"
+      ],
+      "lane": "quality",
+      "status": "pending",
+      "acceptanceContract": "plan.md#d2--enforce-the-broader-quality-gates",
+      "receipt": null
+    },
+    {
+      "id": "D3",
+      "title": "Performance verification",
+      "dependsOn": [
+        "G3",
+        "D1"
+      ],
+      "lane": "quality",
+      "status": "pending",
+      "acceptanceContract": "plan.md#d3--measure-and-address-interaction-performance",
+      "receipt": null
+    },
+    {
+      "id": "G4",
+      "title": "Integrated technical completion",
+      "dependsOn": [
+        "D2",
+        "D3"
+      ],
+      "lane": "gate",
+      "status": "pending",
+      "acceptanceContract": "plan.md#tranche-acceptance-gates",
+      "receipt": null
+    },
+    {
+      "id": "U1",
+      "title": "Independent usability validation",
+      "dependsOn": [
+        "G4"
+      ],
+      "lane": "evaluation",
+      "status": "pending",
+      "acceptanceContract": "plan.md#u1--independent-usability-validation",
+      "receipt": null
+    },
+    {
+      "id": "DONE",
+      "title": "All recommended work complete",
+      "dependsOn": [
+        "G4",
+        "U1"
+      ],
+      "lane": "gate",
+      "status": "pending",
+      "acceptanceContract": "plan.md#tranche-acceptance-gates",
+      "receipt": null
+    }
+  ],
+  "receiptTemplate": {
+    "nodeId": null,
+    "baseCommit": null,
+    "testedCommit": null,
+    "owner": null,
+    "allowedFiles": [],
+    "criteriaResults": [
+      {
+        "criterion": null,
+        "status": "pending",
+        "testOrObservation": null,
+        "expected": null,
+        "actual": null,
+        "evidencePath": null
+      }
+    ],
+    "fixtureHashes": {},
+    "environment": {},
+    "localRuns": [
+      {
+        "command": null,
+        "testNames": [],
+        "exitCode": null,
+        "evidencePath": null
+      }
+    ],
+    "pullRequests": [],
+    "ciRuns": [
+      {
+        "url": null,
+        "headSha": null,
+        "expectedJobs": [],
+        "actualJobs": [],
+        "allExpectedPassed": false
+      }
+    ],
+    "reviewFindings": [],
+    "mergeCommit": null,
+    "mainCiUrl": null,
+    "artifactHashes": {},
+    "limitations": [],
+    "blocker": null,
+    "completedAt": null
+  }
+}
