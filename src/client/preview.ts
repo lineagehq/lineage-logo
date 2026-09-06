@@ -623,3 +623,26 @@ export function createSvgPreview(
     status: `Previewing ${requestedTarget}.`,
   };
 }
+
+/** Measure only a clean, detached copy so selection affordances never affect fit. */
+export function measureArtworkBounds(source: string): PreviewBounds | undefined {
+  const parsed = new DOMParser().parseFromString(source, "image/svg+xml");
+  if (parsed.querySelector("parsererror") || parsed.documentElement.localName !== "svg") return undefined;
+  const root = document.importNode(parsed.documentElement, true) as unknown as SVGSVGElement;
+  const host = document.createElement("div");
+  host.style.cssText = "position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none";
+  host.setAttribute("aria-hidden", "true");
+  host.append(root);
+  document.body.append(host);
+  try {
+    // visibility:hidden on the measurement host is intentional; inspect only
+    // authored presentation within the SVG, not the host's computed visibility.
+    for (const node of Array.from(root.querySelectorAll<SVGGraphicsElement>("*"))) {
+      if (ELIGIBLE_TARGETS.has(node.localName) && !node.closest("defs,clipPath,mask,pattern,marker,symbol")
+        && hiddenBySvgPresentation(node, root)) node.remove();
+    }
+    return paintedLocalBounds(root);
+  } finally {
+    host.remove();
+  }
+}

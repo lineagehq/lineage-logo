@@ -38,6 +38,7 @@ async function selectLayers(page: Page, labels: string[]): Promise<void> {
 }
 
 async function configureViewport(page: Page, zoom: 100 | 125, collapsed: boolean): Promise<void> {
+  await page.locator("#zoom-reset").click();
   if (zoom === 125) {
     await page.locator("#zoom-in").click();
     await expect(page.locator("#zoom-label")).toHaveText("125%");
@@ -197,6 +198,7 @@ for (const scenario of [
     await openConstellation(page);
     await selectLayers(page, scenario.labels);
     await configureViewport(page, scenario.zoom, scenario.collapsed);
+    await labeled(page, scenario.labels[0]).scrollIntoViewIfNeeded();
     const settled = await settleRootTransform(page);
     const collective = scenario.labels.length > 1;
     const beforeTransforms = await transforms(page, scenario.labels);

@@ -205,6 +205,7 @@ test("collective transform shared rotation uses the frozen union pivot with a di
 });
 
 test("collective transform remains operable at 125% with both sidebars collapsed and reloads a clean named save", async ({ page }) => {
+  await page.locator("#zoom-reset").click();
   await page.locator("#zoom-in").click();
   await expect(page.locator("#zoom-label")).toHaveText("125%");
   await page.locator("#toggle-left-sidebar").click();
@@ -215,6 +216,7 @@ test("collective transform remains operable at 125% with both sidebars collapsed
   const identity = await selectionIdentity(page);
   const before = await geometry(page);
   const handle = page.locator('[data-lineage-collective-handle="rb"]');
+  await handle.scrollIntoViewIfNeeded();
   const box = await handle.boundingBox();
   if (!box) throw new Error("Zoomed collective resize handle is unavailable.");
   const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
@@ -224,6 +226,7 @@ test("collective transform remains operable at 125% with both sidebars collapsed
   expect(await selectionIdentity(page)).toEqual(identity);
 
   const rotation = page.locator('[data-lineage-collective-handle="rotation"]');
+  await rotation.scrollIntoViewIfNeeded();
   const rotationBox = await rotation.boundingBox();
   if (!rotationBox) throw new Error("Zoomed collective rotation handle is unavailable.");
   const rotationStart = { x: rotationBox.x + rotationBox.width / 2, y: rotationBox.y + rotationBox.height / 2 };

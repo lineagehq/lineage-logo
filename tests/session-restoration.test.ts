@@ -47,6 +47,13 @@ describe("versioned workspace session restoration", () => {
     ]);
   });
 
+  it.each([0.01, 0.1, 0.25, 1, 4])("restores supported document zoom %s including fitted large documents", (zoom) => {
+    const storage = memoryStorage();
+    const state = validState({ zoom });
+    expect(writeWorkspaceSession(storage, state)).toBe(true);
+    expect(readWorkspaceSession(storage, "seatify-logo")).toEqual(state);
+  });
+
   it("accepts server-supported dotted filenames and bounds producer selection identities", () => {
     expect(validateWorkspaceSession(validState({ activePath: "concepts/logo..draft.svg" }), "seatify-logo"))
       .toEqual(validState({ activePath: "concepts/logo..draft.svg" }));
@@ -61,7 +68,8 @@ describe("versioned workspace session restoration", () => {
     validState({ activePath: "concepts/nested/file.svg" }),
     validState({ selectionPath: Array.from({ length: 17 }, (_, index) => `layer-${index}`) }),
     validState({ selectionPath: ["x".repeat(161)] }),
-    validState({ zoom: 0.1 }),
+    validState({ zoom: 0.009 }),
+    validState({ zoom: 4.01 }),
     validState({ zoom: Number.NaN }),
     validState({ previewBackground: "transparent" as "dark" }),
     { ...validState(), unsavedSvg: "<svg/>" },

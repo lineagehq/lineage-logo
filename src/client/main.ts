@@ -22,7 +22,8 @@ import {
 } from "./file-open";
 import { CanvasLayoutController, isLayoutShortcutTarget, PreferencesDialogController, safeLayoutStorage } from "./ui/layout";
 import { UnsavedDialogController } from "./ui/unsaved-dialog";
-import { automaticPreviewTargetId, createSvgPreview, eligiblePreviewTargetIds } from "./preview";
+import { applyDocumentFrame, documentFrame, extendedDocumentBounds, fitDocumentZoom } from "./canvas/document-frame";
+import { automaticPreviewTargetId, createSvgPreview, eligiblePreviewTargetIds, measureArtworkBounds, type PreviewBounds } from "./preview";
 import { renderInspectorSummaries } from "./ui/inspector";
 import { waitForWorkspaceAdvance } from "./workspace-refresh";
 import {
@@ -132,16 +133,17 @@ app.innerHTML = `
           <button type="button" id="reset-edits" title="Restore the latest saved SVG and clear selection, locks and undo history" disabled>Reset edits</button>
           <span class="toolbar-divider"></span>
           <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
-          <span id="zoom-label">100%</span>
+          <span id="zoom-label" title="100% = one SVG unit per CSS pixel for documents with a viewBox">100%</span>
           <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
           <button type="button" id="zoom-reset" aria-label="Reset zoom">100%</button>
-          <button type="button" id="zoom-fit" title="Fit the artboard in the available space">Fit</button>
+          <button type="button" id="zoom-fit" title="Fit the full document bounds in the available space">Fit</button>
+          <button type="button" id="zoom-artwork" title="Fit visible artwork rather than document bounds">Fit artwork</button>
           <button type="button" id="zoom-selection" title="Fit the selected layer in the available space" disabled>Fit selection</button>
           <button type="button" id="shortcut-help" aria-label="Preferences and shortcuts" title="Preferences and shortcuts">⚙</button>
         </div>
         <div class="toolbar-group" aria-label="Preview background">
           <button type="button" id="save-iteration" class="primary-action" disabled>Save iteration</button>
-          <button type="button" class="background-button active" data-background="checker" aria-pressed="true">Grid</button>
+          <button type="button" class="background-button active" data-background="checker" aria-pressed="true" title="Transparency checkerboard behind artwork">Grid</button>
           <button type="button" class="background-button" data-background="light" aria-pressed="false">Light</button>
           <button type="button" class="background-button" data-background="dark" aria-pressed="false">Dark</button>
         </div>
@@ -160,8 +162,10 @@ app.innerHTML = `
           <strong>Choose an SVG to inspect</strong>
           <span>Concepts and iterations appear in the workspace panel.</span>
         </div>
-        <div id="artboard" class="artboard" hidden></div>
-        <div id="agent-preview" class="artboard agent-preview" aria-label="Isolated agent change preview" hidden></div>
+        <div id="document-viewport" class="document-viewport" hidden>
+          <div id="artboard" class="artboard" hidden></div>
+          <div id="agent-preview" class="artboard agent-preview" aria-label="Isolated agent change preview" hidden></div>
+        </div>
       </div>
       <footer class="statusbar">
         <span id="status">Ready</span>
@@ -308,7 +312,8 @@ app.innerHTML = `
         <label class="preview-target">Target<input id="preview-target" type="text" value="#icon" list="preview-targets" maxlength="128" aria-describedby="preview-status" /></label>
         <datalist id="preview-targets"><option value="#icon"></option></datalist>
         <p id="preview-status" class="preview-status" role="status" aria-live="polite">Whole SVG until a document is loaded.</p>
-        <div id="favicon-preview" class="favicon-preview empty-copy">Live previews appear here.</div>
+        <p class="preview-surface-help">Light, Dark and Grid change only the preview surface. Opaque backgrounds drawn in your SVG remain opaque. At 100%, one SVG unit equals one CSS pixel when a viewBox is present.</p>
+        <div id="favicon-preview" data-background="checker" class="favicon-preview empty-copy">Live previews appear here.</div>
       </section>
       </div>
     </aside>
@@ -387,6 +392,7 @@ app.innerHTML = `
 `;
 
 const fileList = getElement("file-list");
+const documentViewport = getElement("document-viewport");
 const artboard = getElement("artboard");
 const agentPreview = getElement("agent-preview");
 const emptyState = getElement("empty-state");
@@ -460,6 +466,7 @@ let offeredAgentDraft: string | undefined;
 let nextIterationPath = "iterations/iteration-1.svg";
 let previewTargetCustomized = false;
 let zoom = 1;
+let fittedArtworkBounds: PreviewBounds | undefined;
 let previewBackground: PreviewBackground = "checker";
 let currentObjectUrl: string | undefined;
 let layerQuery = "";
@@ -885,11 +892,14 @@ function setReviewPreview(active: boolean): void {
       if (node.dataset.lineageKey && reviewImpactKeys.has(node.dataset.lineageKey)) node.setAttribute("data-lineage-review-highlight", "true");
     }
     agentPreview.append(clone);
+    applyDocumentFrame(agentPreview, clone);
+    agentPreview.style.transform = `scale(${zoom})`;
     renderLayers(clone);
   } else if (editor.svgNode) {
     editor.setAgentReviewHighlights(reviewImpactKeys);
     renderLayers(editor.svgNode);
   }
+  updateDocumentViewport();
   renderSelectionContext(editor.selectionContext);
 }
 
@@ -1197,13 +1207,27 @@ agentDraftDiscard.addEventListener("click", () => {
   setStatus("Discarded unsaved applied agent draft");
 });
 
+function updateDocumentViewport(): void {
+  const visibleBoard = agentPreviewActive ? agentPreview : artboard;
+  documentViewport.hidden = visibleBoard.hidden;
+  const root = visibleBoard.querySelector("svg");
+  if (!root) return;
+  const frame = documentFrame(root);
+  const extended = extendedDocumentBounds(frame, fittedArtworkBounds);
+  visibleBoard.style.left = `${(frame.x - extended.x) * zoom}px`;
+  visibleBoard.style.top = `${(frame.y - extended.y) * zoom}px`;
+  documentViewport.style.width = `${extended.width * zoom}px`;
+  documentViewport.style.height = `${extended.height * zoom}px`;
+}
+
 function setZoom(nextZoom: number, center?: Element): void {
-  zoom = Math.min(4, Math.max(0.25, nextZoom));
+  zoom = Math.min(4, Math.max(0.01, nextZoom));
   artboard.style.transform = `scale(${zoom})`;
+  agentPreview.style.transform = `scale(${zoom})`;
+  updateDocumentViewport();
   getElement("zoom-label").textContent = `${Math.round(zoom * 100)}%`;
   const refreshAffordances = () => editor.refreshSelectionAffordances();
   window.requestAnimationFrame(refreshAffordances);
-  window.setTimeout(refreshAffordances, 170);
   if (center) {
     const centerTarget = () => {
     const target = center;
@@ -1212,8 +1236,7 @@ function setZoom(nextZoom: number, center?: Element): void {
     stage.scrollLeft += targetBox.left + targetBox.width / 2 - (stageBox.left + stageBox.width / 2);
     stage.scrollTop += targetBox.top + targetBox.height / 2 - (stageBox.top + stageBox.height / 2);
     };
-    window.requestAnimationFrame(centerTarget);
-    window.setTimeout(centerTarget, 170);
+    centerTarget();
   }
   persistWorkspaceSession();
 }
@@ -1226,12 +1249,31 @@ function fittedZoom(
   currentZoom = 1,
 ): number {
   if (availableWidth <= 0 || availableHeight <= 0 || contentWidth <= 0 || contentHeight <= 0) return currentZoom;
-  return Math.min(4, Math.max(0.25, currentZoom * Math.min(availableWidth / contentWidth, availableHeight / contentHeight)));
+  return fitDocumentZoom(availableWidth, availableHeight, contentWidth / currentZoom, contentHeight / currentZoom);
 }
 
 function fitArtboard(): void {
   if (artboard.hidden) return;
+  fittedArtworkBounds = undefined;
   setZoom(fittedZoom(stage.clientWidth - 80, stage.clientHeight - 80, artboard.offsetWidth, artboard.offsetHeight), artboard);
+}
+
+function fitArtwork(): void {
+  const root = editor.svgNode;
+  if (!root || artboard.hidden) return;
+  const bounds = measureArtworkBounds(editor.serializeClean());
+  if (!bounds) { setStatus("No visible artwork to fit"); return; }
+  fittedArtworkBounds = bounds;
+  setZoom(fitDocumentZoom(stage.clientWidth - 120, stage.clientHeight - 120, bounds.width, bounds.height));
+  const centerArtwork = () => {
+    const matrix = root.getScreenCTM();
+    if (!matrix) return;
+    const point = new DOMPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2).matrixTransform(matrix);
+    const stageBox = stage.getBoundingClientRect();
+    stage.scrollLeft += point.x - stageBox.left - stage.clientWidth / 2;
+    stage.scrollTop += point.y - stageBox.top - stage.clientHeight / 2;
+  };
+  centerArtwork();
 }
 
 function fitSelection(): void {
@@ -1381,6 +1423,8 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement, restoratio
       artboard.replaceChildren(document.importNode(svg, true));
       const renderedSvg = artboard.querySelector("svg");
       if (!renderedSvg) throw new Error("Committed SVG is missing from the artboard.");
+      applyDocumentFrame(artboard, renderedSvg);
+      fittedArtworkBounds = undefined;
       if (!renderedSvg.hasAttribute("role")) {
         renderedSvg.setAttribute("role", "img");
         renderedSvg.setAttribute("data-lineage-added-role", "true");
@@ -1396,6 +1440,7 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement, restoratio
       try {
         setZoom(restoreUi?.zoom ?? 1);
         editor.load(renderedSvg, recovery?.dirty ? savedBaseline : undefined);
+        if (!restoreUi) fitArtboard();
         if (restoreUi) {
           applyPreviewBackground(restoreUi.previewBackground);
           const root = editor.svgNode;
@@ -1664,6 +1709,7 @@ getElement("zoom-in").addEventListener("click", () => setZoom(zoom + 0.25));
 getElement("zoom-out").addEventListener("click", () => setZoom(zoom - 0.25));
 getElement("zoom-reset").addEventListener("click", () => setZoom(1));
 getElement("zoom-fit").addEventListener("click", fitArtboard);
+getElement("zoom-artwork").addEventListener("click", fitArtwork);
 zoomSelectionButton.addEventListener("click", fitSelection);
 undoButton.addEventListener("click", () => editor.undo());
 redoButton.addEventListener("click", () => editor.redo());
@@ -2071,6 +2117,7 @@ function applyPreviewBackground(background: PreviewBackground): void {
   previewBackground = background;
   stage.classList.remove("checker", "light", "dark");
   stage.classList.add(background);
+  faviconPreview.dataset.background = background;
   document.querySelectorAll<HTMLButtonElement>(".background-button").forEach((node) => {
     const active = node.dataset.background === background;
     node.classList.toggle("active", active);

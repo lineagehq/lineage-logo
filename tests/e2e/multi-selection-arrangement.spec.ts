@@ -475,6 +475,7 @@ test("Seatify numeric oriented-frame edits are aggregate, validated, and atomic"
   const authoredBeforeReflow = await authoredGeometryFingerprint(page);
   const unrelatedAuthoredBeforeReflow = await authoredGeometryFingerprint(page, [unrelatedLabel, "Seatify wordmark"]);
   const numericBeforeReflow = await numericValues(page);
+  await page.locator("#zoom-reset").click();
   await page.locator("#zoom-in").click();
   await expect(page.locator("#zoom-label")).toHaveText("125%");
   const zoomBefore = await geometry(page, [...alignmentLabels, unrelatedLabel]);
@@ -734,6 +735,7 @@ test("multi-selection arrangement is disabled during pending review and Revert i
 });
 
 test("multi-selection arrangement works at 125% zoom with both sidebars collapsed", async ({ page }) => {
+  await page.locator("#zoom-reset").click();
   await page.locator("#zoom-in").click();
   await expect(page.locator("#zoom-label")).toHaveText("125%");
   await page.locator("#toggle-left-sidebar").click();
