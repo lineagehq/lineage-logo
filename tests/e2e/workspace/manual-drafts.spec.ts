@@ -183,3 +183,71 @@ test("failed deletion of an expired draft permits keyboard exit and normal savin
   await expect(page.locator("#lifecycle-state")).toHaveAttribute("data-state", "saved");
   expect(await source(page)).toBe(before);
 });
+
+test('agent acceptance preserves a different recovery record written by another tab', async ({ page, context }) => {
+  await open(page);
+  const before = await source(page);
+  await recolor(page, '#ee5500');
+  const headers = { Authorization: 'Bearer lineage-logo-e2e-agent-token' };
+  let manifest: { sessionId: string; sourcePath: string; revision: number; layers: Array<{name: string; sessionKey: string}> };
+  await expect.poll(async () => {
+    const response = await page.request.get('/api/agent/document', { headers });
+    if (!response.ok()) return -1;
+    manifest = await response.json(); return manifest.revision;
+  }).toBeGreaterThan(0);
+  const proposal = { protocolVersion: 1, transactionId: `draft-other-tab-${Date.now()}`, producer: { kind: 'fixture' },
+    document: { sessionId: manifest!.sessionId, sourcePath: manifest!.sourcePath, baseRevision: manifest!.revision },
+    operations: [{ type: 'renameLayer', operationId: 'rename', target: { sessionKey: manifest!.layers.find(layer => layer.name === 'mark')!.sessionKey }, name: 'Accepted mark' }] };
+  expect((await page.request.post('/api/agent/transactions', { headers, data: proposal })).status()).toBe(202);
+  await expect(page.locator('#agent-review')).toBeVisible();
+  // A storage-only second tab models another editor's completed write without
+  // competing for this editor's live agent connection. Use the real draft store.
+  const other = await context.newPage();
+  await other.route('**/draft-writer', route => route.fulfill({ contentType: 'text/html', body: '<title>Draft storage fixture</title>' }));
+  await other.goto('/draft-writer');
+  await other.evaluate(async sourceSvg => {
+    const modulePath = '/manual-draft-store.ts';
+    const { writeManualDraft } = await import(modulePath);
+    const key = Object.keys(localStorage).find(key => key.startsWith('lineage.manual-draft.') && key.includes('.record.'))!;
+    const draft = JSON.parse(localStorage.getItem(key)!);
+    const canonicalSource = new XMLSerializer().serializeToString(new DOMParser().parseFromString(sourceSvg, 'image/svg+xml').documentElement);
+    const result = writeManualDraft(localStorage, { workspaceId: draft.workspaceId, sourcePath: draft.sourcePath,
+      sourceSvg: canonicalSource, svg: draft.svg.replaceAll('#ee5500', '#22aa55'), revision: draft.revision + 1, context: draft.context });
+    if (result.status !== 'saved') throw new Error(`Fixture draft refused: ${result.status}`);
+  }, before);
+  await other.close();
+  await page.locator('#agent-accept').click();
+  await expect(page.locator('#lifecycle-state')).toHaveAttribute('data-state', 'saved');
+  const continuation = await page.locator('.file-button[aria-current="true"]').getAttribute('data-path');
+  const saved = await (await page.request.get(`/api/svg?path=${encodeURIComponent(continuation!)}`)).text();
+  expect(saved).toContain('#ee5500'); expect(saved).not.toContain('#22aa55');
+  await page.locator(`[data-path="${sourcePath}"]`).click();
+  await expect(page.locator('.file-button[aria-current="true"]')).toHaveAttribute('data-path', sourcePath);
+  await expect(page.locator('#manual-draft-dialog')).toBeVisible();
+  await page.locator('#manual-draft-restore').click();
+  await expect(page.locator('#artboard #mark')).toHaveAttribute('fill', '#22aa55');
+  expect(await source(page)).toBe(before);
+});
+
+
+test('Discard retires the restored draft even when replacement writes fail', async ({ page }) => {
+  await open(page); const before = await source(page); await recolor(page, '#ee5500');
+  await page.reload(); await expect(page.locator('#manual-draft-dialog')).toBeVisible();
+  await page.evaluate(() => {
+    const set = Storage.prototype.setItem;
+    Storage.prototype.setItem = function(key, value) {
+      if (key.startsWith('lineage.manual-draft.')) throw new DOMException('fixture quota', 'QuotaExceededError');
+      return set.call(this, key, value);
+    };
+  });
+  await page.locator('#manual-draft-restore').click();
+  await expect(page.locator('#artboard #mark')).toHaveAttribute('fill', '#ee5500');
+  await expect(page.locator('#manual-draft-status')).toContainText('could not be stored');
+  await page.locator('[data-path="concepts/ux-tall.svg"]').click();
+  await page.locator('#unsaved-discard').click();
+  await expect(page.locator('.file-button[aria-current="true"]')).toHaveAttribute('data-path', 'concepts/ux-tall.svg');
+  await page.locator(`[data-path="${sourcePath}"]`).click();
+  await expect(page.locator('#artboard #mark')).toHaveAttribute('fill', '#122238');
+  await expect(page.locator('#manual-draft-dialog')).not.toBeVisible();
+  expect(await source(page)).toBe(before);
+});

@@ -495,6 +495,7 @@ let agentReview: AgentReviewModel | undefined;
 let agentPreviewActive = false;
 let reviewImpactKeys = new Set<string>();
 let agentDecisionInFlight = false;
+let settlingDurableAgentSave = false;
 let agentReviewReturnFocus: HTMLElement | undefined;
 let agentTransportStarted = false;
 let agentTransportClosed = false;
@@ -946,6 +947,10 @@ function focusReviewLayer(sessionKey: string): void {
 function finishAgentReview(status: "accepted" | "reverted", artifact?: AgentAcceptedArtifact): void {
   const transactionId = agentReview?.transactionId;
   const priorManualDraft = currentManualDraft();
+  const ownsPriorDraft = priorManualDraft?.status === "ready"
+    && ownedManualDraft?.token === priorManualDraft.token
+    && ownedManualDraft.workspaceId === priorManualDraft.draft.workspaceId
+    && ownedManualDraft.sourcePath === priorManualDraft.draft.sourcePath;
   clearPendingReviewRecovery(transactionId);
   discardAgentDraft(workspaceSessionStorage);
   reviewImpactKeys.clear();
@@ -962,7 +967,7 @@ function finishAgentReview(status: "accepted" | "reverted", artifact?: AgentAcce
     publishAgentDocument();
     persistWorkspaceSession();
   }
-  if (status === "accepted" && artifact?.durablePath && priorManualDraft?.status === "ready") {
+  if (status === "accepted" && artifact?.durablePath && ownsPriorDraft && priorManualDraft?.status === "ready") {
     const retired = discardTrackedManualDraft(priorManualDraft.draft, priorManualDraft.token, manualAuthority());
     if (retired.status === "failure" || retired.status === "refused") showManualDraftStatus(manualDraftReasonMessage(retired.reason));
   }
@@ -1009,8 +1014,11 @@ async function decideAgentReview(status: "accepted" | "reverted"): Promise<void>
       };
       const decision = await agentTransport.decide(pending.transaction.transactionId, status, artifact);
       if (!decision.artifact?.durablePath || !decision.artifact.digest) throw new Error("The server did not confirm a durable saved continuation.");
-      if (!agentSession.finalizeAccept(pending.transaction.transactionId)) throw new Error("The provisional acceptance could not be finalized.");
-      finishAgentReview("accepted", decision.artifact);
+      settlingDurableAgentSave = true;
+      try {
+        if (!agentSession.finalizeAccept(pending.transaction.transactionId)) throw new Error("The provisional acceptance could not be finalized.");
+        finishAgentReview("accepted", decision.artifact);
+      } finally { settlingDurableAgentSave = false; }
     } else {
       await agentTransport.decide(pending.transaction.transactionId, status);
       const completed = pending.provisional
@@ -1255,7 +1263,7 @@ function currentManualDraft() {
   return readManualDraft(manualStorage(), { workspaceId: currentWorkspaceId, sourcePath: currentFile.path, sourceSvg: currentSourceBaseline }, Date.now(), manualAuthority());
 }
 function persistManualDraft(): boolean {
-  if (checkingManualRecovery || offeredManualDraft || restoringWorkspaceSession || !currentWorkspaceId || !currentFile || !editor.svgNode || manualAuthority() !== "manual") return false;
+  if (settlingDurableAgentSave || checkingManualRecovery || offeredManualDraft || restoringWorkspaceSession || !currentWorkspaceId || !currentFile || !editor.svgNode || manualAuthority() !== "manual") return false;
   if (!dirty) {
     if (ownedManualDraft?.workspaceId === currentWorkspaceId && ownedManualDraft.sourcePath === currentFile.path) {
       const result = discardTrackedManualDraft(ownedManualDraft, ownedManualDraft.token);
@@ -1367,6 +1375,7 @@ getElement("manual-draft-restore").addEventListener("click", () => {
     editor.restoreSelection(recoveredSelection);
     renderFavicons(editor.serializeClean());
   } finally { restoringWorkspaceSession = false; }
+  ownedManualDraft = { workspaceId: draft.workspaceId, sourcePath: draft.sourcePath, token: latest.token };
   offeredManualDraft = undefined;
   getInput<HTMLDialogElement>("manual-draft-dialog").close();
   publishAgentDocument();
