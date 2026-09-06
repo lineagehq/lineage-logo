@@ -338,10 +338,10 @@ describe("real HTTP agent transport", () => {
     });
 
     events.controller.abort();
-    await new Promise((resolve) => setTimeout(resolve, 30));
-    expect((await fetch(`${base}/api/agent/document`, {
+    // Aborting the client does not synchronously deliver the server's close event.
+    await expect.poll(async () => (await fetch(`${base}/api/agent/document`, {
       method: "POST", headers: secondHeaders, body: JSON.stringify(second),
-    })).status).toBe(200);
+    })).status, { timeout: 2_000 }).toBe(200);
     const documentResponse = await fetch(`${base}/api/agent/document`, { headers: { Authorization: `Bearer ${token}` } });
     await expect(documentResponse.json()).resolves.toEqual(second);
   });

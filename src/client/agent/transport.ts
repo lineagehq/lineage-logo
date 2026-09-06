@@ -71,7 +71,7 @@ export class AgentDecisionError extends Error {
 
 export class AgentRecoveryError extends Error {
   readonly terminal: boolean;
-  constructor(message: string, terminal: boolean) {
+  constructor(message: string, terminal: boolean, readonly retryable = false) {
     super(message);
     this.name = "AgentRecoveryError";
     this.terminal = terminal;
@@ -182,7 +182,9 @@ export class AgentCanvasTransport {
       const error = value && typeof value === "object" && !Array.isArray(value) && typeof (value as { error?: unknown }).error === "string"
         ? (value as { error: string }).error : undefined;
       const terminal = response.status === 409 && error === "Recovery identity does not match the recorded transaction.";
-      throw new AgentRecoveryError(error ?? `Agent recovery failed (${response.status}).`, terminal);
+      const retryable = response.status === 409 && (error === "Another Lineage tab owns the agent connection. Close that tab before retrying here."
+        || error === "Editor ownership changed while receiving the request. Refresh the connection and retry.");
+      throw new AgentRecoveryError(error ?? `Agent recovery failed (${response.status}).`, terminal, retryable);
     }
     if (!value || typeof value !== "object" || Array.isArray(value)) throw new AgentRecoveryError("Agent recovery response is malformed.", false);
     const input = value as Record<string, unknown>;

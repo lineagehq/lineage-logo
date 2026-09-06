@@ -1,4 +1,6 @@
 import "./styles.css";
+import { readManualDraft, writeManualDraft, discardManualDraft, manualDraftReasonMessage, type ManualDraftAuthority, type ManualDraftRead, type ManualDraftIdentity } from "./manual-draft-store";
+import { recoverAfterTabClose } from "./agent/recovery-retry";
 import { SaveAuthority } from "./save-authority";
 import {
   getSelectableParent,
@@ -55,6 +57,7 @@ interface SvgFileEntry {
 }
 
 interface WorkspaceResponse {
+  workspaceId: string;
   rootName: string;
   files: SvgFileEntry[];
   nextIterationPath: string;
@@ -168,6 +171,7 @@ app.innerHTML = `
         </div>
       </div>
       <footer class="statusbar">
+        <span id="manual-draft-status" role="status" aria-live="polite" hidden></span>
         <span id="status">Ready</span>
         <span id="selection-count-badge" class="selection-count-badge" role="status" aria-live="polite" aria-atomic="true" hidden></span>
         <span id="document-size">No document loaded</span>
@@ -381,6 +385,15 @@ app.innerHTML = `
       <button type="button" id="unsaved-save" class="primary-action">Save</button>
     </div>
   </dialog>
+  <dialog id="manual-draft-dialog" class="unsaved-dialog" aria-labelledby="manual-draft-title" aria-describedby="manual-draft-message">
+    <h2 id="manual-draft-title">Recover manual edits</h2>
+    <p id="manual-draft-message"></p>
+    <div class="unsaved-actions">
+      <button type="button" id="manual-draft-continue" hidden>Continue with saved source</button>
+      <button type="button" id="manual-draft-discard">Discard draft</button>
+      <button type="button" id="manual-draft-restore" class="primary-action">Restore manual draft</button>
+    </div>
+  </dialog>
   <dialog id="agent-draft-dialog" class="unsaved-dialog" aria-labelledby="agent-draft-title" aria-describedby="agent-draft-message">
     <h2 id="agent-draft-title">Unsaved applied agent draft</h2>
     <p id="agent-draft-message"></p>
@@ -457,6 +470,12 @@ const fileButtons = new Map<string, HTMLButtonElement>();
 const collapsedLayerKeys = new Set<string>();
 let currentFile: SvgFileEntry | undefined;
 let currentWorkspaceName: string | undefined;
+let currentWorkspaceId: string | undefined;
+let checkingManualRecovery = false;
+const manualRetirementFailures = new Set<string>();
+let lastManualDraftStatus = "";
+let ownedManualDraft: { workspaceId: string; sourcePath: string; token: string } | undefined;
+let offeredManualDraft: { sessionId: string; identity: { workspaceId: string; sourcePath: string }; recovery: Exclude<ManualDraftRead, { status: "none" }> } | undefined;
 let workspaceSessionInitialized = false;
 let restoringWorkspaceSession = false;
 let dirty = false;
@@ -483,6 +502,7 @@ let agentManifestRetry: number | undefined;
 let workspaceRefreshGeneration = 0;
 const agentTerminalReconciliationInFlight = new Set<string>();
 const fileOpenCoordinator = new FileOpenCoordinator();
+const recoveryOpenCoordinator = new FileOpenCoordinator();
 const fileSwitchCoordinator = new FileOpenCoordinator();
 
 function selectionIdentityPath(): string[] {
@@ -505,6 +525,7 @@ function persistWorkspaceSession(): void {
     leftCollapsed: preferences.leftCollapsed,
     rightCollapsed: preferences.rightCollapsed,
   });
+  if (dirty) persistManualDraft();
 }
 
 function getElement(id: string): HTMLElement {
@@ -584,6 +605,7 @@ const editor = new SvgEditor(
     onDirtyChange: (nextDirty) => {
       const changed = dirty !== nextDirty;
       dirty = nextDirty;
+      persistManualDraft();
       saveButton.disabled = saveAuthority.saving || Boolean(agentSession?.pending) || !dirty;
       resetEditsButton.disabled = Boolean(agentSession?.pending) || (!dirty && editor.selectionContext.lockedKeys.size === 0);
       if (nextDirty) {
@@ -693,6 +715,10 @@ const agentTransport = new AgentCanvasTransport({
         return rejected;
       }
       if (!pendingBeforeStage && agentSession.pending?.transaction.transactionId === transaction.transactionId) {
+        offeredManualDraft = undefined;
+        offeredAgentDraft = undefined;
+        agentDraftDialog.close();
+        getInput<HTMLDialogElement>("manual-draft-dialog").close();
         saveAuthority.invalidate();
         fileOpenCoordinator.invalidate();
         fileSwitchCoordinator.invalidate();
@@ -919,6 +945,7 @@ function focusReviewLayer(sessionKey: string): void {
 
 function finishAgentReview(status: "accepted" | "reverted", artifact?: AgentAcceptedArtifact): void {
   const transactionId = agentReview?.transactionId;
+  const priorManualDraft = currentManualDraft();
   clearPendingReviewRecovery(transactionId);
   discardAgentDraft(workspaceSessionStorage);
   reviewImpactKeys.clear();
@@ -929,12 +956,17 @@ function finishAgentReview(status: "accepted" | "reverted", artifact?: AgentAcce
     agentReview.summary = `Applied and saved ${artifact.durablePath} as one undoable continuation.`;
     currentFile = { collection: "iterations", name: artifact.durablePath.split("/").at(-1)!, path: artifact.durablePath };
     editor.markSaved({ ...editor.captureSavePoint(), svg: artifact.svg });
-    currentSourceBaseline = artifact.svg;
+    currentSourceBaseline = canonicalDraftSource(artifact.svg);
     dirty = false;
     if (!agentSession.continueFromSavedArtifact(artifact.durablePath)) throw new Error("Saved continuation could not become the active baseline.");
     publishAgentDocument();
     persistWorkspaceSession();
   }
+  if (status === "accepted" && artifact?.durablePath && priorManualDraft?.status === "ready") {
+    const retired = discardTrackedManualDraft(priorManualDraft.draft, priorManualDraft.token, manualAuthority());
+    if (retired.status === "failure" || retired.status === "refused") showManualDraftStatus(manualDraftReasonMessage(retired.reason));
+  }
+  persistManualDraft();
   renderAgentReview();
   if (status === "accepted" && artifact?.durablePath) {
     setStatus(`Saved ${artifact.durablePath}`);
@@ -946,6 +978,7 @@ function finishAgentReview(status: "accepted" | "reverted", artifact?: AgentAcce
   agentReviewReturnFocus = undefined;
   queueMicrotask(() => returnFocus.focus());
   if (status === "accepted") refreshWorkspaceAfterAgentAccept(artifact?.durablePath);
+  else if (!dirty) offerManualRecovery();
 }
 
 agentPreviewToggle.addEventListener("click", () => setReviewPreview(!agentPreviewActive));
@@ -1182,12 +1215,174 @@ function updateIterationSuggestion(sourcePath: string, files: Iterable<string>):
   saveButton.title = `Create ${nextIterationPath}`;
 }
 
+function manualStorage() {
+  // Preserve access errors so recovery can report them instead of claiming success.
+  return {
+    get length() { return window.localStorage.length; },
+    key: (index: number) => window.localStorage.key(index),
+    getItem: (key: string) => window.localStorage.getItem(key),
+    setItem: (key: string, value: string) => window.localStorage.setItem(key, value),
+    removeItem: (key: string) => window.localStorage.removeItem(key),
+  };
+}
+function manualAuthority(): ManualDraftAuthority {
+  return agentSession?.pending?.provisional ? "provisional-agent" : agentSession?.pending ? "pending-agent" : "manual";
+}
+function showManualDraftStatus(message: string): void {
+  lastManualDraftStatus = message;
+  const warning = manualRetirementFailures.size > 0
+    ? "A previous recovery draft could not be removed. Saved iterations are safe; reopen its source and retry Discard when browser storage is available."
+    : "";
+  const element = getElement("manual-draft-status");
+  element.textContent = [message, warning].filter(Boolean).join(" ");
+  element.hidden = !element.textContent;
+}
+function discardTrackedManualDraft(identity: ManualDraftIdentity, token: string, authority: ManualDraftAuthority = "manual") {
+  const result = discardManualDraft(manualStorage(), identity, token, authority);
+  const key = JSON.stringify([identity.workspaceId, identity.sourcePath]);
+  if (result.status === "failure") manualRetirementFailures.add(key);
+  else if (result.status === "retired" || result.status === "changed") manualRetirementFailures.delete(key);
+  showManualDraftStatus(lastManualDraftStatus);
+  return result;
+}
+function canonicalDraftSource(source: string): string {
+  const parsed = new DOMParser().parseFromString(source, "image/svg+xml");
+  if (parsed.documentElement.localName !== "svg" || parsed.querySelector("parsererror")) throw new Error("Recovery source SVG is invalid.");
+  return serializeSvg(parsed.documentElement as unknown as SVGSVGElement, true);
+}
+function currentManualDraft() {
+  if (!currentWorkspaceId || !currentFile) return undefined;
+  return readManualDraft(manualStorage(), { workspaceId: currentWorkspaceId, sourcePath: currentFile.path, sourceSvg: currentSourceBaseline }, Date.now(), manualAuthority());
+}
+function persistManualDraft(): boolean {
+  if (checkingManualRecovery || offeredManualDraft || restoringWorkspaceSession || !currentWorkspaceId || !currentFile || !editor.svgNode || manualAuthority() !== "manual") return false;
+  if (!dirty) {
+    if (ownedManualDraft?.workspaceId === currentWorkspaceId && ownedManualDraft.sourcePath === currentFile.path) {
+      const result = discardTrackedManualDraft(ownedManualDraft, ownedManualDraft.token);
+      if (result.status === "failure" || result.status === "refused") {
+        showManualDraftStatus(manualDraftReasonMessage(result.reason));
+        return false;
+      }
+      ownedManualDraft = undefined;
+      showManualDraftStatus("");
+    }
+    return true;
+  }
+  const result = writeManualDraft(manualStorage(), {
+    workspaceId: currentWorkspaceId, sourcePath: currentFile.path, sourceSvg: currentSourceBaseline,
+    svg: editor.serializeClean(), revision: agentSession?.revision ?? 0,
+    context: { selectionIds: editor.selectedNodes.map(node => node.id).filter(Boolean), zoom, previewBackground },
+  }, Date.now(), manualAuthority());
+  if (result.status === "saved") ownedManualDraft = { workspaceId: currentWorkspaceId, sourcePath: currentFile.path, token: result.token };
+  showManualDraftStatus(result.status === "saved" ? "Manual recovery draft stored on this device." : manualDraftReasonMessage(result.reason));
+  return result.status === "saved";
+}
+async function offerRecoveryDrafts(file: SvgFileEntry, sourceSvg: string): Promise<void> {
+  const sessionId = agentSession?.context.sessionId;
+  try {
+    await offerAgentDraft(file, sourceSvg);
+    if (currentFile !== file || agentSession?.context.sessionId !== sessionId || agentDraftDialog.open || manualAuthority() !== "manual") return;
+    offerManualRecovery();
+  } finally {
+    if (agentSession?.context.sessionId === sessionId) {
+      checkingManualRecovery = false;
+      if (dirty && !offeredManualDraft) persistManualDraft();
+    }
+  }
+}
+function offerManualRecovery(): void {
+  if (!currentWorkspaceId || !currentFile || !agentSession || dirty || manualAuthority() !== "manual") return;
+  const recovery = currentManualDraft();
+  if (!recovery || recovery.status === "none") return;
+  if (!('token' in recovery) || !recovery.token) {
+    if ('reason' in recovery) showManualDraftStatus(manualDraftReasonMessage(recovery.reason));
+    return;
+  }
+  getElement("manual-draft-continue").hidden = true;
+  offeredManualDraft = { sessionId: agentSession.context.sessionId, identity: { workspaceId: currentWorkspaceId, sourcePath: currentFile.path }, recovery };
+  getInput<HTMLButtonElement>("manual-draft-restore").disabled = recovery.status !== "ready";
+  getElement("manual-draft-message").textContent = recovery.status === "ready"
+    ? `Manual edits for ${currentFile.name} were stored ${new Date(recovery.draft.timestamp).toLocaleString()}. Restore keeps the saved source unchanged and starts a fresh Undo history. Reset edits returns to the saved source.`
+    : manualDraftReasonMessage(recovery.reason);
+  getInput<HTMLDialogElement>("manual-draft-dialog").showModal();
+  getElement(recovery.status === "ready" ? "manual-draft-restore" : "manual-draft-discard").focus();
+}
+function manualOfferEligible(): boolean {
+  return Boolean(offeredManualDraft && offeredManualDraft.sessionId === agentSession?.context.sessionId
+    && offeredManualDraft.identity.sourcePath === currentFile?.path && offeredManualDraft.identity.workspaceId === currentWorkspaceId && manualAuthority() === "manual" && !dirty);
+}
+function leaveUnavailableManualDraft(): void {
+  if (getElement("manual-draft-continue").hidden || !manualOfferEligible()) return;
+  offeredManualDraft = undefined;
+  getInput<HTMLDialogElement>("manual-draft-dialog").close();
+  showManualDraftStatus("Opened the saved source. The recovery draft remains on this device; new edits will create a new draft if storage is available.");
+  layerSearch.focus();
+}
+getElement("manual-draft-continue").addEventListener("click", leaveUnavailableManualDraft);
+getInput<HTMLDialogElement>("manual-draft-dialog").addEventListener("cancel", event => {
+  event.preventDefault();
+  leaveUnavailableManualDraft();
+});
+getElement("manual-draft-discard").addEventListener("click", () => {
+  if (!manualOfferEligible() || !offeredManualDraft?.recovery.token) return;
+  const result = discardTrackedManualDraft(offeredManualDraft.identity, offeredManualDraft.recovery.token, manualAuthority());
+  if (result.status === "failure" || result.status === "refused") {
+    getElement("manual-draft-message").textContent = `${manualDraftReasonMessage(result.reason)} You can continue with the saved source; the draft will remain stored.`;
+    getElement("manual-draft-continue").hidden = false;
+    return;
+  }
+  offeredManualDraft = undefined;
+  getInput<HTMLDialogElement>("manual-draft-dialog").close();
+  if (result.status === "changed") offerManualRecovery();
+  else { showManualDraftStatus("Manual draft discarded. Saved source unchanged."); layerSearch.focus(); }
+});
+getElement("manual-draft-restore").addEventListener("click", () => {
+  if (!manualOfferEligible() || offeredManualDraft?.recovery.status !== "ready" || !agentSession) return;
+  const latest = currentManualDraft();
+  if (latest?.status !== "ready" || latest.token !== offeredManualDraft.recovery.token) {
+    offeredManualDraft = undefined;
+    getInput<HTMLDialogElement>("manual-draft-dialog").close();
+    offerManualRecovery();
+    return;
+  }
+  const draft = latest.draft;
+  const parsed = new DOMParser().parseFromString(draft.svg, "image/svg+xml");
+  if (parsed.documentElement.localName !== "svg" || parsed.querySelector("parsererror")) return;
+  if (!agentSession.open(crypto.randomUUID(), draft.sourcePath, draft.revision)) return;
+  saveAuthority.invalidate();
+  restoringWorkspaceSession = true;
+  try {
+    artboard.replaceChildren(document.importNode(parsed.documentElement, true));
+    const root = artboard.querySelector("svg")!;
+    applyDocumentFrame(artboard, root);
+    fittedArtworkBounds = undefined;
+    editor.load(root, currentSourceBaseline);
+    setZoom(draft.context.zoom);
+    applyPreviewBackground(draft.context.previewBackground);
+    const recoveredSelection = draft.context.selectionIds.flatMap(id => {
+      const matches = Array.from(root.querySelectorAll("[id]")).filter(element => element.id === id);
+      return matches.length === 1 && isSelectableNode(matches[0], root) ? [matches[0] as SVGGraphicsElement] : [];
+    });
+    renderLayers(root);
+    editor.restoreSelection(recoveredSelection);
+    renderFavicons(editor.serializeClean());
+  } finally { restoringWorkspaceSession = false; }
+  offeredManualDraft = undefined;
+  getInput<HTMLDialogElement>("manual-draft-dialog").close();
+  publishAgentDocument();
+  persistWorkspaceSession();
+  persistManualDraft();
+  setStatus("Restored manual edits with a fresh Undo history. Save an iteration to keep them.");
+  layerSearch.focus();
+});
+
 async function offerAgentDraft(file: SvgFileEntry, sourceSvg: string): Promise<void> {
   if (!currentWorkspaceName) return;
+  const sessionId = agentSession?.context.sessionId;
   const recovery = await readAgentDraft(workspaceSessionStorage, {
     workspace: currentWorkspaceName, sourcePath: file.path, sourceSvg,
   });
-  if (recovery.status === "none") return;
+  if (currentFile !== file || agentSession?.context.sessionId !== sessionId || agentSession?.pending || dirty || recovery.status === "none") return;
   offeredAgentDraft = recovery.status === "ready" ? recovery.draft.svg : undefined;
   agentDraftRestore.disabled = recovery.status !== "ready";
   agentDraftMessage.textContent = recovery.status === "ready"
@@ -1198,10 +1393,23 @@ async function offerAgentDraft(file: SvgFileEntry, sourceSvg: string): Promise<v
 }
 
 agentDraftRestore.addEventListener("click", () => {
-  if (!offeredAgentDraft) return;
+  if (!offeredAgentDraft || !currentFile || !agentSession || manualAuthority() !== "manual") return;
   const parsed = new DOMParser().parseFromString(offeredAgentDraft, "image/svg+xml");
   if (parsed.documentElement.localName !== "svg" || parsed.querySelector("parsererror")) return;
-  editor.load(parsed.documentElement as unknown as SVGSVGElement, currentSourceBaseline);
+  if (!agentSession.open(crypto.randomUUID(), currentFile.path)) return;
+  restoringWorkspaceSession = true;
+  try {
+    artboard.replaceChildren(document.importNode(parsed.documentElement, true));
+    const root = artboard.querySelector("svg")!;
+    applyDocumentFrame(artboard, root);
+    fittedArtworkBounds = undefined;
+    editor.load(root, currentSourceBaseline);
+    updateDocumentViewport();
+    renderLayers(root);
+    renderFavicons(editor.serializeClean());
+  } finally { restoringWorkspaceSession = false; }
+  publishAgentDocument();
+  persistManualDraft();
   discardAgentDraft(workspaceSessionStorage);
   offeredAgentDraft = undefined;
   agentDraftDialog.close();
@@ -1212,6 +1420,7 @@ agentDraftDiscard.addEventListener("click", () => {
   offeredAgentDraft = undefined;
   agentDraftDialog.close();
   setStatus("Discarded unsaved applied agent draft");
+  offerManualRecovery();
 });
 
 function updateDocumentViewport(): void {
@@ -1330,6 +1539,15 @@ async function requestFileSwitch(file: SvgFileEntry, button: HTMLButtonElement):
     if (!fileSwitchCoordinator.canCommit(request, Boolean(agentSession?.pending))) return;
     if (decision === "cancel") return;
     if (decision === "discard") {
+      if (ownedManualDraft && ownedManualDraft.workspaceId === currentWorkspaceId && ownedManualDraft.sourcePath === currentFile?.path) {
+        const retired = discardTrackedManualDraft(ownedManualDraft, ownedManualDraft.token, manualAuthority());
+        if (retired.status === "failure" || retired.status === "refused") {
+          showManualDraftStatus(manualDraftReasonMessage(retired.reason));
+          setStatus("The recovery draft could not be discarded. Your current edits remain open; retry or save them.");
+          return;
+        }
+        ownedManualDraft = undefined;
+      }
       await openSvg(file, button);
       return;
     }
@@ -1351,13 +1569,18 @@ async function requestFileSwitch(file: SvgFileEntry, button: HTMLButtonElement):
 
 async function openSvg(file: SvgFileEntry, button: HTMLButtonElement, restoration?: WorkspaceSessionV1): Promise<void> {
   if (agentSession?.pending) return;
+  const recoveryRequest = recoveryOpenCoordinator.begin();
+  const recoveryEligible = () => recoveryOpenCoordinator.canCommit(recoveryRequest, Boolean(agentSession?.pending));
   let recovery = readPendingReviewRecovery();
   if (recovery?.sourcePath !== file.path) recovery = undefined;
   let recovered: AgentRecoveryState | undefined;
   if (recovery) {
     try {
-      recovered = await agentTransport.recover(recovery);
+      const identity = recovery;
+      recovered = await recoverAfterTabClose(() => agentTransport.recover(identity), recoveryEligible);
+      if (!recovered) return;
     } catch (error) {
+      if (!recoveryEligible()) return;
       if (!(error instanceof AgentRecoveryError) || !error.terminal) {
         setStatus("Agent review recovery is temporarily unavailable. The stored document was not opened or changed.");
         return;
@@ -1374,6 +1597,7 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement, restoratio
       renderAgentReview();
     }
   }
+  if (!recoveryEligible()) return;
   await commitLatestFileOpen({
     coordinator: fileOpenCoordinator,
     isPending: () => Boolean(agentSession?.pending),
@@ -1416,6 +1640,10 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement, restoratio
       }
       button.classList.add("selected");
       button.setAttribute("aria-current", "true");
+      checkingManualRecovery = true;
+      offeredManualDraft = undefined;
+      getInput<HTMLDialogElement>("manual-draft-dialog").close();
+      showManualDraftStatus("");
       currentFile = file;
       updateIterationSuggestion(file.path, fileButtons.keys());
       previewTargetCustomized = false;
@@ -1471,7 +1699,8 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement, restoratio
       getElement("document-size").textContent = activeSvg.getAttribute("viewBox") ?? "No viewBox";
       persistWorkspaceSession();
       if (!recovered) setStatus(`${file.collection} / ${file.name}`);
-      if (!recovered) void offerAgentDraft(file, savedBaseline);
+      if (!recovered) void offerRecoveryDrafts(file, savedBaseline);
+      else checkingManualRecovery = false;
       if (recovered && "status" in recovered) queueMicrotask(() => layerSearch.focus());
     },
   });
@@ -2106,14 +2335,13 @@ artboard.addEventListener("lineage-marquee-end", () => {
 });
 
 window.addEventListener("beforeunload", (event) => {
-  // A clean pending review is recoverable from tab-scoped state. Manual edits
-  // still require the ordinary warning because closing the tab destroys that
-  // recovery state along with the unsaved document.
+  // Recovery is best effort; warn until manual edits have a durable saved iteration.
   if (!dirty) return;
   event.preventDefault();
   event.returnValue = "";
 });
 window.addEventListener("pagehide", () => {
+  persistManualDraft();
   agentTransportClosed = true;
   workspaceRefreshGeneration += 1;
   if (agentManifestRetry !== undefined) window.clearTimeout(agentManifestRetry);
@@ -2148,6 +2376,8 @@ async function saveIteration(advanceSaved = true): Promise<boolean> {
   const request = saveAuthority.begin();
   if (request === undefined) return false;
   const source = currentFile;
+  const sourceBaseline = currentSourceBaseline;
+  const sourceWorkspaceId = currentWorkspaceId;
   const sessionId = agentSession?.context.sessionId;
   const point = editor.captureSavePoint();
   const eligible = () => saveAuthority.owns(request) && currentFile === source
@@ -2163,14 +2393,20 @@ async function saveIteration(advanceSaved = true): Promise<boolean> {
     const result = await response.json() as { error?: string; file?: SvgFileEntry; nextIterationPath?: string };
     if (!eligible()) return false;
     if (!response.ok || !result.file) throw new Error(result.error ?? "Unable to save the iteration.");
+    const oldDraft = sourceWorkspaceId ? readManualDraft(manualStorage(), { workspaceId: sourceWorkspaceId, sourcePath: source.path, sourceSvg: sourceBaseline }) : undefined;
     // A successful save is a new baseline, never a reload of the live editor.
     if (advanceSaved) {
       currentFile = result.file;
-      currentSourceBaseline = point.svg;
+      currentSourceBaseline = canonicalDraftSource(point.svg);
       if (agentSession && !agentSession.continueFromSavedArtifact(result.file.path)) {
         throw new Error("The saved continuation could not become active.");
       }
       editor.markSaved(point);
+      const migrated = persistManualDraft();
+      if (migrated && oldDraft?.status === "ready" && (oldDraft.draft.svg === point.svg || oldDraft.draft.svg === editor.serializeClean())) {
+        const retired = discardTrackedManualDraft(oldDraft.draft, oldDraft.token);
+        if (retired.status === "failure" || retired.status === "refused") showManualDraftStatus(manualDraftReasonMessage(retired.reason));
+      }
       updateIterationSuggestion(result.file.path, [...fileButtons.keys(), result.file.path]);
       publishAgentDocument();
       persistWorkspaceSession();
@@ -2182,6 +2418,7 @@ async function saveIteration(advanceSaved = true): Promise<boolean> {
         }
       }).catch(() => { /* The durable save remains valid; a later refresh reconciles the list. */ });
     }
+    if (!advanceSaved && oldDraft?.status === "ready" && oldDraft.draft.svg === point.svg) discardTrackedManualDraft(oldDraft.draft, oldDraft.token);
     if (dirty && advanceSaved) {
       setStatus(`Saved ${result.file.path}; newer corrections remain unsaved`);
       setLifecycleState("dirty", "Unsaved changes", `Saved ${result.file.path}. Save again to preserve your newer corrections.`);
@@ -2247,6 +2484,7 @@ async function loadWorkspace(openPath?: string, authority?: FileSwitchAuthority)
   try {
     const workspace = await fetchWorkspace();
     currentWorkspaceName = workspace.rootName;
+    currentWorkspaceId = workspace.workspaceId;
     let restoration: WorkspaceSessionV1 | undefined;
     if (!workspaceSessionInitialized) {
       workspaceSessionInitialized = true;

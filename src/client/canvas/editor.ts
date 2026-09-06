@@ -1399,6 +1399,17 @@ export class SvgEditor {
     this.#setSelection([node], node);
   }
 
+  /** Restore valid document selection without a history entry or sibling-only Shift semantics. */
+  restoreSelection(nodes: readonly SVGGraphicsElement[]): void {
+    const root = this.svgNode;
+    if (!root || this.#agentMutationBlocked) return;
+    const valid = Array.from(new Set(nodes)).filter(node => root.contains(node) && isSelectableNode(node, root));
+    const disjoint = valid.filter(node => !valid.some(other => other !== node && other.contains(node)));
+    const parent = disjoint[0] ? getSelectableParent(disjoint[0], root) : root;
+    this.#scope = disjoint.every(node => getSelectableParent(node, root) === parent) ? parent ?? root : root;
+    this.#setSelection(disjoint, disjoint.at(-1));
+  }
+
   editInside(): void {
     const root = this.svgNode;
     const selected = this.selectedNode;
