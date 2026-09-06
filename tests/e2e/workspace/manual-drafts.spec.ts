@@ -199,7 +199,7 @@ test('agent acceptance preserves a different recovery record written by another 
     document: { sessionId: manifest!.sessionId, sourcePath: manifest!.sourcePath, baseRevision: manifest!.revision },
     operations: [{ type: 'renameLayer', operationId: 'rename', target: { sessionKey: manifest!.layers.find(layer => layer.name === 'mark')!.sessionKey }, name: 'Accepted mark' }] };
   expect((await page.request.post('/api/agent/transactions', { headers, data: proposal })).status()).toBe(202);
-  await expect(page.locator('#agent-review')).toBeVisible();
+  await expect(page.locator('#agent-review-status')).toHaveText(/^pending$/i);
   // A storage-only second tab models another editor's completed write without
   // competing for this editor's live agent connection. Use the real draft store.
   const other = await context.newPage();
