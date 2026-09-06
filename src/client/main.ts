@@ -734,6 +734,9 @@ const agentTransport = new AgentCanvasTransport({
     setLifecycleState("disconnected", "Disconnected", "Restore the previous document to recover safely, or restart the local editor if the connection does not return.");
   },
   onStateChange: (state, message) => {
+    // An initial or resumed stream may arrive after the disconnected lease expired.
+    // Publish the current accepted revision again; pending recovery retains authority.
+    if (state === "connected" && !agentSession?.pending) publishAgentDocument();
     if (state === "disconnected") {
       agentReview = agentReview && agentSession?.pending
         ? agentSession.recoveryRequired

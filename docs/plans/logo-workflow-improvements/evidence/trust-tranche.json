@@ -4,12 +4,12 @@
     "A2",
     "G1"
   ],
-  "status": "fix-verified-awaiting-full-regression-and-ci",
+  "status": "lease-repair-awaiting-full-regression-and-ci",
   "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/29",
-  "validationHead": "d6ec780",
+  "validationHead": "b93226e6425431fbf04398e0c3b092df6bb89871",
   "local": {
-    "codeCheck": "617 tests, typecheck and production build passed",
-    "browser": "68 tests passed: full Chromium plus Firefox/WebKit critical paths",
+    "codeCheck": "617 tests, typecheck and production build passed in local Playwright 1.62.1 noble container, non-root pwuser, exact Git archive, Node 24.18.1",
+    "browser": "69 tests passed on both macOS and normal-user Linux at b93226e; subsequent local CI-style run reproduced seven ownership-related save/workspace failures.",
     "saveJourney": "Save preserves selection, locks, scope, geometry, viewport and history; delayed/failed save and proposal preemption tested. Undo/Redo crosses the saved baseline. Actual server stop/restart preserves exact saved and original bytes.",
     "savedArtifactEvidence": {
       "sourceSha256": "0ce112d615c992b7e079527da731d98e55a3f176983172ebe25d9caaa21757f3",
@@ -19,12 +19,16 @@
     },
     "linuxDragRegression": {
       "before": "2 single-selection failures at 100% and 125%; initial overlay stale by 0.634216px and 0.542774px; live outline correct within 0.000031px",
-      "after": "4/4 drag tests passed in Linux Playwright 1.62.1 noble container and macOS, including new pre-drag corner alignment assertions",
+      "after": "All five cases including lock/zoom/unlock passed on macOS and Linux at b93226e, with pre-drag corner alignment and unchanged 0.5px tolerance.",
       "tolerance": "unchanged 0.5px",
       "fix": "Recompute selection geometry on camera refresh, skip active gestures, retain rotation decoration.",
-      "followUp": "Independent review found retired-handler failure after locking. Real browser regression failed before mounted-overlay guard; final five-case and full regression reruns pending."
+      "followUp": "Independently validated retired-handler failure reproduced with two null.plot page errors before the mounted-overlay guard; the real lock/zoom/unlock browser regression passes after it."
     },
-    "currentMacFullCheck": "Initial default and two-worker attempts encountered existing 5-second subprocess deadlines under host load above 170; no assertion or timeout changed. Isolated Linux full check in progress."
+    "currentMacFullCheck": "Three attempts under severe host load encountered existing 5-second subprocess deadlines (npm pack/preflight); reducing workers did not eliminate the pack timeout. No timeout/assertion changed. Exact final-head full check passed in isolated local Linux; all final-head macOS browser tests passed.",
+    "invalidEnvironmentAttempts": [
+      "A tar transfer included AppleDouble metadata files; discarded and replaced with exact git archive.",
+      "Root container bypassed chmod-based permission fault injection; discarded and rerun as normal pwuser."
+    ]
   },
   "review": {
     "roles": [
@@ -44,7 +48,20 @@
     "native": "Installed native CLI could not start with configured model; independent focused review completed under skill fallback."
   },
   "remaining": [
-    "Full current-change local regression and current-head all-job CI must pass.",
-    "Postmerge main CI must pass before G1 and downstream implementation."
-  ]
+    "Full current-change regression and expected PR CI checks must pass.",
+    "Postmerge main CI must pass before G1."
+  ],
+  "ci": {
+    "head": "b93226e6425431fbf04398e0c3b092df6bb89871",
+    "run": "https://github.com/lineagehq/lineage-logo/actions/runs/34063046024",
+    "status": "failed: 43 passed, 24 failed; orphan ownership investigated"
+  },
+  "leaseRepair": {
+    "base": "b93226e6425431fbf04398e0c3b092df6bb89871",
+    "cause": "Pre-existing ownership claims could remain forever without an SSE stream; late HTTP publication could cancel the only release timer. Reproduced with real HTTP and browser, not inferred from CI counts alone.",
+    "before": "Four new HTTP regression cases failed; browser close-before-first-stream failed the next-tab manifest check. Full local CI-style run reproduced Another Lineage tab owns the agent connection on save assertions.",
+    "change": "Bounded no-stream expiry, active-stream ownership preservation, lease-generation validation after async request-body reads, and republish accepted manifest after connection when no proposal is pending.",
+    "focusedAfter": "31 transport tests and typecheck passed. Both browser ownership regressions and all six manual-save-continuity cases passed.",
+    "review": "Independent correctness, tests, contracts/types and comments/docs review found no introduced issue; silent-failure review and full regression are pending."
+  }
 }
