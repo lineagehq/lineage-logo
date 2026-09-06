@@ -1,0 +1,40 @@
+{
+  "node": "B3",
+  "status": "local-acceptance-passed-review-pending",
+  "base": "a596c6a30a48292e935f4b5cf1bb04e9159a9dcb",
+  "testedHead": "981f442",
+  "local": {
+    "mac": {
+      "unitIntegration": 661,
+      "browserScenarios": 83,
+      "focusedBrowserScenarios": 12,
+      "typecheck": "passed",
+      "productionBuild": "passed"
+    },
+    "linux": {
+      "environment": "mcr.microsoft.com/playwright:v1.62.1-noble, pwuser, exact git archive",
+      "unitIntegration": 661,
+      "browserScenarios": 83,
+      "typecheck": "passed",
+      "productionBuild": "passed"
+    }
+  },
+  "assertions": [
+    "Manual edits survive interruption through explicit restore bound to workspace, source and exact source hash.",
+    "Restore starts fresh Undo history and restores nested selection and preview context.",
+    "Late Save migrates newer edits to the saved continuation without overwriting original source or retiring newer drafts.",
+    "Agent pending recovery wins over manual drafts, with bounded lease-close retry.",
+    "Unavailable storage, failed deletion, expiration and malformed drafts surface recovery choices without trapping the editor.",
+    "Cross-tab retirement deletes only the captured immutable record, preserving newer writes."
+  ],
+  "tests": [
+    "tests/e2e/workspace/manual-drafts.spec.ts",
+    "tests/manual-draft-store.test.ts"
+  ],
+  "review": {
+    "completedWork": "Independent correctness and silent-failure candidates were reproduced, fixed, and covered by real browser regressions.",
+    "remaining": "Tests, contracts/types, comments/docs and post-fix review remain pending after worker usage limit."
+  },
+  "pr": null,
+  "ci": null
+}
