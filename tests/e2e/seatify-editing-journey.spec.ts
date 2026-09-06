@@ -73,7 +73,7 @@ for (const width of [1280, 760]) {
     await expect(page.locator('#artboard #constellation-tagline')).toHaveText('ROOM FOR EVERYONE');
     const small = page.locator('#favicon-preview img[width="16"]');
     await expect(small).toHaveCount(1);
-    expect(await small.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+    await expect.poll(() => small.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
     await page.locator('#save-iteration').click();
     await expect(page.locator('#status')).toContainText('Saved');
     const savedPath = await page.locator('.file-button[aria-current="true"]').getAttribute('data-path');
