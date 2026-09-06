@@ -48,7 +48,7 @@
     "native": "Installed native CLI could not start with configured model; independent focused review completed under skill fallback."
   },
   "remaining": [
-    "Final test-readiness head local regression and all expected PR CI checks must pass.",
+    "Final readiness/scroll-barrier head local regression and all expected PR CI checks must pass.",
     "Postmerge main CI must pass before G1."
   ],
   "ci": {
@@ -74,6 +74,7 @@
   "testReadinessRepair": {
     "trigger": "Same-path reload could satisfy path-only readiness with the prior editor session during release grace; Linux returned stale instead of pending.",
     "change": "Avoid opening an automatically restored source twice; await successful current-page manifest POST and require public context to match sessionId, sourcePath and revision. Pending/revert and exact geometry assertions remain unchanged.",
-    "review": "Independent test reviewer confirmed actual workspace initialization ordering and public-network barrier."
+    "review": "Independent test reviewer confirmed actual workspace initialization ordering and public-network barrier.",
+    "scroll": "The save-scope test previously accepted an already-positive scroll offset before wheel(100,100) applied. Observed before20,0 versus after120,100. It now requires actual movement and polls the exact clamped wheel destination before Save, retaining exact post-Save equality; independently reviewed."
   }
 }

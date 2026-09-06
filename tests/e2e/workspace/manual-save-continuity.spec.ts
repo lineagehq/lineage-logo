@@ -162,9 +162,19 @@ test('Save keeps drilled scope, geometry and scrolled viewport intact', async ({
   for (let i = 0; i < 8; i++) await page.locator('#zoom-in').click();
   const stage = page.locator('#stage');
   await stage.hover();
+  const scrollStart = await stage.evaluate(el => ({
+    x: el.scrollLeft, y: el.scrollTop,
+    maxX: el.scrollWidth - el.clientWidth, maxY: el.scrollHeight - el.clientHeight,
+  }));
+  const viewport = {
+    x: Math.min(scrollStart.maxX, scrollStart.x + 100),
+    y: Math.min(scrollStart.maxY, scrollStart.y + 100),
+  };
+  expect(viewport).not.toEqual({ x: scrollStart.x, y: scrollStart.y });
   await page.mouse.wheel(100, 100);
-  await expect.poll(async () => stage.evaluate(el => el.scrollTop + el.scrollLeft)).toBeGreaterThan(0);
-  const viewport = await stage.evaluate(el => ({ x: el.scrollLeft, y: el.scrollTop }));
+  // Wheel dispatch finishes before scrolling; an already positive offset does
+  // not prove this gesture reached its destination.
+  await expect.poll(async () => stage.evaluate(el => ({ x: el.scrollLeft, y: el.scrollTop }))).toEqual(viewport);
   const zoom = await page.locator('#zoom-label').textContent();
   const breadcrumb = await page.locator('#selection-breadcrumb').textContent();
   const path = (await page.locator('#save-iteration').getAttribute('title'))!.replace('Create ', '');
