@@ -8,6 +8,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { AgentProducerClient, type AgentProducerOutcome } from "../producer/agent-client.js";
 import { AgentProtocolError, bindPublicAgentProposal, validateCleanAgentSvg, type AgentTransactionV1 } from "../shared/agent-protocol.js";
+import { SnapshotError } from "../shared/agent-snapshot.js";
 import { PUBLIC_PROPOSAL_SCHEMA } from "./proposal-schema.js";
 import { safeError, validateLocalProposal, type SafeCliError } from "./proposal-validation.js";
 import { bootstrapSeatifyExample, SeatifyBootstrapError } from "./seatify-example.js";
@@ -16,7 +17,7 @@ export const EXIT = {
   success: 0, usage: 2, selection: 3, unavailable: 4, rejected: 5, conflict: 6, internal: 7,
 } as const;
 
-type CommandName = "launch" | "submit" | "doctor" | "context" | "example" | "schema" | "validate";
+type CommandName = "launch" | "submit" | "doctor" | "context" | "example" | "schema" | "validate" | "snapshot";
 type OutputStatus = "ok" | "invalid" | "not_found" | "unavailable" | "rejected" | "conflict" | "error";
 
 export interface CliResult {
@@ -34,7 +35,7 @@ export interface CliIo {
 }
 
 export interface ResolvedInstance {
-  client: Pick<AgentProducerClient, "manifest" | "submitAndWait">;
+  client: Pick<AgentProducerClient, "manifest" | "submitAndWait"> & Partial<Pick<AgentProducerClient, "snapshot">>;
   instanceId: string;
   workspaceLabel: string;
   editorOrigin: string;
@@ -84,6 +85,7 @@ Commands:
   schema [--json]
   validate --proposal <path> [--artifact <path>] [--json]
   doctor [--workspace <path> | --instance <uuid>] [--json]
+  snapshot [--workspace <path> | --instance <uuid>] [--json]  Explicit local live SVG handoff
   context [--workspace <path> | --instance <uuid>] [--json]
   example seatify --workspace <directory> [--json]
 
@@ -106,7 +108,7 @@ function parse(argv: string[]): ParsedArguments {
     const argument = argv[index];
     if (!argument.startsWith("--")) {
       if (command === "example" && !example && argument === "seatify") { example = "seatify"; continue; }
-      if (command || !["launch", "submit", "doctor", "context", "example", "schema", "validate"].includes(argument)) throw new CliFailure(EXIT.usage, "invalid", "Unknown command or positional argument.");
+      if (command || !["launch", "submit", "doctor", "context", "example", "schema", "validate", "snapshot"].includes(argument)) throw new CliFailure(EXIT.usage, "invalid", "Unknown command or positional argument.");
       command = argument as CommandName;
       continue;
     }
@@ -149,6 +151,7 @@ function validateCommandOptions(args: ParsedArguments): void {
     submit: new Set(["artifact", "proposal", "workspace", "instance", "legacy-context", "include-svg"]),
     doctor: new Set(["workspace", "instance", "legacy-context"]),
     context: new Set(["workspace", "instance", "legacy-context"]),
+    snapshot: new Set(["workspace", "instance"]),
     example: new Set(["workspace"]),
   };
   for (const option of args.options.keys()) {
@@ -186,6 +189,25 @@ async function runContext(args: ParsedArguments, io: CliIo, dependencies: CliDep
     },
   });
   return EXIT.success;
+}
+
+async function runSnapshot(args: ParsedArguments, io: CliIo, dependencies: CliDependencies): Promise<number> {
+  const instance = await resolveSelected(dependencies.resolveInstance ?? defaultResolver, selector(args));
+  try {
+    if (!instance.client.snapshot) throw new SnapshotError("snapshot_unavailable");
+    const snapshot = await instance.client.snapshot();
+    // Explicit command output intentionally contains artwork; ordinary context
+    // and all failure output retain the existing redaction boundary.
+    io.stdout(JSON.stringify({ schemaVersion: 1, command: "snapshot", ok: true, status: "ok", message: "Accepted live document captured. Submit using this session and baseRevision; later edits make that context stale.", snapshot }));
+    return EXIT.success;
+  } catch (error) {
+    const code = error instanceof SnapshotError ? error.code : "snapshot_unavailable";
+    const retry = code === "pending_review" ? "Finish or revert the pending review, then request a new snapshot."
+      : code === "unsupported_snapshot" ? "This document exceeds the safe snapshot SVG policy; use passive CSS and local resources; active content, external resources, CSS escapes and at-rules are unsupported."
+      : code === "stale_snapshot" ? "Request a fresh snapshot after the current edit settles."
+      : "Reconnect the selected editor and request a new snapshot; no proposal was submitted.";
+    throw new CliFailure(code === "snapshot_unavailable" || code === "snapshot_timeout" ? EXIT.unavailable : EXIT.conflict, code === "snapshot_unavailable" || code === "snapshot_timeout" ? "unavailable" : "conflict", "Live snapshot was not captured.", { code, nextAction: retry });
+  }
 }
 
 function output(io: CliIo, json: boolean, result: CliResult): void {
@@ -443,7 +465,7 @@ export async function runLineageCli(argv: string[], io: CliIo = {
   catch (error) {
     const failure = error as CliFailure;
     if (argv.includes("--json")) {
-      const command = argv.find((argument) => ["launch", "submit", "doctor", "context", "example", "schema", "validate"].includes(argument)) as CommandName | undefined;
+      const command = argv.find((argument) => ["launch", "submit", "doctor", "context", "example", "schema", "validate", "snapshot"].includes(argument)) as CommandName | undefined;
       output(io, true, { schemaVersion: 1, command: command ?? "doctor", ok: false, status: failure.status ?? "invalid", message: failure.message, error: failureError(failure) });
     } else io.stderr(failure.message);
     return failure.exitCode ?? EXIT.internal;
@@ -466,6 +488,7 @@ export async function runLineageCli(argv: string[], io: CliIo = {
     }
     if (args.command === "validate") return await runValidate(args, io);
     if (args.command === "submit") return await runSubmit(args, io, dependencies);
+    if (args.command === "snapshot") return await runSnapshot(args, io, dependencies);
     if (args.command === "context") return await runContext(args, io, dependencies);
     if (args.command === "example") return await runSeatifyExample(args, io);
     return await runDoctor(args, io, dependencies);
