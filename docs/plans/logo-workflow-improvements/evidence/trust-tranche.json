@@ -4,12 +4,12 @@
     "A2",
     "G1"
   ],
-  "status": "lease-repair-awaiting-full-regression-and-ci",
+  "status": "test-readiness-barrier-awaiting-final-checks",
   "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/29",
-  "validationHead": "b93226e6425431fbf04398e0c3b092df6bb89871",
+  "validationHead": "c408351fe2fa48cd71c5ad78eb9dc6dc7504b4c1",
   "local": {
-    "codeCheck": "617 tests, typecheck and production build passed in local Playwright 1.62.1 noble container, non-root pwuser, exact Git archive, Node 24.18.1",
-    "browser": "69 tests passed on both macOS and normal-user Linux at b93226e; subsequent local CI-style run reproduced seven ownership-related save/workspace failures.",
+    "codeCheck": "622 tests, typecheck and production build passed on macOS and normal-user local Linux (exact Git archive).",
+    "browser": "71 tests passed in macOS CI-style full run. Linux passed70/71; one same-path reload test submitted a stale prior-session proposal. That test readiness barrier is strengthened to match a successful current-page publication by session, source and revision.",
     "saveJourney": "Save preserves selection, locks, scope, geometry, viewport and history; delayed/failed save and proposal preemption tested. Undo/Redo crosses the saved baseline. Actual server stop/restart preserves exact saved and original bytes.",
     "savedArtifactEvidence": {
       "sourceSha256": "0ce112d615c992b7e079527da731d98e55a3f176983172ebe25d9caaa21757f3",
@@ -48,13 +48,13 @@
     "native": "Installed native CLI could not start with configured model; independent focused review completed under skill fallback."
   },
   "remaining": [
-    "Full current-change regression and expected PR CI checks must pass.",
+    "Final test-readiness head local regression and all expected PR CI checks must pass.",
     "Postmerge main CI must pass before G1."
   ],
   "ci": {
-    "head": "b93226e6425431fbf04398e0c3b092df6bb89871",
-    "run": "https://github.com/lineagehq/lineage-logo/actions/runs/34063046024",
-    "status": "failed: 43 passed, 24 failed; orphan ownership investigated"
+    "head": "c408351fe2fa48cd71c5ad78eb9dc6dc7504b4c1",
+    "run": "https://github.com/lineagehq/lineage-logo/actions/runs/34063637968",
+    "status": "all six CI jobs and CodeQL passed"
   },
   "leaseRepair": {
     "base": "b93226e6425431fbf04398e0c3b092df6bb89871",
@@ -62,6 +62,18 @@
     "before": "Four new HTTP regression cases failed; browser close-before-first-stream failed the next-tab manifest check. Full local CI-style run reproduced Another Lineage tab owns the agent connection on save assertions.",
     "change": "Bounded no-stream expiry, active-stream ownership preservation, lease-generation validation after async request-body reads, and republish accepted manifest after connection when no proposal is pending.",
     "focusedAfter": "31 transport tests and typecheck passed. Both browser ownership regressions and all six manual-save-continuity cases passed.",
-    "review": "Independent correctness, tests, contracts/types and comments/docs review found no introduced issue; silent-failure review and full regression are pending."
+    "review": "All five independent roles completed; no introduced high-confidence issue. Native review reattempt failed because installed CLI cannot use configured model; disclosed fallback retained."
+  },
+  "priorCi": [
+    {
+      "head": "b93226e6425431fbf04398e0c3b092df6bb89871",
+      "run": "https://github.com/lineagehq/lineage-logo/actions/runs/34063046024",
+      "status": "failed: 43 passed, 24 failed; orphan ownership investigated"
+    }
+  ],
+  "testReadinessRepair": {
+    "trigger": "Same-path reload could satisfy path-only readiness with the prior editor session during release grace; Linux returned stale instead of pending.",
+    "change": "Avoid opening an automatically restored source twice; await successful current-page manifest POST and require public context to match sessionId, sourcePath and revision. Pending/revert and exact geometry assertions remain unchanged.",
+    "review": "Independent test reviewer confirmed actual workspace initialization ordering and public-network barrier."
   }
 }

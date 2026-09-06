@@ -28,7 +28,7 @@
         "B0"
       ],
       "lane": "quality",
-      "status": "verified",
+      "status": "merged",
       "acceptanceContract": "plan.md#q1--build-useful-safe-qa-evidence",
       "receipt": "evidence/q1/receipt.json"
     },
@@ -39,9 +39,9 @@
         "B0"
       ],
       "lane": "trust",
-      "status": "active",
+      "status": "pr_open",
       "acceptanceContract": "plan.md#a1--save-continuity-and-consistent-document-state",
-      "receipt": null
+      "receipt": "evidence/trust-tranche.json"
     },
     {
       "id": "A2",
@@ -50,9 +50,9 @@
         "B0"
       ],
       "lane": "trust",
-      "status": "active",
+      "status": "pr_open",
       "acceptanceContract": "plan.md#a2--accurate-document-bounds-and-preview-surfaces",
-      "receipt": null
+      "receipt": "evidence/trust-tranche.json"
     },
     {
       "id": "C1",
@@ -61,7 +61,7 @@
         "B0"
       ],
       "lane": "agent",
-      "status": "verified",
+      "status": "merged",
       "acceptanceContract": "plan.md#c1--discoverable-agent-schema-and-recoverable-errors",
       "receipt": "evidence/c1.json"
     },
@@ -76,7 +76,7 @@
       "lane": "gate",
       "status": "pending",
       "acceptanceContract": "plan.md#tranche-acceptance-gates",
-      "receipt": null
+      "receipt": "evidence/trust-tranche.json"
     },
     {
       "id": "B1",
