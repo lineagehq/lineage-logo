@@ -1,0 +1,42 @@
+{
+  "node": "C2",
+  "status": "local-acceptance-passed-review-pending",
+  "base": "a596c6a30a48292e935f4b5cf1bb04e9159a9dcb",
+  "testedHead": "93dbe9f",
+  "local": {
+    "mac": {
+      "unitIntegration": 640,
+      "typecheck": "passed",
+      "productionBuild": "passed",
+      "installedChromiumJourney": "passed"
+    },
+    "linux": {
+      "environment": "mcr.microsoft.com/playwright:v1.62.1-noble, pwuser, exact git archive",
+      "unitIntegration": 640,
+      "browserScenarios": 72,
+      "typecheck": "passed",
+      "productionBuild": "passed"
+    }
+  },
+  "assertions": [
+    "Installed CLI snapshot captures current unsaved clean SVG rather than source bytes; SHA256 matches exact exported bytes.",
+    "Selected and primary id-less layer keys, hierarchy, geometry, passive styles and local paint resources are bound to one live revision.",
+    "Hidden bounds are explicitly unsupported and manual locks are represented.",
+    "Capture does not mutate artwork, selection, history, dirty state or source files.",
+    "Producer checks digest and all instance/workspace/editor/session/revision bindings independently.",
+    "Malformed, oversized, pending, stale, mismatched nonce, replaced editor and disconnected requests refuse without leaking snapshots; timeout and late replies are cleaned up.",
+    "Default context and error output do not include SVG, source path, credentials or internal traces."
+  ],
+  "tests": [
+    "tests/e2e/live-snapshot.spec.ts",
+    "tests/agent-snapshot.test.ts",
+    "tests/cli/snapshot.test.ts"
+  ],
+  "limitations": [
+    "Geometric bounds exclude paint effects.",
+    "Active/external SVG and CSS escapes or at-rules are explicitly refused."
+  ],
+  "review": "pending",
+  "pr": null,
+  "ci": null
+}
