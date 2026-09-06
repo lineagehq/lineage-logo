@@ -255,11 +255,12 @@ app.innerHTML = `
           </details>
           <details class="inspector-group" id="paint-group" open>
             <summary>Paint <span id="paint-summary" class="group-summary"></span></summary>
+            <p id="group-paint-help" class="alignment-reason" hidden>Group paint changes the group’s own value. Children with their own paint keep it; select those children to change them.</p>
             <div class="field-grid paint-grid">
             <label class="paint-field">
               <span>Fill</span>
               <span class="paint-control">
-                <input id="fill" type="text" placeholder="none, color, or paint URL" aria-describedby="fill-error" />
+                <input id="fill" type="text" placeholder="none, color, or paint URL" aria-describedby="fill-error group-paint-help" />
                 <input id="fill-picker" type="color" value="#000000" aria-label="Choose a solid fill color" />
               </span>
               <small id="fill-state" class="paint-state"></small>
@@ -268,7 +269,7 @@ app.innerHTML = `
             <label class="paint-field">
               <span>Stroke</span>
               <span class="paint-control">
-                <input id="stroke" type="text" placeholder="none, color, or paint URL" aria-describedby="stroke-error" />
+                <input id="stroke" type="text" placeholder="none, color, or paint URL" aria-describedby="stroke-error group-paint-help" />
                 <input id="stroke-picker" type="color" value="#000000" aria-label="Choose a solid stroke color" />
               </span>
               <small id="stroke-state" class="paint-state"></small>
@@ -1052,6 +1053,7 @@ function renderSelectionContext(context: SelectionContext): void {
   if (countBadge.textContent !== nextCountText) countBadge.textContent = nextCountText;
   countBadge.hidden = context.selectedNodes.length <= 1;
   renderInspectorSummaries(context);
+  getElement("group-paint-help").hidden = !context.selectedNodes.some(node => node.localName === "g");
   const selectedBox = context.selected?.getBoundingClientRect();
   const canFitSelection = Boolean(
     context.selected

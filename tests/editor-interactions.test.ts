@@ -947,19 +947,32 @@ describe("multi-selection mutation boundaries", () => {
     expect(editor.undo()).toBe(false);
   });
 
-  it("keeps destructive and duplicating primary-only shortcuts inert for a multi-selection", () => {
+  it("applies destructive and duplicating shortcuts atomically to the entire multi-selection", () => {
     const { editor, window } = editorHarness();
     selectNestedMulti(editor);
     const before = editor.serializeClean();
     const context = editorContext(editor);
 
-    for (const event of [
-      new window.KeyboardEvent("keydown", { bubbles: true, key: "Delete" }),
-      new window.KeyboardEvent("keydown", { bubbles: true, key: "d", metaKey: true }),
-    ]) dispatch(window.document, event);
-
+    dispatch(window.document, new window.KeyboardEvent("keydown", { bubbles: true, key: "Delete" }));
+    expect(editor.svgNode?.querySelector("#icon")).toBeNull();
+    expect(editor.svgNode?.querySelector("#wordmark")).toBeNull();
+    expect(editor.selectedNodes).toHaveLength(0);
+    expect(editor.undo()).toBe(true);
     expect(editor.serializeClean()).toBe(before);
     expect(editorContext(editor)).toEqual(context);
+    expect(editor.undo()).toBe(false);
+
+    dispatch(window.document, new window.KeyboardEvent("keydown", { bubbles: true, key: "d", metaKey: true }));
+    expect(editor.selectedNodes).toHaveLength(2);
+    expect(editor.selectedNodes.every((node) => node.id.includes("-copy-"))).toBe(true);
+    const duplicated = editor.serializeClean();
+    expect(editor.undo()).toBe(true);
+    expect(editor.serializeClean()).toBe(before);
+    expect(editorContext(editor)).toEqual(context);
+    expect(editor.undo()).toBe(false);
+    expect(editor.redo()).toBe(true);
+    expect(editor.serializeClean()).toBe(duplicated);
+    expect(editor.selectedNodes).toHaveLength(2);
   });
 });
 

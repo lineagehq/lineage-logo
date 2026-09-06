@@ -12,6 +12,7 @@ import {
   collectiveScaleMatrix,
   boxSnapTargets,
   composeGroupScale,
+  composeRootTranslation,
   formatMatrix,
   GroupTransformGesture,
   oppositeResizeAnchor,
@@ -30,6 +31,8 @@ import {
 } from "./transform";
 import { marqueeMatches, renderedClientRect, type ClientRect, type MarqueeHitRule } from "./marquee-selection";
 import { DEFAULT_SELECTION_PREFERENCES, type SelectionPreferences } from "../selection-preferences";
+
+import { bulkNumericError, deletionReferenceError, disjointTargets, duplicateSubtrees, localReferences, ownAttributeValue, type BulkEdit, type BulkEditResult } from "./bulk-operations";
 
 interface EditorControls {
   alignBottomButton: HTMLButtonElement;
@@ -373,7 +376,7 @@ function displayedTextValue(node: SVGTextElement, property: Exclude<SvgTextPrope
   } catch { return fallback; }
 }
 
-function cssControlsTextProperty(node: SVGTextElement, property: Exclude<SvgTextProperty, "content">): { controlled: boolean; important: boolean } {
+function cssControlsProperty(node: SVGGraphicsElement, property: string): { controlled: boolean; important: boolean } {
   let controlled = Boolean(node.style.getPropertyValue(property));
   let important = node.style.getPropertyPriority(property) === "important";
   const root = node.closest("svg");
@@ -429,7 +432,7 @@ export function applySvgTextEdit(node: SVGTextElement, edit: SvgTextEdit): { cha
   if (edit.property === "font-family" && activatesExternalFont(node, validation.normalized)) {
     return { changed: false, error: "This family could activate an imported or URL-backed font. Use a local family list." };
   }
-  const cssControl = cssControlsTextProperty(node, edit.property);
+  const cssControl = cssControlsProperty(node, edit.property);
   const inlineCurrent = node.style.getPropertyValue(edit.property);
   const effectiveCurrent = inlineCurrent || current || (cssControl.controlled ? displayedTextValue(node, edit.property) : null);
   if (effectiveCurrent !== null && effectiveTextValue(edit.property, importedTextValue(edit.property, effectiveCurrent))
@@ -2063,21 +2066,108 @@ export class SvgEditor {
     this.#setSelection([...this.#selectedNodes], node);
   }
 
-  toggleVisibility(node = this.selectedNode): void {
+  toggleVisibility(node?: SVGGraphicsElement): void {
+    const targets = node ? [node] : disjointTargets(this.#selectedNodes);
+    this.applyBulkEdit({ kind: "visibility", hidden: !targets.every((target) => target.getAttribute("display") === "none") }, targets);
+  }
+
+  #bulkAvailability(nodes: readonly SVGGraphicsElement[]): OperationAvailability {
     const root = this.svgNode;
-    if (!root || !node || !node.isConnected || !isSelectableNode(node, root)) return;
-    if (this.#isLocked(node)) {
-      this.#callbacks.onStatus(`Unlock ${this.#label(node)} before changing its visibility`);
-      return;
+    if (this.#agentMutationBlocked) return { allowed: false, reason: "Finish the pending agent review before editing layers." };
+    if (!root || !nodes.length || nodes.some((node) => !node.isConnected || !isSelectableNode(node, root))) {
+      return { allowed: false, reason: "Select connected artwork layers before editing." };
     }
-    const hidden = node.getAttribute("display") === "none";
-    this.#mutate(() => {
-      setLayerHidden(node, !hidden);
-      if (node === this.selectedNode) {
-        this.#setSelection([...this.#selectedNodes], node);
+    if (nodes.some((node) => this.#isLocked(node)
+      || Array.from(node.querySelectorAll<SVGGraphicsElement>(EDITABLE_SELECTOR)).some((child) => this.#isLocked(child)))) {
+      return { allowed: false, reason: "Unlock every selected layer and its locked ancestors or descendants before editing." };
+    }
+    return { allowed: true, reason: "" };
+  }
+
+  /** Validate the complete target set before one undoable document change. */
+  applyBulkEdit(edit: BulkEdit, selection = this.#selectedNodes, inspectorSession = false): BulkEditResult {
+    const nodes = disjointTargets(selection);
+    const availability = this.#bulkAvailability(nodes);
+    const reject = (error: string): BulkEditResult => {
+      this.#callbacks.onStatus(error);
+      return { changed: false, error };
+    };
+    if (!availability.allowed) return reject(availability.reason);
+    const unchanged = (): BulkEditResult => {
+      this.#callbacks.onStatus("The selected layers already have this value; no change was made.");
+      return { changed: false };
+    };
+    const root = this.svgNode!;
+    let change: () => void;
+    let clones: SVGGraphicsElement[] | undefined;
+    try {
+      if (edit.kind === "appearance") {
+        const next = edit.value.trim() || null;
+        const error = edit.attribute === "fill" || edit.attribute === "stroke"
+          ? !isValidSvgPaint(edit.value, edit.attribute) ? "Enter a valid SVG paint, such as none, #663399, currentColor, or url(#paint)." : undefined
+          : bulkNumericError(edit.attribute, edit.value);
+        if (error) return reject(error);
+        if (next) {
+          const probe = root.ownerDocument.createElementNS(root.namespaceURI, "path");
+          probe.setAttribute(edit.attribute, next);
+          const ids = new Set(Array.from(root.querySelectorAll("[id]"), (node) => node.id));
+          if (root.id) ids.add(root.id);
+          if ([...localReferences(probe)].some((id) => !ids.has(id))) return reject("The paint references a missing SVG resource. Choose an existing local resource.");
+        }
+        if (nodes.every((node) => node.getAttribute(edit.attribute) === next)) return unchanged();
+        if (nodes.some((node) => cssControlsProperty(node, edit.attribute).controlled)) return reject("CSS overrides this presentation attribute. Adjust the layer's CSS before applying this edit to the selection.");
+        change = () => nodes.forEach((node) => next === null ? node.removeAttribute(edit.attribute) : node.setAttribute(edit.attribute, next));
+      } else if (edit.kind === "visibility") {
+        if (nodes.every((node) => (node.getAttribute("display") === "none") === edit.hidden)) return unchanged();
+        if (nodes.some((node) => cssControlsProperty(node, "display").controlled)) return reject("CSS controls this layer's display. Adjust its CSS before changing visibility for the selection.");
+        change = () => {
+          nodes.forEach((node) => setLayerHidden(node, edit.hidden));
+          this.#setSelection([...this.#selectedNodes], this.selectedNode);
+        };
+      } else if (edit.kind === "delete") {
+        const error = deletionReferenceError(root, nodes);
+        if (error) return reject(error);
+        change = () => {
+          this.#deselect();
+          if (this.#scope && nodes.some((node) => node === this.#scope || node.contains(this.#scope!))) {
+            this.#scope = getSelectableParent(nodes[0], root) ?? root;
+          }
+          nodes.forEach((node) => node.remove());
+          this.#setSelection([]);
+        };
+      } else {
+        const targetIds = new Set(nodes.map((node) => node.id).filter(Boolean));
+        for (const node of nodes.flatMap((node) => [node, ...Array.from(node.querySelectorAll("*"))])) {
+          if ((node.localName === "use" || node.localName === "textPath") && Array.from(node.attributes).some((attribute) => attribute.localName === "href" && attribute.value.startsWith("#") && targetIds.has(attribute.value.slice(1)))) {
+            return reject("A copied layer renders another selected layer by reference. Duplicate their common group to preserve its visual offset.");
+          }
+        }
+        if (nodes.some(node => hasCssControlledTransform(node, root))) return reject("CSS controls the selected layer’s transform. Convert it to an SVG transform before duplicating the selection.");
+        clones = duplicateSubtrees(root, nodes);
+        const transforms = translationTargets(nodes, root).map((target) => formatMatrix(composeRootTranslation(target.initial, target.parentToRoot, 12, 12)));
+        clones.forEach((clone, index) => clone.setAttribute("transform", transforms[index]));
+        change = () => {
+          clones!.forEach((clone, index) => {
+            this.#labelDuplicate(nodes[index], clone);
+            nodes[index].after(clone);
+          });
+          this.#assignKeys(root);
+          const primaryIndex = nodes.findIndex((node) => node === this.selectedNode || (this.selectedNode && node.contains(this.selectedNode)));
+          this.#setSelection(clones!, clones![Math.max(0, primaryIndex)]);
+        };
       }
-    });
-    this.#callbacks.onStatus(`${hidden ? "Showed" : "Hid"} ${this.#label(node)}`);
+    } catch (error) {
+      return reject(error instanceof Error ? error.message : "The selected layers could not be edited safely.");
+    }
+    const before = this.#snapshot();
+    change();
+    if (inspectorSession) this.#checkpointInspectorMutation(before, this.#snapshot());
+    else this.#history.checkpoint(before);
+    if (!inspectorSession) this.#syncSelectionUi();
+    this.#notifyDocumentChange();
+    this.#notifyHistory();
+    if (edit.kind !== "appearance") this.#callbacks.onStatus(`${edit.kind === "duplicate" ? "Duplicated" : edit.kind === "delete" ? "Deleted" : edit.hidden ? "Hid" : "Showed"} ${nodes.length} ${nodes.length === 1 ? "layer" : "layers"}`);
+    return { changed: true };
   }
 
   reorder(direction: HierarchyDirection): void {
@@ -2426,25 +2516,17 @@ export class SvgEditor {
         input.addEventListener("focus", () => this.#beginInspectorEdit());
       }
       const apply = (value: string) => {
-        if (this.#syncingControls || !this.#canMutatePrimary() || !this.#selected) return;
-        if (!isValidSvgPaint(value, attribute)) {
-          control.setAttribute("aria-invalid", "true");
-          error.textContent = "Enter a valid SVG paint, such as none, #663399, currentColor, or url(#paint).";
-          return;
-        }
-        control.removeAttribute("aria-invalid");
-        error.textContent = "";
-        const next = value.trim() || null;
-        const node = this.#selected.node as SVGGraphicsElement;
-        const current = node.getAttribute(attribute);
-        if (current === next) return;
-        this.#checkpointInspectorMutation(current ?? "", next ?? "");
-        this.#selected.attr(attribute, next);
+        if (this.#syncingControls) return;
+        const result = this.applyBulkEdit({ kind: "appearance", attribute, value }, this.#selectedNodes, true);
+        if (result.error) control.setAttribute("aria-invalid", "true");
+        else control.removeAttribute("aria-invalid");
+        error.textContent = result.error ?? "";
+        if (result.error) return;
         const pickerValue = paintPickerValue(value);
         picker.disabled = !pickerValue;
         if (pickerValue) picker.value = pickerValue;
-        state.textContent = svgPaintState(next);
-        this.#notifyDocumentChange();
+        state.textContent = svgPaintState(value.trim() || null);
+
       };
       control.addEventListener("input", () => apply(control.value));
       picker.addEventListener("input", () => {
@@ -2456,20 +2538,19 @@ export class SvgEditor {
       });
     }
 
-    const attributeControls: Array<[HTMLInputElement, string]> = [
+    const attributeControls: Array<[HTMLInputElement, "stroke-width" | "opacity"]> = [
       [this.#controls.strokeWidth, "stroke-width"],
       [this.#controls.opacity, "opacity"],
     ];
     for (const [control, attribute] of attributeControls) {
       control.addEventListener("focus", () => this.#beginInspectorEdit());
       control.addEventListener("input", () => {
-        if (this.#syncingControls || !this.#canMutatePrimary() || !this.#selected) return;
-        const next = control.value.trim() || null;
-        const current = this.#selected.attr(attribute);
-        if ((current == null ? null : String(current)) === next) return;
-        this.#checkpointInspectorMutation(current == null ? "" : String(current), next ?? "");
-        this.#selected.attr(attribute, next);
-        this.#notifyDocumentChange();
+        if (this.#syncingControls) return;
+        const result = this.applyBulkEdit({ kind: "appearance", attribute, value: control.value }, this.#selectedNodes, true);
+        if (result.error) control.setAttribute("aria-invalid", "true");
+        else control.removeAttribute("aria-invalid");
+        control.setCustomValidity(result.error ?? "");
+
       });
       control.addEventListener("change", () => this.#syncSelectionUi());
     }
@@ -2589,7 +2670,7 @@ export class SvgEditor {
   }
 
   #beginInspectorEdit(): void {
-    if (!this.#canMutatePrimary()) return;
+    if (!this.#bulkAvailability(disjointTargets(this.#selectedNodes)).allowed) return;
     this.#inspectorEdit.begin(this.#snapshot());
   }
 
@@ -3115,20 +3196,7 @@ export class SvgEditor {
   }
 
   #duplicateSelection(): void {
-    const source = this.#singleMutableSelection("duplicating");
-    if (!source) return;
-    this.#mutate(() => {
-      const clone = source.cloneNode(true) as SVGGraphicsElement;
-      this.#labelDuplicate(source, clone);
-      this.#remapCloneIds(clone);
-      for (const node of [clone, ...Array.from(clone.querySelectorAll<SVGGraphicsElement>(EDITABLE_SELECTOR))]) {
-        node.removeAttribute("data-lineage-key");
-      }
-      source.after(clone);
-      this.#assignKeys(this.#drawing?.node as SVGSVGElement);
-      (SVG(clone) as SvgElement).dmove(12, 12);
-      this.selectNode(clone);
-    });
+    this.applyBulkEdit({ kind: "duplicate" });
   }
 
   #labelDuplicate(source: SVGGraphicsElement, clone: SVGGraphicsElement): void {
@@ -3148,43 +3216,8 @@ export class SvgEditor {
     clone.setAttribute("aria-label", candidate);
   }
 
-  #remapCloneIds(clone: SVGGraphicsElement): void {
-    const remapped = new Map<string, string>();
-    for (const node of [clone, ...Array.from(clone.querySelectorAll<SVGElement>("[id]"))]) {
-      if (!node.id) continue;
-      this.#keyCounter += 1;
-      const replacement = `${node.id}-copy-${this.#keyCounter}`;
-      remapped.set(node.id, replacement);
-      node.id = replacement;
-    }
-    for (const node of [clone, ...Array.from(clone.querySelectorAll<SVGElement>("*"))]) {
-      for (const attribute of Array.from(node.attributes)) {
-        let value = attribute.value;
-        for (const [original, replacement] of remapped) {
-          value = value.replaceAll(`url(#${original})`, `url(#${replacement})`);
-          if (value === `#${original}`) value = `#${replacement}`;
-        }
-        node.setAttribute(attribute.name, value);
-      }
-    }
-  }
-
   #deleteSelection(): void {
-    const node = this.#singleMutableSelection("deleting");
-    if (!node) return;
-    const root = this.svgNode;
-    const fallbackScope = root ? getSelectableParent(node, root) ?? root : undefined;
-    this.#mutate(() => {
-      this.#deselect();
-      node.remove();
-      this.#selectedNodes = [];
-      if (this.#scope === node || (this.#scope && node.contains(this.#scope))) {
-        this.#scope = fallbackScope;
-      }
-      this.#setSelectionUi(undefined);
-      this.#callbacks.onSelectionChange(undefined);
-      this.#notifySelectionContext();
-    });
+    this.applyBulkEdit({ kind: "delete" });
   }
 
   #translateSelection(dx: number, dy: number): boolean {
@@ -3377,24 +3410,34 @@ export class SvgEditor {
       box = { x: nativeBox.x, y: nativeBox.y };
     }
     this.#syncingControls = true;
-    const explicitFill = node.getAttribute("fill");
-    const explicitStroke = node.getAttribute("stroke");
-    this.#controls.fill.value = explicitFill ?? "";
-    this.#controls.stroke.value = explicitStroke ?? "";
+    const targets = disjointTargets(this.#selectedNodes);
+    const fill = ownAttributeValue(targets, "fill");
+    const stroke = ownAttributeValue(targets, "stroke");
+    const explicitFill = fill.value;
+    const explicitStroke = stroke.value;
+    this.#controls.fill.value = fill.mixed ? "" : explicitFill ?? "";
+    this.#controls.stroke.value = stroke.mixed ? "" : explicitStroke ?? "";
+    this.#controls.fill.placeholder = fill.mixed ? "Mixed" : "none, color, or paint URL";
+    this.#controls.stroke.placeholder = stroke.mixed ? "Mixed" : "none, color, or paint URL";
     this.#controls.fill.removeAttribute("aria-invalid");
     this.#controls.stroke.removeAttribute("aria-invalid");
     this.#controls.fillError.textContent = "";
     this.#controls.strokeError.textContent = "";
     const fillPickerValue = paintPickerValue(this.#controls.fill.value);
     const strokePickerValue = paintPickerValue(this.#controls.stroke.value);
-    this.#controls.fillPicker.disabled = !fillPickerValue;
-    this.#controls.strokePicker.disabled = !strokePickerValue;
     if (fillPickerValue) this.#controls.fillPicker.value = fillPickerValue;
     if (strokePickerValue) this.#controls.strokePicker.value = strokePickerValue;
-    this.#controls.fillState.textContent = svgPaintState(explicitFill);
-    this.#controls.strokeState.textContent = svgPaintState(explicitStroke);
-    this.#controls.strokeWidth.value = String(this.#selected.attr("stroke-width") ?? "");
-    this.#controls.opacity.value = String(this.#selected.attr("opacity") ?? 1);
+    this.#controls.fillState.textContent = fill.mixed ? "Mixed own paint values" : svgPaintState(explicitFill);
+    this.#controls.strokeState.textContent = stroke.mixed ? "Mixed own paint values" : svgPaintState(explicitStroke);
+    if (targets.some((target) => cssControlsProperty(target, "fill").controlled)) this.#controls.fillState.textContent += "; overridden by CSS";
+    if (targets.some((target) => cssControlsProperty(target, "stroke").controlled)) this.#controls.strokeState.textContent += "; overridden by CSS";
+    for (const [control, attribute] of [[this.#controls.strokeWidth, "stroke-width"], [this.#controls.opacity, "opacity"]] as const) {
+      const own = ownAttributeValue(targets, attribute);
+      control.value = own.mixed ? "" : own.value ?? (attribute === "opacity" ? "1" : "");
+      control.placeholder = own.mixed ? "Mixed" : "Inherited / SVG default";
+      control.removeAttribute("aria-invalid");
+      control.setCustomValidity("");
+    }
     this.#syncNumericControls();
     this.#controls.scale.value = node.dataset.lineageScale ?? "100";
     const isText = node.localName === "text";
@@ -3413,11 +3456,12 @@ export class SvgEditor {
       this.#controls.textAnchor,
       this.#controls.textLetterSpacing,
     ]) control.removeAttribute("aria-invalid");
-    this.#controls.hideButton.textContent = node.getAttribute("display") === "none" ? "Show" : "Hide";
+    this.#controls.hideButton.textContent = targets.every((target) => target.getAttribute("display") === "none") ? "Show" : "Hide";
     this.#controls.name.value = node.getAttribute("aria-label") ?? "";
     const locked = this.#isLocked(node);
     const directlyLocked = Boolean(node.dataset.lineageKey && this.#lockedKeys.has(node.dataset.lineageKey));
     const single = this.#selectedNodes.length === 1;
+    const bulk = this.#bulkAvailability(targets);
     for (const control of [
       this.#controls.fill,
       this.#controls.fillPicker,
@@ -3425,13 +3469,14 @@ export class SvgEditor {
       this.#controls.strokePicker,
       this.#controls.strokeWidth,
       this.#controls.opacity,
-      this.#controls.scale,
-      this.#controls.name,
-      this.#controls.nameClearButton,
       this.#controls.duplicateButton,
       this.#controls.deleteButton,
       this.#controls.hideButton,
-    ]) control.disabled = !single || locked;
+    ]) {
+      control.disabled = !bulk.allowed;
+      control.title = bulk.reason;
+    }
+    for (const control of [this.#controls.scale, this.#controls.name, this.#controls.nameClearButton]) control.disabled = !single || locked;
     let numericAvailable = false;
     let numericReason = "";
     try {
@@ -3458,8 +3503,8 @@ export class SvgEditor {
       this.#controls.textLetterSpacing,
     ]) control.disabled = !single || locked || !isText;
     this.#controls.nameClearButton.disabled = !single || locked || !node.hasAttribute("aria-label");
-    this.#controls.fillPicker.disabled = !single || locked || !fillPickerValue;
-    this.#controls.strokePicker.disabled = !single || locked || !strokePickerValue;
+    this.#controls.fillPicker.disabled = !bulk.allowed || (!fill.mixed && !fillPickerValue);
+    this.#controls.strokePicker.disabled = !bulk.allowed || (!stroke.mixed && !strokePickerValue);
     this.#controls.lockButton.disabled = !single || (locked && !directlyLocked);
     this.#controls.lockButton.textContent = directlyLocked ? "Unlock" : locked ? "Locked by ancestor" : "Lock";
     this.#syncOperationUi();
@@ -3579,11 +3624,7 @@ export class SvgEditor {
       .filter((node): node is SVGGraphicsElement => Boolean(node))));
     const primary = findSelectableByKeys(imported, context.primaryKeys ?? context.selectionKeys) ?? selectedNodes.at(-1);
     if (selectedNodes.length > 0) this.#setSelection(selectedNodes, primary);
-    else {
-      this.#setSelectionUi(undefined);
-      this.#callbacks.onSelectionChange(undefined);
-      this.#notifySelectionContext();
-    }
+    else this.#setSelection([]);
     this.#collectiveRotationBySelection.clear();
     for (const [key, degrees] of Object.entries(context.collectiveRotations ?? {})) {
       if (Number.isFinite(degrees)) this.#collectiveRotationBySelection.set(key, normalizeRotationDegrees(degrees));
