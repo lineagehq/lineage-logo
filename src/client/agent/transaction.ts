@@ -1,3 +1,6 @@
+import { validateCleanAgentSvg } from "../../shared/agent-protocol";
+import { formatMatrix } from "../canvas/transform";
+import { validateSvgTextEdit } from "../../shared/svg-text";
 import type {
   AgentOperation, AgentTransactionError, AgentTransactionResult, AgentTransactionV1, LayerRef,
 } from "../../shared/agent-protocol";
@@ -49,8 +52,8 @@ function referenceIds(root: Element): string[] {
   for (const node of nodesWithSelf(root)) for (const attribute of Array.from(node.attributes)) {
     if (!REFERENCE_ATTRIBUTES.has(attribute.name)) continue;
     const pattern = attribute.name === "href" || attribute.name === "xlink:href"
-      ? /url\(\s*#([^\s)'"}]+)\s*\)|^#([^\s]+)$/g
-      : /url\(\s*#([^\s)'"}]+)\s*\)/g;
+      ? /url\(\s*['"]?#([^\s)'"}]+)['"]?\s*\)|^#([^\s]+)$/g
+      : /url\(\s*['"]?#([^\s)'"}]+)['"]?\s*\)/g;
     for (const match of attribute.value.matchAll(pattern)) ids.push(match[1] ?? match[2]);
   }
   return ids;
@@ -71,7 +74,7 @@ function validateFragment(fragment: Element, operationId: string): void {
       if (attribute.name === "style" || attribute.name.toLowerCase().startsWith("on")) fail("unsafe_svg", `Active attribute ${attribute.name} is not allowed`, operationId);
       if (attribute.namespaceURI && attribute.namespaceURI !== XLINK_NS && attribute.namespaceURI !== "http://www.w3.org/2000/xmlns/") fail("unsafe_svg", `Unsupported attribute namespace on ${attribute.name}`, operationId);
       if ((attribute.localName === "href" || attribute.localName === "src") && !attribute.value.startsWith("#")) fail("unsafe_svg", `External ${attribute.name} is not allowed`, operationId);
-      for (const match of attribute.value.matchAll(/url\(\s*([^)]*)\)/gi)) if (!match[1].trim().startsWith("#")) fail("unsafe_svg", `External URL in ${attribute.name} is not allowed`, operationId);
+      for (const match of attribute.value.matchAll(/url\(\s*([^)]*)\)/gi)) if (!match[1].trim().replace(/^['"]|['"]$/g, "").startsWith("#")) fail("unsafe_svg", `External URL in ${attribute.name} is not allowed`, operationId);
     }
   }
 }
@@ -83,6 +86,7 @@ function parseFragment(root: SVGSVGElement, source: string, operationId: string)
   const wrapper = parsed.documentElement;
   const elements = Array.from(wrapper.children);
   if (elements.length !== 1 || !selectable(elements[0], wrapper as unknown as SVGSVGElement)) fail("invalid_svg", "Layer fragment must contain exactly one selectable top-level layer", operationId);
+  try { validateCleanAgentSvg(`<svg xmlns="${SVG_NS}">${source}</svg>`); } catch { fail("unsafe_svg", "Layer fragment violates clean SVG policy", operationId); }
   validateFragment(elements[0], operationId);
   return root.ownerDocument.importNode(elements[0], true) as SVGGraphicsElement;
 }
@@ -297,6 +301,20 @@ export function evaluateAgentTransaction(
             operationId, type: operation.type, label: "Rename layer", current,
             proposed: name || "Unnamed", context: `${nodeSummary(target)} · session ${key}`,
           });
+        } else if (operation.type === "translateLayer") {
+          const current = target.getAttribute("transform") ?? "";
+          try {
+            const translation = formatMatrix({ a: 1, b: 0, c: 0, d: 1, e: operation.dx, f: operation.dy });
+            if (translation !== "matrix(1,0,0,1,0,0)") target.setAttribute("transform", `${translation}${current ? ` ${current}` : ""}`);
+          } catch { fail("invalid_payload", "Translation exceeds the supported numeric range", operationId); }
+          evidence.push({ operationId, type: operation.type, label: "Move layer", current: current || "No transform", proposed: target.getAttribute("transform") || "No transform", context: `${nodeSummary(target)} · parent SVG coordinates` });
+        } else if (operation.type === "setText") {
+          const validation = validateSvgTextEdit({ property: "content", value: operation.value });
+          if (!validation.valid || validation.normalized === undefined) fail("invalid_payload", "Text must be bounded plain content", operationId);
+          if (target.localName !== "text" || Array.from(target.childNodes).some((node) => node.nodeType !== 3) || target.childNodes.length > 1) fail("invalid_payload", "Content editing requires one unstructured text layer", operationId);
+          const current = target.textContent ?? "";
+          if (current !== validation.normalized) target.textContent = validation.normalized;
+          evidence.push({ operationId, type: operation.type, label: "Edit text", current, proposed: validation.normalized, context: nodeSummary(target) });
         } else if (operation.type === "setPaint") {
           const current = target.getAttribute(operation.property) ?? "Inherited";
           if (operation.value !== null && !validPaint(operation.value)) fail("invalid_paint", `Invalid ${operation.property} paint`, operationId);

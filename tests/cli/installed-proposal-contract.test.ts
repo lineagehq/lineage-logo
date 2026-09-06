@@ -18,7 +18,7 @@ it("exposes help, complete schema, examples and rejection from a packed clean in
     expect((await invoke(["--help"])).stdout).toContain("validate --proposal");
     const schema = JSON.parse((await invoke(["schema"])).stdout);
     expect(schema.$id).toBe("urn:lineage-logo:public-proposal:v1");
-    expect(schema.examples).toHaveLength(6);
+    expect(schema.examples).toHaveLength(8);
     for (const example of schema.examples) {
       const proposal = path.join(dir, "proposal.json");
       await writeFile(proposal, JSON.stringify(example));

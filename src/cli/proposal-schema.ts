@@ -19,6 +19,8 @@ export const PROPOSAL_EXAMPLES: PublicAgentProposalV1[] = ([
   { type: "renameLayer", operationId: "rename", target, name: "Brand mark" },
   { type: "reorderLayer", operationId: "reorder", target, placement: { after: { sessionKey: "layer-2" } } },
   { type: "setPaint", operationId: "paint", target, property: "fill", value: "#2255aa" },
+  { type: "translateLayer", operationId: "move", operationVersion: 1, target, dx: 4, dy: -2 },
+  { type: "setText", operationId: "text", operationVersion: 1, target, value: "Made for you" },
   { type: "selectFocus", operationId: "focus", targets: [target], primary: target, scope: null },
 ] satisfies AgentOperation[]).map((op) => ({ protocolVersion: 1, transactionId: `example-${op.type}`, producer: { kind: "local-producer" }, document: { sessionId: "replace-with-context-session", baseRevision: 0 }, operations: [op] }));
 
@@ -40,6 +42,8 @@ export const PUBLIC_PROPOSAL_SCHEMA = {
       operation("renameLayer", { target: ref, name: nullable(text(512, 0)) }),
       operation("reorderLayer", { target: ref, placement: sibling }),
       operation("setPaint", { target: ref, property: { enum: ["fill", "stroke"] }, value: nullable(text(512, 0)) }),
+      operation("translateLayer", { operationVersion: { const: 1 }, target: ref, dx: { type: "number", minimum: -1e9, maximum: 1e9 }, dy: { type: "number", minimum: -1e9, maximum: 1e9 } }),
+      operation("setText", { operationVersion: { const: 1 }, target: ref, value: text(2048, 0) }),
       operation("selectFocus", { targets: { type: "array", minItems: 1, maxItems: 100, items: ref }, primary: ref, scope: nullable(ref) }, ["targets"]),
     ] } },
   }, ["protocolVersion", "transactionId", "producer", "document", "operations"]),
