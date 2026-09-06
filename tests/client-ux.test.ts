@@ -531,6 +531,7 @@ describe("text, preview, and inspector discoverability", () => {
     const selectedNodes: SVGGraphicsElement[] = [selected as unknown as SVGGraphicsElement];
     for (let index = 1; index < selectionCount; index += 1) {
       const sibling = window.document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      sibling.setAttribute("fill", index === 1 ? "#ff0000" : "#0000ff");
       svg.append(sibling);
       selectedNodes.push(sibling as unknown as SVGGraphicsElement);
     }
@@ -543,7 +544,7 @@ describe("text, preview, and inspector discoverability", () => {
     expect(groups.map((group) => group.open)).toEqual(before);
     const values = INSPECTOR_SUMMARY_IDS.map((id) => window.document.getElementById(id)?.textContent);
     expect(values).toEqual(selectionCount > 1
-      ? [`${selectionCount} layers`, `${selectionCount} selected`, "Fill inherited · stroke inherited", "BLEEPED · 96", "Opacity 1 · stroke default"]
+      ? [`${selectionCount} layers`, `${selectionCount} selected`, "Fill Mixed · stroke inherited", "Unavailable", "Opacity 1 · stroke default"]
       : ["text", "Select 2+", "Fill inherited · stroke inherited", "BLEEPED · 96", "Opacity 1 · stroke default"]);
   });
 });

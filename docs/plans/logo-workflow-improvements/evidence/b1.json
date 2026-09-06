@@ -1,0 +1,53 @@
+{
+  "node": "B1",
+  "status": "local-acceptance-and-focused-review-passed",
+  "base": "a596c6a30a48292e935f4b5cf1bb04e9159a9dcb",
+  "testedHead": "82b9a85",
+  "local": {
+    "mac": {
+      "unitIntegration": 650,
+      "focusedBrowserScenarios": 8,
+      "typecheck": "passed",
+      "productionBuild": "passed"
+    },
+    "linux": {
+      "environment": "mcr.microsoft.com/playwright:v1.62.1-noble, pwuser, exact git archive",
+      "unitIntegration": 650,
+      "browserScenarios": 79,
+      "typecheck": "passed",
+      "productionBuild": "passed"
+    }
+  },
+  "assertions": [
+    "Sibling and cross-parent appearance, visibility, duplication and deletion are atomic and undoable.",
+    "Invalid, locked, pending and unsafe reference/CSS operations refuse the entire selection with no history entry.",
+    "Duplicates preserve local references and root-space offset without retargeting original artwork.",
+    "Saved continuation survives a real server restart while original source bytes remain unchanged."
+  ],
+  "tests": [
+    "tests/e2e/bulk-css-guards.spec.ts"
+  ],
+  "review": {
+    "reviewedHead": "fc932ea7469b5bb5edb7f9572ed974da1adefddc",
+    "base": "a596c6a30a48292e935f4b5cf1bb04e9159a9dcb",
+    "native": "Installed Codex CLI/current model mismatch prevented native review; continued with independently available base and focused review as permitted by review skill.",
+    "roles": {
+      "correctness": "agent_contract: final post-fix source review, no remaining candidates",
+      "tests": "b1_tests_review: no findings; 156 focused unit tests passed",
+      "silent-failures": "b1_failures_review: SF-1 sent to fresh validator",
+      "contracts-types": "b1_contracts_review: no findings",
+      "comments-docs": "b1_docs_review: no findings"
+    },
+    "validation": {
+      "previousCorrectness": "Both copied stylesheet URL and CSS transform candidates independently reproduced, fixed and covered by passing real browser regressions.",
+      "SF-1": "Rejected by fresh b1_css_all_validator in real Chromium: all:initial exposes fill/display through CSSOM; both actions refuse atomically, no mutation or Undo. Confidence0.99."
+    }
+  },
+  "pr": "https://github.com/lineagehq/lineage-logo/pull/31",
+  "ci": {
+    "testedHead": "fc932ea7469b5bb5edb7f9572ed974da1adefddc",
+    "allChecks": "passed",
+    "workflowRun": 34065890700,
+    "codeqlRun": 34065888799
+  }
+}
