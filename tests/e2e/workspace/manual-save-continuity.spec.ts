@@ -10,6 +10,7 @@ test("manual Save advances the baseline while preserving selection and undo acro
   await title.click();
   await page.locator('#layer-name').fill('First correction');
   await page.locator('#layer-name').press('Enter');
+  await page.locator('#zoom-reset').click();
   await page.locator('#zoom-in').click();
   const save = page.locator('#save-iteration');
   const path = (await save.getAttribute('title'))!.replace('Create ', '');
