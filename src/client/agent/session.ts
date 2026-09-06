@@ -103,7 +103,7 @@ export class AgentSession {
   continueFromSavedArtifact(sourcePath: string): boolean {
     if (this.#pending || !sourcePath) return false;
     this.#sourcePath = sourcePath;
-    this.#revision = 0;
+    // Saving advances the source binding without rewinding the live revision.
     this.#onRevisionChange?.();
     return true;
   }

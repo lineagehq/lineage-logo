@@ -353,7 +353,7 @@ function uniqueTargetById(root: SVGSVGElement, id: string): SVGGraphicsElement |
   return matches.length === 1 ? matches[0] : undefined;
 }
 
-function hiddenBySvgPresentation(target: Element, root: SVGSVGElement): boolean {
+function hiddenBySvgPresentation(target: Element, root: SVGSVGElement, includeVisibility = true): boolean {
   const ancestry: Element[] = [];
   let node: Element | null = target;
   while (node) {
@@ -386,7 +386,7 @@ function hiddenBySvgPresentation(target: Element, root: SVGSVGElement): boolean 
     if (nextVisibility === "visible" || nextVisibility === "hidden" || nextVisibility === "collapse") visibility = nextVisibility;
     else if (nextVisibility === "initial") visibility = "visible";
   }
-  return visibility === "hidden" || visibility === "collapse";
+  return includeVisibility && (visibility === "hidden" || visibility === "collapse");
 }
 
 function finiteBounds(bounds: PreviewBounds | undefined): bounds is PreviewBounds {
@@ -622,4 +622,98 @@ export function createSvgPreview(
     fallback: false,
     status: `Previewing ${requestedTarget}.`,
   };
+}
+
+/** Retain layout advances from hidden runs, but bound only visible text ranges. */
+function replaceMixedVisibilityTextWithBounds(root: SVGSVGElement): void {
+  for (const text of Array.from(root.querySelectorAll<SVGTextElement>("text"))) {
+    if (text.closest("defs,clipPath,mask,pattern,marker,symbol")) continue;
+    const walker = root.ownerDocument.createTreeWalker(text, 4 /* SHOW_TEXT */);
+    const runs: { node: Text; visible: boolean }[] = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.textContent?.trim() || !node.parentElement) continue;
+      runs.push({ node: node as Text, visible: !hiddenBySvgPresentation(node.parentElement, root) });
+    }
+    if (!runs.some(run => run.visible)) { text.remove(); continue; }
+    if (!runs.some(run => !run.visible)) continue;
+    const parent = text.parentElement as unknown as SVGGraphicsElement;
+    const matrix = parent.getScreenCTM()?.inverse();
+    if (!matrix) continue;
+    const points: DOMPoint[] = [];
+    // Measure before removing anything: hidden text still advances a following
+    // relative tspan, and removing it first would move the visible glyphs.
+    for (const run of runs.filter(run => run.visible)) {
+      const owner = run.node.parentElement as unknown as SVGTextContentElement;
+      const directRun = owner.childNodes.length === 1 && owner.firstChild === run.node;
+      const ownerMatrix = owner.getScreenCTM();
+      if (directRun && ownerMatrix && typeof owner.getExtentOfChar === "function") {
+        const localToParent = matrix.multiply(ownerMatrix);
+        for (let index = 0; index < owner.getNumberOfChars(); index++) {
+          const box = owner.getExtentOfChar(index);
+          points.push(...[
+            new DOMPoint(box.x, box.y), new DOMPoint(box.x + box.width, box.y),
+            new DOMPoint(box.x, box.y + box.height), new DOMPoint(box.x + box.width, box.y + box.height),
+          ].map(point => point.matrixTransform(localToParent)));
+        }
+        continue;
+      }
+      const range = root.ownerDocument.createRange();
+      range.selectNodeContents(run.node);
+      for (const box of Array.from(range.getClientRects())) {
+        if (!box.width || !box.height) continue;
+        points.push(...[
+          new DOMPoint(box.left, box.top), new DOMPoint(box.right, box.top),
+          new DOMPoint(box.left, box.bottom), new DOMPoint(box.right, box.bottom),
+        ].map(point => point.matrixTransform(matrix)));
+      }
+    }
+    if (!points.length) continue;
+    const x = Math.min(...points.map(point => point.x));
+    const y = Math.min(...points.map(point => point.y));
+    const width = Math.max(...points.map(point => point.x)) - x;
+    const height = Math.max(...points.map(point => point.y)) - y;
+    const frame = root.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "g");
+    if (text.id) frame.id = text.id;
+    frame.style.setProperty("transform", "none", "important");
+    frame.style.setProperty("display", "inline", "important");
+    frame.style.setProperty("visibility", "visible", "important");
+    const rect = root.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "rect");
+    for (const [key, value] of Object.entries({ x, y, width, height })) {
+      rect.setAttribute(key, String(value));
+      rect.style.setProperty(key, `${value}px`, "important");
+    }
+    rect.style.setProperty("transform", "none", "important");
+    rect.style.setProperty("stroke", "none", "important");
+    frame.append(rect);
+    text.replaceWith(frame);
+  }
+}
+
+/** Measure only a clean, detached copy so selection affordances never affect fit. */
+export function measureArtworkBounds(source: string): PreviewBounds | undefined {
+  const parsed = new DOMParser().parseFromString(source, "image/svg+xml");
+  if (parsed.querySelector("parsererror") || parsed.documentElement.localName !== "svg") return undefined;
+  const root = document.importNode(parsed.documentElement, true) as unknown as SVGSVGElement;
+  const host = document.createElement("div");
+  host.style.cssText = "position:fixed;left:-100000px;top:0;visibility:hidden;pointer-events:none";
+  host.setAttribute("aria-hidden", "true");
+  host.append(root);
+  document.body.append(host);
+  try {
+    replaceMixedVisibilityTextWithBounds(root);
+    // visibility:hidden on the measurement host is intentional; inspect only
+    // authored presentation within the SVG, not the host's computed visibility.
+    for (const node of Array.from(root.querySelectorAll<SVGGraphicsElement>("*"))) {
+      if (node.closest("defs,clipPath,mask,pattern,marker,symbol")) continue;
+      // display:none and zero opacity suppress an entire subtree. Visibility
+      // is inherited and may be restored by a descendant, so keep its frame.
+      const container = ["g", "svg", "a", "switch", "text", "tspan", "textPath"].includes(node.localName)
+        && node.children.length > 0;
+      const graphics = ELIGIBLE_TARGETS.has(node.localName) || ["tspan", "textPath", "svg", "a", "switch"].includes(node.localName);
+      if (graphics && hiddenBySvgPresentation(node, root, !container)) node.remove();
+    }
+    return paintedLocalBounds(root);
+  } finally {
+    host.remove();
+  }
 }

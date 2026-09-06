@@ -1,6 +1,6 @@
 {
   "node": "Q1",
-  "status": "implemented-awaiting-review-ci",
+  "status": "verified",
   "baseline": "fbfa870c0f7fb174c58fbb34e3fa0531e8971770",
   "checks": {
     "privacyIntegrityCleanupTests": 7,
@@ -11,13 +11,14 @@
     ],
     "ports": "Occupied port fails closed; both rebind after runs",
     "fixtureHashes": "17 unchanged",
-    "finalLocalCheck": "607 tests, typecheck and build passed after merging C1"
+    "finalLocalCheck": "607 tests, typecheck and build passed after merging C1",
+    "pullRequestCi": "https://github.com/lineagehq/lineage-logo/actions/runs/34049833552",
+    "mainCi": "https://github.com/lineagehq/lineage-logo/actions/runs/34049982281"
   },
   "visualReview": "Public screenshot visually inspected; records original square framing defect, addressed separately by A2",
   "limitations": [
     "Rich capture is opt-in, limited to the exact synthetic/public corpus.",
-    "No concurrent fixed-port browser isolation introduced; runs remain serialized.",
-    "Full check, independent review and CI recorded separately before qualification."
+    "No concurrent fixed-port browser isolation introduced; runs remain serialized."
   ],
   "review": {
     "roles": [
@@ -33,5 +34,8 @@
     ],
     "independentValidation": "Both fixes independently revalidated",
     "nativeReview": "Attempted installed native CLI; model/version compatibility prevented startup. Independent focused review completed under skill fallback."
-  }
+  },
+  "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/28",
+  "reviewedHead": "060c39600500ad4382bbf05aa45f039bb6de4322",
+  "mergeCommit": "ae59eae45272b7e5aece9cc3781d927819eada75"
 }

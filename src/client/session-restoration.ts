@@ -48,7 +48,7 @@ export function validateWorkspaceSession(value: unknown, workspace: string): Wor
     || candidate.selectionPath.length > 16
     || !candidate.selectionPath.every((id) => validBoundedString(id, 160))
     || typeof candidate.zoom !== "number" || !Number.isFinite(candidate.zoom)
-    || candidate.zoom < 0.25 || candidate.zoom > 4
+    || candidate.zoom < 0.01 || candidate.zoom > 4
     || !(["checker", "light", "dark"] as unknown[]).includes(candidate.previewBackground)
     || typeof candidate.leftCollapsed !== "boolean"
     || typeof candidate.rightCollapsed !== "boolean") return undefined;

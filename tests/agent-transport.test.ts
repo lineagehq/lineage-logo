@@ -323,6 +323,7 @@ describe("real HTTP agent transport", () => {
     expect((await fetch(`${base}/api/agent/document`, {
       method: "POST", headers: browserHeaders, body: JSON.stringify(first),
     })).status).toBe(200);
+    const events = await openEvents(base);
     const secondHeaders = {
       Origin: origin,
       "Content-Type": "application/json",
@@ -336,7 +337,6 @@ describe("real HTTP agent transport", () => {
       error: "Another Lineage tab owns the agent connection. Close that tab before retrying here.",
     });
 
-    const events = await openEvents(base);
     events.controller.abort();
     await new Promise((resolve) => setTimeout(resolve, 30));
     expect((await fetch(`${base}/api/agent/document`, {
@@ -344,6 +344,92 @@ describe("real HTTP agent transport", () => {
     })).status).toBe(200);
     const documentResponse = await fetch(`${base}/api/agent/document`, { headers: { Authorization: `Bearer ${token}` } });
     await expect(documentResponse.json()).resolves.toEqual(second);
+  });
+
+  it("expires an orphan manifest lease that never opened an event stream", async () => {
+    const base = await harness({ editorReleaseMs: 40 });
+    const first = { sessionId: "first", sourcePath: "first.svg", revision: 0, layers: [] };
+    const second = { sessionId: "second", sourcePath: "second.svg", revision: 0, layers: [] };
+    const secondHeaders = { ...browserHeaders, "X-Lineage-Editor-ID": "33333333-3333-4333-8333-333333333333" };
+    expect((await fetch(`${base}/api/agent/document`, { method: "POST", headers: browserHeaders, body: JSON.stringify(first) })).status).toBe(200);
+    await expect.poll(async () => (await fetch(`${base}/api/agent/document`, { method: "POST", headers: secondHeaders, body: JSON.stringify(second) })).status, { timeout: 500, interval: 20 }).toBe(200);
+    expect(await (await fetch(`${base}/api/agent/document`, { headers: producerHeaders })).json()).toEqual(second);
+  });
+
+  it("does not cancel disconnect expiry when a late manifest POST arrives", async () => {
+    const base = await harness({ editorReleaseMs: 100 });
+    let disconnected!: () => void;
+    const closed = new Promise<void>(resolve => { disconnected = resolve; });
+    running.at(-1)!.server.once("request", (_request, response) => response.once("close", disconnected));
+    const stream = await openEvents(base);
+    stream.controller.abort();
+    await closed; // The server has handled the SSE close and installed its expiry.
+    const first = { sessionId: "first", sourcePath: "first.svg", revision: 0, layers: [] };
+    expect((await fetch(`${base}/api/agent/document`, { method: "POST", headers: browserHeaders, body: JSON.stringify(first) })).status).toBe(200);
+    const second = { sessionId: "second", sourcePath: "second.svg", revision: 0, layers: [] };
+    const secondHeaders = { ...browserHeaders, "X-Lineage-Editor-ID": "33333333-3333-4333-8333-333333333333" };
+    await expect.poll(async () => (await fetch(`${base}/api/agent/document`, { method: "POST", headers: secondHeaders, body: JSON.stringify(second) })).status, { timeout: 600, interval: 20 }).toBe(200);
+  });
+
+  it("rejects an old manifest body completing after a new owner acquires the lease", async () => {
+    const base = await harness({ editorReleaseMs: 40 });
+    const received = once(running.at(-1)!.server, "request");
+    let status!: Promise<number>;
+    const slow = requestHttp(`${base}/api/agent/document`, { method: "POST", headers: browserHeaders });
+    status = new Promise<number>((resolve, reject) => { slow.once("response", response => { response.resume(); resolve(response.statusCode!); }); slow.once("error", reject); });
+    slow.write('{"sessionId":"old",');
+    await received;
+    const second = { sessionId: "second", sourcePath: "second.svg", revision: 0, layers: [] };
+    const secondHeaders = { ...browserHeaders, "X-Lineage-Editor-ID": "33333333-3333-4333-8333-333333333333" };
+    try {
+      await expect.poll(async () => (await fetch(`${base}/api/agent/document`, { method: "POST", headers: secondHeaders, body: JSON.stringify(second) })).status, { timeout: 500, interval: 20 }).toBe(200);
+      slow.end('"sourcePath":"old.svg","revision":0,"layers":[]}');
+      expect(await status).toBe(409);
+      expect(await (await fetch(`${base}/api/agent/document`, { headers: producerHeaders })).json()).toEqual(second);
+    } finally {
+      if (!slow.writableEnded) slow.end('"sourcePath":"old.svg","revision":0,"layers":[]}');
+      await status;
+    }
+  });
+
+  it("keeps active and reconnected streams authoritative beyond the orphan expiry", async () => {
+    const base = await harness({ editorReleaseMs: 80 });
+    let disconnected!: () => void;
+    const closed = new Promise<void>(resolve => { disconnected = resolve; });
+    running.at(-1)!.server.once("request", (_request, response) => response.once("close", disconnected));
+    const stream = await openEvents(base);
+    const secondHeaders = { ...browserHeaders, "X-Lineage-Editor-ID": "33333333-3333-4333-8333-333333333333" };
+    const body = JSON.stringify({ sessionId: "second", sourcePath: "second.svg", revision: 0, layers: [] });
+    await new Promise(resolve => setTimeout(resolve, 120));
+    expect((await fetch(`${base}/api/agent/document`, { method: "POST", headers: secondHeaders, body })).status).toBe(409);
+    stream.controller.abort();
+    await closed;
+    const reconnected = await openEvents(base);
+    try {
+      await new Promise(resolve => setTimeout(resolve, 120));
+      expect((await fetch(`${base}/api/agent/document`, { method: "POST", headers: secondHeaders, body })).status).toBe(409);
+      expect((await fetch(`${base}/api/agent/document`, { method: "POST", headers: browserHeaders, body })).status).toBe(200);
+    } finally { reconnected.controller.abort(); }
+  });
+
+  it("rejects a slow old body even when the same tab ID reacquires an expired lease", async () => {
+    const base = await harness({ editorReleaseMs: 40 });
+    const received = once(running.at(-1)!.server, "request");
+    const slow = requestHttp(`${base}/api/agent/document`, { method: "POST", headers: browserHeaders });
+    const status = new Promise<number>((resolve, reject) => { slow.once("response", response => { response.resume(); resolve(response.statusCode!); }); slow.once("error", reject); });
+    slow.write('{"sessionId":"old",');
+    await received;
+    try {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const current = { sessionId: "current", sourcePath: "current.svg", revision: 0, layers: [] };
+      expect((await fetch(`${base}/api/agent/document`, { method: "POST", headers: browserHeaders, body: JSON.stringify(current) })).status).toBe(200);
+      slow.end('"sourcePath":"old.svg","revision":0,"layers":[]}');
+      expect(await status).toBe(409);
+      expect(await (await fetch(`${base}/api/agent/document`, { headers: producerHeaders })).json()).toEqual(current);
+    } finally {
+      if (!slow.writableEnded) slow.end('"sourcePath":"old.svg","revision":0,"layers":[]}');
+      await status;
+    }
   });
 
   it("delivers in order, acknowledges browser staging, deduplicates exact bytes, and rejects ID conflicts", async () => {

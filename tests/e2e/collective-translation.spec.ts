@@ -472,7 +472,7 @@ test("collective translation is publicly agent-blocked, Revert is clean, and nam
   await expect(page.locator("#status")).toHaveText(`Saved ${expectedPath}`);
   await expect(page.locator(".file-button[aria-current='true']")).toHaveAttribute("data-path", expectedPath);
   expectSameGeometry(await rootGeometry(page), savedGeometry);
-  expect(await controls(page)).toEqual({ redo: true, "reset-edits": true, "save-iteration": true, undo: true });
+  expect(await controls(page)).toEqual({ redo: true, "reset-edits": true, "save-iteration": true, undo: false });
 
   const workspaceAfterResponse = await page.request.get("/api/workspace");
   expect(workspaceAfterResponse.ok()).toBe(true);

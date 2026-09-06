@@ -40,6 +40,7 @@ async function rootBounds(page: Page, objectLabel = selectedLabel): Promise<{ bo
 
 test("Seatify smart alignment is zoom-stable, truthful, suspendable, atomic, and transient", async ({ page }) => {
   await openSeatify(page);
+  await page.locator("#zoom-reset").click();
   await page.getByRole("button", { name: "Zoom in" }).click();
   await expect(page.locator("#zoom-label")).toHaveText("125%");
   await layerButton(page, selectedLabel).click();

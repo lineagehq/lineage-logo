@@ -50,6 +50,8 @@ test("agent Apply-and-save creates one durable continuation while preserving sou
   await expect(page.locator("#agent-review-status")).toHaveText("Saved");
   await expect(page.locator("#agent-review-summary")).toContainText(/^Applied and saved iterations\/.+\.svg as one undoable continuation\.$/);
   await expect(page.locator("#save-iteration")).toBeDisabled();
+  await expect(page.locator("#status")).not.toContainText("Unsaved");
+  await expect(page.locator("#lifecycle-state")).toHaveAttribute("data-state", "saved");
 
   const status = await request.get(`${apiOrigin}/api/agent/transactions/${transactionId}`, { headers: { Authorization: `Bearer ${token}` } });
   const receipt = await status.json() as { artifact: { durablePath: string; digest: string } };

@@ -14,16 +14,30 @@ type Geometry = Record<string, Bounds>;
 type Axis = "horizontal" | "vertical";
 
 async function openFixture(page: Page): Promise<void> {
-  await page.goto("/");
-  await expect(page).toHaveURL(/^http:\/\/marquee-qa\.localhost:/);
-  await page.locator('[data-path="concepts/complex-seatify.svg"]').click();
-  await expect(page.locator("#artboard svg[aria-label='Complex Seatify venue logo']")).toBeVisible();
+  const [publication] = await Promise.all([
+    page.waitForResponse((response) => response.url().endsWith("/api/agent/document")
+      && response.request().method() === "POST" && response.ok()
+      && response.request().postDataJSON()?.sourcePath === "concepts/complex-seatify.svg"),
+    (async () => {
+      await page.goto("/");
+      await expect(page).toHaveURL(/^http:\/\/marquee-qa\.localhost:/);
+      const file = page.locator('[data-path="concepts/complex-seatify.svg"]');
+      await expect(file).toBeVisible();
+      // Restoration may already be opening this source. Avoid an intermediate
+      // session from restoring it and immediately opening it a second time.
+      if (await file.getAttribute("aria-current") !== "true") await file.click();
+      await expect(page.locator("#artboard svg[aria-label='Complex Seatify venue logo']")).toBeVisible();
+    })(),
+  ]);
+  const published = publication.request().postDataJSON();
   await expect.poll(async () => {
     const response = await page.request.get("/api/agent/document", {
       headers: { Authorization: `Bearer ${agentToken}` },
     });
-    return response.ok() ? (await response.json()).sourcePath : undefined;
-  }).toBe("concepts/complex-seatify.svg");
+    if (!response.ok()) return undefined;
+    const manifest = await response.json();
+    return { sessionId: manifest.sessionId, sourcePath: manifest.sourcePath, revision: manifest.revision };
+  }).toEqual({ sessionId: published.sessionId, sourcePath: "concepts/complex-seatify.svg", revision: published.revision });
 }
 
 function labeled(page: Page, label: string) {
@@ -475,6 +489,7 @@ test("Seatify numeric oriented-frame edits are aggregate, validated, and atomic"
   const authoredBeforeReflow = await authoredGeometryFingerprint(page);
   const unrelatedAuthoredBeforeReflow = await authoredGeometryFingerprint(page, [unrelatedLabel, "Seatify wordmark"]);
   const numericBeforeReflow = await numericValues(page);
+  await page.locator("#zoom-reset").click();
   await page.locator("#zoom-in").click();
   await expect(page.locator("#zoom-label")).toHaveText("125%");
   const zoomBefore = await geometry(page, [...alignmentLabels, unrelatedLabel]);
@@ -734,6 +749,7 @@ test("multi-selection arrangement is disabled during pending review and Revert i
 });
 
 test("multi-selection arrangement works at 125% zoom with both sidebars collapsed", async ({ page }) => {
+  await page.locator("#zoom-reset").click();
   await page.locator("#zoom-in").click();
   await expect(page.locator("#zoom-label")).toHaveText("125%");
   await page.locator("#toggle-left-sidebar").click();

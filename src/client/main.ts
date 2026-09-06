@@ -1,4 +1,5 @@
 import "./styles.css";
+import { SaveAuthority } from "./save-authority";
 import {
   getSelectableParent,
   getSelectionAncestry,
@@ -21,7 +22,8 @@ import {
 } from "./file-open";
 import { CanvasLayoutController, isLayoutShortcutTarget, PreferencesDialogController, safeLayoutStorage } from "./ui/layout";
 import { UnsavedDialogController } from "./ui/unsaved-dialog";
-import { automaticPreviewTargetId, createSvgPreview, eligiblePreviewTargetIds } from "./preview";
+import { applyDocumentFrame, documentFrame, extendedDocumentBounds, fitDocumentZoom } from "./canvas/document-frame";
+import { automaticPreviewTargetId, createSvgPreview, eligiblePreviewTargetIds, measureArtworkBounds, type PreviewBounds } from "./preview";
 import { renderInspectorSummaries } from "./ui/inspector";
 import { waitForWorkspaceAdvance } from "./workspace-refresh";
 import {
@@ -128,19 +130,20 @@ app.innerHTML = `
         <div class="toolbar-group">
           <button type="button" id="undo" disabled>Undo</button>
           <button type="button" id="redo" disabled>Redo</button>
-          <button type="button" id="reset-edits" disabled>Reset edits</button>
+          <button type="button" id="reset-edits" title="Restore the latest saved SVG and clear selection, locks and undo history" disabled>Reset edits</button>
           <span class="toolbar-divider"></span>
           <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
-          <span id="zoom-label">100%</span>
+          <span id="zoom-label" title="100% = one SVG unit per CSS pixel for documents with a viewBox">100%</span>
           <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
           <button type="button" id="zoom-reset" aria-label="Reset zoom">100%</button>
-          <button type="button" id="zoom-fit" title="Fit the artboard in the available space">Fit</button>
+          <button type="button" id="zoom-fit" title="Fit the full document bounds in the available space">Fit</button>
+          <button type="button" id="zoom-artwork" title="Fit visible artwork rather than document bounds">Fit artwork</button>
           <button type="button" id="zoom-selection" title="Fit the selected layer in the available space" disabled>Fit selection</button>
           <button type="button" id="shortcut-help" aria-label="Preferences and shortcuts" title="Preferences and shortcuts">⚙</button>
         </div>
         <div class="toolbar-group" aria-label="Preview background">
           <button type="button" id="save-iteration" class="primary-action" disabled>Save iteration</button>
-          <button type="button" class="background-button active" data-background="checker" aria-pressed="true">Grid</button>
+          <button type="button" class="background-button active" data-background="checker" aria-pressed="true" title="Transparency checkerboard behind artwork">Grid</button>
           <button type="button" class="background-button" data-background="light" aria-pressed="false">Light</button>
           <button type="button" class="background-button" data-background="dark" aria-pressed="false">Dark</button>
         </div>
@@ -159,8 +162,10 @@ app.innerHTML = `
           <strong>Choose an SVG to inspect</strong>
           <span>Concepts and iterations appear in the workspace panel.</span>
         </div>
-        <div id="artboard" class="artboard" hidden></div>
-        <div id="agent-preview" class="artboard agent-preview" aria-label="Isolated agent change preview" hidden></div>
+        <div id="document-viewport" class="document-viewport" hidden>
+          <div id="artboard" class="artboard" hidden></div>
+          <div id="agent-preview" class="artboard agent-preview" aria-label="Isolated agent change preview" hidden></div>
+        </div>
       </div>
       <footer class="statusbar">
         <span id="status">Ready</span>
@@ -307,7 +312,8 @@ app.innerHTML = `
         <label class="preview-target">Target<input id="preview-target" type="text" value="#icon" list="preview-targets" maxlength="128" aria-describedby="preview-status" /></label>
         <datalist id="preview-targets"><option value="#icon"></option></datalist>
         <p id="preview-status" class="preview-status" role="status" aria-live="polite">Whole SVG until a document is loaded.</p>
-        <div id="favicon-preview" class="favicon-preview empty-copy">Live previews appear here.</div>
+        <p class="preview-surface-help">Light, Dark and Grid change only the preview surface. Opaque backgrounds drawn in your SVG remain opaque. At 100%, one SVG unit equals one CSS pixel when a viewBox is present.</p>
+        <div id="favicon-preview" data-background="checker" class="favicon-preview empty-copy">Live previews appear here.</div>
       </section>
       </div>
     </aside>
@@ -386,6 +392,7 @@ app.innerHTML = `
 `;
 
 const fileList = getElement("file-list");
+const documentViewport = getElement("document-viewport");
 const artboard = getElement("artboard");
 const agentPreview = getElement("agent-preview");
 const emptyState = getElement("empty-state");
@@ -453,12 +460,13 @@ let currentWorkspaceName: string | undefined;
 let workspaceSessionInitialized = false;
 let restoringWorkspaceSession = false;
 let dirty = false;
-let agentSavedBaseline: string | undefined;
+const saveAuthority = new SaveAuthority();
 let currentSourceBaseline = "";
 let offeredAgentDraft: string | undefined;
 let nextIterationPath = "iterations/iteration-1.svg";
 let previewTargetCustomized = false;
 let zoom = 1;
+let fittedArtworkBounds: PreviewBounds | undefined;
 let previewBackground: PreviewBackground = "checker";
 let currentObjectUrl: string | undefined;
 let layerQuery = "";
@@ -574,17 +582,16 @@ const editor = new SvgEditor(
       }
     },
     onDirtyChange: (nextDirty) => {
-      if (agentSavedBaseline !== undefined) nextDirty = editor.serializeClean() !== agentSavedBaseline;
       const changed = dirty !== nextDirty;
       dirty = nextDirty;
-      saveButton.disabled = Boolean(agentSession?.pending) || !dirty;
+      saveButton.disabled = saveAuthority.saving || Boolean(agentSession?.pending) || !dirty;
       resetEditsButton.disabled = Boolean(agentSession?.pending) || (!dirty && editor.selectionContext.lockedKeys.size === 0);
       if (nextDirty) {
         setStatus("Unsaved manual corrections");
         setLifecycleState("dirty", "Unsaved changes", `Save ${nextIterationPath} to preserve these corrections, or reset edits.`);
       } else if (changed && currentFile) {
         setStatus(`${currentFile.collection} / ${currentFile.name} · No unsaved changes`);
-        setLifecycleState();
+        restoreDocumentLifecycle();
       }
     },
     onHistoryChange: (canUndo, canRedo) => {
@@ -686,6 +693,7 @@ const agentTransport = new AgentCanvasTransport({
         return rejected;
       }
       if (!pendingBeforeStage && agentSession.pending?.transaction.transactionId === transaction.transactionId) {
+        saveAuthority.invalidate();
         fileOpenCoordinator.invalidate();
         fileSwitchCoordinator.invalidate();
         if (unsavedDialog.preempt()) agentReviewReturnFocus = saveButton;
@@ -726,6 +734,9 @@ const agentTransport = new AgentCanvasTransport({
     setLifecycleState("disconnected", "Disconnected", "Restore the previous document to recover safely, or restart the local editor if the connection does not return.");
   },
   onStateChange: (state, message) => {
+    // An initial or resumed stream may arrive after the disconnected lease expired.
+    // Publish the current accepted revision again; pending recovery retains authority.
+    if (state === "connected" && !agentSession?.pending) publishAgentDocument();
     if (state === "disconnected") {
       agentReview = agentReview && agentSession?.pending
         ? agentSession.recoveryRequired
@@ -739,11 +750,13 @@ const agentTransport = new AgentCanvasTransport({
     } else if (agentReview?.status === "disconnected" && agentSession?.pending && !agentSession.recoveryRequired) {
       agentReview = buildPendingReview(agentSession.pending.transaction, agentSession.pending.staged, editor.selectionContext.lockedKeys);
       renderAgentReview();
-      setLifecycleState(dirty ? "dirty" : undefined, dirty ? "Unsaved changes" : "", dirty ? `Save ${nextIterationPath} to preserve these corrections, or reset edits.` : "");
+      restoreDocumentLifecycle();
     } else if (state === "connected") {
-      setLifecycleState(dirty ? "dirty" : undefined, dirty ? "Unsaved changes" : "", dirty ? `Save ${nextIterationPath} to preserve these corrections, or reset edits.` : "");
+      restoreDocumentLifecycle();
     }
-    setStatus(message);
+    if (state === "connected" && !agentSession?.pending && currentFile?.collection === "iterations") {
+      setStatus(dirty ? "Unsaved manual corrections" : `Saved ${currentFile.path}`);
+    } else setStatus(message);
   },
 });
 
@@ -860,7 +873,7 @@ function renderAgentReview(): void {
     button.disabled = pending;
     button.title = pending ? "Accept or revert the pending agent proposal before switching files." : "";
   }
-  saveButton.disabled = pending || !dirty;
+  saveButton.disabled = saveAuthority.saving || pending || !dirty;
   resetEditsButton.disabled = pending || (!dirty && editor.selectionContext.lockedKeys.size === 0);
 }
 
@@ -878,11 +891,14 @@ function setReviewPreview(active: boolean): void {
       if (node.dataset.lineageKey && reviewImpactKeys.has(node.dataset.lineageKey)) node.setAttribute("data-lineage-review-highlight", "true");
     }
     agentPreview.append(clone);
+    applyDocumentFrame(agentPreview, clone);
+    agentPreview.style.transform = `scale(${zoom})`;
     renderLayers(clone);
   } else if (editor.svgNode) {
     editor.setAgentReviewHighlights(reviewImpactKeys);
     renderLayers(editor.svgNode);
   }
+  updateDocumentViewport();
   renderSelectionContext(editor.selectionContext);
 }
 
@@ -912,7 +928,7 @@ function finishAgentReview(status: "accepted" | "reverted", artifact?: AgentAcce
   if (status === "accepted" && artifact?.durablePath && artifact.digest && agentSession) {
     agentReview.summary = `Applied and saved ${artifact.durablePath} as one undoable continuation.`;
     currentFile = { collection: "iterations", name: artifact.durablePath.split("/").at(-1)!, path: artifact.durablePath };
-    agentSavedBaseline = artifact.svg;
+    editor.markSaved({ ...editor.captureSavePoint(), svg: artifact.svg });
     currentSourceBaseline = artifact.svg;
     dirty = false;
     if (!agentSession.continueFromSavedArtifact(artifact.durablePath)) throw new Error("Saved continuation could not become the active baseline.");
@@ -921,11 +937,10 @@ function finishAgentReview(status: "accepted" | "reverted", artifact?: AgentAcce
   }
   renderAgentReview();
   if (status === "accepted" && artifact?.durablePath) {
+    setStatus(`Saved ${artifact.durablePath}`);
     setLifecycleState("saved", "Saved", `Applied all changes to ${artifact.durablePath}. The source SVG remains unchanged.`);
-  } else if (dirty) {
-    setLifecycleState("dirty", "Unsaved changes", `Save ${nextIterationPath} to preserve these corrections, or reset edits.`);
   } else {
-    setLifecycleState();
+    restoreDocumentLifecycle();
   }
   const returnFocus = agentReviewReturnFocus?.isConnected ? agentReviewReturnFocus : layerSearch;
   agentReviewReturnFocus = undefined;
@@ -1115,6 +1130,16 @@ function setStatus(message: string): void {
 
 type LifecycleState = "conflict" | "dirty" | "saved" | "disconnected";
 
+function restoreDocumentLifecycle(): void {
+  // A provisional acceptance owns its recovery indicator until it settles.
+  if (agentSession?.pending?.provisional) return;
+  if (dirty) {
+    setLifecycleState("dirty", "Unsaved changes", `Save ${nextIterationPath} to preserve these corrections, or reset edits.`);
+  } else if (!agentSession?.pending && currentFile?.collection === "iterations") {
+    setLifecycleState("saved", "Saved", `Saved ${currentFile.path}. The source SVG remains unchanged.`);
+  } else setLifecycleState();
+}
+
 function setLifecycleState(state?: LifecycleState, label = "", guidance = ""): void {
   const notice = getElement("lifecycle-state");
   notice.hidden = !state;
@@ -1189,13 +1214,27 @@ agentDraftDiscard.addEventListener("click", () => {
   setStatus("Discarded unsaved applied agent draft");
 });
 
+function updateDocumentViewport(): void {
+  const visibleBoard = agentPreviewActive ? agentPreview : artboard;
+  documentViewport.hidden = visibleBoard.hidden;
+  const root = visibleBoard.querySelector("svg");
+  if (!root) return;
+  const frame = documentFrame(root);
+  const extended = extendedDocumentBounds(frame, fittedArtworkBounds);
+  visibleBoard.style.left = `${(frame.x - extended.x) * zoom}px`;
+  visibleBoard.style.top = `${(frame.y - extended.y) * zoom}px`;
+  documentViewport.style.width = `${extended.width * zoom}px`;
+  documentViewport.style.height = `${extended.height * zoom}px`;
+}
+
 function setZoom(nextZoom: number, center?: Element): void {
-  zoom = Math.min(4, Math.max(0.25, nextZoom));
+  zoom = Math.min(4, Math.max(0.01, nextZoom));
   artboard.style.transform = `scale(${zoom})`;
+  agentPreview.style.transform = `scale(${zoom})`;
+  updateDocumentViewport();
   getElement("zoom-label").textContent = `${Math.round(zoom * 100)}%`;
   const refreshAffordances = () => editor.refreshSelectionAffordances();
   window.requestAnimationFrame(refreshAffordances);
-  window.setTimeout(refreshAffordances, 170);
   if (center) {
     const centerTarget = () => {
     const target = center;
@@ -1204,8 +1243,7 @@ function setZoom(nextZoom: number, center?: Element): void {
     stage.scrollLeft += targetBox.left + targetBox.width / 2 - (stageBox.left + stageBox.width / 2);
     stage.scrollTop += targetBox.top + targetBox.height / 2 - (stageBox.top + stageBox.height / 2);
     };
-    window.requestAnimationFrame(centerTarget);
-    window.setTimeout(centerTarget, 170);
+    centerTarget();
   }
   persistWorkspaceSession();
 }
@@ -1218,12 +1256,31 @@ function fittedZoom(
   currentZoom = 1,
 ): number {
   if (availableWidth <= 0 || availableHeight <= 0 || contentWidth <= 0 || contentHeight <= 0) return currentZoom;
-  return Math.min(4, Math.max(0.25, currentZoom * Math.min(availableWidth / contentWidth, availableHeight / contentHeight)));
+  return fitDocumentZoom(availableWidth, availableHeight, contentWidth / currentZoom, contentHeight / currentZoom);
 }
 
 function fitArtboard(): void {
   if (artboard.hidden) return;
+  fittedArtworkBounds = undefined;
   setZoom(fittedZoom(stage.clientWidth - 80, stage.clientHeight - 80, artboard.offsetWidth, artboard.offsetHeight), artboard);
+}
+
+function fitArtwork(): void {
+  const root = editor.svgNode;
+  if (!root || artboard.hidden) return;
+  const bounds = measureArtworkBounds(editor.serializeClean());
+  if (!bounds) { setStatus("No visible artwork to fit"); return; }
+  fittedArtworkBounds = bounds;
+  setZoom(fitDocumentZoom(stage.clientWidth - 120, stage.clientHeight - 120, bounds.width, bounds.height));
+  const centerArtwork = () => {
+    const matrix = root.getScreenCTM();
+    if (!matrix) return;
+    const point = new DOMPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2).matrixTransform(matrix);
+    const stageBox = stage.getBoundingClientRect();
+    stage.scrollLeft += point.x - stageBox.left - stage.clientWidth / 2;
+    stage.scrollTop += point.y - stageBox.top - stage.clientHeight / 2;
+  };
+  centerArtwork();
 }
 
 function fitSelection(): void {
@@ -1334,6 +1391,7 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement, restoratio
     },
     onEligibleError: (error) => setStatus(error instanceof Error ? error.message : "Unable to open SVG."),
     commit: (svg) => {
+      saveAuthority.invalidate();
       workspaceRefreshGeneration += 1;
       const storedRecovery = readPendingReviewRecovery();
       if (recovery && JSON.stringify(storedRecovery) !== JSON.stringify(recovery)) {
@@ -1367,12 +1425,13 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement, restoratio
       layerSearch.value = "";
       layerSearch.disabled = false;
       clearLayerSearchButton.disabled = true;
-      agentSavedBaseline = undefined;
       dirty = false;
       saveButton.disabled = true;
       artboard.replaceChildren(document.importNode(svg, true));
       const renderedSvg = artboard.querySelector("svg");
       if (!renderedSvg) throw new Error("Committed SVG is missing from the artboard.");
+      applyDocumentFrame(artboard, renderedSvg);
+      fittedArtworkBounds = undefined;
       if (!renderedSvg.hasAttribute("role")) {
         renderedSvg.setAttribute("role", "img");
         renderedSvg.setAttribute("data-lineage-added-role", "true");
@@ -1388,6 +1447,7 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement, restoratio
       try {
         setZoom(restoreUi?.zoom ?? 1);
         editor.load(renderedSvg, recovery?.dirty ? savedBaseline : undefined);
+        if (!restoreUi) fitArtboard();
         if (restoreUi) {
           applyPreviewBackground(restoreUi.previewBackground);
           const root = editor.svgNode;
@@ -1656,6 +1716,7 @@ getElement("zoom-in").addEventListener("click", () => setZoom(zoom + 0.25));
 getElement("zoom-out").addEventListener("click", () => setZoom(zoom - 0.25));
 getElement("zoom-reset").addEventListener("click", () => setZoom(1));
 getElement("zoom-fit").addEventListener("click", fitArtboard);
+getElement("zoom-artwork").addEventListener("click", fitArtwork);
 zoomSelectionButton.addEventListener("click", fitSelection);
 undoButton.addEventListener("click", () => editor.undo());
 redoButton.addEventListener("click", () => editor.redo());
@@ -1775,7 +1836,7 @@ const showDisconnectedPreview = () => {
 };
 const showConnectedPreview = () => {
   connectionBanner.hidden = true;
-  setLifecycleState(dirty ? "dirty" : undefined, dirty ? "Unsaved changes" : "", dirty ? `Save ${nextIterationPath} to preserve these corrections, or reset edits.` : "");
+  restoreDocumentLifecycle();
 };
 const hotModule = (import.meta as ImportMeta & {
   hot?: { on: (event: string, callback: () => void) => void };
@@ -2063,6 +2124,7 @@ function applyPreviewBackground(background: PreviewBackground): void {
   previewBackground = background;
   stage.classList.remove("checker", "light", "dark");
   stage.classList.add(background);
+  faviconPreview.dataset.background = background;
   document.querySelectorAll<HTMLButtonElement>(".background-button").forEach((node) => {
     const active = node.dataset.background === background;
     node.classList.toggle("active", active);
@@ -2078,37 +2140,64 @@ for (const button of document.querySelectorAll<HTMLButtonElement>(".background-b
   });
 }
 
-async function saveIteration(openSaved = true): Promise<boolean> {
+async function saveIteration(advanceSaved = true): Promise<boolean> {
   if (!currentFile || !dirty || agentSession?.pending) {
     if (agentSession?.pending) setStatus("Accept or revert the pending agent proposal before saving.");
     return false;
   }
+  const request = saveAuthority.begin();
+  if (request === undefined) return false;
+  const source = currentFile;
+  const sessionId = agentSession?.context.sessionId;
+  const point = editor.captureSavePoint();
+  const eligible = () => saveAuthority.owns(request) && currentFile === source
+    && agentSession?.context.sessionId === sessionId && !agentSession?.pending;
+  saveButton.disabled = true;
   setStatus(`Saving ${nextIterationPath}…`);
   try {
     const response = await fetch("/api/iterations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sourcePath: currentFile.path,
-        svg: editor.serializeClean(),
-      }),
+      body: JSON.stringify({ sourcePath: source.path, svg: point.svg }),
     });
-    const result = await response.json() as {
-      error?: string;
-      file?: SvgFileEntry;
-      nextIterationPath?: string;
-    };
-    if (!response.ok || !result.file) {
-      throw new Error(result.error ?? "Unable to save the iteration.");
+    const result = await response.json() as { error?: string; file?: SvgFileEntry; nextIterationPath?: string };
+    if (!eligible()) return false;
+    if (!response.ok || !result.file) throw new Error(result.error ?? "Unable to save the iteration.");
+    // A successful save is a new baseline, never a reload of the live editor.
+    if (advanceSaved) {
+      currentFile = result.file;
+      currentSourceBaseline = point.svg;
+      if (agentSession && !agentSession.continueFromSavedArtifact(result.file.path)) {
+        throw new Error("The saved continuation could not become active.");
+      }
+      editor.markSaved(point);
+      updateIterationSuggestion(result.file.path, [...fileButtons.keys(), result.file.path]);
+      publishAgentDocument();
+      persistWorkspaceSession();
+      const savedSource = currentFile;
+      const generation = ++workspaceRefreshGeneration;
+      void fetchWorkspace().then((workspace) => {
+        if (generation === workspaceRefreshGeneration && currentFile === savedSource && !agentSession?.pending) {
+          commitWorkspaceSnapshot(workspace, savedSource.path);
+        }
+      }).catch(() => { /* The durable save remains valid; a later refresh reconciles the list. */ });
     }
-    if (openSaved) await loadWorkspace(result.file.path);
-    setStatus(`Saved ${result.file.path}`);
-    setLifecycleState("saved", "Saved", `Created ${result.file.path}. The source SVG remains unchanged.`);
+    if (dirty && advanceSaved) {
+      setStatus(`Saved ${result.file.path}; newer corrections remain unsaved`);
+      setLifecycleState("dirty", "Unsaved changes", `Saved ${result.file.path}. Save again to preserve your newer corrections.`);
+    } else {
+      setStatus(`Saved ${result.file.path}`);
+      setLifecycleState("saved", "Saved", `Created ${result.file.path}. The source SVG remains unchanged.`);
+    }
     return true;
   } catch (error) {
+    if (!eligible()) return false;
     setStatus(error instanceof Error ? error.message : "Unable to save the iteration.");
     setLifecycleState("conflict", "Conflict", "The continuation was not saved. Keep your edits, resolve the reported issue, then try Save again.");
     return false;
+  } finally {
+    saveAuthority.finish(request);
+    saveButton.disabled = Boolean(agentSession?.pending) || !dirty;
   }
 }
 

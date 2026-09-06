@@ -9,6 +9,8 @@ import type { AgentInstanceIdentity } from "../shared/instance-registry.js";
 import { HttpError, readBody, readJsonBody, requireEventStreamOrigin, requireOrigin, sendJson } from "./http.js";
 import { saveAgentContinuation } from "./workspace.js";
 
+interface EditorLease { editorId: string; generation: number }
+
 interface RegistryEntry {
   hash: string;
   transaction: AgentTransactionV1;
@@ -64,6 +66,7 @@ export class AgentTransport {
   readonly #serverInstanceId = randomUUID();
   #document?: AgentDocumentManifest;
   #editorId?: string;
+  #editorGeneration = 0;
   #editorReleaseTimer?: ReturnType<typeof setTimeout>;
   #nextEventId = 1;
 
@@ -108,8 +111,9 @@ export class AgentTransport {
     }
     if (request.method === "POST" && url.pathname === "/api/agent/document") {
       requireOrigin(request, this.#editorOrigin);
-      this.#claimEditor(request);
+      const lease = this.#claimEditor(request);
       const value = await readJsonBody(request, 1024 * 1024) as AgentDocumentManifest;
+      this.#assertEditorLease(lease);
       if (!value || typeof value.sessionId !== "string" || typeof value.sourcePath !== "string" || !Number.isSafeInteger(value.revision) || !Array.isArray(value.layers)) {
         throw new HttpError(400, "Document manifest is invalid.");
       }
@@ -119,14 +123,14 @@ export class AgentTransport {
     }
     if (request.method === "POST" && url.pathname === "/api/agent/recovery") {
       requireOrigin(request, this.#editorOrigin);
-      this.#claimEditor(request);
-      await this.#recover(request, response);
+      const lease = this.#claimEditor(request);
+      await this.#recover(request, response, lease);
       return true;
     }
     if (request.method === "GET" && url.pathname === "/api/agent/events") {
       requireEventStreamOrigin(request, this.#editorOrigin);
-      const editorId = this.#claimEditor(request);
-      this.#connect(request, response, editorId);
+      const lease = this.#claimEditor(request);
+      this.#connect(request, response, lease.editorId);
       return true;
     }
     const match = /^\/api\/agent\/transactions\/([^/]+)(?:\/ack)?$/.exec(url.pathname);
@@ -139,8 +143,8 @@ export class AgentTransport {
     }
     if (match && request.method === "POST" && url.pathname.endsWith("/ack")) {
       requireOrigin(request, this.#editorOrigin);
-      this.#claimEditor(request);
-      await this.#acknowledge(decodeURIComponent(match[1]), request, response);
+      const lease = this.#claimEditor(request);
+      await this.#acknowledge(decodeURIComponent(match[1]), request, response, lease);
       return true;
     }
     throw new HttpError(404, "Unknown agent endpoint.");
@@ -153,18 +157,39 @@ export class AgentTransport {
     this.#clients.clear();
   }
 
-  #claimEditor(request: IncomingMessage): string {
+  #claimEditor(request: IncomingMessage): EditorLease {
     const editorId = request.headers[EDITOR_ID_HEADER];
     if (typeof editorId !== "string" || !EDITOR_ID.test(editorId)) throw new HttpError(400, "Editor tab identity is invalid.");
     if (this.#editorId && this.#editorId !== editorId) {
       throw new HttpError(409, "Another Lineage tab owns the agent connection. Close that tab before retrying here.");
     }
-    this.#editorId = editorId;
-    if (this.#editorReleaseTimer) {
-      clearTimeout(this.#editorReleaseTimer);
-      this.#editorReleaseTimer = undefined;
+    if (!this.#editorId) {
+      this.#editorId = editorId;
+      this.#editorGeneration += 1;
     }
-    return editorId;
+    // A manifest may arrive before SSE opens, or after its connection closes.
+    // Neither case may leave an owner indefinitely without a live stream.
+    this.#scheduleEditorRelease();
+    return { editorId, generation: this.#editorGeneration };
+  }
+
+  #assertEditorLease(lease: EditorLease): void {
+    if (this.#editorId !== lease.editorId || this.#editorGeneration !== lease.generation) {
+      throw new HttpError(409, "Editor ownership changed while receiving the request. Refresh the connection and retry.");
+    }
+  }
+
+  #scheduleEditorRelease(): void {
+    if (this.#clients.size !== 0 || !this.#editorId || this.#editorReleaseTimer) return;
+    const editorId = this.#editorId;
+    const generation = this.#editorGeneration;
+    this.#editorReleaseTimer = setTimeout(() => {
+      if (this.#clients.size === 0 && this.#editorId === editorId && this.#editorGeneration === generation) {
+        this.#editorId = undefined;
+        this.#document = undefined;
+      }
+      this.#editorReleaseTimer = undefined;
+    }, this.#editorReleaseMs);
   }
 
   #authenticate(request: IncomingMessage, requireBinding = true): void {
@@ -180,8 +205,10 @@ export class AgentTransport {
     }
   }
 
-  async #recover(request: IncomingMessage, response: ServerResponse): Promise<void> {
-    const input = exactObject(await readJsonBody(request, AGENT_MAX_SOURCE_PATH_CHARACTERS * 4 + 1024),
+  async #recover(request: IncomingMessage, response: ServerResponse, lease: EditorLease): Promise<void> {
+    const body = await readJsonBody(request, AGENT_MAX_SOURCE_PATH_CHARACTERS * 4 + 1024);
+    this.#assertEditorLease(lease);
+    const input = exactObject(body,
       ["transactionId", "sessionId", "sourcePath", "revision"],
       ["transactionId", "sessionId", "sourcePath", "revision"], "Recovery identity");
     if (typeof input.transactionId !== "string" || typeof input.sessionId !== "string"
@@ -260,6 +287,10 @@ export class AgentTransport {
     response.write(": connected\nretry: 50\n\n");
     response.write(`event: server-instance\ndata: ${JSON.stringify({ serverInstanceId: this.#serverInstanceId })}\n\n`);
     this.#clients.add(response);
+    if (this.#editorReleaseTimer) {
+      clearTimeout(this.#editorReleaseTimer);
+      this.#editorReleaseTimer = undefined;
+    }
     const lastIdHeader = request.headers["last-event-id"];
     const lastId = typeof lastIdHeader === "string" && /^\d+$/.test(lastIdHeader) ? Number(lastIdHeader) : 0;
     for (const entry of this.#registry.values()) if (entry.state.status === "disconnected") {
@@ -293,16 +324,7 @@ export class AgentTransport {
           }, 250);
         }
       }
-      if (this.#clients.size === 0 && this.#editorId === editorId) {
-        if (this.#editorReleaseTimer) clearTimeout(this.#editorReleaseTimer);
-        this.#editorReleaseTimer = setTimeout(() => {
-          if (this.#clients.size === 0 && this.#editorId === editorId) {
-            this.#editorId = undefined;
-            this.#document = undefined;
-          }
-          this.#editorReleaseTimer = undefined;
-        }, this.#editorReleaseMs);
-      }
+      if (this.#editorId === editorId) this.#scheduleEditorRelease();
     };
     // A proxy may finish its upstream request object as soon as the GET headers
     // have been forwarded while continuing to stream the response. The SSE
@@ -422,10 +444,12 @@ export class AgentTransport {
     throw new HttpError(400, "Acknowledgement status is invalid.");
   }
 
-  async #acknowledge(transactionId: string, request: IncomingMessage, response: ServerResponse): Promise<void> {
+  async #acknowledge(transactionId: string, request: IncomingMessage, response: ServerResponse, lease: EditorLease): Promise<void> {
     const entry = this.#registry.get(transactionId);
     if (!entry) throw new HttpError(404, "Unknown transaction ID.");
-    const acknowledgement = this.#parseAcknowledgement(await readJsonBody(request, AGENT_MAX_ACKNOWLEDGEMENT_BYTES), entry.transaction);
+    const body = await readJsonBody(request, AGENT_MAX_ACKNOWLEDGEMENT_BYTES);
+    this.#assertEditorLease(lease);
+    const acknowledgement = this.#parseAcknowledgement(body, entry.transaction);
     if (acknowledgement.status === "accepted" || acknowledgement.status === "reverted") {
       const decision = acknowledgement as AgentTerminalDecision;
       if (entry.state.status === decision.status) {

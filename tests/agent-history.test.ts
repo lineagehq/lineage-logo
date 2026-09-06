@@ -99,19 +99,19 @@ describe("agent transaction history and revision", () => {
     expect(editor.history.checkpointCount).toBe(1);
     expect(editor.state.markup).toContain('aria-label="Changed"');
     expect(editor.state.selection).toEqual(acceptedSelection);
-    expect(session.context).toMatchObject({ sourcePath: "iterations/concept-agent-deadbeef.svg", revision: 0 });
+    expect(session.context).toMatchObject({ sourcePath: "iterations/concept-agent-deadbeef.svg", revision: 1 });
 
     expect(editor.undo()).toBe(true);
     session.documentChanged();
     expect(editor.state.markup).toBe(initialMarkup);
     expect(editor.state.selection).toEqual(initialSelection);
-    expect(session.revision).toBe(1);
+    expect(session.revision).toBe(2);
 
     expect(editor.redo()).toBe(true);
     session.documentChanged();
     expect(editor.state.markup).toContain('aria-label="Changed"');
     expect(editor.state.selection).toEqual(acceptedSelection);
-    expect(session.revision).toBe(2);
+    expect(session.revision).toBe(3);
     expect(revisionNotifications).toBe(4);
   });
 
