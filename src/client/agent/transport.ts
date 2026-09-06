@@ -2,10 +2,12 @@ import type {
   AgentAcceptedArtifact, AgentDocumentManifest, AgentTerminalDecision, AgentTransactionResult, AgentTransactionStatus, AgentTransactionV1,
 } from "../../shared/agent-protocol";
 import { isAgentErrorCode, parseAgentTransaction, validateCleanAgentSvg } from "../../shared/agent-protocol";
+import { SnapshotError, parseSnapshotRequest, parseSnapshotProjection, type AgentSnapshotRequest, type AgentSnapshotProjection, type AgentSnapshotReply } from "../../shared/agent-snapshot";
 import type { StagedAgentTransaction } from "./transaction";
 
 export interface AgentCanvasTransportOptions {
   onTransaction: (transaction: AgentTransactionV1) => StagedAgentTransaction | undefined;
+  onSnapshot?: (request: AgentSnapshotRequest) => AgentSnapshotProjection;
   onTerminalState?: (state: AgentTerminalState) => void;
   onServerReplacement?: (previousServerInstanceId: string, serverInstanceId: string) => void;
   onStateChange?: (state: "connected" | "disconnected", message: string) => void;
@@ -328,6 +330,8 @@ export class AgentCanvasTransport {
                 break;
               }
               this.#serverInstanceId = nextServerInstanceId;
+            } else if (event === "snapshot-request" && fields.size === 2 && fields.has("data") && !fields.has("id")) {
+              await this.#snapshot(fields.get("data")!);
             } else if (event === "transaction" && fields.size === 3 && fields.has("data") && Number.isSafeInteger(id) && id > 0) {
               await this.#receive(fields.get("data")!, id);
             } else if (event === "transaction-terminal" && fields.size === 3 && fields.has("data") && Number.isSafeInteger(id) && id > 0) {
@@ -352,6 +356,30 @@ export class AgentCanvasTransport {
       }
       if (!this.#closed) await new Promise((resolve) => setTimeout(resolve, 50));
     }
+  }
+
+  async #snapshot(data: string): Promise<void> {
+    let request: AgentSnapshotRequest;
+    try { request = parseSnapshotRequest(JSON.parse(data)); }
+    catch { throw new Error("Snapshot challenge is invalid."); }
+    if (request.editorId !== this.#editorId || request.serverInstanceId !== this.#serverInstanceId) throw new Error("Snapshot challenge identity does not match this editor.");
+    let reply: AgentSnapshotReply;
+    try {
+      if (!this.#options.onSnapshot) throw new SnapshotError("snapshot_unavailable");
+      // The callback must finish synchronous capture before network work yields.
+      const projection = parseSnapshotProjection(this.#options.onSnapshot(request));
+      if (projection.sessionId !== request.sessionId || projection.baseRevision !== request.baseRevision) throw new SnapshotError("stale_snapshot");
+      reply = { request, projection };
+    } catch (error) {
+      reply = { request, error: error instanceof SnapshotError ? error.code : "snapshot_unavailable" };
+    }
+    if (this.#closed) return;
+    try {
+      await (this.#options.fetch ?? fetch)(`/api/agent/snapshots/${request.requestId}/reply`, {
+        method: "POST", headers: this.#headers({ "Content-Type": "application/json" }), body: JSON.stringify(reply),
+        signal: this.#connectionAbort?.signal,
+      });
+    } catch { /* Request timeout/disconnect is reported to the waiting producer. */ }
   }
 
   async #receive(data: string, eventId: number): Promise<void> {
