@@ -1,0 +1,63 @@
+{
+  "node": "C2",
+  "status": "local-acceptance-and-focused-review-passed",
+  "base": "780bc9ba4fa51d2200738bf3d25e125eb3df04dd",
+  "testedHead": "87c2835819f34831ad1b5cfc3ad6272921d45c58",
+  "local": {
+    "mac": {
+      "unitIntegration": 668,
+      "typecheck": "passed",
+      "productionBuild": "passed",
+      "installedChromiumJourney": "passed",
+      "browserScenarios": 81
+    },
+    "linux": {
+      "environment": "mcr.microsoft.com/playwright:v1.62.1-noble, pwuser, exact git archive",
+      "unitIntegration": 668,
+      "browserScenarios": 81,
+      "typecheck": "passed",
+      "productionBuild": "passed"
+    }
+  },
+  "assertions": [
+    "Installed CLI snapshot captures current unsaved clean SVG rather than source bytes; SHA256 matches exact exported bytes.",
+    "Selected and primary id-less layer keys, hierarchy, geometry, passive styles and local paint resources are bound to one live revision.",
+    "Hidden bounds are explicitly unsupported and manual locks are represented.",
+    "Capture does not mutate artwork, selection, history, dirty state or source files.",
+    "Producer independently checks the SVG digest and target instance/workspace binding. The server validates editor/session/revision challenge and response bindings.",
+    "Malformed, oversized, pending, stale, mismatched nonce, replaced editor and disconnected requests refuse without leaking snapshots; timeout and late replies are cleaned up.",
+    "Default context and error output do not include SVG, source path, credentials or internal traces."
+  ],
+  "tests": [
+    "tests/e2e/live-snapshot.spec.ts",
+    "tests/agent-snapshot.test.ts",
+    "tests/cli/snapshot.test.ts"
+  ],
+  "limitations": [
+    "Geometric bounds exclude paint effects.",
+    "Active/external SVG and CSS escapes or at-rules are explicitly refused."
+  ],
+  "review": {
+    "status": "passed",
+    "roles": [
+      "correctness",
+      "tests",
+      "silent-failures",
+      "contracts-types",
+      "comments-docs"
+    ],
+    "validatedFindings": {
+      "activeGesture": "Fresh local Chromium reproduction exported different SVGs at the same session/revision while a resize remained provisional. The renderer now refuses snapshot_busy until gesture completion or cancellation.",
+      "producerBindingClaim": "Fresh archived-source producer harness confirmed only digest and optional instance/workspace are independently checked by the producer; corrected the evidence assertion. Server enforces editor/session/revision."
+    },
+    "remaining": null,
+    "postFix": "accurate_preview reviewed exact87c2835 against780bc9b; no remaining correctness candidates. Distinct tests, silent-failures, contracts-types and comments-docs roles completed. All candidates freshly validated; active-gesture defect fixed, evidence assertion corrected.",
+    "native": "Installed CLI cannot use configured model; focused-review fallback used with independently available base and diff."
+  },
+  "pr": "https://github.com/lineagehq/lineage-logo/pull/30",
+  "ci": {
+    "integratedRun": 34067367476,
+    "codeqlRun": 34067365229,
+    "status": "Check final head before merging; no CI success inferred from local tests."
+  }
+}

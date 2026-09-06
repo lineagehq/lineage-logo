@@ -1,5 +1,7 @@
 import { PanelResizeController } from "./ui/panel-resize";
 import "./styles.css";
+import { captureAgentSnapshot } from "./agent/snapshot";
+import { SnapshotError } from "../shared/agent-snapshot";
 import { SaveAuthority } from "./save-authority";
 import {
   getSelectableParent,
@@ -668,6 +670,14 @@ function agentLayers(svg: SVGSVGElement): AgentDocumentManifest["layers"] {
 
 const agentTransport = new AgentCanvasTransport({
   connect: false,
+  onSnapshot: (request) => {
+    const root = editor.svgNode;
+    if (!root || !agentSession) throw new SnapshotError("snapshot_unavailable");
+    if (editor.hasProvisionalEdits) throw new SnapshotError("snapshot_busy");
+    return captureAgentSnapshot({ root, context: agentSession.context, selectedNodes: editor.selectedNodes,
+      primary: editor.selectedNode, lockedKeys: editor.selectionContext.lockedKeys,
+      pending: Boolean(agentSession.pending) }, request);
+  },
   onTransaction: (transaction) => {
     if (!agentSession) return undefined;
     const pendingBeforeStage = agentSession.pending;
