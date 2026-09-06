@@ -1,0 +1,50 @@
+{
+  "nodes": [
+    "A1",
+    "A2",
+    "G1"
+  ],
+  "status": "fix-verified-awaiting-full-regression-and-ci",
+  "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/29",
+  "validationHead": "d6ec780",
+  "local": {
+    "codeCheck": "617 tests, typecheck and production build passed",
+    "browser": "68 tests passed: full Chromium plus Firefox/WebKit critical paths",
+    "saveJourney": "Save preserves selection, locks, scope, geometry, viewport and history; delayed/failed save and proposal preemption tested. Undo/Redo crosses the saved baseline. Actual server stop/restart preserves exact saved and original bytes.",
+    "savedArtifactEvidence": {
+      "sourceSha256": "0ce112d615c992b7e079527da731d98e55a3f176983172ebe25d9caaa21757f3",
+      "savedSha256": "2de95dc948c886f3a6b3522771587647a394f20515b9e0504f1d50a76969e379",
+      "method": "Actual restart journey rerun with temporary hash-only instrumentation; instrumentation removed and tracked tree restored.",
+      "survivedRestart": true
+    },
+    "linuxDragRegression": {
+      "before": "2 single-selection failures at 100% and 125%; initial overlay stale by 0.634216px and 0.542774px; live outline correct within 0.000031px",
+      "after": "4/4 drag tests passed in Linux Playwright 1.62.1 noble container and macOS, including new pre-drag corner alignment assertions",
+      "tolerance": "unchanged 0.5px",
+      "fix": "Recompute selection geometry on camera refresh, skip active gestures, retain rotation decoration.",
+      "followUp": "Independent review found retired-handler failure after locking. Real browser regression failed before mounted-overlay guard; final five-case and full regression reruns pending."
+    },
+    "currentMacFullCheck": "Initial default and two-worker attempts encountered existing 5-second subprocess deadlines under host load above 170; no assertion or timeout changed. Isolated Linux full check in progress."
+  },
+  "review": {
+    "roles": [
+      "correctness",
+      "tests",
+      "silent-failures",
+      "contracts-types",
+      "comments-docs"
+    ],
+    "fixedFindings": [
+      "Fit artwork preserves visible descendants of hidden groups",
+      "Fit artwork excludes hidden text while preserving its layout advance for visible tspans",
+      "Saved status survives Undo back to the durable baseline",
+      "Ordinary pending review clears stale Disconnected on reconnect; provisional recovery remains guarded",
+      "Camera refresh skips retired selection handlers after lock/pending review; lock-then-zoom browser regression reproduced null.plot error before guard."
+    ],
+    "native": "Installed native CLI could not start with configured model; independent focused review completed under skill fallback."
+  },
+  "remaining": [
+    "Full current-change local regression and current-head all-job CI must pass.",
+    "Postmerge main CI must pass before G1 and downstream implementation."
+  ]
+}

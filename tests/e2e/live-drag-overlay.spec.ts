@@ -7,6 +7,7 @@ type Point = { x: number; y: number };
 type MatrixProbe = { a: number; b: number; c: number; d: number; e: number; f: number };
 type OverlayProbe = {
   artwork: Point;
+  artworkCorners: Point[];
   handles: Point[];
   outline: Point[];
   probeIds: string[];
@@ -133,6 +134,9 @@ async function overlayProbe(page: Page, labels: string[], collective: boolean, m
       })();
     return {
       artwork: { x: (left + right) / 2, y: (top + bottom) / 2 },
+      artworkCorners: input.collective
+        ? [{ x: left, y: top }, { x: right, y: top }, { x: right, y: bottom }, { x: left, y: bottom }]
+        : artworkPoints,
       handles: handles.map(center),
       outline: localOutline.map((point) => {
         const screen = new DOMPoint(point.x, point.y).matrixTransform(outlineMatrix);
@@ -204,6 +208,12 @@ for (const scenario of [
     const beforeTransforms = await transforms(page, scenario.labels);
     const before = await overlayProbe(page, scenario.labels, collective, true);
     expect(before.rootMatrix).toEqual(settled);
+    const outlineCorners = collective ? before.outline : before.outline.filter((_, index) => index % 2 === 0);
+    expect(outlineCorners).toHaveLength(4);
+    outlineCorners.forEach((point, index) => {
+      expect(Math.abs(point.x - before.artworkCorners[index].x), `initial corner ${index} x`).toBeLessThan(0.5);
+      expect(Math.abs(point.y - before.artworkCorners[index].y), `initial corner ${index} y`).toBeLessThan(0.5);
+    });
     const source = await labeled(page, scenario.labels[0]).boundingBox();
     if (!source) throw new Error("The selected Seatify drag source is unavailable.");
     const start = { x: source.x + source.width / 2, y: source.y + source.height / 2 };
@@ -221,3 +231,22 @@ for (const scenario of [
     await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
   });
 }
+
+
+test("zooming a locked selection does not refresh a retired overlay", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await openConstellation(page);
+  await selectLayers(page, [singleLabel]);
+  await page.locator("#lock-selection").click();
+  await expect(page.locator("#lock-selection")).toHaveText("Unlock");
+  await expect(page.locator("#artboard .svg_select_shape")).toHaveCount(0);
+  const before = await transforms(page, [singleLabel]);
+  await configureViewport(page, 125, false);
+  await settleRootTransform(page);
+  expect(errors).toEqual([]);
+  expect(await transforms(page, [singleLabel])).toEqual(before);
+  await expect(page.locator("#artboard .svg_select_shape")).toHaveCount(0);
+  await page.locator("#lock-selection").click();
+  await expect(page.locator("#artboard .svg_select_shape")).toHaveCount(1);
+});

@@ -1928,7 +1928,19 @@ export class SvgEditor {
 
   refreshSelectionAffordances(): void {
     const root = this.svgNode;
-    if (root && this.#selected) enhanceRotationHandle(root);
+    if (!root || this.#interactiveMutation) return;
+    // Camera changes do not trigger the selection plugin's attribute observer.
+    // Recompute its geometry before decorating the screen-sized rotation handle.
+    if (this.#selectedNodes.length > 1) this.#renderCollectiveTransformOverlay();
+    else {
+      const handler = this.#selected?.remember("_selectHandler") as {
+        selection?: { node: SVGElement };
+        mutationHandler?: () => void;
+      } | undefined;
+      // Disabled selections retain their handler after its overlay is removed.
+      if (handler?.selection?.node.isConnected) handler.mutationHandler?.();
+    }
+    if (this.#selected) enhanceRotationHandle(root);
   }
 
   stageAgentTransaction(transaction: AgentTransactionV1, context: AgentDocumentContext): StagedAgentTransaction | undefined {
