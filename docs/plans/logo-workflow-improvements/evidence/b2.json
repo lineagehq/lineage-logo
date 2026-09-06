@@ -1,6 +1,6 @@
 {
   "node": "B2",
-  "status": "combined-acceptance-and-ci-running",
+  "status": "local-acceptance-and-focused-review-passed",
   "base": "c410d08aab724877908fcf9efa687b3b5edec9b3",
   "implementationHead": "c24ecce",
   "nativeZoomTestHead": "feab4e2",
@@ -34,7 +34,17 @@
       "unitIntegration": 668,
       "typecheck": "passed on macOS and Linux",
       "productionBuild": "passed on macOS and Linux",
-      "linuxInitialBrowserRun": "89 passed, one screenshot timeout while two task containers and unrelated migration workloads competed for shared VM resources; serial verification pending"
+      "linuxInitialBrowserRun": "89 passed, one screenshot timeout while two task containers and unrelated migration workloads competed for shared VM resources; serial verification pending",
+      "linuxSerialBrowser": {
+        "head": "52083c6c952e9717ed9eee47d180189d3fb43b82",
+        "scenarios": 90,
+        "result": "passed"
+      },
+      "previewWaitVerification": {
+        "head": "8422e9185405ee89bead288738900b411f10ec3b",
+        "scenarios": 10,
+        "result": "Both viewport journeys passed five repetitions each"
+      }
     }
   },
   "assertions": [
@@ -63,8 +73,9 @@
     "integration": "b2_tests_review: no findings against c410d08 at52083c6; no weakened assertions"
   },
   "limitations": [
-    "Combined main integration and exact-head PR CI pending; historical focused macOS runs are not claimed as a full combined suite.",
-    "This receipt does not complete G2 or independent participant validation."
+    "Final receipt-head PR CI remains required before merge.",
+    "No full combined macOS browser suite or independent participant results are claimed.",
+    "This node does not alone complete G2."
   ],
   "ci": {
     "initialHead": "52083c6c952e9717ed9eee47d180189d3fb43b82",
