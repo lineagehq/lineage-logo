@@ -3,29 +3,115 @@
  * No performance assertions: the receipt is evidence, never a fabricated gate pass.
  */
 import { chromium } from '@playwright/test';
-import { spawn, execFileSync } from 'node:child_process';
+import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir, platform, release, cpus, totalmem } from 'node:os';
 import path from 'node:path';
+import { createServer } from 'node:net';
 const root = process.cwd();
-const workspace = await mkdtemp(path.join(tmpdir(), 'lineage-ux-performance-'));
-const origin = 'http://lineage-performance.localhost:43218';
-const env = { ...process.env, LINEAGE_LOGO_PORT: '43217', LINEAGE_LOGO_CLIENT_PORT: '43218', LINEAGE_LOGO_EDITOR_ORIGIN: 'http://127.0.0.1:43218', LINEAGE_LOGO_PUBLIC_EDITOR_ORIGIN: origin, LINEAGE_LOGO_REGISTRY_DIR: path.join(workspace, '.registry') };
-await mkdir(path.join(workspace, 'concepts'));
-for (const n of [100, 500, 1000]) await cp(path.join(root, `tests/fixtures/ux-audit/layers-${n}.svg`), path.join(workspace, `concepts/layers-${n}.svg`));
-const children = [
-  spawn(path.join(root, 'node_modules/.bin/vite'), ['--host', '127.0.0.1', '--port', '43218', '--strictPort'], { cwd: root, env, stdio: 'ignore', detached: true }),
-  spawn(path.join(root, 'node_modules/.bin/tsx'), ['src/server/index.ts', '--workspace', workspace, '--port', '43217'], { cwd: root, env, stdio: 'ignore', detached: true }),
-];
+const port = (name: string, fallback: number) => {
+  const value = process.env[name] === undefined ? fallback : Number(process.env[name]);
+  if (!Number.isInteger(value) || value < 1024 || value > 65535) throw new Error('Invalid performance port.');
+  return value;
+};
+const apiPort = port('LINEAGE_LOGO_PERFORMANCE_API_PORT', 43217);
+const clientPort = port('LINEAGE_LOGO_PERFORMANCE_CLIENT_PORT', 43218);
+if (apiPort === clientPort) throw new Error('Performance ports must differ.');
+const origin = `http://lineage-performance.localhost:${clientPort}`;
+let workspace: string | undefined;
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
+let browserLaunch: ReturnType<typeof chromium.launch> | undefined;
+const children: ChildProcess[] = [];
+const exited = new Map<ChildProcess, Promise<void>>();
+let childFailure = false;
+let stopping = false;
+const abort = new AbortController();
+let finishSetup!: () => void;
+const setupDone = new Promise<void>(resolve => { finishSetup = resolve; });
+const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+const assertRunning = () => { if (stopping || childFailure) throw new Error('Performance run stopped or an owned service exited.'); };
+function signalChild(child: ChildProcess, signal: NodeJS.Signals) {
+  if (!child.pid) return;
+  try { if (process.platform !== 'win32') process.kill(-child.pid, signal); else child.kill(signal); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ESRCH') throw error; }
+}
+let cleaning: Promise<void> | undefined;
+function cleanup(): Promise<void> {
+  return cleaning ??= (async () => {
+    stopping = true; abort.abort();
+    await setupDone;
+    for (const child of children) signalChild(child, 'SIGTERM');
+    const allExited = Promise.all([...exited.values()]);
+    const graceful = await Promise.race([allExited.then(() => true), delay(2000).then(() => false)]);
+    // Kill process groups even if their leader exited: descendants may still hold ports.
+    for (const child of children) signalChild(child, 'SIGKILL');
+    if (!graceful && !await Promise.race([allExited.then(() => true), delay(2000).then(() => false)])) throw new Error('Performance child teardown timed out.');
+    if (browserLaunch) {
+      const closing = browserLaunch.then(opened => opened.close()).catch(() => {});
+      await Promise.race([closing, delay(3000)]);
+    }
+    if (workspace) await rm(workspace, { recursive: true, force: true });
+  })();
+}
+const cancel = (signal: NodeJS.Signals) => {
+  stopping = true; abort.abort();
+  void cleanup().then(() => process.exit(signal === 'SIGINT' ? 130 : 143), () => process.exit(1));
+};
+process.once('SIGINT', cancel);
+process.once('SIGTERM', cancel);
+async function checkPortAvailable(candidate: number): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const probe = createServer();
+    probe.once('error', () => reject(new Error('Performance port is already occupied.')));
+    probe.listen(candidate, '127.0.0.1', () => probe.close(error => error ? reject(error) : resolve()));
+  });
+}
+function start(command: string, args: string[], env: NodeJS.ProcessEnv) {
+  assertRunning();
+  const child = spawn(command, args, { cwd: root, env, stdio: 'ignore', detached: process.platform !== 'win32' });
+  children.push(child);
+  exited.set(child, new Promise<void>(resolve => {
+    child.once('error', () => { childFailure = true; resolve(); });
+    child.once('exit', () => { childFailure = true; resolve(); });
+  }));
+}
 const summarize = (samples: number[]) => { const s = [...samples].sort((a,b) => a-b); return { samplesMs: samples, count: s.length, medianMs: s[Math.floor(s.length / 2)], p95Ms: s[Math.ceil(s.length * .95)-1], minMs: s[0], maxMs: s.at(-1) }; };
 try {
-  for (let i = 0; i < 100; i++) {
-    try { if ((await fetch('http://127.0.0.1:43218/api/workspace')).ok) break; } catch { /* startup */ }
-    if (i === 99) throw new Error('Isolated performance server failed to become ready');
-    await new Promise(resolve => setTimeout(resolve, 200));
+  try {
+    await Promise.all([checkPortAvailable(apiPort), checkPortAvailable(clientPort)]);
+    assertRunning();
+    workspace = await mkdtemp(path.join(tmpdir(), 'lineage-ux-performance-'));
+    assertRunning();
+    await mkdir(path.join(workspace, 'concepts'));
+    for (const n of [100, 500, 1000]) { assertRunning(); await cp(path.join(root, `tests/fixtures/ux-audit/layers-${n}.svg`), path.join(workspace, `concepts/layers-${n}.svg`)); }
+    const env = { ...process.env, LINEAGE_LOGO_PORT: String(apiPort), LINEAGE_LOGO_CLIENT_PORT: String(clientPort), LINEAGE_LOGO_EDITOR_ORIGIN: `http://127.0.0.1:${clientPort}`, LINEAGE_LOGO_PUBLIC_EDITOR_ORIGIN: origin, LINEAGE_LOGO_REGISTRY_DIR: path.join(workspace, '.registry') };
+    start(path.join(root, 'node_modules/.bin/vite'), ['--host', '127.0.0.1', '--port', String(clientPort), '--strictPort'], env);
+    start(path.join(root, 'node_modules/.bin/tsx'), ['src/server/index.ts', '--workspace', workspace, '--port', String(apiPort)], env);
+  } finally { finishSetup(); }
+  for (let i = 0; ; i++) {
+    assertRunning();
+    if (i === 100) throw new Error('Isolated performance server failed to become ready');
+    try {
+      const response = await fetch(`http://127.0.0.1:${clientPort}/api/workspace`, { signal: AbortSignal.any([abort.signal, AbortSignal.timeout(500)]) });
+      if (response.ok) {
+        const state = await response.json() as { rootName?: string };
+        assertRunning();
+        if (state.rootName !== path.basename(workspace!)) throw new Error('Performance workspace identity mismatch.');
+        break;
+      }
+    } catch (error) { assertRunning(); if (error instanceof Error && error.message === 'Performance workspace identity mismatch.') throw error; }
+    await delay(200);
   }
-  browser = await chromium.launch();
+  assertRunning();
+  if (process.argv.includes('--lifecycle-probe')) {
+    // Explicit test-only mode exercises real service ownership without benchmarking.
+    console.log(JSON.stringify({ ready: true, workspace, pids: children.map(child => child.pid), apiPort, clientPort }));
+    await new Promise<void>(resolve => abort.signal.addEventListener('abort', () => resolve(), {once:true}));
+    assertRunning();
+  }
+  browserLaunch = chromium.launch();
+  browser = await browserLaunch;
+  assertRunning();
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
   // tsx preserves nested function names through this helper when serializing callbacks.
   await page.addInitScript('globalThis.__name = (target) => target');
@@ -109,8 +195,7 @@ try {
   };
   await writeFile('docs/plans/logo-workflow-improvements/evidence/performance-baseline.json',JSON.stringify(receipt,null,2)+'\n');
 } finally {
-  await browser?.close();
-  for (const child of children) if (child.pid) { try { process.kill(-child.pid,'SIGTERM'); } catch {} }
-  await Promise.all(children.map(child => child.exitCode !== null || child.signalCode !== null ? Promise.resolve() : new Promise(resolve => child.once('exit',resolve))));
-  await rm(workspace,{recursive:true,force:true});
+  await cleanup();
+  process.removeListener('SIGINT', cancel);
+  process.removeListener('SIGTERM', cancel);
 }

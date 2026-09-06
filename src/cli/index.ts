@@ -7,14 +7,16 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { AgentProducerClient, type AgentProducerOutcome } from "../producer/agent-client.js";
-import { bindPublicAgentProposal, parsePublicAgentProposal, validateCleanAgentSvg, type AgentTransactionV1 } from "../shared/agent-protocol.js";
+import { AgentProtocolError, bindPublicAgentProposal, validateCleanAgentSvg, type AgentTransactionV1 } from "../shared/agent-protocol.js";
+import { PUBLIC_PROPOSAL_SCHEMA } from "./proposal-schema.js";
+import { safeError, validateLocalProposal, type SafeCliError } from "./proposal-validation.js";
 import { bootstrapSeatifyExample, SeatifyBootstrapError } from "./seatify-example.js";
 
 export const EXIT = {
   success: 0, usage: 2, selection: 3, unavailable: 4, rejected: 5, conflict: 6, internal: 7,
 } as const;
 
-type CommandName = "launch" | "submit" | "doctor" | "context" | "example";
+type CommandName = "launch" | "submit" | "doctor" | "context" | "example" | "schema" | "validate";
 type OutputStatus = "ok" | "invalid" | "not_found" | "unavailable" | "rejected" | "conflict" | "error";
 
 export interface CliResult {
@@ -79,6 +81,8 @@ const HELP = `Usage: lineage-logo <command> [options]
 Commands:
   launch --workspace <path> [--port <port>] [--no-open] [--json]
   submit --artifact <path> --proposal <path> [--workspace <path> | --instance <uuid>] [--json] [--include-svg]
+  schema [--json]
+  validate --proposal <path> [--artifact <path>] [--json]
   doctor [--workspace <path> | --instance <uuid>] [--json]
   context [--workspace <path> | --instance <uuid>] [--json]
   example seatify --workspace <directory> [--json]
@@ -91,7 +95,7 @@ Global options:
   --legacy-context <path>  Explicit deprecated single-instance context`;
 
 class CliFailure extends Error {
-  constructor(readonly exitCode: number, readonly status: OutputStatus, message: string) { super(message); }
+  constructor(readonly exitCode: number, readonly status: OutputStatus, message: string, readonly detail?: SafeCliError) { super(message); }
 }
 
 function parse(argv: string[]): ParsedArguments {
@@ -102,7 +106,7 @@ function parse(argv: string[]): ParsedArguments {
     const argument = argv[index];
     if (!argument.startsWith("--")) {
       if (command === "example" && !example && argument === "seatify") { example = "seatify"; continue; }
-      if (command || !["launch", "submit", "doctor", "context", "example"].includes(argument)) throw new CliFailure(EXIT.usage, "invalid", "Unknown command or positional argument.");
+      if (command || !["launch", "submit", "doctor", "context", "example", "schema", "validate"].includes(argument)) throw new CliFailure(EXIT.usage, "invalid", "Unknown command or positional argument.");
       command = argument as CommandName;
       continue;
     }
@@ -113,7 +117,7 @@ function parse(argv: string[]): ParsedArguments {
       continue;
     }
     if (!["workspace", "instance", "artifact", "proposal", "port", "legacy-context"].includes(name) || argv[index + 1] === undefined) {
-      throw new CliFailure(EXIT.usage, "invalid", `Unsupported or incomplete option --${name}.`);
+      throw new CliFailure(EXIT.usage, "invalid", "Unsupported or incomplete option.");
     }
     if (options.has(name)) throw new CliFailure(EXIT.usage, "invalid", `Duplicate option --${name}.`);
     options.set(name, argv[++index]);
@@ -139,6 +143,8 @@ function validateCommandOptions(args: ParsedArguments): void {
   if (!args.command) return;
   const global = new Set(["json", "quiet", "help", "version"]);
   const commandOptions: Record<CommandName, Set<string>> = {
+    schema: new Set(),
+    validate: new Set(["proposal", "artifact"]),
     launch: new Set(["workspace", "port", "no-open", "development"]),
     submit: new Set(["artifact", "proposal", "workspace", "instance", "legacy-context", "include-svg"]),
     doctor: new Set(["workspace", "instance", "legacy-context"]),
@@ -327,18 +333,57 @@ function outcomeExit(outcome: AgentProducerOutcome): { exitCode: number; status:
   return { exitCode: EXIT.success, status: "ok", message: `Saved ${artifact.durablePath}.` };
 }
 
+function outcomeError(outcome: AgentProducerOutcome): SafeCliError {
+  if (outcome.status === "rejected" && outcome.error?.status === "rejected") return safeError(outcome.error.error);
+  const codes: Record<AgentProducerOutcome["status"], string> = {
+    stale: "stale_document", reverted: "reviewer_rejection", unavailable: "unavailable_editor",
+    disconnected: "unavailable_editor", accepted: "conflict", rejected: "validation_rejection",
+    timeout: "timeout", conflict: "conflict",
+  };
+  return safeError({}, codes[outcome.status]);
+}
+
+function failureError(failure: CliFailure): SafeCliError {
+  if (failure.detail) return failure.detail;
+  if (failure.status === "unavailable" || failure.status === "not_found") return safeError({}, "unavailable_editor");
+  return safeError({}, failure.status === "conflict" ? "conflict" : failure.status === "error" ? "internal_error" : "invalid_payload");
+}
+
+async function readValidatedProposal(args: ParsedArguments) {
+  let payload: string;
+  try { payload = await readFile(requireValue(args, "proposal"), "utf8"); }
+  catch { throw new CliFailure(EXIT.usage, "invalid", "Proposal is not readable.", safeError({}, "unreadable_proposal")); }
+  try { return validateLocalProposal(payload); }
+  catch (error) { throw new CliFailure(EXIT.usage, "invalid", "Proposal is not a valid transaction.", safeError(error instanceof AgentProtocolError ? error.detail : {})); }
+}
+
+async function validateArtifact(artifactPath: string): Promise<void> {
+  let svg: string;
+  try { svg = await readFile(artifactPath, "utf8"); }
+  catch { throw new CliFailure(EXIT.usage, "invalid", "Artifact is not readable.", safeError({}, "unreadable_artifact")); }
+  try { validateCleanAgentSvg(svg); }
+  catch { throw new CliFailure(EXIT.usage, "invalid", "Artifact is not a safe SVG.", safeError({ code: "unsafe_svg" })); }
+}
+
+async function runValidate(args: ParsedArguments, io: CliIo): Promise<number> {
+  const proposal = await readValidatedProposal(args);
+  const artifact = value(args, "artifact");
+  if (artifact) await validateArtifact(artifact);
+  output(io, args.json, { schemaVersion: 1, command: "validate", ok: true, status: "ok", message: "Local validation passed. Live targets, locks, revision and no-op checks still require editor review.", operationCount: proposal.operations.length });
+  return EXIT.success;
+}
+
 async function runSubmit(args: ParsedArguments, io: CliIo, dependencies: CliDependencies): Promise<number> {
   const artifactPath = requireValue(args, "artifact");
-  const proposalPath = requireValue(args, "proposal");
-  const artifactSvg = await readFile(artifactPath, "utf8").catch(() => { throw new CliFailure(EXIT.usage, "invalid", "Artifact is not readable."); });
-  try { validateCleanAgentSvg(artifactSvg); } catch { throw new CliFailure(EXIT.usage, "invalid", "Artifact is not a safe SVG."); }
-  let proposal;
-  try { proposal = parsePublicAgentProposal(await readFile(proposalPath, "utf8")); }
-  catch { throw new CliFailure(EXIT.usage, "invalid", "Proposal is not a valid transaction."); }
+  await validateArtifact(artifactPath);
+  const proposal = await readValidatedProposal(args);
   const instance = await resolveSelected(dependencies.resolveInstance ?? defaultResolver, selector(args));
   let transaction: AgentTransactionV1;
-  try { transaction = bindPublicAgentProposal(proposal, await instance.client.manifest()); }
-  catch { throw new CliFailure(EXIT.conflict, "conflict", "Proposal does not match the active editor revision."); }
+  let manifest;
+  try { manifest = await instance.client.manifest(); }
+  catch { throw new CliFailure(EXIT.unavailable, "unavailable", "The selected editor is unavailable.", safeError({}, "unavailable_editor")); }
+  try { transaction = bindPublicAgentProposal(proposal, manifest); }
+  catch { throw new CliFailure(EXIT.conflict, "conflict", "Proposal does not match the active editor revision.", safeError({ code: "stale_document" })); }
   if (value(args, "legacy-context")) progress(io, args.quiet, "Warning: legacy context discovery is deprecated.");
   progress(io, args.quiet, `Selected ${sanitizedSelection(instance)}.`);
   progress(io, args.quiet, "Waiting for human review…");
@@ -347,6 +392,7 @@ async function runSubmit(args: ParsedArguments, io: CliIo, dependencies: CliDepe
   const accepted = outcome.status === "accepted" ? outcome.artifact as unknown as { durablePath?: string; digest?: string; svg?: string } : undefined;
   output(io, args.json, {
     schemaVersion: 1, command: "submit", ok: mapped.exitCode === 0, status: mapped.status, message: mapped.message,
+    ...(mapped.exitCode !== 0 ? { error: outcomeError(outcome) } : {}),
     ...(mapped.exitCode === 0 ? { artifact: { path: accepted!.durablePath, digest: accepted!.digest, ...(args.options.has("include-svg") ? { svg: accepted!.svg } : {}) } } : {}),
   });
   return mapped.exitCode;
@@ -397,8 +443,8 @@ export async function runLineageCli(argv: string[], io: CliIo = {
   catch (error) {
     const failure = error as CliFailure;
     if (argv.includes("--json")) {
-      const command = argv.find((argument) => ["launch", "submit", "doctor", "context", "example"].includes(argument)) as CommandName | undefined;
-      output(io, true, { schemaVersion: 1, command: command ?? "doctor", ok: false, status: failure.status ?? "invalid", message: failure.message });
+      const command = argv.find((argument) => ["launch", "submit", "doctor", "context", "example", "schema", "validate"].includes(argument)) as CommandName | undefined;
+      output(io, true, { schemaVersion: 1, command: command ?? "doctor", ok: false, status: failure.status ?? "invalid", message: failure.message, error: failureError(failure) });
     } else io.stderr(failure.message);
     return failure.exitCode ?? EXIT.internal;
   }
@@ -414,13 +460,18 @@ export async function runLineageCli(argv: string[], io: CliIo = {
       const exitCode = await (dependencies.launch ?? launchEditor)({ workspace, port: parsePort(value(args, "port")), open: !args.options.has("no-open"), development: args.options.has("development"), json: args.json }, io);
       return exitCode;
     }
+    if (args.command === "schema") {
+      io.stdout(args.json ? JSON.stringify({ schemaVersion: 1, command: "schema", ok: true, status: "ok", message: "Public proposal schema v1.", schema: PUBLIC_PROPOSAL_SCHEMA }) : JSON.stringify(PUBLIC_PROPOSAL_SCHEMA, null, 2));
+      return EXIT.success;
+    }
+    if (args.command === "validate") return await runValidate(args, io);
     if (args.command === "submit") return await runSubmit(args, io, dependencies);
     if (args.command === "context") return await runContext(args, io, dependencies);
     if (args.command === "example") return await runSeatifyExample(args, io);
     return await runDoctor(args, io, dependencies);
   } catch (error) {
     const failure = error instanceof CliFailure ? error : new CliFailure(EXIT.internal, "error", "Unexpected internal failure.");
-    output(io, args.json, { schemaVersion: 1, command: args.command, ok: false, status: failure.status, message: failure.message });
+    output(io, args.json, { schemaVersion: 1, command: args.command, ok: false, status: failure.status, message: failure.message, error: failureError(failure) });
     return failure.exitCode;
   }
 }

@@ -20,6 +20,14 @@ function failedReporter() {
  return reporter;
 }
 describe('QA diagnostic privacy',()=>{
+ it('distinguishes a global timeout from individual test timeouts',()=>{
+  const dir=fixtureDirectory();const stdout=vi.spyOn(process.stdout,'write').mockReturnValue(true);
+  const reporter=new SanitizedReporter();
+  reporter.onEnd({status:'timedout',duration:1000} as FullResult);
+  const receipt=JSON.parse(readFileSync(path.join(dir,'test-results/release-diagnostics.json'),'utf8'));
+  expect(receipt.status).toBe('timedout');expect(receipt.counts.timedOut).toBe(0);
+  expect(stdout.mock.calls.flat().join('')).toContain('Browser QA (timedout)');
+ });
  it('retains bounded failure counts and durations while discarding all seeded private fields and artifacts',async()=>{
   const dir=fixtureDirectory();const stdout=vi.spyOn(process.stdout,'write').mockReturnValue(true);const stderr=vi.spyOn(process.stderr,'write').mockReturnValue(true);
   failedReporter();writeFileSync(path.join(dir,'test-results','private-artifact.txt'),canary);

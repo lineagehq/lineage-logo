@@ -1,0 +1,30 @@
+{
+  "node": "C1",
+  "status": "verified",
+  "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/27",
+  "reviewedHead": "23cad3a7521e7b87a06cd10a40a57b8aca828d91",
+  "mergeCommit": "5e470b0120c15b2500619005c128b906d2567a2c",
+  "checks": {
+    "local": "596 tests, typecheck and build passed",
+    "browser": "Real Chromium namespace regression passed; document bytes/revision unchanged",
+    "installed": "Clean npm pack/install process verifies help/schema/six examples/invalid proposals",
+    "pullRequestCi": "https://github.com/lineagehq/lineage-logo/actions/runs/34049407890",
+    "mainCi": "https://github.com/lineagehq/lineage-logo/actions/runs/34049562270"
+  },
+  "review": {
+    "roles": [
+      "correctness",
+      "tests",
+      "silent-failures",
+      "contracts-types",
+      "comments-docs"
+    ],
+    "findingsFixed": [
+      "Unicode codepoint vs UTF-16 bounds explicitly annotated and documented; independent boundary conformance tests",
+      "Offline fragment namespace policy aligned with real browser evaluator; XML metadata remains accepted in standalone artifacts"
+    ],
+    "independentFixValidation": "Both fixes independently revalidated; no remaining high-confidence findings",
+    "nativeReview": "Attempted both installed CLI binaries; model/version compatibility prevented startup. Focused review proceeded under skill fallback; native success is not claimed."
+  },
+  "scope": "C1 only. Live accepted-document snapshots and subsequent agent workflow nodes remain pending."
+}

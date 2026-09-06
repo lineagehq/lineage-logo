@@ -61,9 +61,9 @@
         "B0"
       ],
       "lane": "agent",
-      "status": "active",
+      "status": "verified",
       "acceptanceContract": "plan.md#c1--discoverable-agent-schema-and-recoverable-errors",
-      "receipt": null
+      "receipt": "evidence/c1.json"
     },
     {
       "id": "G1",
