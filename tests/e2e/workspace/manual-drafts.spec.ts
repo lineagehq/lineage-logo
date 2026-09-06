@@ -185,16 +185,26 @@ test("failed deletion of an expired draft permits keyboard exit and normal savin
 });
 
 test('agent acceptance preserves a different recovery record written by another tab', async ({ page, context }) => {
+  type Manifest = { sessionId: string; sourcePath: string; revision: number; layers: Array<{name: string; sessionKey: string}> };
+  let published: Manifest | undefined;
+  // The server may still hold the previous tab's manifest while this tab claims
+  // its lease. Bind the fixture to a publication from this actual page.
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/api/agent/document' && request.method() === 'POST') {
+      published = request.postDataJSON() as Manifest;
+    }
+  });
   await open(page);
   const before = await source(page);
   await recolor(page, '#ee5500');
   const headers = { Authorization: 'Bearer lineage-logo-e2e-agent-token' };
-  let manifest: { sessionId: string; sourcePath: string; revision: number; layers: Array<{name: string; sessionKey: string}> };
+  let manifest: Manifest;
   await expect.poll(async () => {
     const response = await page.request.get('/api/agent/document', { headers });
-    if (!response.ok()) return -1;
-    manifest = await response.json(); return manifest.revision;
-  }).toBeGreaterThan(0);
+    if (!response.ok() || !published || published.sourcePath !== sourcePath || published.revision <= 0) return false;
+    manifest = await response.json();
+    return manifest.sessionId === published.sessionId && manifest.sourcePath === published.sourcePath && manifest.revision === published.revision;
+  }).toBe(true);
   const proposal = { protocolVersion: 1, transactionId: `draft-other-tab-${Date.now()}`, producer: { kind: 'fixture' },
     document: { sessionId: manifest!.sessionId, sourcePath: manifest!.sourcePath, baseRevision: manifest!.revision },
     operations: [{ type: 'renameLayer', operationId: 'rename', target: { sessionKey: manifest!.layers.find(layer => layer.name === 'mark')!.sessionKey }, name: 'Accepted mark' }] };
