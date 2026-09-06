@@ -591,7 +591,7 @@ const editor = new SvgEditor(
         setLifecycleState("dirty", "Unsaved changes", `Save ${nextIterationPath} to preserve these corrections, or reset edits.`);
       } else if (changed && currentFile) {
         setStatus(`${currentFile.collection} / ${currentFile.name} · No unsaved changes`);
-        setLifecycleState();
+        restoreDocumentLifecycle();
       }
     },
     onHistoryChange: (canUndo, canRedo) => {
@@ -747,13 +747,9 @@ const agentTransport = new AgentCanvasTransport({
     } else if (agentReview?.status === "disconnected" && agentSession?.pending && !agentSession.recoveryRequired) {
       agentReview = buildPendingReview(agentSession.pending.transaction, agentSession.pending.staged, editor.selectionContext.lockedKeys);
       renderAgentReview();
-      setLifecycleState(dirty ? "dirty" : undefined, dirty ? "Unsaved changes" : "", dirty ? `Save ${nextIterationPath} to preserve these corrections, or reset edits.` : "");
+      restoreDocumentLifecycle();
     } else if (state === "connected") {
-      if (dirty) {
-        setLifecycleState("dirty", "Unsaved changes", `Save ${nextIterationPath} to preserve these corrections, or reset edits.`);
-      } else if (currentFile?.collection === "iterations") {
-        setLifecycleState("saved", "Saved", `Created ${currentFile.path}. The source SVG remains unchanged.`);
-      } else setLifecycleState();
+      restoreDocumentLifecycle();
     }
     if (state === "connected" && !agentSession?.pending && currentFile?.collection === "iterations") {
       setStatus(dirty ? "Unsaved manual corrections" : `Saved ${currentFile.path}`);
@@ -940,10 +936,8 @@ function finishAgentReview(status: "accepted" | "reverted", artifact?: AgentAcce
   if (status === "accepted" && artifact?.durablePath) {
     setStatus(`Saved ${artifact.durablePath}`);
     setLifecycleState("saved", "Saved", `Applied all changes to ${artifact.durablePath}. The source SVG remains unchanged.`);
-  } else if (dirty) {
-    setLifecycleState("dirty", "Unsaved changes", `Save ${nextIterationPath} to preserve these corrections, or reset edits.`);
   } else {
-    setLifecycleState();
+    restoreDocumentLifecycle();
   }
   const returnFocus = agentReviewReturnFocus?.isConnected ? agentReviewReturnFocus : layerSearch;
   agentReviewReturnFocus = undefined;
@@ -1132,6 +1126,16 @@ function setStatus(message: string): void {
 }
 
 type LifecycleState = "conflict" | "dirty" | "saved" | "disconnected";
+
+function restoreDocumentLifecycle(): void {
+  // A provisional acceptance owns its recovery indicator until it settles.
+  if (agentSession?.pending?.provisional) return;
+  if (dirty) {
+    setLifecycleState("dirty", "Unsaved changes", `Save ${nextIterationPath} to preserve these corrections, or reset edits.`);
+  } else if (!agentSession?.pending && currentFile?.collection === "iterations") {
+    setLifecycleState("saved", "Saved", `Saved ${currentFile.path}. The source SVG remains unchanged.`);
+  } else setLifecycleState();
+}
 
 function setLifecycleState(state?: LifecycleState, label = "", guidance = ""): void {
   const notice = getElement("lifecycle-state");
@@ -1829,7 +1833,7 @@ const showDisconnectedPreview = () => {
 };
 const showConnectedPreview = () => {
   connectionBanner.hidden = true;
-  setLifecycleState(dirty ? "dirty" : undefined, dirty ? "Unsaved changes" : "", dirty ? `Save ${nextIterationPath} to preserve these corrections, or reset edits.` : "");
+  restoreDocumentLifecycle();
 };
 const hotModule = (import.meta as ImportMeta & {
   hot?: { on: (event: string, callback: () => void) => void };

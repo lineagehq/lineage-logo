@@ -183,3 +183,52 @@ test('Save keeps drilled scope, geometry and scrolled viewport intact', async ({
   await expect(page.locator('#artboard #alignment-halo')).toHaveAttribute('transform', adjustedTransform!);
   await expect(page.locator('#save-iteration')).toBeDisabled();
 });
+
+test('ordinary pending review reconnect clears a stale disconnected banner', async ({ page, request }) => {
+  // Fault only the real event-stream network boundary; keep protocol data and UI real.
+  await page.addInitScript(() => {
+    const networkFetch = window.fetch.bind(window);
+    let streamAbort: AbortController | undefined;
+    let unavailable = false;
+    window.addEventListener('qa-agent-network-offline', () => { unavailable = true; streamAbort?.abort(); });
+    window.addEventListener('qa-agent-network-online', () => { unavailable = false; });
+    window.fetch = (input, options) => {
+      if (String(input) !== '/api/agent/events') return networkFetch(input, options);
+      if (unavailable) return Promise.reject(new TypeError('Fixture network unavailable'));
+      streamAbort = new AbortController();
+      const signal = options?.signal ? AbortSignal.any([options.signal, streamAbort.signal]) : streamAbort.signal;
+      return networkFetch(input, { ...options, signal });
+    };
+  });
+  await page.goto('/');
+  await page.locator('[data-path="concepts/seatify-constellation.svg"]').click();
+  const api = 'http://127.0.0.1:43117';
+  const headers = { Authorization: 'Bearer lineage-logo-e2e-agent-token' };
+  let manifest: { sessionId: string; sourcePath: string; revision: number; layers: Array<{ sessionKey: string; name: string }> };
+  await expect.poll(async () => {
+    const response = await request.get(`${api}/api/agent/document`, { headers });
+    if (!response.ok()) return false;
+    manifest = await response.json();
+    return manifest.sourcePath === 'concepts/seatify-constellation.svg';
+  }).toBe(true);
+  const response = await request.post(`${api}/api/agent/transactions`, { headers, data: {
+    protocolVersion: 1, transactionId: `pending-reconnect-${Date.now()}`, producer: { kind: 'agent' },
+    document: { sessionId: manifest!.sessionId, sourcePath: manifest!.sourcePath, baseRevision: manifest!.revision },
+    operations: [{ type: 'renameLayer', operationId: 'rename', target: { sessionKey: manifest!.layers.find((layer) => layer.name === 'Seatify title')!.sessionKey }, name: 'Pending reconnect title' }],
+  } });
+  expect(response.status()).toBe(202);
+  await expect(page.locator('#agent-review-status')).toHaveText('pending');
+  try {
+    await page.evaluate(() => window.dispatchEvent(new Event('qa-agent-network-offline')));
+    await expect(page.locator('#lifecycle-state')).toHaveAttribute('data-state', 'disconnected');
+  } finally {
+    await page.evaluate(() => window.dispatchEvent(new Event('qa-agent-network-online')));
+  }
+  await expect(page.locator('#agent-review-status')).toHaveText('pending');
+  await expect(page.locator('#lifecycle-state')).not.toHaveAttribute('data-state', 'disconnected');
+  await expect(page.locator('#agent-accept')).toBeEnabled();
+  await expect(page.locator('#save-iteration')).toBeDisabled();
+  await expect(page.locator('#artboard [aria-label="Seatify title"]')).toHaveCount(1);
+  await expect(page.locator('#artboard [aria-label="Pending reconnect title"]')).toHaveCount(0);
+  await page.locator('#agent-revert').click();
+});

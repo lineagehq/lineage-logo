@@ -46,6 +46,7 @@ test('saved continuation and unchanged original survive a complete local server 
     await start();
     await page.goto(origin);
     await page.locator('[data-path="concepts/logo.svg"]').click();
+    await expect(page.locator('#artboard svg')).toBeVisible();
     const board = await page.locator('#artboard').boundingBox();
     expect(board!.width / board!.height).toBeCloseTo(1024 / 640, 3);
     await page.locator('[data-background="dark"].background-button').click();
