@@ -23,7 +23,7 @@
     "Selected and primary id-less layer keys, hierarchy, geometry, passive styles and local paint resources are bound to one live revision.",
     "Hidden bounds are explicitly unsupported and manual locks are represented.",
     "Capture does not mutate artwork, selection, history, dirty state or source files.",
-    "Producer checks digest and all instance/workspace/editor/session/revision bindings independently.",
+    "Producer independently checks the SVG digest and target instance/workspace binding. The server validates editor/session/revision challenge and response bindings.",
     "Malformed, oversized, pending, stale, mismatched nonce, replaced editor and disconnected requests refuse without leaking snapshots; timeout and late replies are cleaned up.",
     "Default context and error output do not include SVG, source path, credentials or internal traces."
   ],
@@ -36,7 +36,21 @@
     "Geometric bounds exclude paint effects.",
     "Active/external SVG and CSS escapes or at-rules are explicitly refused."
   ],
-  "review": "pending",
+  "review": {
+    "status": "fixes-under-verification",
+    "roles": [
+      "correctness",
+      "tests",
+      "silent-failures",
+      "contracts-types",
+      "comments-docs"
+    ],
+    "validatedFindings": {
+      "activeGesture": "Fresh local Chromium reproduction exported different SVGs at the same session/revision while a resize remained provisional. The renderer now refuses snapshot_busy until gesture completion or cancellation.",
+      "producerBindingClaim": "Fresh archived-source producer harness confirmed only digest and optional instance/workspace are independently checked by the producer; corrected the evidence assertion. Server enforces editor/session/revision."
+    },
+    "remaining": "Post-fix review and complete validation on current main integration."
+  },
   "pr": null,
   "ci": null
 }

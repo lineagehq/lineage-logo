@@ -1943,10 +1943,15 @@ export class SvgEditor {
     if (this.#selected) enhanceRotationHandle(root);
   }
 
+  /** Live geometry is provisional until its gesture commits or is canceled. */
+  get hasProvisionalEdits(): boolean {
+    return Boolean(this.#interactiveMutation || this.#groupScaleEdit);
+  }
+
   stageAgentTransaction(transaction: AgentTransactionV1, context: AgentDocumentContext): StagedAgentTransaction | undefined {
     const root = this.svgNode;
     if (!root) return undefined;
-    if (this.#interactiveMutation || this.#groupScaleEdit) {
+    if (this.hasProvisionalEdits) {
       return {
         result: {
           transactionId: transaction.transactionId,

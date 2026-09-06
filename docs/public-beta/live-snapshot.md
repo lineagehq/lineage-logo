@@ -31,3 +31,5 @@ at-rules are unsupported and fail without changing the document. No filesystem
 source path, connection credential, or editor metadata is added to the response.
 Authored SVG text and metadata are artwork and remain present in this explicit
 export. Error output contains a safe code and a next action, never raw artwork.
+
+An unfinished canvas drag, resize, or rotation refuses capture with `snapshot_busy`. Finish or cancel the gesture, then request a new snapshot; provisional geometry is never exported as accepted artwork.

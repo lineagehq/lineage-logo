@@ -667,6 +667,7 @@ const agentTransport = new AgentCanvasTransport({
   onSnapshot: (request) => {
     const root = editor.svgNode;
     if (!root || !agentSession) throw new SnapshotError("snapshot_unavailable");
+    if (editor.hasProvisionalEdits) throw new SnapshotError("snapshot_busy");
     return captureAgentSnapshot({ root, context: agentSession.context, selectedNodes: editor.selectedNodes,
       primary: editor.selectedNode, lockedKeys: editor.selectionContext.lockedKeys,
       pending: Boolean(agentSession.pending) }, request);
