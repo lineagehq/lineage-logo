@@ -39,7 +39,7 @@
         "B0"
       ],
       "lane": "trust",
-      "status": "pr_open",
+      "status": "merged",
       "acceptanceContract": "plan.md#a1--save-continuity-and-consistent-document-state",
       "receipt": "evidence/trust-tranche.json"
     },
@@ -50,7 +50,7 @@
         "B0"
       ],
       "lane": "trust",
-      "status": "pr_open",
+      "status": "merged",
       "acceptanceContract": "plan.md#a2--accurate-document-bounds-and-preview-surfaces",
       "receipt": "evidence/trust-tranche.json"
     },
@@ -74,7 +74,7 @@
         "A2"
       ],
       "lane": "gate",
-      "status": "pending",
+      "status": "verified",
       "acceptanceContract": "plan.md#tranche-acceptance-gates",
       "receipt": "evidence/trust-tranche.json"
     },
@@ -85,7 +85,7 @@
         "G1"
       ],
       "lane": "manual",
-      "status": "pending",
+      "status": "active",
       "acceptanceContract": "plan.md#b1--complete-atomic-bulk-editing",
       "receipt": null
     },
@@ -107,7 +107,7 @@
         "G1"
       ],
       "lane": "manual",
-      "status": "pending",
+      "status": "active",
       "acceptanceContract": "plan.md#b3--recover-manual-work-safely",
       "receipt": null
     },
@@ -132,7 +132,7 @@
         "Q1"
       ],
       "lane": "agent",
-      "status": "pending",
+      "status": "active",
       "acceptanceContract": "plan.md#c2--explicit-current-document-handoff",
       "receipt": null
     },
