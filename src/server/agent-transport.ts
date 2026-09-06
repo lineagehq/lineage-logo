@@ -9,7 +9,17 @@ import type { AgentInstanceIdentity } from "../shared/instance-registry.js";
 import { HttpError, readBody, readJsonBody, requireEventStreamOrigin, requireOrigin, sendJson } from "./http.js";
 import { saveAgentContinuation } from "./workspace.js";
 
+import { SnapshotError, SNAPSHOT_MAX_BYTES, SNAPSHOT_TIMEOUT_MS, parseSnapshotRequest, parseSnapshotReply, parseAgentSnapshot, type AgentSnapshotRequest, type SnapshotErrorCode } from "../shared/agent-snapshot.js";
+
 interface EditorLease { editorId: string; generation: number }
+
+interface PendingSnapshot {
+  request: AgentSnapshotRequest;
+  lease: EditorLease;
+  document: AgentDocumentManifest;
+  stream: ServerResponse;
+  finish: (status: number, body: unknown) => void;
+}
 
 interface RegistryEntry {
   hash: string;
@@ -42,6 +52,7 @@ export interface AgentTransportOptions {
   maxRegistry?: number;
   maxBacklog?: number;
   editorReleaseMs?: number;
+  snapshotTimeoutMs?: number;
   workspaceRoot?: string;
 }
 
@@ -60,6 +71,8 @@ export class AgentTransport {
   readonly #maxBacklog: number;
   readonly #editorReleaseMs: number;
   readonly #workspaceRoot?: string;
+  readonly #snapshotTimeoutMs: number;
+  readonly #snapshots = new Map<string, PendingSnapshot>();
   readonly #registry = new Map<string, RegistryEntry>();
   readonly #events: EventRecord[] = [];
   readonly #clients = new Set<ServerResponse>();
@@ -84,6 +97,7 @@ export class AgentTransport {
     this.#maxRegistry = options.maxRegistry ?? 500;
     this.#maxBacklog = options.maxBacklog ?? 200;
     this.#editorReleaseMs = options.editorReleaseMs ?? 500;
+    this.#snapshotTimeoutMs = options.snapshotTimeoutMs ?? SNAPSHOT_TIMEOUT_MS;
     const workspaceArgument = process.argv.indexOf("--workspace");
     this.#workspaceRoot = options.workspaceRoot ?? (workspaceArgument >= 0 ? process.argv[workspaceArgument + 1] : undefined);
   }
@@ -96,6 +110,18 @@ export class AgentTransport {
       this.#authenticate(request, false);
       if (!this.#identity) throw new HttpError(404, "Instance identity is unavailable.");
       sendJson(response, 200, this.#identity);
+      return true;
+    }
+    if (request.method === "POST" && url.pathname === "/api/agent/snapshots") {
+      this.#authenticate(request);
+      await this.#requestSnapshot(request, response);
+      return true;
+    }
+    const snapshotReply = /^\/api\/agent\/snapshots\/([a-f0-9-]{36})\/reply$/.exec(url.pathname);
+    if (request.method === "POST" && snapshotReply) {
+      requireOrigin(request, this.#editorOrigin);
+      const lease = this.#claimEditor(request);
+      await this.#replySnapshot(snapshotReply[1], request, response, lease);
       return true;
     }
     if (request.method === "POST" && url.pathname === "/api/agent/transactions") {
@@ -151,10 +177,78 @@ export class AgentTransport {
   }
 
   close(): void {
+    this.#cancelSnapshots("snapshot_unavailable");
     if (this.#editorReleaseTimer) clearTimeout(this.#editorReleaseTimer);
     for (const entry of this.#registry.values()) if (entry.timer) clearTimeout(entry.timer);
     for (const client of this.#clients) client.end();
     this.#clients.clear();
+  }
+
+  #snapshotBlocked(): boolean {
+    return Array.from(this.#registry.values()).some(entry => ["queued", "delivered", "pending_review"].includes(entry.state.status));
+  }
+
+  #cancelSnapshots(code: SnapshotErrorCode, stream?: ServerResponse): void {
+    for (const pending of [...this.#snapshots.values()]) {
+      if (!stream || pending.stream === stream) pending.finish(503, { error: code });
+    }
+  }
+
+  async #requestSnapshot(request: IncomingMessage, response: ServerResponse): Promise<void> {
+    const body = await readJsonBody(request, 1024);
+    if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).length !== 1 || (body as { schemaVersion?: unknown }).schemaVersion !== 1) {
+      sendJson(response, 400, { error: "invalid_snapshot" }); return;
+    }
+    const stream = Array.from(this.#clients).find(client => !client.destroyed && !client.writableEnded);
+    if (!stream || !this.#document || !this.#editorId || !this.#identity) { sendJson(response, 503, { error: "snapshot_unavailable" }); return; }
+    if (this.#snapshotBlocked()) { sendJson(response, 409, { error: "pending_review" }); return; }
+    if (this.#snapshots.size >= 8) { sendJson(response, 429, { error: "snapshot_busy" }); return; }
+    let challenge: AgentSnapshotRequest;
+    try { challenge = parseSnapshotRequest({ schemaVersion: 1, requestId: randomUUID(), serverInstanceId: this.#serverInstanceId, editorId: this.#editorId, sessionId: this.#document.sessionId, baseRevision: this.#document.revision }); }
+    catch { sendJson(response, 409, { error: "invalid_snapshot" }); return; }
+    await new Promise<void>(resolve => {
+      const timer = setTimeout(() => finish(504, { error: "snapshot_timeout" }), this.#snapshotTimeoutMs);
+      const disconnected = () => finish(503, { error: "snapshot_unavailable" });
+      const finish = (status: number, result: unknown) => {
+        if (!this.#snapshots.delete(challenge.requestId)) return;
+        clearTimeout(timer); response.off("close", disconnected);
+        if (!response.destroyed && !response.writableEnded) sendJson(response, status, result);
+        resolve();
+      };
+      this.#snapshots.set(challenge.requestId, { request: challenge, lease: { editorId: this.#editorId!, generation: this.#editorGeneration }, document: this.#document!, stream, finish });
+      response.once("close", disconnected);
+      // Snapshot challenges are transient: no event ID, transaction registry or replay.
+      stream.write(`event: snapshot-request\ndata: ${JSON.stringify(challenge)}\n\n`);
+    });
+  }
+
+  async #replySnapshot(requestId: string, request: IncomingMessage, response: ServerResponse, lease: EditorLease): Promise<void> {
+    const pending = this.#snapshots.get(requestId);
+    if (!pending || pending.lease.editorId !== lease.editorId || pending.lease.generation !== lease.generation) {
+      sendJson(response, 409, { error: "stale_snapshot" }); return;
+    }
+    try {
+      const raw = await readJsonBody(request, SNAPSHOT_MAX_BYTES);
+      this.#assertEditorLease(lease);
+      if (!this.#snapshots.has(requestId) || !this.#clients.has(pending.stream)) throw new SnapshotError("stale_snapshot");
+      const reply = parseSnapshotReply(raw);
+      if (JSON.stringify(reply.request) !== JSON.stringify(pending.request)) throw new SnapshotError("stale_snapshot");
+      const document = this.#document;
+      if (!document || document.sessionId !== pending.document.sessionId || document.sourcePath !== pending.document.sourcePath || document.revision !== pending.document.revision) throw new SnapshotError("stale_snapshot");
+      if (this.#snapshotBlocked()) throw new SnapshotError("pending_review");
+      if ("error" in reply) throw new SnapshotError(reply.error);
+      const projection = reply.projection;
+      if (projection.sessionId !== pending.request.sessionId || projection.baseRevision !== pending.request.baseRevision) throw new SnapshotError("stale_snapshot");
+      const keys = new Map(document.layers.map(layer => [layer.sessionKey, layer.type]));
+      if (keys.size !== projection.layers.length || projection.layers.some(layer => keys.get(layer.layerId) !== layer.type)) throw new SnapshotError("stale_snapshot");
+      const snapshot = parseAgentSnapshot({ ...projection, requestId, instanceId: this.#identity!.instanceId, workspaceId: this.#identity!.workspaceId, editorId: lease.editorId, serverInstanceId: this.#serverInstanceId, digest: createHash("sha256").update(projection.svg).digest("hex") });
+      pending.finish(200, snapshot);
+      sendJson(response, 200, { status: "captured" });
+    } catch (error) {
+      const code = error instanceof SnapshotError ? error.code : error instanceof HttpError && error.status === 413 ? "snapshot_too_large" : "invalid_snapshot";
+      pending.finish(409, { error: code });
+      sendJson(response, 409, { error: code });
+    }
   }
 
   #claimEditor(request: IncomingMessage): EditorLease {
@@ -278,6 +372,7 @@ export class AgentTransport {
       if (entry.timer) clearTimeout(entry.timer);
       entry.state = { transactionId: entry.transaction.transactionId, status: "queued" };
     }
+    this.#cancelSnapshots("snapshot_unavailable");
     for (const client of this.#clients) client.end();
     this.#clients.clear();
     response.writeHead(200, {
@@ -311,6 +406,7 @@ export class AgentTransport {
     }
     const heartbeat = setInterval(() => response.write(": heartbeat\n\n"), this.#heartbeatMs);
     const disconnect = () => {
+      this.#cancelSnapshots("snapshot_unavailable", response);
       clearInterval(heartbeat);
       this.#clients.delete(response);
       if (this.#clients.size === 0) for (const entry of this.#registry.values()) {

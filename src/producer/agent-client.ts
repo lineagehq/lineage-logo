@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { SnapshotError, SNAPSHOT_MAX_BYTES, SNAPSHOT_TIMEOUT_MS, SNAPSHOT_ERROR_CODES, parseAgentSnapshot, type AgentSnapshot, type SnapshotErrorCode } from "../shared/agent-snapshot.js";
 import { readAgentConnectionContext, resolveAgentConnectionContext, type AgentConnectionContext } from "./connection-context.js";
 import {
   AGENT_MAX_PAYLOAD_BYTES,
@@ -166,6 +168,38 @@ export class AgentProducerClient {
     const response = await this.#request(context, "/api/agent/document");
     if (!response.ok) throw new Error(response.status === 404 ? "No active canvas document is available." : `Canvas manifest request failed (${response.status}).`);
     return parseManifest(await response.json());
+  }
+
+  async snapshot(): Promise<AgentSnapshot> {
+    const context = await this.#context();
+    let response: Response;
+    try {
+      response = await this.#request(context, "/api/agent/snapshots", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schemaVersion: 1 }),
+        signal: AbortSignal.timeout(SNAPSHOT_TIMEOUT_MS + 2000),
+      });
+    } catch { throw new SnapshotError("snapshot_unavailable"); }
+    const reader = response.body?.getReader();
+    if (!reader) throw new SnapshotError("invalid_snapshot");
+    const chunks: Uint8Array[] = []; let bytes = 0;
+    try {
+      for (;;) {
+        const chunk = await reader.read(); if (chunk.done) break;
+        bytes += chunk.value.byteLength;
+        if (bytes > SNAPSHOT_MAX_BYTES) { await reader.cancel(); throw new SnapshotError("snapshot_too_large"); }
+        chunks.push(chunk.value);
+      }
+    } catch (error) { if (error instanceof SnapshotError) throw error; throw new SnapshotError("snapshot_unavailable"); }
+    let value: unknown;
+    try { value = JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { throw new SnapshotError("invalid_snapshot"); }
+    if (!response.ok) {
+      const code = (value as { error?: unknown })?.error;
+      throw new SnapshotError(SNAPSHOT_ERROR_CODES.has(code as SnapshotErrorCode) ? code as SnapshotErrorCode : "snapshot_unavailable");
+    }
+    const snapshot = parseAgentSnapshot(value);
+    if ((context.binding && (snapshot.instanceId !== context.binding.instanceId || snapshot.workspaceId !== context.binding.workspaceId))
+      || createHash("sha256").update(snapshot.svg).digest("hex") !== snapshot.digest) throw new SnapshotError("invalid_snapshot");
+    return snapshot;
   }
 
   async submitAndWait(transaction: AgentTransactionV1): Promise<AgentProducerOutcome> {
