@@ -1,0 +1,5 @@
+# Findings from completed evaluations
+
+After an evaluation run is completed, use `workflow report RUN_ID --store PATH` to select an exact durable step note. Write a strict `agent-workflow-finding-input/v1` JSON file containing only `schema`, `stepId`, `noteIndex`, `lens` (`id` and `label`), `severity`, `title`, and `recommendation`, then run `workflow findings create RUN_ID --file PATH --store PATH --json`. UX, security, accessibility, reliability, and custom lens IDs follow the same contract.
+
+Never copy note text, evidence metadata, hashes, timestamps, workflow revision, platform, status, or finding identity into the input; the CLI derives them from the completed evaluation. An identical retry is safe and returns the same finding. Use `workflow findings list WORKFLOW_ID --store PATH --json` or `workflow findings show WORKFLOW_ID FINDING_ID --store PATH --json` to reread the independently verified projection. Do not use this command for training, replay, incomplete, or non-evaluation runs.
