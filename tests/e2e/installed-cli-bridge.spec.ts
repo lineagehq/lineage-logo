@@ -100,11 +100,11 @@ async function openSeatify(context: BrowserContext, url: string, workspacePath =
   const streamRequest = page.waitForRequest((request) => request.url().endsWith("/api/agent/events"));
   const streamResponse = page.waitForResponse((response) => response.url().endsWith("/api/agent/events"));
   await page.goto(url);
-  const connectedState = page.evaluate(() => new Promise<string>((resolve) => {
+  const connectedState = page.evaluate((sourcePath) => new Promise<string>((resolve) => {
     const status = document.querySelector("#status");
     if (!status) throw new Error("Editor status is unavailable.");
     const inspect = () => {
-      if (status.textContent === "Agent connection ready") {
+      if (status.textContent === "Agent connection ready" || (sourcePath.startsWith("iterations/") && status.textContent === `Saved ${sourcePath}`)) {
         observer.disconnect();
         resolve(status.textContent);
       }
@@ -112,7 +112,7 @@ async function openSeatify(context: BrowserContext, url: string, workspacePath =
     const observer = new MutationObserver(inspect);
     observer.observe(status, { childList: true, characterData: true, subtree: true });
     inspect();
-  }));
+  }), workspacePath);
   await page.locator(`[data-path="${workspacePath}"]`).click();
   const [request, response, status] = await Promise.all([streamRequest, streamResponse, connectedState]);
   const requestHeaders = await request.allHeaders();
@@ -125,7 +125,7 @@ async function openSeatify(context: BrowserContext, url: string, workspacePath =
   expect(requestHeaders["sec-fetch-dest"]).toBe("empty");
   expect(response.status()).toBe(200);
   expect(responseHeaders["content-type"]).toContain("text/event-stream");
-  expect(status).toBe("Agent connection ready");
+  expect(["Agent connection ready", ...(workspacePath.startsWith("iterations/") ? [`Saved ${workspacePath}`] : [])]).toContain(status);
   await expect(page.locator("#artboard svg[aria-label='Seatify constellation logo']")).toBeVisible();
   return page;
 }

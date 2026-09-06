@@ -268,10 +268,15 @@ test("collective transform remains operable at 125% with both sidebars collapsed
   await expect(save).toHaveAttribute("title", /^Create iterations\/complex-seatify-iteration-\d+\.svg$/);
   await save.click();
   await expect(page.locator("#status")).toHaveText(`Saved ${savedPath}`);
-  await expect.poll(() => savedSvgRequests).toBe(1);
+  expect(savedSvgRequests).toBe(0);
   await expect(page.locator(".file-button[aria-current='true']")).toContainText("collective-transform-e2e");
   expect(savedSvg).not.toMatch(/data-(?:lineage|agent|review|transport)-|lineage-collective|svg_select|selection-halo/i);
   expect(savedSvg).toContain("Ticket accent star");
+  expectGeometry(await geometry(page), after);
+  expect(await selectionIdentity(page)).toEqual(identity);
+  await expect(page.locator("#undo")).toBeEnabled();
+  await page.reload();
+  await expect.poll(() => savedSvgRequests).toBe(1);
   expectGeometry(await geometry(page), after);
 });
 

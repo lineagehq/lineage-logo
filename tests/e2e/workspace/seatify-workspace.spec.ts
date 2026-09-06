@@ -21,7 +21,7 @@ test("Seatify workspace chooses a useful preview and saves a concept-aware conti
   const pathsBefore = workspaceBefore.files.map((file) => file.path);
 
   await page.getByRole("button", { name: "Expand layers and inspector panel" }).click();
-  await page.locator("#artboard svg [aria-label='Seatify title']").click();
+  await page.locator(".layer-button").filter({ hasText: /^textSeatify title$/ }).click();
   await page.locator("#layer-name").fill("Seatify preview title");
   await page.locator("#layer-name").press("Enter");
   const lifecycle = page.locator("#lifecycle-state");

@@ -28,9 +28,9 @@
         "B0"
       ],
       "lane": "quality",
-      "status": "active",
+      "status": "verified",
       "acceptanceContract": "plan.md#q1--build-useful-safe-qa-evidence",
-      "receipt": null
+      "receipt": "evidence/q1/receipt.json"
     },
     {
       "id": "A1",

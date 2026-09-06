@@ -316,8 +316,10 @@ test("contain excludes and touch includes the same partial overlap selected thro
 for (const variant of ["125% zoom", "both collapsed sidebars"] as const) {
   test(`preview-to-Layers parity survives ${variant}`, async ({ page }) => {
     if (variant === "125% zoom") {
+      await page.locator("#zoom-reset").click();
       await page.locator("#zoom-in").click();
       await expect(page.locator("#zoom-label")).toHaveText("125%");
+      await page.locator('#artboard svg [aria-label="West table"]').evaluate(element => element.scrollIntoView({ block: "center", inline: "center" }));
     } else {
       await page.locator("#toggle-left-sidebar").click();
       await page.locator("#toggle-right-sidebar").click();
