@@ -6,6 +6,7 @@ import { parsePublicAgentProposal } from "../../src/shared/agent-protocol";
 
 const ajv = new Ajv2020({ allErrors: true });
 ajv.addKeyword("x-maxEncodedBytes");
+ajv.addKeyword("x-maxUtf16CodeUnits");
 const validate = ajv.compile(PUBLIC_PROPOSAL_SCHEMA);
 const clone = (value: unknown): any => JSON.parse(JSON.stringify(value));
 
@@ -62,5 +63,56 @@ describe("independent Draft 2020-12 proposal schema conformance", () => {
       expect(validate(proposal)).toBe(true);
       expect(() => validateLocalProposal(JSON.stringify(proposal))).toThrow();
     }
+  });
+});
+
+
+describe("v1 Unicode text bounds", () => {
+  const exactAjv = new Ajv2020({ allErrors: true });
+  exactAjv.addKeyword("x-maxEncodedBytes");
+  exactAjv.addKeyword({
+    keyword: "x-maxUtf16CodeUnits", type: "string", schemaType: "number",
+    validate: (limit: number, value: string) => value.length <= limit,
+  });
+  const exactValidate = exactAjv.compile(PUBLIC_PROPOSAL_SCHEMA);
+  const cases = [
+    { label: "producer.kind", limit: 128, set: (p: any, text: string) => { p.producer.kind = text; } },
+    { label: "producer.name", limit: 128, set: (p: any, text: string) => { p.producer.name = text; } },
+    { label: "producer.version", limit: 128, set: (p: any, text: string) => { p.producer.version = text; } },
+    { label: "intent", limit: 1024, set: (p: any, text: string) => { p.intent = text; } },
+    { label: "rename.name", limit: 512, set: (p: any, text: string) => { p.operations[0].name = text; } },
+  ];
+  it.each(cases)("matches runtime at BMP, astral and mixed boundaries for $label", ({ limit, set }) => {
+    for (const text of ["a".repeat(limit), "a".repeat(limit + 1), "😀".repeat(limit / 2), "😀".repeat(limit / 2 + 1), "😀".repeat(limit / 2 - 1) + "ab", "😀".repeat(limit / 2) + "a"]) {
+      const proposal = clone(PROPOSAL_EXAMPLES[2]); set(proposal, text);
+      const valid = text.length <= limit;
+      expect(exactValidate(proposal), JSON.stringify(exactValidate.errors)).toBe(valid);
+      if (valid) expect(() => parsePublicAgentProposal(proposal)).not.toThrow();
+      else expect(() => parsePublicAgentProposal(proposal)).toThrow();
+    }
+  });
+  it("annotates every bounded non-ASCII text field including SVG and paint", () => {
+    const fields: Array<Record<string, unknown>> = [];
+    const visit = (node: unknown) => {
+      if (Array.isArray(node)) { node.forEach(visit); return; }
+      if (!node || typeof node !== "object") return;
+      const record = node as Record<string, unknown>;
+      if (record.type === "string" && typeof record.maxLength === "number" && !record.pattern) fields.push(record);
+      Object.values(record).forEach(visit);
+    };
+    visit(PUBLIC_PROPOSAL_SCHEMA);
+    expect(fields).toHaveLength(8); // Three producer fields, intent, two fragments, rename and paint.
+    for (const field of fields) {
+      expect(field["x-maxUtf16CodeUnits"]).toBe(field.maxLength);
+      expect(field.description).toContain("lineage-logo validate");
+    }
+  });
+  it("exposes the plain JSON Schema limitation instead of claiming astral conformance", () => {
+    const proposal = clone(PROPOSAL_EXAMPLES[2]);
+    proposal.operations[0].name = "😀".repeat(300);
+    expect(validate(proposal)).toBe(true); // 300 codepoints, but 600 UTF-16 units.
+    expect(exactValidate(proposal)).toBe(false);
+    expect(() => validateLocalProposal(JSON.stringify(proposal))).toThrow();
+    expect(PUBLIC_PROPOSAL_SCHEMA.description).toContain("not full v1 text conformance");
   });
 });

@@ -39,11 +39,22 @@ entry is a complete proposal: replace its session/revision and layer keys using
 fresh `context` before submission. Existing protocolVersion 1 producers and
 `submit --artifact ... --proposal ...` syntax remain supported.
 
-Schema validation describes all allowed fields and structural bounds. The local
-validator additionally enforces encoded payload limits, unique operation IDs,
+Schema validation describes all allowed fields and code-point bounds, but standard
+JSON Schema alone does **not** enforce every v1 string bound. V1 counts UTF-16
+code units, while JSON Schema `maxLength` counts Unicode code points. Every bounded
+text field therefore also carries `x-maxUtf16CodeUnits`: for example, 300 emoji
+have 600 UTF-16 code units and exceed the 512-unit rename bound even though a
+standard validator permits 300 code points. Consumers must enforce this annotation
+or run the local validator before delivery. An AJV keyword can implement it with
+`type: "string", schemaType: "number", validate: (limit, value) => value.length <= limit`.
+The local validator additionally enforces UTF-16 string bounds, encoded payload limits, unique operation IDs,
 earlier-operation references, SVG fragment structure/safety and paint policy.
 Unknown versions, operations and fields fail closed. Add/replace fragments must
-contain exactly one selectable layer; embedded active content, external resources
+contain exactly one selectable layer. V1 fragments allow only SVG elements and
+unqualified, XLink or namespace-declaration attributes: `xml:lang` and `xml:space`
+are rejected by the fragment evaluator even though standalone artifact SVG allows
+them. This existing v1 distinction also applies during local validation.
+Embedded active content, external resources
 and reserved metadata fail before editor discovery or delivery. Local validation
 is read-only and creates no workspace files or review. Document-dependent target,
 lock, resource collision, stale revision and no-op evaluation still occurs in the

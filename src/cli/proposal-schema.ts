@@ -1,7 +1,12 @@
 import { AGENT_MAX_OPERATIONS, AGENT_MAX_PAYLOAD_BYTES, type AgentOperation, type PublicAgentProposalV1 } from "../shared/agent-protocol.js";
 
 const identifier = { type: "string", pattern: "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$", minLength: 1, maxLength: 128 };
-const text = (maxLength: number, minLength = 1) => ({ type: "string", minLength, maxLength });
+// JSON Schema maxLength counts Unicode code points; v1 string bounds count UTF-16
+// code units. Consumers must implement this annotation or use `validate` as well.
+const text = (maxLength: number, minLength = 1) => ({
+  type: "string", minLength, maxLength, "x-maxUtf16CodeUnits": maxLength,
+  description: `v1 additionally limits this string to ${maxLength} UTF-16 code units. Run lineage-logo validate or enforce x-maxUtf16CodeUnits; standard maxLength alone is insufficient for astral characters.`,
+});
 const object = (properties: Record<string, unknown>, required = Object.keys(properties)) => ({ type: "object", properties, required, additionalProperties: false });
 const nullable = (schema: unknown) => ({ anyOf: [schema, { type: "null" }] });
 const ref = { oneOf: [object({ sessionKey: identifier }), object({ operationId: identifier })] };
@@ -17,12 +22,12 @@ export const PROPOSAL_EXAMPLES: PublicAgentProposalV1[] = ([
   { type: "selectFocus", operationId: "focus", targets: [target], primary: target, scope: null },
 ] satisfies AgentOperation[]).map((op) => ({ protocolVersion: 1, transactionId: `example-${op.type}`, producer: { kind: "local-producer" }, document: { sessionId: "replace-with-context-session", baseRevision: 0 }, operations: [op] }));
 
-/** JSON Schema covers structure; the local runtime validator additionally checks ordered references, UTF-8 bytes and SVG safety. */
+/** JSON Schema covers structure; the local runtime validator additionally checks UTF-16 text bounds, ordered references, UTF-8 bytes and SVG safety. */
 export const PUBLIC_PROPOSAL_SCHEMA = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   $id: "urn:lineage-logo:public-proposal:v1",
   title: "Lineage Logo public proposal v1",
-  description: "Run lineage-logo validate for ordered-reference, encoded-byte and SVG/paint policy checks. Live target, lock, conflict and no-op checks require the selected editor. Existing v1 producers remain supported.",
+  description: "Run lineage-logo validate for UTF-16 text bounds (x-maxUtf16CodeUnits), ordered-reference, encoded-byte and SVG/paint policy checks. Standard maxLength measures Unicode code points and is only a necessary bound, not full v1 text conformance. Live target, lock, conflict and no-op checks require the selected editor. Existing v1 producers remain supported.",
   "x-maxEncodedBytes": AGENT_MAX_PAYLOAD_BYTES,
   ...object({
     protocolVersion: { const: 1 }, transactionId: identifier,

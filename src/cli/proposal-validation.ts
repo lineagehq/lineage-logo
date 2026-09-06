@@ -49,10 +49,19 @@ export function validateLocalProposal(payload: string): PublicAgentProposalV1 {
       const wrapped = `<svg xmlns="http://www.w3.org/2000/svg">${op.svg}</svg>`;
       const roots: string[] = [];
       let depth = 0;
+      let unsupportedNamespace = false;
       const parser = new SaxesParser({ xmlns: true });
-      parser.on("opentag", (tag) => { if (depth === 1) roots.push(tag.local); depth += 1; });
+      parser.on("opentag", (tag) => {
+        if (depth === 1) roots.push(tag.local);
+        // Fragments use the editor evaluator's narrower namespace contract.
+        // Standalone saved SVG permits xml:lang/space, but v1 fragments do not.
+        if (tag.uri !== "http://www.w3.org/2000/svg" || Object.values(tag.attributes).some((attribute) =>
+          !["", "http://www.w3.org/1999/xlink", "http://www.w3.org/2000/xmlns/"].includes(attribute.uri))) unsupportedNamespace = true;
+        depth += 1;
+      });
       parser.on("closetag", () => { depth -= 1; });
       try { parser.write(wrapped).close(); } catch { fail("invalid_svg", "svg"); }
+      if (unsupportedNamespace) fail("unsafe_svg", "svg");
       if (roots.length !== 1 || !["g", "path", "rect", "circle", "ellipse", "polygon", "polyline", "line", "text"].includes(roots[0])) fail("invalid_svg", "svg");
       try { validateCleanAgentSvg(wrapped); } catch { fail("unsafe_svg", "svg"); }
     } else if (op.type === "setPaint" && op.value !== null) {

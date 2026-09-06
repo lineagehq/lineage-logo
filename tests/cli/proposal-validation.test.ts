@@ -43,6 +43,9 @@ describe("public proposal local contract", () => {
     ["version", { ...PROPOSAL_EXAMPLES[0], protocolVersion: 99 }, "unsupported_version"],
     ["private unknown field", { ...PROPOSAL_EXAMPLES[0], "/private/TOKEN_CANARY": "SVG_CANARY" }, "unknown_field"],
     ["unsafe SVG", { ...PROPOSAL_EXAMPLES[0], operations: [{ ...PROPOSAL_EXAMPLES[0].operations[0], svg: '<g onclick="TOKEN_CANARY()"/>' }] }, "unsafe_svg"],
+    ["fragment xml:space", { ...PROPOSAL_EXAMPLES[0], operations: [{ ...PROPOSAL_EXAMPLES[0].operations[0], svg: '<text xml:space="preserve">a  b</text>' }] }, "unsafe_svg"],
+    ["fragment xml:lang", { ...PROPOSAL_EXAMPLES[0], operations: [{ ...PROPOSAL_EXAMPLES[0].operations[0], svg: '<g><text xml:lang="en">a</text></g>' }] }, "unsafe_svg"],
+    ["foreign attribute namespace", { ...PROPOSAL_EXAMPLES[0], operations: [{ ...PROPOSAL_EXAMPLES[0].operations[0], svg: '<g xmlns:x="urn:foreign" x:label="a"/>' }] }, "unsafe_svg"],
     ["multiple roots", { ...PROPOSAL_EXAMPLES[0], operations: [{ ...PROPOSAL_EXAMPLES[0].operations[0], svg: '<g/><g/>' }] }, "invalid_svg"],
     ["paint URL", { ...PROPOSAL_EXAMPLES[4], operations: [{ ...PROPOSAL_EXAMPLES[4].operations[0], value: "url(https://TOKEN_CANARY)" }] }, "invalid_paint"],
     ["forward reference", { ...PROPOSAL_EXAMPLES[4], operations: [{ ...PROPOSAL_EXAMPLES[4].operations[0], target: { operationId: "later" } }] }, "invalid_reference"],
@@ -61,6 +64,14 @@ describe("public proposal local contract", () => {
     }
     expect(await readdir(dir)).toEqual(["artifact.svg", "proposal.json"]);
     expect(await readFile(file, "utf8")).toBe(before);
+  });
+  it("permits fragment SVG/XLink declarations while standalone XML text metadata remains valid", async () => {
+    const proposal = { ...PROPOSAL_EXAMPLES[0], operations: [{ ...PROPOSAL_EXAMPLES[0].operations[0], svg: '<g xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><text>brand</text></g>' }] };
+    const { file, artifact } = await files(proposal);
+    await writeFile(artifact, '<svg xmlns="http://www.w3.org/2000/svg"><text xml:lang="en" xml:space="preserve">a  b</text></svg>');
+    const run = await invoke(["validate", "--proposal", file, "--artifact", artifact]);
+    expect(run.code).toBe(EXIT.success);
+    expect(run.resolveInstance).not.toHaveBeenCalled();
   });
   it("preserves safe operation identity and bounded known field location", async () => {
     const { file } = await files({ ...PROPOSAL_EXAMPLES[4], operations: [{ ...PROPOSAL_EXAMPLES[4].operations[0], property: "private-invalid" }] });
