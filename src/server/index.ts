@@ -101,7 +101,6 @@ const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", `http://${HOST}:${PORT}`);
 
   try {
-    if (await agentTransport.route(request, response, url)) return;
     if (request.method === "POST" && url.pathname === "/api/concepts") {
       validateRequestOrigin(request);
       const body = await readJsonBody(request, 5 * 1024 * 1024 + 16 * 1024);
@@ -115,6 +114,7 @@ const server = createServer(async (request, response) => {
       sendJson(response, 200, await prepareAgentHandoff(body, handoffProducer));
       return;
     }
+    if (await agentTransport.route(request, response, url)) return;
     if (request.method === "GET" && url.pathname === "/api/workspace") {
       sendJson(response, 200, {
         workspaceId: workspaceIdentity.workspaceId,
