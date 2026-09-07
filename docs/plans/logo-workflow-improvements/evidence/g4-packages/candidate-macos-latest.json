@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "sha256",
+  "sha256": "efb1a6d0dc2dd7fe68db7a50dcbbdcd11b8474bd25bc0605f78a17f52fa6a8cf",
+  "bytes": 207999,
+  "version": "0.1.0-beta.3",
+  "sourceRevision": "94e82f0a20f0cce3e23f06a66f669e55cf0a88db",
+  "node": "v22.23.2",
+  "platform": "darwin",
+  "published": false
+}

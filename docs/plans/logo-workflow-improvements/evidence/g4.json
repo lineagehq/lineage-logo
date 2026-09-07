@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "node": "G4",
+  "status": "verified",
+  "candidateMergeCommit": "94e82f0a20f0cce3e23f06a66f669e55cf0a88db",
+  "packageSha256": "efb1a6d0dc2dd7fe68db7a50dcbbdcd11b8474bd25bc0605f78a17f52fa6a8cf",
+  "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/39",
+  "acceptanceContract": "../plan.md#tranche-acceptance-gates",
+  "scopeAmendment": "Real assistive-technology observation deferred by user on 2026-09-07; unverified, not a pass. Automated accessibility and U1 requirements unchanged.",
+  "localEvidence": [
+    "g4-final-local.json",
+    "g4-installed.json",
+    "g4-packages/local-macos.json"
+  ],
+  "performanceEvidence": "d3/README.md",
+  "packageReceipts": [
+    "g4-packages/candidate-macos-latest.json",
+    "g4-packages/candidate-node24.json",
+    "g4-packages/candidate-ubuntu-latest.json",
+    "g4-packages/local-macos.json"
+  ],
+  "ci": {
+    "head": "94e82f0a20f0cce3e23f06a66f669e55cf0a88db",
+    "main": "https://github.com/lineagehq/lineage-logo/actions/runs/34124582852",
+    "codeql": "https://github.com/lineagehq/lineage-logo/actions/runs/34124582726",
+    "extended": "https://github.com/lineagehq/lineage-logo/actions/runs/34124585618",
+    "allExpectedJobsPassed": true,
+    "unitPassed": 783,
+    "unitOnlySkipped": 1,
+    "browserDependentCaseSeparatelyPassed": 1,
+    "chromiumPassed": 123,
+    "firefoxPassed": 3,
+    "webkitPassed": 3,
+    "fullCorpusPassed": 15,
+    "browserFailures": 0,
+    "browserSkipped": 0
+  },
+  "extendedWorkflowRepair": {
+    "initialFailedRun": "https://github.com/lineagehq/lineage-logo/actions/runs/34123509609",
+    "cause": "All 15 corpus tests passed, but unconditional upload expected a diagnostic file that the failure-only reporter intentionally deletes on success.",
+    "fixCommit": "4d85bffc5f42488326a27109ea4e1446485545cd",
+    "verification": "11 local workflow/reporter tests; independent correctness and tests review; corrected branch and main extended workflows passed.",
+    "correctedBranchRun": "https://github.com/lineagehq/lineage-logo/actions/runs/34123823963"
+  },
+  "packageBinding": "Local clean install/reinstall and Node22 Ubuntu/macOS plus Node24 main CI produced the same package digest as installed workflow tests and the measured runtime candidate. Subsequent changes affect tests, workflows and maintainer evidence only.",
+  "limitations": [
+    "No verified real assistive-technology, native Safari or blanket WCAG claim.",
+    "CI performance artifact is measurement-only; controlled matched D3 evidence establishes the performance gate.",
+    "Three independent U1 participants remain pending; no participant result is implied.",
+    "No package publication, deployment or participant outreach."
+  ]
+}

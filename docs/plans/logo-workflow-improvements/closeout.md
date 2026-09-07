@@ -1,26 +1,38 @@
-# Execution v1 — completion evidence in progress
+# Execution v1 — technical completion; independent usability pending
 
-**D1 is merged and verified. D2 is merged with postmerge checks running; G4 remains in validation and U1 has no participant results.** Standing execution and qualifying-merge approval remains active. This report requests no renewed merge permission and does not replace the acceptance criteria in `plan.md`.
+**G4 technical acceptance passed at main commit `94e82f0a20f0cce3e23f06a66f669e55cf0a88db`. U1 and overall completion remain pending.** The user deferred VoiceOver on September 7, 2026; its result is unverified. Automated accessibility requirements remain satisfied within their documented scope.
 
-The integrated application at `62b20a551d484b2b13820e1e4cca9c486a5cd113` passed the matched D3 timing gate and the installed package is SHA-256 `efb1a6d0dc2dd7fe68db7a50dcbbdcd11b8474bd25bc0605f78a17f52fa6a8cf`. The same package digest was independently produced by Node22 Ubuntu/macOS and Node24 CI, and by the combined installed agent/manual/export test. Later changes currently affect only tests and maintainer evidence, not packaged application behavior.
+```mermaid
+flowchart LR
+  A["G1 · Save and preview trust ✓"] --> B["G2 · Manual editing and recovery ✓"]
+  B --> C["G3 · Agent creation and review ✓"]
+  B --> D["D1 · Named versions and exports ✓"]
+  C --> Q["D2 · Browser, accessibility and CI ✓"]
+  D --> Q
+  C --> P["D3 · Matched performance gate ✓"]
+  D --> P
+  Q --> G["G4 · Technical acceptance ✓"]
+  P --> G
+  G --> U["U1 · Three independent participants — pending"]
+  G --> F["Overall completion — pending"]
+  U --> F
+```
 
-| Requirement | Executable evidence | Current boundary |
-| --- | --- | --- |
-| Create/import, structural proposal, exact revision feedback and preserving follow-up | `tests/e2e/guided-creation-installed.spec.ts`; `evidence/g4-installed.json` | Installed public CLI and UI passed on macOS and Linux. |
-| Cross-parent manual edits, transforms, organization and saved-baseline undo | `tests/e2e/workspace/manual-tranche.spec.ts`, `tests/e2e/workspace/manual-save-continuity.spec.ts` | Included in final 129-case macOS and Linux runs at `3363c949`. |
-| Manual draft restoration, changed-source and wrong-workspace refusal | `tests/e2e/workspace/manual-drafts.spec.ts`, `tests/manual-draft-store.test.ts` | Browser recovery plus explicit source/workspace identity validation. |
-| Rejection/reconnect and failed-save integrity | `tests/e2e/release/critical-path.spec.ts`, `tests/e2e/workspace/manual-save-continuity.spec.ts`, `tests/agent-transaction.test.ts` | Linux revealed an assertion ahead of browser highlight cleanup; exact preservation assertion now awaits UI settlement, five consecutive repetitions passed. Three additional live fault journeys passed: stale/locked refusals, recoverable HTTP 503 before durable write with exactly one successful retry artifact, and offline review restoration. See `evidence/g4-final-local.json`. |
-| Named version, full/mark/wordmark SVG, PNG and process restart | `tests/e2e/installed-exports.spec.ts`, `tests/e2e/guided-creation-installed.spec.ts` | Independent XML/pixel checks;30 combined export hashes recorded. |
-| Browser engines, corpus, zoom, accessibility and current LTS | `integration/d2.md`, `evidence/d2.json`, `evidence/d2-packages/` | PR38 final CI passed at `e76bdea` after the test-only synchronization fix. Real assistive-technology observation remains unverified. |
-| Performance and repeated-cycle memory | `evidence/d3/README.md` and both raw JSON receipts | All15 timing comparisons and500-layer budgets passed; bounded heap trend independently reviewed. |
-| Three independent people on the same accepted candidate | `usability-study/` | Preparation only; no ready candidate or participant outcomes asserted. |
+This is a completion overview. The full node dependencies and acceptance contracts remain in `graph.json` and `plan.md`.
 
-VoiceOver, Full Keyboard Access and the on-screen Accessibility Keyboard were investigated through the desktop interface. The tools did not expose reliable screen-reader output or an operable assistive keyboard panel. No real assistive-technology pass is inferred from ordinary key events or AX text. The original off settings were restored and confirmed; dedicated test tabs were closed. The user deferred this observation on September 7, 2026; it remains unverified and no longer blocks D2/G4 acceptance.
+| Acceptance area | Evidence and outcome |
+| --- | --- |
+| Agent creation, structural review/revision, preserving follow-up and manual finishing | Installed public CLI/UI oracle; exact reopen, original-byte integrity and transaction checks passed. `evidence/g4-installed.json` |
+| Save, recovery and failure handling | Stale/locked refusal, offline review restoration and HTTP 503 before durable write with a single successful retry artifact passed. `evidence/g4-final-local.json` |
+| Named versions and asset export | Independent SVG parsing, PNG decoding and bounds/paint/resource assertions; three SVG and 27 PNG hashes recorded. `evidence/d1.json`, `evidence/g4-installed.json` |
+| Local and main browser checks | macOS and Linux each passed 129 cases locally; main passed 123 Chromium plus three Firefox and three WebKit cases, with no failures or skips. |
+| Unit, installation and compatibility | Main passed 783 unit tests; the browser-dependent case omitted from unit-only runs passed separately. Typecheck/build, production audit, Node 22/24 and Ubuntu/macOS clean installation passed. |
+| Accessibility and corpus | Eight axe states have no serious/critical findings; keyboard/focus/zoom checks passed. All 15 full-corpus cases passed on main. Real assistive technology remains deferred and unverified. |
+| Performance | All 15 matched B0/candidate comparisons and 500-layer budgets passed. Raw samples, outliers and bounded heap trends are retained in `evidence/d3/`. CI measurements are not substituted for this controlled gate. |
+| Main integration | PR38 and PR39 merged; main CI, CodeQL and extended workflow passed. Exact merge/run identities are in `evidence/g4.json`. |
 
-PR37 (named versions and faithful exports) merged as `52655d2d1da785914a716f628b09b2cc23ab5636`; PR and postmerge main CI/CodeQL passed. PR38 merged the broader quality implementation as `4ec82ea7528674e707755e2f15a4608e182dc58f` after the user deferred VoiceOver. Main CI and the extended workflow are being verified. The final evidence PR depends on that integration. No public publication, deployment, release approval change or participant outreach occurred.
+The final main package SHA-256 is `efb1a6d0dc2dd7fe68db7a50dcbbdcd11b8474bd25bc0605f78a17f52fa6a8cf`. Local clean installation and all three main CI package receipts match the installed oracle and measured runtime package. Later changes affect only tests, workflows and maintainer evidence.
 
-The dependency graph remains authoritative in `graph.json`; each node links its acceptance contract in `plan.md`. G4 and the whole recommendation set stay incomplete until their explicit requirements pass. The real-participant study is distinct from agent-operated testing.
+The first extended workflow run exposed an unconditional artifact upload after successful tests had intentionally removed diagnostics. PR39 corrected the upload condition to preserve the failure-only policy. Eleven focused tests, independent review and successful branch/main dispatches verify the fix; the failed run remains recorded.
 
-Final engineering checks at `3363c949da68cda475ca7889fcedfe6d5e836c43`: 782 unit tests passed with one browser-dependent case reserved for explicit browser CI; typecheck/build passed; macOS and Linux each passed all 129 browser tests without failures or skips. Independent review is complete with no remaining blocking findings. [Draft PR39](https://github.com/lineagehq/lineage-logo/pull/39) retains this evidence and is being integrated against main after PR38; its CI and subsequent integration are separate from these completed local runs.
-
-The September 7 scope amendment in `plan.md` records the user’s explicit VoiceOver deferral. It changes no automated accessibility or U1 requirements.
+The `usability-study/` kit is preparation only. Candidate binding, deterministic study assets and a non-counting rehearsal must be finalized before three user-arranged independent people perform the study. No real participants, observations or success receipts have been invented. VoiceOver deferral does not waive U1. No publication, deployment or participant outreach occurred.

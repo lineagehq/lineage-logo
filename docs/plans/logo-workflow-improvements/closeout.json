@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "planVersion": 1,
-  "status": "in-progress",
+  "status": "technical-complete-usability-pending",
   "standingApproval": "Approve plan v1 and execute, including merging qualifying PRs.",
   "runtimeCandidate": "62b20a551d484b2b13820e1e4cca9c486a5cd113",
   "packageSha256": "efb1a6d0dc2dd7fe68db7a50dcbbdcd11b8474bd25bc0605f78a17f52fa6a8cf",
@@ -120,23 +120,23 @@
     },
     {
       "id": "D2",
-      "status": "active",
+      "status": "merged",
       "acceptanceContract": "plan.md#d2--enforce-the-broader-quality-gates",
       "receipt": "evidence/d2.json",
       "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/38"
     },
     {
       "id": "D3",
-      "status": "active",
+      "status": "merged",
       "acceptanceContract": "plan.md#d3--measure-and-address-interaction-performance",
       "receipt": "evidence/d3/README.md",
       "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/39"
     },
     {
       "id": "G4",
-      "status": "pending",
+      "status": "verified",
       "acceptanceContract": "plan.md#tranche-acceptance-gates",
-      "receipt": "evidence/g4-final-local.json",
+      "receipt": "evidence/g4.json",
       "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/39"
     },
     {
@@ -159,12 +159,12 @@
     "evidence/d3/README.md",
     "evidence/g4-installed.json",
     "closeout.md",
-    "evidence/g4-final-local.json"
+    "evidence/g4-final-local.json",
+    "evidence/g4.json"
   ],
   "remaining": [
-    "Final PR/main CI and extended workflow checks",
-    "G4 final manifest acceptance",
-    "Three independent U1 participants on same G4 candidate"
+    "Freeze and rehearse the U1 study setup for user-arranged participants",
+    "Three independent U1 participants on the same G4 candidate"
   ],
   "engineeringTestCandidate": "3363c949da68cda475ca7889fcedfe6d5e836c43",
   "scopeAmendments": [
@@ -173,5 +173,6 @@
       "userInstruction": "Lets shelve the \"voice over\" stuff for now - we don't need it.",
       "effect": "Defer real assistive-technology observation; it is not a D2/G4 merge or completion gate for this execution. Keep the result unverified. Automated accessibility and independent U1 requirements remain."
     }
-  ]
+  ],
+  "technicalCandidate": "94e82f0a20f0cce3e23f06a66f669e55cf0a88db"
 }
