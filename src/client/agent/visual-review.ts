@@ -46,6 +46,7 @@ export class AgentVisualReview {
   readonly #reject: HTMLButtonElement;
   readonly #error: HTMLElement;
   #identity?: string;
+  #urls: string[] = [];
   #returnFocus?: HTMLElement;
 
   constructor(host: HTMLElement, onRevision: (reason: string) => Promise<void>) {
@@ -84,24 +85,32 @@ export class AgentVisualReview {
 
   update(input?: VisualReviewInput): void {
     this.element.hidden = !input;
-    if (!input) { this.#identity = undefined; this.#images.replaceChildren(); return; }
+    if (!input) { this.#identity = undefined; this.#clearImages(); return; }
     if (input.transactionId === this.#identity) return;
     this.#identity = input.transactionId; this.#reason.value = ""; this.#error.textContent = "";
-    this.#images.replaceChildren();
+    this.#clearImages();
     try {
       const sources = comparisonSources(input);
       this.#context.textContent = sources.context;
       for (const [label, source] of [["Accepted", sources.accepted], ["Proposed", sources.proposed]]) {
+        const url = URL.createObjectURL(new Blob([source], { type: "image/svg+xml" }));
+        this.#urls.push(url);
         const figure = document.createElement("figure"); const caption = document.createElement("figcaption");
         caption.textContent = label; figure.append(caption);
         for (const size of [160, 16, 32, 64]) {
           const image = document.createElement("img"); image.alt = `${label} artwork at ${size} pixels`;
-          image.width = size; image.height = size; image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`;
+          image.width = size; image.height = size; image.src = url;
           figure.append(image);
         }
         this.#images.append(figure);
       }
     } catch (error) { this.#context.textContent = `Visual comparison unavailable: ${(error as Error).message}`; }
+  }
+
+  #clearImages(): void {
+    this.#images.replaceChildren();
+    for (const url of this.#urls) URL.revokeObjectURL(url);
+    this.#urls = [];
   }
 
   setBusy(busy: boolean): void { this.#reject.disabled = busy; this.#reason.disabled = busy; }

@@ -300,6 +300,17 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     await expect(acceptedReviewSummary).toBeVisible();
     await expect(acceptedReviewSummary).toContainText("1 operation: 1 document change");
     await expect(pageA.locator("#agent-accept")).toBeVisible();
+    if (!registryPackageVersion) {
+      // Packed production serves a restrictive CSP, unlike the Vite test server.
+      const policy = (await pageA.request.get(running[0].url)).headers()["content-security-policy"];
+      expect(policy).toContain("img-src 'self' blob:");
+      const comparisons = pageA.locator(".agent-visual-review img");
+      await expect(comparisons).toHaveCount(8);
+      await expect.poll(() => comparisons.evaluateAll((images) => images.every((image) => {
+        const img = image as HTMLImageElement;
+        return img.src.startsWith("blob:") && img.complete && img.naturalWidth > 0;
+      }))).toBe(true);
+    }
     await pageA.locator("#agent-accept").click();
     await expect(pageA.locator("#agent-review-status")).toHaveText("Saved");
     const acceptedResult = await finishCommand(accepted);
@@ -349,10 +360,16 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     await expect(revertedReviewSummary).toBeVisible();
     await expect(revertedReviewSummary).toContainText("1 operation: 1 document change");
     await expect(pageB.locator("#agent-revert")).toBeVisible();
-    await pageB.locator("#agent-revert").click();
+    const revisionReason = '<img src=x> Preserve the title; adjust only the mark.';
+    if (registryPackageVersion) await pageB.locator("#agent-revert").click();
+    else {
+      await pageB.getByLabel("Revision request").fill(revisionReason);
+      await pageB.getByRole("button", { name: "Reject and request revision" }).click();
+    }
     await expect(pageB.locator("#agent-review-status")).toHaveText("reverted");
     const revertedResult = await finishCommand(reverted);
     expect(revertedResult.code).toBe(5);
+    if (!registryPackageVersion) expect(JSON.parse(revertedResult.stdout).revisionRequest).toBe(revisionReason);
     expect(JSON.parse(revertedResult.stdout)).toMatchObject({ schemaVersion: 1, command: "submit", ok: false, status: "rejected" });
     expect(await readFile(artifactB, "utf8")).toBe(sourceB);
     expect(await readdir(path.join(workspaceB, "iterations")).catch(() => [])).toEqual([]);
