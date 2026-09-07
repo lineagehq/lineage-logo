@@ -1,0 +1,97 @@
+{
+  "node": "B2",
+  "status": "merged",
+  "base": "c410d08aab724877908fcf9efa687b3b5edec9b3",
+  "implementationHead": "c24ecce",
+  "nativeZoomTestHead": "feab4e2",
+  "integratedHead": "52083c6c952e9717ed9eee47d180189d3fb43b82",
+  "pr": "https://github.com/lineagehq/lineage-logo/pull/33",
+  "local": {
+    "beforeSnapshotIntegration": {
+      "linux": {
+        "unitIntegration": 650,
+        "fullBrowserScenarios": 87,
+        "native200PercentZoomAdditional": 1,
+        "typecheck": "passed",
+        "productionBuild": "passed"
+      },
+      "mac": {
+        "unitIntegration": 650,
+        "focusedPanelBulkArrangementScenarios": 29,
+        "seatifyJourneyScenarios": 2,
+        "native200PercentZoomAdditional": 1,
+        "visualViewports": [
+          "1280x720",
+          "1024x768",
+          "760x720"
+        ],
+        "typecheck": "passed",
+        "productionBuild": "passed"
+      }
+    },
+    "combined": {
+      "head": "52083c6c952e9717ed9eee47d180189d3fb43b82",
+      "unitIntegration": 668,
+      "typecheck": "passed on macOS and Linux",
+      "productionBuild": "passed on macOS and Linux",
+      "linuxInitialBrowserRun": "89 passed, one screenshot timeout while two task containers and unrelated migration workloads competed for shared VM resources; serial verification pending",
+      "linuxSerialBrowser": {
+        "head": "52083c6c952e9717ed9eee47d180189d3fb43b82",
+        "scenarios": 90,
+        "result": "passed"
+      },
+      "previewWaitVerification": {
+        "head": "8422e9185405ee89bead288738900b411f10ec3b",
+        "scenarios": 10,
+        "result": "Both viewport journeys passed five repetitions each"
+      }
+    }
+  },
+  "assertions": [
+    "Bounded keyboard/pointer panel resizing and cancellation preserve artwork, selected layers, viewport and Undo state.",
+    "Full layer names remain accessible on focus/hover without shifting pointer targets; filtering and revealing preserve valid selection.",
+    "Selection mode and snapping display current preferences; paint and geometry fields match actual editor behavior.",
+    "Actual 44-layer Seatify task finds North seat, selects/recolors and aligns three seats, edits the tagline, inspects 16px, saves and continues without changing the original.",
+    "Native Chromium tab zoom is independently proven to double pixel ratio and halve CSS viewport width; keyboard panel resize, text edit, Save and preferences focus remain usable at 200%."
+  ],
+  "tests": [
+    "tests/e2e/panel-resize.spec.ts",
+    "tests/e2e/seatify-editing-journey.spec.ts",
+    "tests/e2e/browser-zoom.spec.ts"
+  ],
+  "review": {
+    "base": "780bc9ba4fa51d2200738bf3d25e125eb3df04dd",
+    "reviewedHead": "feab4e2",
+    "native": "Installed Codex CLI does not support configured model; native review failed. Focused independent review used the available branch diff under the documented fallback.",
+    "roles": {
+      "correctness": "b2_correctness_review: no findings",
+      "tests": "b2_tests_review: no findings including native zoom test; 33 focused unit tests passed",
+      "silent-failures": "b2_failures_review: no findings",
+      "contracts-types": "b2_contracts_review: no findings",
+      "comments-docs": "b2_docs_review: no findings"
+    },
+    "integration": "b2_tests_review: no findings against c410d08 at52083c6; no weakened assertions"
+  },
+  "limitations": [
+    "This node does not alone complete G2 or independent participant validation."
+  ],
+  "ci": {
+    "initialHead": "52083c6c952e9717ed9eee47d180189d3fb43b82",
+    "workflowRun": 34067963202,
+    "result": "browser-qa failed: 87 passed, 1 failed (44-layer desktop journey); other five CI jobs and CodeQL passed",
+    "followup": "Found eager image-complete assertion in that journey; changed to await the same successful decode condition. Exact failure detail is unavailable in deliberately sanitized CI diagnostics. New-head local and CI verification required."
+  },
+  "mergeCommit": "a774e5599ab3a66a243c66561c346209ab9c1ac7",
+  "finalCi": {
+    "head": "7d5e7cc7824c60db16d5e263c94cc5943c4fd3bc",
+    "workflowRun": 34068332021,
+    "codeqlRun": 34068331072,
+    "allChecks": "passed"
+  },
+  "mainCi": {
+    "head": "a774e5599ab3a66a243c66561c346209ab9c1ac7",
+    "workflowRun": 34068572343,
+    "codeqlRun": 34068572297,
+    "allChecks": "passed"
+  }
+}

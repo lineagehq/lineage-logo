@@ -1,3 +1,6 @@
+import { hasCssControlledTransform } from "./css-transform";
+import { validateSvgTextEdit, type SvgTextProperty, type SvgTextEdit } from "../../shared/svg-text";
+export { validateSvgTextEdit, type SvgTextProperty, type SvgTextEdit, type SvgTextValidation } from "../../shared/svg-text";
 import { off, SVG, type Element as SvgElement, type Svg } from "@svgdotjs/svg.js";
 import "@svgdotjs/svg.draggable.js";
 import "@svgdotjs/svg.select.js";
@@ -192,26 +195,6 @@ function enhanceRotationHandle(root: SVGSVGElement): void {
   if (!icon.isConnected) handle.append(icon);
 }
 
-export type SvgTextProperty = "content" | "font-size" | "font-weight" | "font-family" | "text-anchor" | "letter-spacing";
-
-export interface SvgTextEdit {
-  property: SvgTextProperty;
-  value: string;
-}
-
-export interface SvgTextValidation {
-  valid: boolean;
-  normalized?: string;
-  error?: string;
-}
-
-const TEXT_LIMITS = {
-  content: 2048,
-  family: 128,
-  size: 1000,
-  spacing: 100,
-};
-
 const CSS_NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
 
 function decodeCssEscapes(value: string): string {
@@ -224,49 +207,6 @@ function decodeCssEscapes(value: string): string {
   });
 }
 
-export function validateSvgTextEdit(edit: SvgTextEdit): SvgTextValidation {
-  const value = edit.value.trim();
-  if (edit.property === "content") {
-    if (edit.value.length > TEXT_LIMITS.content) return { valid: false, error: `Text is limited to ${TEXT_LIMITS.content} characters.` };
-    if (/[<>\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(edit.value)) {
-      return { valid: false, error: "Text must be plain content without markup or control characters." };
-    }
-    return { valid: true, normalized: edit.value };
-  }
-  if (edit.property === "text-anchor") {
-    const keyword = value.toLowerCase();
-    return ["start", "middle", "end"].includes(keyword)
-      ? { valid: true, normalized: keyword }
-      : { valid: false, error: "Alignment must be start, middle, or end." };
-  }
-  if (edit.property === "font-weight") {
-    const keyword = value.toLowerCase();
-    if (["normal", "bold", "bolder", "lighter"].includes(keyword)) return { valid: true, normalized: keyword };
-    const weight = Number(value);
-    return CSS_NUMBER.test(value) && Number.isInteger(weight) && weight >= 1 && weight <= 1000
-      ? { valid: true, normalized: String(weight) }
-      : { valid: false, error: "Weight must be normal, bold, bolder, lighter, or an integer from 1 to 1000." };
-  }
-  if (edit.property === "font-family") {
-    if (!value || value.length > TEXT_LIMITS.family || /(?:url\s*\(|@import|[;{}<>\\])/i.test(value)
-      || !/^[\p{L}\p{N} _,'".-]+(?:\s*,\s*[\p{L}\p{N} _,'".-]+)*$/u.test(value)) {
-      return { valid: false, error: "Use a bounded local font-family list without URLs, CSS, or external font rules." };
-    }
-    return { valid: true, normalized: value };
-  }
-  if (edit.property === "font-size") {
-    const size = Number(value);
-    const normalized = Number(size.toFixed(4));
-    return CSS_NUMBER.test(value) && Number.isFinite(size) && normalized > 0 && normalized <= TEXT_LIMITS.size
-      ? { valid: true, normalized: String(normalized) }
-      : { valid: false, error: `Font size must be at least 0.0001 and at most ${TEXT_LIMITS.size}.` };
-  }
-  const spacing = Number(value);
-  if (value.toLowerCase() === "normal") return { valid: true, normalized: "normal" };
-  return CSS_NUMBER.test(value) && Number.isFinite(spacing) && Math.abs(spacing) <= TEXT_LIMITS.spacing
-    ? { valid: true, normalized: String(Number(spacing.toFixed(4))) }
-    : { valid: false, error: `Letter spacing must be normal or between -${TEXT_LIMITS.spacing} and ${TEXT_LIMITS.spacing}.` };
-}
 
 const GENERIC_FONT_FAMILIES = new Set([
   "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui",
@@ -518,6 +458,20 @@ export function parseNumericTransformValue(
   return { value: field === "rotation" ? normalizeRotationDegrees(value) : value };
 }
 
+/** Runtime roles expose named canvas geometry without altering saved SVG semantics. */
+export function ensureLayerAccessibilityRole(node: SVGGraphicsElement): void {
+  // Authored selectors may depend on role attributes. Keep their artwork semantics
+  // intact; the separate layer list remains the accessible editing interface.
+  if (node.ownerSVGElement?.querySelector("style")) return;
+  const named = Boolean(node.getAttribute("aria-label")?.trim() || node.getAttribute("aria-labelledby")?.trim());
+  if (!named && node.hasAttribute("data-lineage-added-role")) {
+    node.removeAttribute("role"); node.removeAttribute("data-lineage-added-role");
+  } else if (named && !node.hasAttribute("role")) {
+    node.setAttribute("role", node.localName === "g" ? "group" : "img");
+    node.setAttribute("data-lineage-added-role", "true");
+  }
+}
+
 export function serializeSvg(root: SVGSVGElement | undefined, stripEditorState: boolean): string {
   if (!root) return "";
   const clone = root.cloneNode(true) as SVGSVGElement;
@@ -543,9 +497,10 @@ export function serializeSvg(root: SVGSVGElement | undefined, stripEditorState: 
 
   if (stripEditorState) {
     for (const metadata of Array.from(clone.querySelectorAll("metadata#lineage-logo-edit"))) metadata.remove();
-    if (clone.hasAttribute("data-lineage-added-role")) clone.removeAttribute("role");
     if (clone.hasAttribute("data-lineage-added-label")) clone.removeAttribute("aria-label");
     for (const element of [clone, ...Array.from(clone.querySelectorAll("*"))]) {
+      if (element.hasAttribute("data-lineage-original-role")) element.setAttribute("role", element.getAttribute("data-lineage-original-role")!);
+      else if (element.hasAttribute("data-lineage-added-role")) element.removeAttribute("role");
       for (const attribute of Array.from(element.attributes)) {
         if (/^data-(?:lineage|agent|review|transport)-/.test(attribute.name)) {
           element.removeAttribute(attribute.name);
@@ -855,37 +810,6 @@ function isHiddenForTranslation(node: SVGGraphicsElement, root: SVGSVGElement): 
   return false;
 }
 
-function hasCssControlledTransform(node: SVGGraphicsElement, root: SVGSVGElement): boolean {
-  if (node.style.getPropertyValue("transform")) return true;
-  for (const style of Array.from(root.querySelectorAll("style"))) {
-    let rules: CSSRuleList;
-    try {
-      if (style.sheet) {
-        rules = style.sheet.cssRules;
-      } else {
-        const Sheet = root.ownerDocument.defaultView?.CSSStyleSheet;
-        if (!Sheet) return true;
-        const sheet = new Sheet();
-        sheet.replaceSync(style.textContent ?? "");
-        rules = sheet.cssRules;
-      }
-    } catch {
-      return true;
-    }
-    const pending = [...Array.from(rules)];
-    while (pending.length > 0) {
-      const rule = pending.shift() as CSSRule & { cssRules?: CSSRuleList; selectorText?: string; style?: CSSStyleDeclaration };
-      if (rule.cssRules) pending.push(...Array.from(rule.cssRules));
-      if (!rule.selectorText || !rule.style?.getPropertyValue("transform")) continue;
-      try {
-        if (node.matches(rule.selectorText)) return true;
-      } catch {
-        return true;
-      }
-    }
-  }
-  return false;
-}
 
 export function translationAvailability(
   nodes: SVGGraphicsElement[],
@@ -1069,7 +993,8 @@ export function ungroupAvailability(
   if (!node || node.localName !== "g") return { allowed: false, reason: "Select one neutral group to ungroup." };
   if (isLocked(node)) return { allowed: false, reason: "Unlock this group and its ancestors before ungrouping." };
   const sourceAttributes = Array.from(node.attributes).filter((attribute) =>
-    !attribute.name.startsWith("data-lineage-") && attribute.name !== "aria-label",
+    !attribute.name.startsWith("data-lineage-") && attribute.name !== "aria-label"
+      && !(attribute.name === "role" && node.hasAttribute("data-lineage-added-role")),
   );
   if (sourceAttributes.length > 0) {
     return { allowed: false, reason: `Ungroup is disabled because this group has source attribute ${sourceAttributes[0].name}.` };
@@ -1400,6 +1325,17 @@ export class SvgEditor {
     }
     this.#scope = getSelectableParent(node, root) ?? root;
     this.#setSelection([node], node);
+  }
+
+  /** Restore valid document selection without a history entry or sibling-only Shift semantics. */
+  restoreSelection(nodes: readonly SVGGraphicsElement[]): void {
+    const root = this.svgNode;
+    if (!root || this.#agentMutationBlocked) return;
+    const valid = Array.from(new Set(nodes)).filter(node => root.contains(node) && isSelectableNode(node, root));
+    const disjoint = valid.filter(node => !valid.some(other => other !== node && other.contains(node)));
+    const parent = disjoint[0] ? getSelectableParent(disjoint[0], root) : root;
+    this.#scope = disjoint.every(node => getSelectableParent(node, root) === parent) ? parent ?? root : root;
+    this.#setSelection(disjoint, disjoint.at(-1));
   }
 
   editInside(): void {
@@ -2046,6 +1982,7 @@ export class SvgEditor {
     if (!node || (node.getAttribute("aria-label") ?? "") === trimmed) return;
     this.#mutate(() => {
       renameLayer(node, trimmed);
+      ensureLayerAccessibilityRole(node);
       this.#setSelectionUi(node);
       this.#notifySelectionContext();
     });
@@ -2343,11 +2280,19 @@ export class SvgEditor {
   }
 
   #assignKeys(root: SVGSVGElement): void {
+    // The editing surface contains keyboard-operable handles, so it cannot be
+    // an atomic image in the accessibility tree. Preserve authored export roles.
+    if (!root.querySelector("style") && (!root.hasAttribute("role") || root.getAttribute("role") === "img")) {
+      if (root.hasAttribute("role") && !root.hasAttribute("data-lineage-added-role")) root.setAttribute("data-lineage-original-role", root.getAttribute("role")!);
+      else root.setAttribute("data-lineage-added-role", "true");
+      root.setAttribute("role", "group");
+    }
     const nodes = Array.from(root.querySelectorAll<SVGGraphicsElement>(EDITABLE_SELECTOR))
       .filter((node) => isSelectableNode(node, root));
     const usedKeys = new Set(nodes.map((node) => node.dataset.lineageKey).filter(Boolean));
     for (const node of nodes) {
       if (!isSelectableNode(node, root)) continue;
+      ensureLayerAccessibilityRole(node);
       if (!node.dataset.lineageKey) {
         let key: string;
         do {

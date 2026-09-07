@@ -1,0 +1,102 @@
+{
+  "node": "C3",
+  "status": "merged-acceptance-passed",
+  "base": "a774e5599ab3a66a243c66561c346209ab9c1ac7",
+  "implementationHead": "a5d54b203dd5a02cd3bc646457c48155d7efca9b",
+  "fixHead": "bcc27d86b9468b0bb6bdfba48491b22a681b4dcd",
+  "testedHead": "7fe4e0f9d477c55b23f92b26beabb07d706f56c3",
+  "assertions": [
+    "Artifact-driven add/replace derives the selected root group and transitive local resources; missing/ambiguous/unsafe/context-dependent selectors fail before discovery or delivery.",
+    "Versioned narrow translation and text operations preserve unrelated content and remain atomic through standard review, with no history for rejected/no-op transactions.",
+    "Legacy v1 operations and validation-only artifact flags remain compatible; operation-only changes need no unrelated artifact.",
+    "Installed CLI constructs a substantive group with gradient, mask, use and nested transforms; explicit acceptance saves a digest-verified continuation, manual text correction survives a fresh snapshot and narrow follow-up, and final output survives process restart without changing the original."
+  ],
+  "local": {
+    "mac": {
+      "head": "a4b704913c788395980525731a6e1c4e771b6ca3",
+      "unitIntegration": 688,
+      "typecheck": "passed",
+      "productionBuild": "passed",
+      "fullBrowser": "running"
+    },
+    "preFixAffectedBrowsers": {
+      "head": "a5d54b203dd5a02cd3bc646457c48155d7efca9b",
+      "scenarios": 7,
+      "result": "passed"
+    },
+    "fixVerification": {
+      "focusedTests": 135,
+      "realChromium": "CSS movement rejected without changing canonical content; ordinary SVG movement and ancestor-relative movement correct; nested viewport extraction rejected; inherited mask case rejected and supported control stays transparent."
+    }
+  },
+  "review": {
+    "native": "Installed Codex CLI/current-model mismatch prevented native baseline; focused independent review used independently available base and raw diff under skill fallback.",
+    "roles": {
+      "correctness": "b3_integration_review: C3-COR-1 and C3-COR-2; final post-fix review pending",
+      "tests": "b2_tests_review: no findings, 56 focused tests passed",
+      "silent-failures": "c3_failures_review: SF-C3-1 and duplicate CSS move SF-C3-2",
+      "contracts-types": "c3_contracts_review: C3-CT-1; post-fix review pending",
+      "comments-docs": "b2_docs_review: no findings"
+    },
+    "freshValidation": [
+      {
+        "id": "C3-COR-1",
+        "validator": "c3_render_validator",
+        "decision": "accept",
+        "evidence": "Actual Chromium evaluator stages CSS move but x18 remains18; SVG-attribute control moves18 to23. Fixed by reusing the established CSS-transform guard."
+      },
+      {
+        "id": "C3-COR-2",
+        "validator": "c3_render_validator",
+        "decision": "reject",
+        "evidence": "Exact stop-color example computes black before and after actual extraction; alleged inheritance did not reproduce."
+      },
+      {
+        "id": "C3-CT-1",
+        "validator": "c3_render_validator",
+        "decision": "accept",
+        "evidence": "Actual nested viewport extraction doubles rectangle50x50 to100x100. Fixed by requiring a direct root group."
+      },
+      {
+        "id": "SF-C3-1",
+        "validator": "c3_render_validator",
+        "decision": "accept",
+        "evidence": "Actual mask resource computes black\u2192white and pixel changes transparent\u2192opaque white; explicit black control remains transparent. Fixed by rejecting unsafe external-resource inheritance."
+      }
+    ],
+    "deduplicated": {
+      "SF-C3-2": "Same root cause and changed branch as C3-COR-1"
+    }
+  },
+  "tests": [
+    "tests/structural-artifact.test.ts",
+    "tests/cli/proposal-validation.test.ts",
+    "tests/e2e/installed-cli-bridge.spec.ts"
+  ],
+  "limitations": [
+    "Full integrated browser runs and final-head CI pending.",
+    "Artifact extraction requires a self-contained root group; unsupported inherited context is refused rather than silently rewritten.",
+    "This node does not complete agent iteration tranche or independent-human validation."
+  ],
+  "mergeCommit": "2edf2cc7d6cbaeb71253cecd55e795b76af76d89",
+  "finalCI": {
+    "pr": 34069654743,
+    "codeql": 34069652717,
+    "main": [
+      34070758991,
+      34070758889
+    ],
+    "result": "all passed"
+  },
+  "fontFamilyValidation": {
+    "fix": "Deterministic scanner preserves previous local-family grammar without ambiguous regex backtracking.",
+    "independentComparisons": 186409,
+    "mismatches": 0,
+    "pathologicalLengths": [
+      37,
+      73,
+      121
+    ],
+    "maxMilliseconds": 0.006
+  }
+}

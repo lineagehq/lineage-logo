@@ -2,7 +2,7 @@ import { SaxesParser } from "saxes";
 import { AgentProtocolError, isAgentErrorCode, parsePublicAgentProposal, validateCleanAgentSvg, type AgentTransactionError, type PublicAgentProposalV1 } from "../shared/agent-protocol.js";
 
 export interface SafeCliError { code: string; operationId?: string; field?: string; nextAction: string }
-const knownFields = new Set("transaction proposal document producer operations protocolVersion transactionId sessionId baseRevision kind name version intent type operationId parent placement svg target property value targets primary scope before after sessionKey".split(" "));
+const knownFields = new Set("transaction proposal document producer operations protocolVersion transactionId sessionId baseRevision kind name version intent type operationId parent placement svg target property value targets primary scope before after sessionKey operationVersion dx dy artifact".split(" "));
 export function safeError(detail: Partial<AgentTransactionError>, fallback = "invalid_payload"): SafeCliError {
   const code = isAgentErrorCode(detail.code) ? detail.code : fallback;
   // Never reflect arbitrary field names or remote messages: either may contain private data.
@@ -21,12 +21,13 @@ export function safeError(detail: Partial<AgentTransactionError>, fallback = "in
     pending_transaction: "Finish the pending review before submitting another proposal.",
     unavailable_editor: "Start or reconnect the selected editor, then refresh context.",
     reviewer_rejection: "Revise the proposal using reviewer feedback and fresh context with a new transaction identity.",
-    unsupported_version: "Use protocolVersion 1 and inspect lineage-logo schema.",
+    unsupported_version: "Use protocolVersion 1 and supported operationVersion values from lineage-logo schema.",
     unsafe_svg: "Remove active content, external resources and reserved metadata, then validate again.",
     invalid_svg: "Supply one well-formed selectable SVG layer fragment, then validate again.",
     invalid_paint: "Use a supported color, none, currentColor or a local resource reference.",
     locked_target: "Choose an unlocked target or ask the reviewer to unlock it, then refresh context.",
     invalid_reference: "Use a current session key or the ID of an earlier operation.",
+    reference_damage: "Keep local references intact. For artifact extraction, put resources inside the selected group with verified appearance, or move inherited group presentation onto artwork children.",
   };
   return { code, ...(operationId ? { operationId } : {}), ...(field ? { field } : {}), nextAction: guidance[code] ?? "Inspect lineage-logo schema, correct the indicated proposal field and run lineage-logo validate again." };
 }

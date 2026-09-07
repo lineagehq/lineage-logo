@@ -1,0 +1,138 @@
+{
+  "node": "B3",
+  "status": "merged-acceptance-passed",
+  "base": "a774e5599ab3a66a243c66561c346209ab9c1ac7",
+  "testedHead": "919cbc5a1a28120b5aef1d8e64c96b64710a6954",
+  "local": {
+    "mac": {
+      "unitIntegration": 661,
+      "browserScenarios": 83,
+      "focusedBrowserScenarios": 12,
+      "typecheck": "passed",
+      "productionBuild": "passed"
+    },
+    "linux": {
+      "environment": "mcr.microsoft.com/playwright:v1.62.1-noble, pwuser, exact git archive",
+      "unitIntegration": 661,
+      "browserScenarios": 83,
+      "typecheck": "passed",
+      "productionBuild": "passed"
+    },
+    "combined": {
+      "mac": {
+        "unitIntegration": 707,
+        "typecheck": "passed",
+        "productionBuild": "passed"
+      },
+      "linux": {
+        "unitIntegration": 707,
+        "typecheck": "passed",
+        "productionBuild": "passed",
+        "browser": "Full run deliberately stopped during VM resource contention; serialized replacement required"
+      },
+      "focusedLinuxBrowser": {
+        "head": "14fdef62",
+        "scenarios": 14,
+        "result": "passed"
+      }
+    },
+    "priorB1Integration": {
+      "head": "d43b8368ab65f868a269b5b72acec3e5fa3e7a09",
+      "macBrowserScenarios": 93,
+      "macUnitIntegration": 689,
+      "linuxBrowser": "92 passed, cross-tab acceptance test timed out; fixture now requires pending status and binds to this page publication before submitting"
+    },
+    "finalCombined": {
+      "head": "494b34e256523649c1b9c552e7f9761dc14c6231",
+      "mac": {
+        "unitIntegration": 707,
+        "typecheck": "passed",
+        "productionBuild": "passed",
+        "affectedBrowserScenarios": 16,
+        "precedingFullBrowser": {
+          "head": "20951d29cfcb30c6809cd016d811ac7ddab1dd2a",
+          "scenarios": 106,
+          "result": "passed; subsequent changes affect only test synchronization"
+        }
+      },
+      "linux": {
+        "browserScenarios": 106,
+        "result": "passed",
+        "precedingCheck": {
+          "head": "20951d29cfcb30c6809cd016d811ac7ddab1dd2a",
+          "unitIntegration": 707,
+          "typecheck": "passed",
+          "productionBuild": "passed"
+        },
+        "recoveryRepetitions": 20
+      }
+    }
+  },
+  "assertions": [
+    "Manual edits survive interruption through explicit restore bound to workspace, source and exact source hash.",
+    "Restore starts fresh Undo history and restores nested selection and preview context.",
+    "Late Save migrates newer edits to the saved continuation without overwriting original source or retiring newer drafts.",
+    "Agent pending recovery wins over manual drafts, with bounded lease-close retry.",
+    "Unavailable storage, failed deletion, expiration and malformed drafts surface recovery choices without trapping the editor.",
+    "Cross-tab retirement deletes only the captured immutable record, preserving newer writes."
+  ],
+  "tests": [
+    "tests/e2e/workspace/manual-drafts.spec.ts",
+    "tests/manual-draft-store.test.ts"
+  ],
+  "review": {
+    "native": "Installed CLI/current-model mismatch prevented native review; focused review used independently available diff under documented skill fallback.",
+    "roles": {
+      "correctness": "b3_correctness_review plus fresh b3_integration_review: no remaining candidates at14fdef62 against c410d08; integration reviewer ran70 focused unit tests",
+      "tests": "b3_tests_review: no findings after exact lease test synchronization fix atd43b836;39 focused tests",
+      "silent-failures": "b3_failures_review: restored-record ownership candidate independently reproduced then fixed",
+      "contracts-types": "b3_contracts_review: no findings",
+      "comments-docs": "b3_docs_review: no findings"
+    },
+    "validatedFixes": [
+      "Fresh b3_retirement_validator reproduced unrelated immutable draft retirement; normal durable agent settlement now suppresses incidental persistence and retires only exact owned record. Real cross-tab regression preserves a different draft.",
+      "Fresh b3_restore_validator reproduced failed replacement write leaving restored draft unowned; restore now claims original token before replacement, allowing Discard to retire it.",
+      "Earlier independently reproduced file-switch Discard, failed Save-and-switch retirement, and blocked expired-draft exit defects have passing browser regressions."
+    ],
+    "finalIntegration": {
+      "correctness": "b3_integration_review: no findings at20951d2 against a774e55",
+      "tests": "b2_tests_review: no findings at20951d2 and final494b34e synchronization follow-up"
+    }
+  },
+  "pr": "https://github.com/lineagehq/lineage-logo/pull/32",
+  "ci": {
+    "pr": 34071329069,
+    "codeql": 34071327340,
+    "main": 34071614658,
+    "mainCodeql": 34071615001,
+    "result": "all passed"
+  },
+  "limitations": [
+    "Independent U1 participant work remains pending.",
+    "WebKit checks are not native Safari verification."
+  ],
+  "testSynchronization": {
+    "observedFailures": [
+      "Old fixture polled any positive server revision, then could read prior-tab or expired document; visible status exposed stale proposal and undefined manifest.",
+      "Hidden initial Pending label allowed a text-only assertion to proceed before review arrival.",
+      "Saved state became visible before asynchronously refreshed file list selected the continuation."
+    ],
+    "repairs": [
+      "Bind both fixtures to a manifest actually published by this page and matching server session/source/revision.",
+      "Require visible pending review before reload or cross-tab write; explicitly accept beforeunload and prove navigation.",
+      "Wait for visible iterations selection before reading saved bytes."
+    ],
+    "result": "Both recovery scenarios passed10 repetitions each; full final Linux106 and affected Mac16 pass. Earlier passing retries were not treated as diagnosis."
+  },
+  "mergeCommit": "f3cfc014fd94768b3d946a08c7216d7fe4d9d2e9",
+  "finalLocal": {
+    "head": "919cbc5a1a28120b5aef1d8e64c96b64710a6954",
+    "unitIntegration": 730,
+    "macBrowser": 107,
+    "linuxBrowser": 107,
+    "typecheck": "passed",
+    "build": "passed",
+    "g2RepeatedLinux": 10
+  },
+  "finalSynchronization": "CI failure reproduced as old filename captured before file-list refresh; both G2 saves now await selected iterations path before recording it. Same source/receipt/reload assertions retained."
+}

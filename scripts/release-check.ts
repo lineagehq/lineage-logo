@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
-import { chmod, lstat, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
+import { chmod, lstat, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import process from "node:process";
@@ -54,6 +55,13 @@ async function command(commandName: string, args: string[], cwd: string, env = p
   });
 }
 
+export function candidateReceipt(bytes: Uint8Array, version: string, sourceRevision?: string) {
+  if (bytes.byteLength === 0 || bytes.byteLength > 64 * 1024 * 1024) throw new Error("Candidate artifact exceeds the 64 MiB bound");
+  if (sourceRevision !== undefined && !/^[a-f0-9]{40}$/.test(sourceRevision)) throw new Error("Invalid candidate revision");
+  if (!isValidPackageVersion(version) || version !== version.trim()) throw new Error("Invalid candidate version");
+  return { schemaVersion: 1, algorithm: "sha256", sha256: createHash("sha256").update(bytes).digest("hex"), bytes: bytes.byteLength, version, sourceRevision, node: process.version, platform: process.platform, published: false };
+}
+
 async function main(): Promise<void> {
   const repositoryRoot = await realpath(process.cwd());
   const temporaryRoot = await realpath(tmpdir());
@@ -104,6 +112,13 @@ async function main(): Promise<void> {
     phase = "reinstalled package validation";
     const manifest = JSON.parse(await readFile(path.join(installRoot, "node_modules", "lineage-logo", "package.json"), "utf8")) as { version?: unknown };
     if (manifest.version !== version.stdout.trim()) throw new Error("reinstalled package version mismatch");
+    const sourceRevision = await command("git", ["rev-parse", "HEAD"], repositoryRoot);
+    if (sourceRevision.code !== 0) throw new Error("Candidate source revision unavailable");
+    if ((await lstat(tarball)).size > 64 * 1024 * 1024) throw new Error("Candidate artifact exceeds the 64 MiB bound");
+    const candidate = candidateReceipt(await readFile(tarball), version.stdout.trim(), sourceRevision.stdout.trim());
+    if (process.argv.includes("--candidate-receipt")) {
+      await writeFile(path.join(repositoryRoot, "candidate-artifact.json"), `${JSON.stringify(candidate, null, 2)}\n`);
+    }
     process.stdout.write("Release package clean-install and same-artifact reinstall checks passed.\n");
   } catch (error) {
     process.stderr.write(`Release check failed during ${phase}: ${safeDiagnostic(error instanceof Error ? error.message : "unknown failure")}\n`);

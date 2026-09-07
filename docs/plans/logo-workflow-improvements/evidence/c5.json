@@ -1,0 +1,67 @@
+{
+  "node": "C5",
+  "status": "merged-and-main-verified",
+  "pr": "https://github.com/lineagehq/lineage-logo/pull/36",
+  "runtimeHead": "5310b54e2be5505499736713b60477fac13d6421",
+  "journeyHead": "bc14f8700eeb77349a431ec3f027a5636ea096dc",
+  "local": {
+    "check": {
+      "head": "a95be43a6add0473d57e55ac91ff5b3a61d132c2",
+      "unitIntegration": 744,
+      "typecheck": "passed",
+      "build": "passed"
+    },
+    "macFull": {
+      "head": "a95be43a6add0473d57e55ac91ff5b3a61d132c2",
+      "scenarios": 110,
+      "result": "passed"
+    },
+    "linuxFull": {
+      "head": "d4cb40ab0553a71d2df9ce49de410dc8310e3ba8",
+      "passed": 109,
+      "failed": 1,
+      "failure": "Save-in-flight recovery test expected transient generic status, overwritten by connection status; final test checks selected continuation, persistent dirty state and enabled Save, retaining exact saved/new edit/restoration assertions."
+    },
+    "finalLinux": {
+      "head": "d1e321c",
+      "scenarios": 10,
+      "includes": "five complete installed G3 journeys plus five save-in-flight recovery cases",
+      "result": "passed"
+    }
+  },
+  "review": {
+    "native": "Local CLI/model mismatch; documented focused-review fallback.",
+    "roles": [
+      "correctness",
+      "tests",
+      "contracts-types",
+      "silent-failures",
+      "comments-docs"
+    ],
+    "acceptedFix": "JSON import envelope now permits encoding expansion while decoded SVG remains limited to5MiB. Fresh validator actualserver imports exact3MiBnewlines and refuses oversizeddecodedSVG.",
+    "finalTests": "No high-confidence issues atbc14f870."
+  },
+  "assertions": [
+    "Empty-workspace create/cancel and safe import use visible UI; unsafe import is refused withoutwriting.",
+    "Filename collisions preserve originals. Cross-origin creation/handoff refused.",
+    "Handoff contains current unsaved artwork, selection, session/revision and digest without producer credentials or invoking anagent.",
+    "Installed CLI rejects first construction with exact feedback, freshhandoff revises structuralartifact, accept/save preserves wordmark.",
+    "Manual correction remains in freshselectedsnapshot and laternarrowagentfollowup; restartreopens exactsavedartifact andoriginalhashes remainunchanged."
+  ],
+  "liveBrowser": {
+    "image": "c5/installed-handoff.png",
+    "url": "http://lineage-logo.localhost:43125"
+  },
+  "limitations": [
+    "Scripted and agent-operated evidence; no independent U1 participant results claimed."
+  ],
+  "finalHead": "04d633d85cea0b992ce004e5dceaa3b6171c6757",
+  "mergeCommit": "bfaf798813639bfb429c04ab45d1146c975eb9cc",
+  "ci": {
+    "pr": 34072417177,
+    "prCodeql": 34072415646,
+    "main": 34072711276,
+    "mainCodeql": 34072711582,
+    "allPassed": true
+  }
+}

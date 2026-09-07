@@ -1,0 +1,75 @@
+{
+  "node": "G2",
+  "status": "merged-acceptance-passed",
+  "base": "a774e5599ab3a66a243c66561c346209ab9c1ac7",
+  "testedHead": "919cbc5a1a28120b5aef1d8e64c96b64710a6954",
+  "dependencies": [
+    "evidence/trust-tranche.json",
+    "evidence/b1.json",
+    "evidence/b2.json",
+    "evidence/b3.json"
+  ],
+  "pr": "https://github.com/lineagehq/lineage-logo/pull/32",
+  "assertions": [
+    "Cross-parent bulk color, duplicate, hide, delete and Undo remain atomic; locked descendant blocks all selected groups without partial mutation.",
+    "Precise correction and selected context survive explicit manual draft restoration with fresh Undo history, save and reopen.",
+    "The narrow44-layer journey uses actual Tab traversal for selection, paint, Undo/Redo, panel resize, text, recovery and Save.",
+    "Saved SVG parses, IDs remain unique, local references resolve, source bytes remain identical and saved continuation reopens."
+  ],
+  "tests": [
+    "tests/e2e/workspace/manual-tranche.spec.ts",
+    "tests/e2e/workspace/manual-drafts.spec.ts",
+    "tests/e2e/bulk-actions.spec.ts",
+    "tests/e2e/seatify-editing-journey.spec.ts"
+  ],
+  "local": {
+    "macFull": {
+      "head": "20951d29cfcb30c6809cd016d811ac7ddab1dd2a",
+      "browserScenarios": 106,
+      "result": "passed"
+    },
+    "macFinal": {
+      "head": "494b34e256523649c1b9c552e7f9761dc14c6231",
+      "unitIntegration": 707,
+      "affectedBrowserScenarios": 16,
+      "typecheck": "passed",
+      "build": "passed"
+    },
+    "linuxFinal": {
+      "head": "494b34e256523649c1b9c552e7f9761dc14c6231",
+      "browserScenarios": 106,
+      "includes": "104 Chromium plus Firefox and WebKit critical paths",
+      "result": "passed"
+    },
+    "linuxCheck": {
+      "head": "20951d29cfcb30c6809cd016d811ac7ddab1dd2a",
+      "unitIntegration": 707,
+      "typecheck": "passed",
+      "build": "passed"
+    },
+    "subsequentChanges": "Test synchronization only between full Mac/check and final Linux runs; no app behavior changed."
+  },
+  "review": "Fresh correctness and tests roles found no remaining issues in complete B3/G2 diff; B3 receipt records all five initial roles and independently validated fixes.",
+  "limitations": [
+    "Independent U1 participant work remains pending.",
+    "WebKit checks are not native Safari verification."
+  ],
+  "mergeCommit": "f3cfc014fd94768b3d946a08c7216d7fe4d9d2e9",
+  "ci": {
+    "pr": 34071329069,
+    "codeql": 34071327340,
+    "main": 34071614658,
+    "mainCodeql": 34071615001,
+    "result": "all passed"
+  },
+  "finalLocal": {
+    "head": "919cbc5a1a28120b5aef1d8e64c96b64710a6954",
+    "unitIntegration": 730,
+    "macBrowser": 107,
+    "linuxBrowser": 107,
+    "typecheck": "passed",
+    "build": "passed",
+    "g2RepeatedLinux": 10
+  },
+  "finalSynchronization": "CI failure reproduced as old filename captured before file-list refresh; both G2 saves now await selected iterations path before recording it. Same source/receipt/reload assertions retained."
+}

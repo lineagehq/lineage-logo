@@ -1,4 +1,10 @@
+import { AssetExportController } from "./export/controller";
+import { GuidedCreationController } from "./ui/guided-creation";
+import { PanelResizeController } from "./ui/panel-resize";
 import "./styles.css";
+import { AgentVisualReview } from "./agent/visual-review";
+import { readManualDraft, writeManualDraft, discardManualDraft, manualDraftReasonMessage, type ManualDraftAuthority, type ManualDraftRead, type ManualDraftIdentity } from "./manual-draft-store";
+import { recoverAfterTabClose } from "./agent/recovery-retry";
 import { captureAgentSnapshot } from "./agent/snapshot";
 import { SnapshotError } from "../shared/agent-snapshot";
 import { SaveAuthority } from "./save-authority";
@@ -57,6 +63,7 @@ interface SvgFileEntry {
 }
 
 interface WorkspaceResponse {
+  workspaceId: string;
   rootName: string;
   files: SvgFileEntry[];
   nextIterationPath: string;
@@ -116,13 +123,19 @@ app.innerHTML = `
   <header class="topbar">
     <div class="brand"><span class="brand-mark">L</span><span>Lineage Logo</span></div>
     <div class="workspace-name" id="workspace-name">Connecting…</div>
+    <nav class="creation-actions" aria-label="Logo workflow">
+      <button type="button" id="create-logo">Create a logo</button>
+      <button type="button" id="import-logo">Import SVG</button>
+      <button type="button" id="prepare-handoff">Prepare agent handoff</button>
+      <button type="button" id="save-version-export">Save version / export</button>
+    </nav>
   </header>
   <main class="shell" id="canvas-shell">
     <aside class="sidebar file-sidebar" aria-label="Workspace files">
       <div class="sidebar-rail">
         <button type="button" id="toggle-left-sidebar" class="sidebar-toggle" aria-controls="workspace-panel" title="Toggle workspace panel ([)"><span aria-hidden="true">‹</span><span class="rail-label">Files</span></button>
       </div>
-      <div class="sidebar-content" id="workspace-panel">
+      <div class="sidebar-content" id="workspace-panel" tabindex="0" aria-label="Workspace files">
         <div class="panel-heading"><span>Workspace</span><span id="file-count">0</span></div>
         <div id="file-list" class="file-list"></div>
       </div>
@@ -145,6 +158,8 @@ app.innerHTML = `
         </div>
         <div class="toolbar-group" aria-label="Preview background">
           <button type="button" id="save-iteration" class="primary-action" disabled>Save iteration</button>
+          <button type="button" id="canvas-selection-mode" title="Switch between selecting logical groups and exact objects">Select: groups</button>
+          <button type="button" id="canvas-snapping" aria-pressed="false" title="Toggle alignment snapping; configure targets in preferences">Snap: off</button>
           <button type="button" class="background-button active" data-background="checker" aria-pressed="true" title="Transparency checkerboard behind artwork">Grid</button>
           <button type="button" class="background-button" data-background="light" aria-pressed="false">Light</button>
           <button type="button" class="background-button" data-background="dark" aria-pressed="false">Dark</button>
@@ -161,8 +176,8 @@ app.innerHTML = `
         </div>
         <div class="empty-state" id="empty-state">
           <span class="empty-icon">◇</span>
-          <strong>Choose an SVG to inspect</strong>
-          <span>Concepts and iterations appear in the workspace panel.</span>
+          <strong>Create a logo or import an SVG</strong>
+          <span>Start with the buttons above, or choose existing artwork from the workspace panel.</span>
         </div>
         <div id="document-viewport" class="document-viewport" hidden>
           <div id="artboard" class="artboard" hidden></div>
@@ -170,6 +185,7 @@ app.innerHTML = `
         </div>
       </div>
       <footer class="statusbar">
+        <span id="manual-draft-status" role="status" aria-live="polite" hidden></span>
         <span id="status">Ready</span>
         <span id="selection-count-badge" class="selection-count-badge" role="status" aria-live="polite" aria-atomic="true" hidden></span>
         <span id="document-size">No document loaded</span>
@@ -188,13 +204,14 @@ app.innerHTML = `
           <p id="agent-review-context" class="agent-review-context"></p>
           <p id="agent-review-risk" class="agent-review-risk"></p>
           <button type="button" id="agent-preview-toggle" class="agent-preview-toggle" aria-pressed="false">Show proposed preview</button>
+          <div id="agent-visual-review" hidden></div>
           <div id="agent-operation-list" class="agent-operation-list" aria-label="Computed operation evidence"></div>
           <ul id="agent-impact-list" class="agent-impact-list" aria-label="Layers changed by agent"></ul>
           <div class="agent-review-actions">
             <button type="button" id="agent-revert">Revert</button>
-            <button type="button" id="agent-accept" class="primary-action">Accept all</button>
+            <button type="button" id="agent-accept" class="primary-action">Accept and save</button>
           </div>
-          <p id="agent-review-consequence" class="agent-review-consequence">Accept creates one undoable edit. Revert leaves the document unchanged.</p>
+          <p id="agent-review-consequence" class="agent-review-consequence">Accept and save creates one undoable saved continuation. Revert leaves the document unchanged.</p>
         </div>
       </section>
       <section>
@@ -277,6 +294,8 @@ app.innerHTML = `
               <small id="stroke-state" class="paint-state"></small>
               <small id="stroke-error" class="field-error" aria-live="polite"></small>
             </label>
+            <label>Stroke width<input id="stroke-width" type="number" min="0" step="0.5" /></label>
+            <label>Opacity<input id="opacity" type="number" min="0" max="1" step="0.05" /></label>
             </div>
           </details>
           <details class="inspector-group" id="text-group">
@@ -294,14 +313,13 @@ app.innerHTML = `
           <details class="inspector-group" id="geometry-group">
             <summary>Geometry <span id="geometry-summary" class="group-summary"></span></summary>
             <div class="field-grid">
-            <label>Stroke width<input id="stroke-width" type="number" min="0" step="0.5" /></label>
-            <label>Opacity<input id="opacity" type="number" min="0" max="1" step="0.05" /></label>
+            <p class="geometry-help wide-field">Position and size use the selection’s rotated frame in document units. Rotation is its absolute angle, not an added turn.</p>
             <p id="geometry-mode" class="geometry-mode wide-field" aria-live="polite"></p>
-            <label>Oriented frame X<input id="position-x" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
-            <label>Oriented frame Y<input id="position-y" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
-            <label>Oriented frame width<input id="position-width" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
-            <label>Oriented frame height<input id="position-height" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
-            <label>Absolute frame rotation °<input id="rotation" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
+            <label>X<input id="position-x" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
+            <label>Y<input id="position-y" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
+            <label>Width<input id="position-width" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
+            <label>Height<input id="position-height" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
+            <label>Rotation °<input id="rotation" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
             <label class="preference-check geometry-aspect-lock"><input id="aspect-lock" type="checkbox" checked /> Lock aspect ratio</label>
             <input id="scale" type="hidden" value="100" aria-hidden="true" />
           </div>
@@ -384,6 +402,15 @@ app.innerHTML = `
       <button type="button" id="unsaved-save" class="primary-action">Save</button>
     </div>
   </dialog>
+  <dialog id="manual-draft-dialog" class="unsaved-dialog" aria-labelledby="manual-draft-title" aria-describedby="manual-draft-message">
+    <h2 id="manual-draft-title">Recover manual edits</h2>
+    <p id="manual-draft-message"></p>
+    <div class="unsaved-actions">
+      <button type="button" id="manual-draft-continue" hidden>Continue with saved source</button>
+      <button type="button" id="manual-draft-discard">Discard draft</button>
+      <button type="button" id="manual-draft-restore" class="primary-action">Restore manual draft</button>
+    </div>
+  </dialog>
   <dialog id="agent-draft-dialog" class="unsaved-dialog" aria-labelledby="agent-draft-title" aria-describedby="agent-draft-message">
     <h2 id="agent-draft-title">Unsaved applied agent draft</h2>
     <p id="agent-draft-message"></p>
@@ -444,6 +471,7 @@ const layout = new CanvasLayoutController({
   storage: safeLayoutStorage(() => localStorage),
   onPreferenceChange: () => persistWorkspaceSession(),
 });
+new PanelResizeController(getElement("canvas-shell"), safeLayoutStorage(() => localStorage));
 const unsavedDialog = new UnsavedDialogController({
   dialog: getInput("unsaved-dialog"),
   message: getElement("unsaved-message"),
@@ -460,6 +488,12 @@ const fileButtons = new Map<string, HTMLButtonElement>();
 const collapsedLayerKeys = new Set<string>();
 let currentFile: SvgFileEntry | undefined;
 let currentWorkspaceName: string | undefined;
+let currentWorkspaceId: string | undefined;
+let checkingManualRecovery = false;
+const manualRetirementFailures = new Set<string>();
+let lastManualDraftStatus = "";
+let ownedManualDraft: { workspaceId: string; sourcePath: string; token: string } | undefined;
+let offeredManualDraft: { sessionId: string; identity: { workspaceId: string; sourcePath: string }; recovery: Exclude<ManualDraftRead, { status: "none" }> } | undefined;
 let workspaceSessionInitialized = false;
 let restoringWorkspaceSession = false;
 let dirty = false;
@@ -479,6 +513,7 @@ let agentReview: AgentReviewModel | undefined;
 let agentPreviewActive = false;
 let reviewImpactKeys = new Set<string>();
 let agentDecisionInFlight = false;
+let settlingDurableAgentSave = false;
 let agentReviewReturnFocus: HTMLElement | undefined;
 let agentTransportStarted = false;
 let agentTransportClosed = false;
@@ -486,6 +521,7 @@ let agentManifestRetry: number | undefined;
 let workspaceRefreshGeneration = 0;
 const agentTerminalReconciliationInFlight = new Set<string>();
 const fileOpenCoordinator = new FileOpenCoordinator();
+const recoveryOpenCoordinator = new FileOpenCoordinator();
 const fileSwitchCoordinator = new FileOpenCoordinator();
 
 function selectionIdentityPath(): string[] {
@@ -508,6 +544,7 @@ function persistWorkspaceSession(): void {
     leftCollapsed: preferences.leftCollapsed,
     rightCollapsed: preferences.rightCollapsed,
   });
+  if (dirty) persistManualDraft();
 }
 
 function getElement(id: string): HTMLElement {
@@ -587,6 +624,7 @@ const editor = new SvgEditor(
     onDirtyChange: (nextDirty) => {
       const changed = dirty !== nextDirty;
       dirty = nextDirty;
+      persistManualDraft();
       saveButton.disabled = saveAuthority.saving || Boolean(agentSession?.pending) || !dirty;
       resetEditsButton.disabled = Boolean(agentSession?.pending) || (!dirty && editor.selectionContext.lockedKeys.size === 0);
       if (nextDirty) {
@@ -663,7 +701,9 @@ function agentLayers(svg: SVGSVGElement): AgentDocumentManifest["layers"] {
     }));
 }
 
+const editorId = crypto.randomUUID();
 const agentTransport = new AgentCanvasTransport({
+  editorId,
   connect: false,
   onSnapshot: (request) => {
     const root = editor.svgNode;
@@ -704,6 +744,10 @@ const agentTransport = new AgentCanvasTransport({
         return rejected;
       }
       if (!pendingBeforeStage && agentSession.pending?.transaction.transactionId === transaction.transactionId) {
+        offeredManualDraft = undefined;
+        offeredAgentDraft = undefined;
+        agentDraftDialog.close();
+        getInput<HTMLDialogElement>("manual-draft-dialog").close();
         saveAuthority.invalidate();
         fileOpenCoordinator.invalidate();
         fileSwitchCoordinator.invalidate();
@@ -713,10 +757,10 @@ const agentTransport = new AgentCanvasTransport({
       reviewImpactKeys = new Set(agentReview.layers.map((layer) => layer.sessionKey));
       editor.setAgentReviewHighlights(reviewImpactKeys);
       setReviewPreview(false);
-      agentReviewConsequence.textContent = "Accept creates one undoable edit. Revert leaves the document unchanged.";
+      agentReviewConsequence.textContent = "Accept and save creates one undoable saved continuation. Revert leaves the document unchanged.";
       renderAgentReview();
       setStatus(`Agent transaction ${transaction.transactionId} is staged for review`);
-      if (!pendingBeforeStage) queueMicrotask(() => agentAcceptButton.focus());
+      if (!pendingBeforeStage) queueMicrotask(() => { agentReviewPanel.focus(); agentReviewPanel.scrollIntoView({ block: "start" }); });
     } else if (staged?.result.status === "rejected") {
       agentReview = outcomeReview(staged.result.error.code === "stale_document" ? "stale" : "failed", transaction.transactionId, staged.result.error.message);
       renderAgentReview();
@@ -756,7 +800,7 @@ const agentTransport = new AgentCanvasTransport({
         : outcomeReview("disconnected", agentReview?.transactionId);
       renderAgentReview();
       setLifecycleState("disconnected", "Disconnected", agentSession?.pending
-        ? "The proposal is isolated. Reconnect, then Accept all or Revert."
+        ? "The proposal is isolated. Reconnect, then Accept and save or Revert."
         : "Restart the local editor, then try again.");
     } else if (agentReview?.status === "disconnected" && agentSession?.pending && !agentSession.recoveryRequired) {
       agentReview = buildPendingReview(agentSession.pending.transaction, agentSession.pending.staged, editor.selectionContext.lockedKeys);
@@ -769,6 +813,34 @@ const agentTransport = new AgentCanvasTransport({
       setStatus(dirty ? "Unsaved manual corrections" : `Saved ${currentFile.path}`);
     } else setStatus(message);
   },
+});
+
+const guidedCreation = new GuidedCreationController({
+  host: document.body,
+  current: () => {
+    if (!editor.svgNode || !agentSession || agentSession.pending || editor.hasProvisionalEdits) return undefined;
+    return { editorId, ...agentSession.context, selectedLayerIds: editor.selectedNodes.map(node => node.dataset.lineageKey!).filter(Boolean) };
+  },
+  openCreated: async file => {
+    try {
+      const workspace = await fetchWorkspace();
+      commitWorkspaceSnapshot(workspace);
+      const button = fileButtons.get(file.path);
+      if (!button) throw new Error("The new logo was created but could not be found. Refresh the workspace.");
+      await requestFileSwitch(file, button);
+    } catch (error) { setStatus(error instanceof Error ? error.message : "The new logo could not be opened. Refresh the workspace."); }
+  },
+});
+getElement("create-logo").addEventListener("click", () => guidedCreation.openCreate("create"));
+getElement("import-logo").addEventListener("click", () => guidedCreation.openCreate("import"));
+getElement("prepare-handoff").addEventListener("click", () => guidedCreation.openHandoff());
+
+const agentVisualReview = new AgentVisualReview(getElement("agent-visual-review"), async (reason) => {
+  if (!agentSession?.pending || agentSession.pending.provisional || agentSession.recoveryRequired) {
+    throw new Error("This proposal is no longer available for a revision request. Reconcile the current review first.");
+  }
+  agentReviewReturnFocus = getElement("toggle-right-sidebar");
+  await decideAgentReview("reverted", reason);
 });
 
 async function reconcileStreamTerminal({ transactionId, status }: { transactionId: string; status: "accepted" | "reverted" | "rejected" | "stale" }): Promise<void> {
@@ -809,6 +881,8 @@ async function reconcileStreamTerminal({ transactionId, status }: { transactionI
 
 function renderAgentReview(): void {
   if (!agentReview) {
+    agentVisualReview.restoreFocus(getElement("toggle-right-sidebar"));
+    agentVisualReview.update(undefined);
     agentReviewPanel.hidden = true;
     return;
   }
@@ -866,9 +940,20 @@ function renderAgentReview(): void {
     agentImpactList.append(item);
   }
   const pending = Boolean(agentSession?.pending);
+  const proposal = agentSession?.pending;
+  if (proposal) {
+    // The controller retains the original accepted image for this transaction,
+    // including while provisional acceptance is waiting for a durable save.
+    agentVisualReview.update({ transactionId: proposal.transaction.transactionId,
+      acceptedSvg: editor.serializeClean(), proposedSvg: serializeSvg(proposal.staged.candidate, true) });
+  } else {
+    agentVisualReview.restoreFocus(getElement("toggle-right-sidebar"));
+    agentVisualReview.update(undefined);
+  }
   layout.setPendingReview(pending);
   const recoveryRequired = agentSession?.recoveryRequired === true;
   const appliedNotSaved = Boolean(agentSession?.pending?.provisional);
+  agentVisualReview.setBusy(agentDecisionInFlight || recoveryRequired || appliedNotSaved);
   if (appliedNotSaved) agentReviewStatus.textContent = "Applied—not saved";
   else if (agentReview.status === "accepted") agentReviewStatus.textContent = "Saved";
   agentPreviewToggle.hidden = !pending;
@@ -878,7 +963,7 @@ function renderAgentReview(): void {
   agentReviewLock.hidden = !pending;
   agentAcceptButton.disabled = agentDecisionInFlight;
   agentRevertButton.disabled = agentDecisionInFlight;
-  agentAcceptButton.textContent = appliedNotSaved ? "Retry save" : "Accept all";
+  agentAcceptButton.textContent = appliedNotSaved ? "Retry save" : "Accept and save";
   agentRevertButton.textContent = recoveryRequired ? "Restore previous document" : appliedNotSaved ? "Undo applied changes" : "Revert";
   for (const button of fileButtons.values()) {
     button.disabled = pending;
@@ -930,6 +1015,11 @@ function focusReviewLayer(sessionKey: string): void {
 
 function finishAgentReview(status: "accepted" | "reverted", artifact?: AgentAcceptedArtifact): void {
   const transactionId = agentReview?.transactionId;
+  const priorManualDraft = currentManualDraft();
+  const ownsPriorDraft = priorManualDraft?.status === "ready"
+    && ownedManualDraft?.token === priorManualDraft.token
+    && ownedManualDraft.workspaceId === priorManualDraft.draft.workspaceId
+    && ownedManualDraft.sourcePath === priorManualDraft.draft.sourcePath;
   clearPendingReviewRecovery(transactionId);
   discardAgentDraft(workspaceSessionStorage);
   reviewImpactKeys.clear();
@@ -940,12 +1030,17 @@ function finishAgentReview(status: "accepted" | "reverted", artifact?: AgentAcce
     agentReview.summary = `Applied and saved ${artifact.durablePath} as one undoable continuation.`;
     currentFile = { collection: "iterations", name: artifact.durablePath.split("/").at(-1)!, path: artifact.durablePath };
     editor.markSaved({ ...editor.captureSavePoint(), svg: artifact.svg });
-    currentSourceBaseline = artifact.svg;
+    currentSourceBaseline = canonicalDraftSource(artifact.svg);
     dirty = false;
     if (!agentSession.continueFromSavedArtifact(artifact.durablePath)) throw new Error("Saved continuation could not become the active baseline.");
     publishAgentDocument();
     persistWorkspaceSession();
   }
+  if (status === "accepted" && artifact?.durablePath && ownsPriorDraft && priorManualDraft?.status === "ready") {
+    const retired = discardTrackedManualDraft(priorManualDraft.draft, priorManualDraft.token, manualAuthority());
+    if (retired.status === "failure" || retired.status === "refused") showManualDraftStatus(manualDraftReasonMessage(retired.reason));
+  }
+  persistManualDraft();
   renderAgentReview();
   if (status === "accepted" && artifact?.durablePath) {
     setStatus(`Saved ${artifact.durablePath}`);
@@ -957,13 +1052,17 @@ function finishAgentReview(status: "accepted" | "reverted", artifact?: AgentAcce
   agentReviewReturnFocus = undefined;
   queueMicrotask(() => returnFocus.focus());
   if (status === "accepted") refreshWorkspaceAfterAgentAccept(artifact?.durablePath);
+  else if (!dirty) offerManualRecovery();
 }
 
 agentPreviewToggle.addEventListener("click", () => setReviewPreview(!agentPreviewActive));
 
-async function decideAgentReview(status: "accepted" | "reverted"): Promise<void> {
+async function decideAgentReview(status: "accepted" | "reverted", revisionRequest?: string): Promise<void> {
   const pending = agentSession?.pending;
-  if (!pending || agentDecisionInFlight) return;
+  if (!pending || agentDecisionInFlight) {
+    if (revisionRequest !== undefined) throw new Error("The proposal changed or another decision is still in progress.");
+    return;
+  }
   agentDecisionInFlight = true;
   agentReviewConsequence.textContent = status === "accepted"
     ? "Applying the proposal and capturing its clean accepted revision…"
@@ -987,10 +1086,13 @@ async function decideAgentReview(status: "accepted" | "reverted"): Promise<void>
       };
       const decision = await agentTransport.decide(pending.transaction.transactionId, status, artifact);
       if (!decision.artifact?.durablePath || !decision.artifact.digest) throw new Error("The server did not confirm a durable saved continuation.");
-      if (!agentSession.finalizeAccept(pending.transaction.transactionId)) throw new Error("The provisional acceptance could not be finalized.");
-      finishAgentReview("accepted", decision.artifact);
+      settlingDurableAgentSave = true;
+      try {
+        if (!agentSession.finalizeAccept(pending.transaction.transactionId)) throw new Error("The provisional acceptance could not be finalized.");
+        finishAgentReview("accepted", decision.artifact);
+      } finally { settlingDurableAgentSave = false; }
     } else {
-      await agentTransport.decide(pending.transaction.transactionId, status);
+      await agentTransport.decide(pending.transaction.transactionId, status, undefined, revisionRequest);
       const completed = pending.provisional
         ? agentSession?.rollbackAccept(pending.transaction.transactionId)
         : agentSession?.revert();
@@ -1040,6 +1142,7 @@ async function decideAgentReview(status: "accepted" | "reverted"): Promise<void>
     } else {
       setLifecycleState("conflict", "Conflict", "The proposal could not be completed. Revert it or retry after resolving the reported issue.");
     }
+    if (revisionRequest !== undefined) throw error;
   } finally {
     agentDecisionInFlight = false;
     renderAgentReview();
@@ -1194,12 +1297,175 @@ function updateIterationSuggestion(sourcePath: string, files: Iterable<string>):
   saveButton.title = `Create ${nextIterationPath}`;
 }
 
+function manualStorage() {
+  // Preserve access errors so recovery can report them instead of claiming success.
+  return {
+    get length() { return window.localStorage.length; },
+    key: (index: number) => window.localStorage.key(index),
+    getItem: (key: string) => window.localStorage.getItem(key),
+    setItem: (key: string, value: string) => window.localStorage.setItem(key, value),
+    removeItem: (key: string) => window.localStorage.removeItem(key),
+  };
+}
+function manualAuthority(): ManualDraftAuthority {
+  return agentSession?.pending?.provisional ? "provisional-agent" : agentSession?.pending ? "pending-agent" : "manual";
+}
+function showManualDraftStatus(message: string): void {
+  lastManualDraftStatus = message;
+  const warning = manualRetirementFailures.size > 0
+    ? "A previous recovery draft could not be removed. Saved iterations are safe; reopen its source and retry Discard when browser storage is available."
+    : "";
+  const element = getElement("manual-draft-status");
+  element.textContent = [message, warning].filter(Boolean).join(" ");
+  element.hidden = !element.textContent;
+}
+function discardTrackedManualDraft(identity: ManualDraftIdentity, token: string, authority: ManualDraftAuthority = "manual") {
+  const result = discardManualDraft(manualStorage(), identity, token, authority);
+  const key = JSON.stringify([identity.workspaceId, identity.sourcePath]);
+  if (result.status === "failure") manualRetirementFailures.add(key);
+  else if (result.status === "retired" || result.status === "changed") manualRetirementFailures.delete(key);
+  showManualDraftStatus(lastManualDraftStatus);
+  return result;
+}
+function canonicalDraftSource(source: string): string {
+  const parsed = new DOMParser().parseFromString(source, "image/svg+xml");
+  if (parsed.documentElement.localName !== "svg" || parsed.querySelector("parsererror")) throw new Error("Recovery source SVG is invalid.");
+  return serializeSvg(parsed.documentElement as unknown as SVGSVGElement, true);
+}
+function currentManualDraft() {
+  if (!currentWorkspaceId || !currentFile) return undefined;
+  return readManualDraft(manualStorage(), { workspaceId: currentWorkspaceId, sourcePath: currentFile.path, sourceSvg: currentSourceBaseline }, Date.now(), manualAuthority());
+}
+function persistManualDraft(): boolean {
+  if (settlingDurableAgentSave || checkingManualRecovery || offeredManualDraft || restoringWorkspaceSession || !currentWorkspaceId || !currentFile || !editor.svgNode || manualAuthority() !== "manual") return false;
+  if (!dirty) {
+    if (ownedManualDraft?.workspaceId === currentWorkspaceId && ownedManualDraft.sourcePath === currentFile.path) {
+      const result = discardTrackedManualDraft(ownedManualDraft, ownedManualDraft.token);
+      if (result.status === "failure" || result.status === "refused") {
+        showManualDraftStatus(manualDraftReasonMessage(result.reason));
+        return false;
+      }
+      ownedManualDraft = undefined;
+      showManualDraftStatus("");
+    }
+    return true;
+  }
+  const result = writeManualDraft(manualStorage(), {
+    workspaceId: currentWorkspaceId, sourcePath: currentFile.path, sourceSvg: currentSourceBaseline,
+    svg: editor.serializeClean(), revision: agentSession?.revision ?? 0,
+    context: { selectionIds: editor.selectedNodes.map(node => node.id).filter(Boolean), zoom, previewBackground },
+  }, Date.now(), manualAuthority());
+  if (result.status === "saved") ownedManualDraft = { workspaceId: currentWorkspaceId, sourcePath: currentFile.path, token: result.token };
+  showManualDraftStatus(result.status === "saved" ? "Manual recovery draft stored on this device." : manualDraftReasonMessage(result.reason));
+  return result.status === "saved";
+}
+async function offerRecoveryDrafts(file: SvgFileEntry, sourceSvg: string): Promise<void> {
+  const sessionId = agentSession?.context.sessionId;
+  try {
+    await offerAgentDraft(file, sourceSvg);
+    if (currentFile !== file || agentSession?.context.sessionId !== sessionId || agentDraftDialog.open || manualAuthority() !== "manual") return;
+    offerManualRecovery();
+  } finally {
+    if (agentSession?.context.sessionId === sessionId) {
+      checkingManualRecovery = false;
+      if (dirty && !offeredManualDraft) persistManualDraft();
+    }
+  }
+}
+function offerManualRecovery(): void {
+  if (!currentWorkspaceId || !currentFile || !agentSession || dirty || manualAuthority() !== "manual") return;
+  const recovery = currentManualDraft();
+  if (!recovery || recovery.status === "none") return;
+  if (!('token' in recovery) || !recovery.token) {
+    if ('reason' in recovery) showManualDraftStatus(manualDraftReasonMessage(recovery.reason));
+    return;
+  }
+  getElement("manual-draft-continue").hidden = true;
+  offeredManualDraft = { sessionId: agentSession.context.sessionId, identity: { workspaceId: currentWorkspaceId, sourcePath: currentFile.path }, recovery };
+  getInput<HTMLButtonElement>("manual-draft-restore").disabled = recovery.status !== "ready";
+  getElement("manual-draft-message").textContent = recovery.status === "ready"
+    ? `Manual edits for ${currentFile.name} were stored ${new Date(recovery.draft.timestamp).toLocaleString()}. Restore keeps the saved source unchanged and starts a fresh Undo history. Reset edits returns to the saved source.`
+    : manualDraftReasonMessage(recovery.reason);
+  getInput<HTMLDialogElement>("manual-draft-dialog").showModal();
+  getElement(recovery.status === "ready" ? "manual-draft-restore" : "manual-draft-discard").focus();
+}
+function manualOfferEligible(): boolean {
+  return Boolean(offeredManualDraft && offeredManualDraft.sessionId === agentSession?.context.sessionId
+    && offeredManualDraft.identity.sourcePath === currentFile?.path && offeredManualDraft.identity.workspaceId === currentWorkspaceId && manualAuthority() === "manual" && !dirty);
+}
+function leaveUnavailableManualDraft(): void {
+  if (getElement("manual-draft-continue").hidden || !manualOfferEligible()) return;
+  offeredManualDraft = undefined;
+  getInput<HTMLDialogElement>("manual-draft-dialog").close();
+  showManualDraftStatus("Opened the saved source. The recovery draft remains on this device; new edits will create a new draft if storage is available.");
+  layerSearch.focus();
+}
+getElement("manual-draft-continue").addEventListener("click", leaveUnavailableManualDraft);
+getInput<HTMLDialogElement>("manual-draft-dialog").addEventListener("cancel", event => {
+  event.preventDefault();
+  leaveUnavailableManualDraft();
+});
+getElement("manual-draft-discard").addEventListener("click", () => {
+  if (!manualOfferEligible() || !offeredManualDraft?.recovery.token) return;
+  const result = discardTrackedManualDraft(offeredManualDraft.identity, offeredManualDraft.recovery.token, manualAuthority());
+  if (result.status === "failure" || result.status === "refused") {
+    getElement("manual-draft-message").textContent = `${manualDraftReasonMessage(result.reason)} You can continue with the saved source; the draft will remain stored.`;
+    getElement("manual-draft-continue").hidden = false;
+    return;
+  }
+  offeredManualDraft = undefined;
+  getInput<HTMLDialogElement>("manual-draft-dialog").close();
+  if (result.status === "changed") offerManualRecovery();
+  else { showManualDraftStatus("Manual draft discarded. Saved source unchanged."); layerSearch.focus(); }
+});
+getElement("manual-draft-restore").addEventListener("click", () => {
+  if (!manualOfferEligible() || offeredManualDraft?.recovery.status !== "ready" || !agentSession) return;
+  const latest = currentManualDraft();
+  if (latest?.status !== "ready" || latest.token !== offeredManualDraft.recovery.token) {
+    offeredManualDraft = undefined;
+    getInput<HTMLDialogElement>("manual-draft-dialog").close();
+    offerManualRecovery();
+    return;
+  }
+  const draft = latest.draft;
+  const parsed = new DOMParser().parseFromString(draft.svg, "image/svg+xml");
+  if (parsed.documentElement.localName !== "svg" || parsed.querySelector("parsererror")) return;
+  if (!agentSession.open(crypto.randomUUID(), draft.sourcePath, draft.revision)) return;
+  saveAuthority.invalidate();
+  restoringWorkspaceSession = true;
+  try {
+    artboard.replaceChildren(document.importNode(parsed.documentElement, true));
+    const root = artboard.querySelector("svg")!;
+    applyDocumentFrame(artboard, root);
+    fittedArtworkBounds = undefined;
+    editor.load(root, currentSourceBaseline);
+    setZoom(draft.context.zoom);
+    applyPreviewBackground(draft.context.previewBackground);
+    const recoveredSelection = draft.context.selectionIds.flatMap(id => {
+      const matches = Array.from(root.querySelectorAll("[id]")).filter(element => element.id === id);
+      return matches.length === 1 && isSelectableNode(matches[0], root) ? [matches[0] as SVGGraphicsElement] : [];
+    });
+    renderLayers(root);
+    editor.restoreSelection(recoveredSelection);
+    renderFavicons(editor.serializeClean());
+  } finally { restoringWorkspaceSession = false; }
+  ownedManualDraft = { workspaceId: draft.workspaceId, sourcePath: draft.sourcePath, token: latest.token };
+  offeredManualDraft = undefined;
+  getInput<HTMLDialogElement>("manual-draft-dialog").close();
+  publishAgentDocument();
+  persistWorkspaceSession();
+  persistManualDraft();
+  setStatus("Restored manual edits with a fresh Undo history. Save an iteration to keep them.");
+  layerSearch.focus();
+});
+
 async function offerAgentDraft(file: SvgFileEntry, sourceSvg: string): Promise<void> {
   if (!currentWorkspaceName) return;
+  const sessionId = agentSession?.context.sessionId;
   const recovery = await readAgentDraft(workspaceSessionStorage, {
     workspace: currentWorkspaceName, sourcePath: file.path, sourceSvg,
   });
-  if (recovery.status === "none") return;
+  if (currentFile !== file || agentSession?.context.sessionId !== sessionId || agentSession?.pending || dirty || recovery.status === "none") return;
   offeredAgentDraft = recovery.status === "ready" ? recovery.draft.svg : undefined;
   agentDraftRestore.disabled = recovery.status !== "ready";
   agentDraftMessage.textContent = recovery.status === "ready"
@@ -1210,10 +1476,23 @@ async function offerAgentDraft(file: SvgFileEntry, sourceSvg: string): Promise<v
 }
 
 agentDraftRestore.addEventListener("click", () => {
-  if (!offeredAgentDraft) return;
+  if (!offeredAgentDraft || !currentFile || !agentSession || manualAuthority() !== "manual") return;
   const parsed = new DOMParser().parseFromString(offeredAgentDraft, "image/svg+xml");
   if (parsed.documentElement.localName !== "svg" || parsed.querySelector("parsererror")) return;
-  editor.load(parsed.documentElement as unknown as SVGSVGElement, currentSourceBaseline);
+  if (!agentSession.open(crypto.randomUUID(), currentFile.path)) return;
+  restoringWorkspaceSession = true;
+  try {
+    artboard.replaceChildren(document.importNode(parsed.documentElement, true));
+    const root = artboard.querySelector("svg")!;
+    applyDocumentFrame(artboard, root);
+    fittedArtworkBounds = undefined;
+    editor.load(root, currentSourceBaseline);
+    updateDocumentViewport();
+    renderLayers(root);
+    renderFavicons(editor.serializeClean());
+  } finally { restoringWorkspaceSession = false; }
+  publishAgentDocument();
+  persistManualDraft();
   discardAgentDraft(workspaceSessionStorage);
   offeredAgentDraft = undefined;
   agentDraftDialog.close();
@@ -1224,6 +1503,7 @@ agentDraftDiscard.addEventListener("click", () => {
   offeredAgentDraft = undefined;
   agentDraftDialog.close();
   setStatus("Discarded unsaved applied agent draft");
+  offerManualRecovery();
 });
 
 function updateDocumentViewport(): void {
@@ -1342,6 +1622,15 @@ async function requestFileSwitch(file: SvgFileEntry, button: HTMLButtonElement):
     if (!fileSwitchCoordinator.canCommit(request, Boolean(agentSession?.pending))) return;
     if (decision === "cancel") return;
     if (decision === "discard") {
+      if (ownedManualDraft && ownedManualDraft.workspaceId === currentWorkspaceId && ownedManualDraft.sourcePath === currentFile?.path) {
+        const retired = discardTrackedManualDraft(ownedManualDraft, ownedManualDraft.token, manualAuthority());
+        if (retired.status === "failure" || retired.status === "refused") {
+          showManualDraftStatus(manualDraftReasonMessage(retired.reason));
+          setStatus("The recovery draft could not be discarded. Your current edits remain open; retry or save them.");
+          return;
+        }
+        ownedManualDraft = undefined;
+      }
       await openSvg(file, button);
       return;
     }
@@ -1363,13 +1652,18 @@ async function requestFileSwitch(file: SvgFileEntry, button: HTMLButtonElement):
 
 async function openSvg(file: SvgFileEntry, button: HTMLButtonElement, restoration?: WorkspaceSessionV1): Promise<void> {
   if (agentSession?.pending) return;
+  const recoveryRequest = recoveryOpenCoordinator.begin();
+  const recoveryEligible = () => recoveryOpenCoordinator.canCommit(recoveryRequest, Boolean(agentSession?.pending));
   let recovery = readPendingReviewRecovery();
   if (recovery?.sourcePath !== file.path) recovery = undefined;
   let recovered: AgentRecoveryState | undefined;
   if (recovery) {
     try {
-      recovered = await agentTransport.recover(recovery);
+      const identity = recovery;
+      recovered = await recoverAfterTabClose(() => agentTransport.recover(identity), recoveryEligible);
+      if (!recovered) return;
     } catch (error) {
+      if (!recoveryEligible()) return;
       if (!(error instanceof AgentRecoveryError) || !error.terminal) {
         setStatus("Agent review recovery is temporarily unavailable. The stored document was not opened or changed.");
         return;
@@ -1386,6 +1680,7 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement, restoratio
       renderAgentReview();
     }
   }
+  if (!recoveryEligible()) return;
   await commitLatestFileOpen({
     coordinator: fileOpenCoordinator,
     isPending: () => Boolean(agentSession?.pending),
@@ -1428,6 +1723,10 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement, restoratio
       }
       button.classList.add("selected");
       button.setAttribute("aria-current", "true");
+      checkingManualRecovery = true;
+      offeredManualDraft = undefined;
+      getInput<HTMLDialogElement>("manual-draft-dialog").close();
+      showManualDraftStatus("");
       currentFile = file;
       updateIterationSuggestion(file.path, fileButtons.keys());
       previewTargetCustomized = false;
@@ -1483,7 +1782,8 @@ async function openSvg(file: SvgFileEntry, button: HTMLButtonElement, restoratio
       getElement("document-size").textContent = activeSvg.getAttribute("viewBox") ?? "No viewBox";
       persistWorkspaceSession();
       if (!recovered) setStatus(`${file.collection} / ${file.name}`);
-      if (!recovered) void offerAgentDraft(file, savedBaseline);
+      if (!recovered) void offerRecoveryDrafts(file, savedBaseline);
+      else checkingManualRecovery = false;
       if (recovered && "status" in recovered) queueMicrotask(() => layerSearch.focus());
     },
   });
@@ -1503,10 +1803,10 @@ function restoreRecoveredPending(recovered: Extract<AgentRecoveryState, { state:
   reviewImpactKeys = new Set(agentReview.layers.map((layer) => layer.sessionKey));
   editor.setAgentReviewHighlights(reviewImpactKeys);
   setReviewPreview(false);
-  agentReviewConsequence.textContent = "Accept creates one undoable edit. Revert leaves the document unchanged.";
+  agentReviewConsequence.textContent = "Accept and save creates one undoable saved continuation. Revert leaves the document unchanged.";
   renderAgentReview();
   setStatus(`Agent transaction ${transaction.transactionId} was restored for review`);
-  queueMicrotask(() => agentAcceptButton.focus());
+  queueMicrotask(() => { agentReviewPanel.focus(); agentReviewPanel.scrollIntoView({ block: "start" }); });
 }
 
 function reconcileRecoveredTerminal(recovered: Extract<AgentRecoveryState, { state: unknown }>): void {
@@ -1611,6 +1911,15 @@ function appendLayer(element: SVGGraphicsElement, index: number, depth: number, 
     type.textContent = element.localName;
     const label = document.createElement("span");
     label.textContent = getSelectionLabel(element, root);
+    label.className = "layer-name";
+    button.title = label.textContent;
+    const fullName = document.createElement("span");
+    fullName.className = "layer-name-tooltip";
+    fullName.textContent = label.textContent;
+    fullName.hidden = true;
+    fullName.setAttribute("aria-hidden", "true");
+    button.addEventListener("focus", () => { fullName.hidden = false; });
+    button.addEventListener("blur", () => { fullName.hidden = true; });
     button.append(type, label);
     button.addEventListener("click", (event) => {
       if (agentPreviewActive) focusReviewLayer(key);
@@ -1626,7 +1935,7 @@ function appendLayer(element: SVGGraphicsElement, index: number, depth: number, 
     visibility.disabled = Boolean(agentSession?.pending) || agentPreviewActive;
     visibility.addEventListener("click", () => editor.toggleVisibility(element));
     row.classList.toggle("hidden-layer", hidden);
-    row.append(disclosure, button, visibility);
+    row.append(disclosure, button, visibility, fullName);
     layerList.append(row);
 
     if (!collapsed) children.forEach((child, childIndex) => appendLayer(child, childIndex, depth + 1, root));
@@ -1733,6 +2042,27 @@ zoomSelectionButton.addEventListener("click", fitSelection);
 undoButton.addEventListener("click", () => editor.undo());
 redoButton.addEventListener("click", () => editor.redo());
 resetEditsButton.addEventListener("click", () => editor.reset());
+const exportButton = getInput<HTMLButtonElement>("save-version-export");
+const assetExport = new AssetExportController({
+  current: () => {
+    if (!currentFile || !editor.svgNode) throw new Error("Open a logo before saving a named version or exporting.");
+    if (saveAuthority.saving || agentSession?.pending || editor.hasProvisionalEdits || offeredManualDraft || offeredAgentDraft || checkingManualRecovery || agentSession?.recoveryRequired) {
+      throw new Error("Finish the current save or recovery, and accept or revert any pending proposal before exporting.");
+    }
+    return { svg: editor.serializeClean(), sourcePath: currentFile.path };
+  },
+  namedVersion: async (name, context) => {
+    const response = await fetch("/api/named-versions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, ...context }) });
+    const result = await response.json() as { error?: string; file?: SvgFileEntry };
+    if (!response.ok || !result.file) throw new Error(result.error ?? "The named version could not be saved.");
+    // Refresh choices only. The named copy does not replace the active baseline.
+    try { commitWorkspaceSnapshot(await fetchWorkspace()); }
+    catch { setStatus(`Saved ${result.file.path}. Refresh the workspace to see the new file.`); }
+    return { path: result.file.path };
+  },
+});
+exportButton.addEventListener("click", () => assetExport.open(exportButton));
+
 saveButton.addEventListener("click", () => void saveIteration());
 
 const preciseModifierPreference = getInput<HTMLSelectElement>("preference-precise-modifier");
@@ -1754,6 +2084,9 @@ const preferencesDialog = new PreferencesDialogController({
 });
 
 function renderSelectionPreferences(): void {
+  getElement("canvas-selection-mode").textContent = `Select: ${selectionPreferences.clickDepth === "exact" ? "objects" : "groups"}`;
+  getElement("canvas-snapping").textContent = `Snap: ${selectionPreferences.alignmentSnappingEnabled ? "on" : "off"}`;
+  getElement("canvas-snapping").setAttribute("aria-pressed", String(selectionPreferences.alignmentSnappingEnabled));
   preciseModifierPreference.value = selectionPreferences.preciseModifier;
   marqueeModePreference.value = selectionPreferences.marqueeMode;
   clickDepthPreference.value = selectionPreferences.clickDepth;
@@ -1829,6 +2162,8 @@ getElement("restore-selection-preferences").addEventListener("click", () => {
   preciseModifierPreference.focus();
   setStatus("Restored default selection preferences");
 });
+getElement("canvas-selection-mode").addEventListener("click", () => applySelectionPreferences({ ...selectionPreferences, clickDepth: selectionPreferences.clickDepth === "exact" ? "logical" : "exact" }));
+getElement("canvas-snapping").addEventListener("click", () => applySelectionPreferences({ ...selectionPreferences, alignmentSnappingEnabled: !selectionPreferences.alignmentSnappingEnabled }));
 renderSelectionPreferences();
 
 function openShortcutHelp(event?: Event): void {
@@ -2118,14 +2453,13 @@ artboard.addEventListener("lineage-marquee-end", () => {
 });
 
 window.addEventListener("beforeunload", (event) => {
-  // A clean pending review is recoverable from tab-scoped state. Manual edits
-  // still require the ordinary warning because closing the tab destroys that
-  // recovery state along with the unsaved document.
+  // Recovery is best effort; warn until manual edits have a durable saved iteration.
   if (!dirty) return;
   event.preventDefault();
   event.returnValue = "";
 });
 window.addEventListener("pagehide", () => {
+  persistManualDraft();
   agentTransportClosed = true;
   workspaceRefreshGeneration += 1;
   if (agentManifestRetry !== undefined) window.clearTimeout(agentManifestRetry);
@@ -2160,6 +2494,8 @@ async function saveIteration(advanceSaved = true): Promise<boolean> {
   const request = saveAuthority.begin();
   if (request === undefined) return false;
   const source = currentFile;
+  const sourceBaseline = currentSourceBaseline;
+  const sourceWorkspaceId = currentWorkspaceId;
   const sessionId = agentSession?.context.sessionId;
   const point = editor.captureSavePoint();
   const eligible = () => saveAuthority.owns(request) && currentFile === source
@@ -2175,14 +2511,20 @@ async function saveIteration(advanceSaved = true): Promise<boolean> {
     const result = await response.json() as { error?: string; file?: SvgFileEntry; nextIterationPath?: string };
     if (!eligible()) return false;
     if (!response.ok || !result.file) throw new Error(result.error ?? "Unable to save the iteration.");
+    const oldDraft = sourceWorkspaceId ? readManualDraft(manualStorage(), { workspaceId: sourceWorkspaceId, sourcePath: source.path, sourceSvg: sourceBaseline }) : undefined;
     // A successful save is a new baseline, never a reload of the live editor.
     if (advanceSaved) {
       currentFile = result.file;
-      currentSourceBaseline = point.svg;
+      currentSourceBaseline = canonicalDraftSource(point.svg);
       if (agentSession && !agentSession.continueFromSavedArtifact(result.file.path)) {
         throw new Error("The saved continuation could not become active.");
       }
       editor.markSaved(point);
+      const migrated = persistManualDraft();
+      if (migrated && oldDraft?.status === "ready" && (oldDraft.draft.svg === point.svg || oldDraft.draft.svg === editor.serializeClean())) {
+        const retired = discardTrackedManualDraft(oldDraft.draft, oldDraft.token);
+        if (retired.status === "failure" || retired.status === "refused") showManualDraftStatus(manualDraftReasonMessage(retired.reason));
+      }
       updateIterationSuggestion(result.file.path, [...fileButtons.keys(), result.file.path]);
       publishAgentDocument();
       persistWorkspaceSession();
@@ -2194,6 +2536,7 @@ async function saveIteration(advanceSaved = true): Promise<boolean> {
         }
       }).catch(() => { /* The durable save remains valid; a later refresh reconciles the list. */ });
     }
+    if (!advanceSaved && oldDraft?.status === "ready" && oldDraft.draft.svg === point.svg) discardTrackedManualDraft(oldDraft.draft, oldDraft.token);
     if (dirty && advanceSaved) {
       setStatus(`Saved ${result.file.path}; newer corrections remain unsaved`);
       setLifecycleState("dirty", "Unsaved changes", `Saved ${result.file.path}. Save again to preserve your newer corrections.`);
@@ -2259,6 +2602,7 @@ async function loadWorkspace(openPath?: string, authority?: FileSwitchAuthority)
   try {
     const workspace = await fetchWorkspace();
     currentWorkspaceName = workspace.rootName;
+    currentWorkspaceId = workspace.workspaceId;
     let restoration: WorkspaceSessionV1 | undefined;
     if (!workspaceSessionInitialized) {
       workspaceSessionInitialized = true;

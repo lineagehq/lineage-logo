@@ -66,10 +66,12 @@ test("agent review exposes escaped computed evidence and keyboard-safe large-pro
 
   const review = page.getByRole("region", { name: "Proposed agent changes" });
   await expect(review).toBeVisible();
-  await expect(page.locator("#agent-accept")).toBeFocused();
+  await expect(review).toBeFocused();
   await expect(page.locator("#agent-review-summary")).toContainText("11 operations: 11 document changes");
   await expect(page.locator("#agent-review-context")).toContainText("Producer intent (context only): No visual change <script>alert(1)</script>");
-  await expect(review.locator("img, script")).toHaveCount(0);
+  await expect(review.locator("script, #agent-review-context img, #agent-review-summary img, #agent-review-risk img, .agent-operation img")).toHaveCount(0);
+  expect(await review.locator("img").evaluateAll((images) => images.every((image) => image.closest(".agent-visual-review") && (image as HTMLImageElement).src.startsWith("blob:")))).toBe(true);
+  await expect(review.locator(".agent-visual-review img")).toHaveCount(8);
   await expect(review.locator(".agent-operation-group")).toHaveCount(2);
   await expect(review.locator(".agent-operation")).toHaveCount(11);
 

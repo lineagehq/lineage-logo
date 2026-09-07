@@ -300,6 +300,17 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     await expect(acceptedReviewSummary).toBeVisible();
     await expect(acceptedReviewSummary).toContainText("1 operation: 1 document change");
     await expect(pageA.locator("#agent-accept")).toBeVisible();
+    if (!registryPackageVersion) {
+      // Packed production serves a restrictive CSP, unlike the Vite test server.
+      const policy = (await pageA.request.get(running[0].url)).headers()["content-security-policy"];
+      expect(policy).toContain("img-src 'self' blob:");
+      const comparisons = pageA.locator(".agent-visual-review img");
+      await expect(comparisons).toHaveCount(8);
+      await expect.poll(() => comparisons.evaluateAll((images) => images.every((image) => {
+        const img = image as HTMLImageElement;
+        return img.src.startsWith("blob:") && img.complete && img.naturalWidth > 0;
+      }))).toBe(true);
+    }
     await pageA.locator("#agent-accept").click();
     await expect(pageA.locator("#agent-review-status")).toHaveText("Saved");
     const acceptedResult = await finishCommand(accepted);
@@ -349,10 +360,16 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     await expect(revertedReviewSummary).toBeVisible();
     await expect(revertedReviewSummary).toContainText("1 operation: 1 document change");
     await expect(pageB.locator("#agent-revert")).toBeVisible();
-    await pageB.locator("#agent-revert").click();
+    const revisionReason = '<img src=x> Preserve the title; adjust only the mark.';
+    if (registryPackageVersion) await pageB.locator("#agent-revert").click();
+    else {
+      await pageB.getByLabel("Revision request").fill(revisionReason);
+      await pageB.getByRole("button", { name: "Reject and request revision" }).click();
+    }
     await expect(pageB.locator("#agent-review-status")).toHaveText("reverted");
     const revertedResult = await finishCommand(reverted);
     expect(revertedResult.code).toBe(5);
+    if (!registryPackageVersion) expect(JSON.parse(revertedResult.stdout).revisionRequest).toBe(revisionReason);
     expect(JSON.parse(revertedResult.stdout)).toMatchObject({ schemaVersion: 1, command: "submit", ok: false, status: "rejected" });
     expect(await readFile(artifactB, "utf8")).toBe(sourceB);
     expect(await readdir(path.join(workspaceB, "iterations")).catch(() => [])).toEqual([]);
@@ -387,5 +404,90 @@ test("installed CLI bridge selects one of two live Seatify editors and cleans up
     await rm(root, { recursive: true, force: true });
     const remains = await access(root).then(() => true).catch(() => false);
     expect(remains).toBe(false);
+  }
+});
+
+test("installed structural artifact and narrow follow-up preserve manual edits through save and restart", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const root = await mkdtemp(path.join(os.tmpdir(), "lineage-installed-structural-"));
+  const consumer = path.join(root, 'consumer'); const workspace = path.join(root, 'workspace'); const registry = path.join(root, 'registry');
+  const running: RunningEditor[] = []; const commands: RunningCommand[] = []; const contexts: BrowserContext[] = [];
+  try {
+    await mkdir(consumer); await mkdir(path.join(root, 'pack'));
+    expect((await command('npm', ['pack', '--json', '--pack-destination', path.join(root, 'pack')])).code).toBe(0);
+    const tarball = (await readdir(path.join(root, 'pack'))).find(name => name.endsWith('.tgz'))!;
+    await writeFile(path.join(consumer, 'package.json'), '{"private":true}');
+    expect((await command('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', path.join(root, 'pack', tarball)], process.env, consumer)).code).toBe(0);
+    const bin = path.join(consumer, 'node_modules/.bin/lineage-logo');
+    const env = { ...process.env, LINEAGE_LOGO_REGISTRY_DIR: registry };
+    expect((await command(bin, ['example', 'seatify', '--workspace', workspace], env)).code).toBe(0);
+    const originalPath = path.join(workspace, 'concepts/seatify-constellation.svg'); const original = await readFile(originalPath, 'utf8');
+    const editor = await startEditor(bin, workspace, registry, await availablePort()); running.push(editor);
+    const context = await browser.newContext(); contexts.push(context);
+    const page = await openSeatify(context, editor.url);
+    const manifest = await publicContext(bin, workspace, env);
+    const artifact = path.join(root, 'logo.svg'); const proposal = path.join(root, 'proposal.json');
+    await writeFile(artifact, '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"><defs><linearGradient id="c3-gradient"><stop offset="0" stop-color="#2244aa"/><stop offset="1" stop-color="#55ccaa"/></linearGradient><mask id="c3-mask"><rect width="160" height="100" fill="white"/></mask><path id="c3-shape" d="M0 0 L50 0 L25 50 Z"/></defs><g id="c3-logo" aria-label="Constructed brand" transform="translate(180 170)"><g id="c3-icon" aria-label="Constructed icon" transform="rotate(12)"><use href="#c3-shape" fill="url(#c3-gradient)" mask="url(#c3-mask)"/></g><text id="c3-tagline" aria-label="Constructed tagline" x="65" y="28" font-size="20">Made for you</text></g></svg>');
+    await writeFile(proposal, JSON.stringify({ protocolVersion: 1, transactionId: 'construct-logo', producer: { kind: 'test' }, document: { sessionId: manifest.sessionId, baseRevision: manifest.baseRevision }, operations: [{ type: 'addLayer', operationId: 'construct', parent: null, placement: 'last' }] }));
+    const submitted = startCommand(bin, ['submit', '--artifact', artifact, '--group-id', 'c3-logo', '--proposal', proposal, '--workspace', workspace, '--json', '--quiet'], env); commands.push(submitted);
+    await expect(page.locator('#agent-review-summary')).toBeVisible();
+    expect(await readdir(path.join(workspace, 'iterations')).catch(() => [])).toEqual([]);
+    await page.locator('#agent-accept').click();
+    const result = await finishCommand(submitted); expect(result.code).toBe(0);
+    const receipt = JSON.parse(result.stdout); const firstSaved = await readFile(path.join(workspace, receipt.artifact.path), 'utf8');
+    const { createHash } = await import('node:crypto');
+    expect(createHash('sha256').update(firstSaved).digest('hex')).toBe(receipt.artifact.digest);
+    expect(firstSaved).toContain('id="c3-logo"'); expect(firstSaved).toContain('id="c3-gradient"');
+    await page.locator('#undo').click(); await expect(page.locator('#artboard #c3-logo')).toHaveCount(0);
+    await page.locator('#redo').click(); await expect(page.locator('#artboard #c3-logo')).toHaveCount(1);
+    await page.locator('.layer-button').filter({ hasText: 'Constructed tagline' }).click();
+    if (await page.locator('#text-group').getAttribute('open') === null) await page.locator('#text-group summary').click();
+    await expect(page.locator('#text-content')).toBeVisible();
+    await page.locator('#text-content').fill('Manually refined'); await page.locator('#text-content').press('Enter');
+    await expect(page.locator('#artboard #c3-tagline')).toHaveText('Manually refined');
+    const snapshotResult = await command(bin, ['snapshot', '--workspace', workspace, '--json'], env); expect(snapshotResult.code).toBe(0);
+    const snapshot = JSON.parse(snapshotResult.stdout).snapshot;
+    expect(snapshot.svg).toContain('Manually refined'); expect(createHash('sha256').update(snapshot.svg).digest('hex')).toBe(snapshot.digest);
+    const icon = snapshot.layers.find((layer: { svgId: string }) => layer.svgId === 'c3-icon');
+    const title = snapshot.layers.find((layer: { name: string }) => layer.name === 'Seatify title');
+    const iconRootPosition = () => page.locator('#artboard #c3-icon').evaluate((element) => {
+      const node = element as SVGGraphicsElement;
+      const root = node.ownerSVGElement!;
+      const relative = root.getScreenCTM()!.inverse().multiply(node.getScreenCTM()!);
+      const box = node.getBBox();
+      const point = new DOMPoint(box.x + box.width / 2, box.y + box.height / 2).matrixTransform(relative);
+      return { x: point.x, y: point.y };
+    });
+    const iconBefore = await iconRootPosition();
+    const tagline = snapshot.layers.find((layer: { svgId: string }) => layer.svgId === 'c3-tagline');
+    await writeFile(proposal, JSON.stringify({ protocolVersion: 1, transactionId: 'narrow-followup', producer: { kind: 'test' }, document: { sessionId: snapshot.sessionId, baseRevision: snapshot.baseRevision }, operations: [
+      { type: 'translateLayer', operationVersion: 1, operationId: 'move', target: { sessionKey: icon.layerId }, dx: 4, dy: -2 },
+      { type: 'setText', operationVersion: 1, operationId: 'title-text', target: { sessionKey: title.layerId }, value: 'Seatify refreshed' },
+      { type: 'setPaint', operationId: 'paint', target: { sessionKey: tagline.layerId }, property: 'fill', value: '#2255aa' },
+    ] }));
+    const followup = startCommand(bin, ['submit', '--proposal', proposal, '--workspace', workspace, '--json', '--quiet'], env); commands.push(followup);
+    await expect(page.locator('#agent-accept')).toBeVisible(); await page.locator('#agent-accept').click();
+    const finalResult = await finishCommand(followup); expect(finalResult.code).toBe(0); const finalReceipt = JSON.parse(finalResult.stdout);
+    const finalSvg = await readFile(path.join(workspace, finalReceipt.artifact.path), 'utf8');
+    expect(createHash('sha256').update(finalSvg).digest('hex')).toBe(finalReceipt.artifact.digest);
+    expect(finalSvg).toContain('Seatify refreshed');
+    const iconAfter = await iconRootPosition();
+    expect(iconAfter.x - iconBefore.x).toBeCloseTo(4, 4); expect(iconAfter.y - iconBefore.y).toBeCloseTo(-2, 4);
+    expect(finalSvg).toContain('Manually refined'); expect(finalSvg).toContain('matrix(1,0,0,1,4,-2) rotate(12)'); expect(finalSvg).not.toContain('data-lineage-');
+    await page.locator('#undo').click(); await expect(page.locator('#artboard #c3-icon')).toHaveAttribute('transform', 'rotate(12)');
+    await expect(page.locator('#artboard #c3-tagline')).toHaveText('Manually refined'); await expect(page.locator('#artboard #c3-tagline')).not.toHaveAttribute('fill', '#2255aa');
+    await page.locator('#redo').click(); await expect(page.locator('#artboard #c3-tagline')).toHaveAttribute('fill', '#2255aa');
+    await context.close(); await stopEditor(editor);
+    const restarted = await startEditor(bin, workspace, registry, await availablePort()); running.push(restarted);
+    const reopenedContext = await browser.newContext(); contexts.push(reopenedContext);
+    const reopened = await openSeatify(reopenedContext, restarted.url, finalReceipt.artifact.path);
+    await expect(reopened.locator('#artboard #c3-tagline')).toHaveText('Manually refined');
+    await expect(reopened.locator('#artboard #c3-icon')).toHaveAttribute('transform', 'matrix(1,0,0,1,4,-2) rotate(12)');
+    expect(await readFile(originalPath, 'utf8')).toBe(original);
+    expect(await readFile(path.join(workspace, finalReceipt.artifact.path), 'utf8')).toBe(finalSvg);
+  } finally {
+    await Promise.allSettled(contexts.map(context => context.close()));
+    await Promise.allSettled(commands.map(stopCommand)); await Promise.allSettled(running.map(stopEditor));
+    await rm(root, { recursive: true, force: true });
   }
 });

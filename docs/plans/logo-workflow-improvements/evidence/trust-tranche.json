@@ -4,12 +4,12 @@
     "A2",
     "G1"
   ],
-  "status": "test-readiness-barrier-awaiting-final-checks",
+  "status": "merged-and-verified",
   "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/29",
-  "validationHead": "c408351fe2fa48cd71c5ad78eb9dc6dc7504b4c1",
+  "validationHead": "295c8a5c34158cfce69b2345aa1d58c2a95c50b5",
   "local": {
-    "codeCheck": "622 tests, typecheck and production build passed on macOS and normal-user local Linux (exact Git archive).",
-    "browser": "71 tests passed in macOS CI-style full run. Linux passed70/71; one same-path reload test submitted a stale prior-session proposal. That test readiness barrier is strengthened to match a successful current-page publication by session, source and revision.",
+    "codeCheck": "622 tests, typecheck and production build passed at final head in normal-user local Linux. macOS full check passed at64c6a12 with identical application code.",
+    "browser": "Final-head local Linux: all71 browsers passed. macOS: full71 at64c6a12 with identical application code, plus allsix final-head save-continuity cases after the test-only scroll synchronization change.",
     "saveJourney": "Save preserves selection, locks, scope, geometry, viewport and history; delayed/failed save and proposal preemption tested. Undo/Redo crosses the saved baseline. Actual server stop/restart preserves exact saved and original bytes.",
     "savedArtifactEvidence": {
       "sourceSha256": "0ce112d615c992b7e079527da731d98e55a3f176983172ebe25d9caaa21757f3",
@@ -47,13 +47,10 @@
     ],
     "native": "Installed native CLI could not start with configured model; independent focused review completed under skill fallback."
   },
-  "remaining": [
-    "Final readiness/scroll-barrier head local regression and all expected PR CI checks must pass.",
-    "Postmerge main CI must pass before G1."
-  ],
+  "remaining": [],
   "ci": {
-    "head": "c408351fe2fa48cd71c5ad78eb9dc6dc7504b4c1",
-    "run": "https://github.com/lineagehq/lineage-logo/actions/runs/34063637968",
+    "head": "295c8a5c34158cfce69b2345aa1d58c2a95c50b5",
+    "run": "https://github.com/lineagehq/lineage-logo/actions/runs/34064021384",
     "status": "all six CI jobs and CodeQL passed"
   },
   "leaseRepair": {
@@ -69,6 +66,11 @@
       "head": "b93226e6425431fbf04398e0c3b092df6bb89871",
       "run": "https://github.com/lineagehq/lineage-logo/actions/runs/34063046024",
       "status": "failed: 43 passed, 24 failed; orphan ownership investigated"
+    },
+    {
+      "head": "c408351fe2fa48cd71c5ad78eb9dc6dc7504b4c1",
+      "run": "https://github.com/lineagehq/lineage-logo/actions/runs/34063637968",
+      "status": "all six CI jobs and CodeQL passed"
     }
   ],
   "testReadinessRepair": {
@@ -76,5 +78,12 @@
     "change": "Avoid opening an automatically restored source twice; await successful current-page manifest POST and require public context to match sessionId, sourcePath and revision. Pending/revert and exact geometry assertions remain unchanged.",
     "review": "Independent test reviewer confirmed actual workspace initialization ordering and public-network barrier.",
     "scroll": "The save-scope test previously accepted an already-positive scroll offset before wheel(100,100) applied. Observed before20,0 versus after120,100. It now requires actual movement and polls the exact clamped wheel destination before Save, retaining exact post-Save equality; independently reviewed."
+  },
+  "merge": {
+    "sha": "a596c6a30a48292e935f4b5cf1bb04e9159a9dcb",
+    "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/29",
+    "mainCi": "https://github.com/lineagehq/lineage-logo/actions/runs/34064199335",
+    "mainCodeql": "https://github.com/lineagehq/lineage-logo/actions/runs/34064199328",
+    "status": "all expected jobs passed"
   }
 }

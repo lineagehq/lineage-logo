@@ -366,13 +366,6 @@ describe("preferences and shortcuts dialog", () => {
     expect(source).toContain("for (const selectedNode of context.selectedNodes)");
     expect(source).toContain("applySelectionPreferences(selectionPreferencesStore.reset())");
     expect(source).toContain('id="region-selection-hint"');
-    for (const label of [
-      "Oriented frame X", "Oriented frame Y", "Oriented frame width",
-      "Oriented frame height", "Absolute frame rotation °", "Lock aspect ratio",
-    ]) expect(source).toContain(label);
-    expect(source).toContain('id="geometry-error" class="field-error" aria-live="polite"');
-    expect(source).toContain('aria-describedby="geometry-mode geometry-error"');
-    expect(styles).toContain('#geometry-group input[aria-invalid="true"]');
     expect(styles).toContain("@media (prefers-reduced-motion: reduce)");
     expect(styles).toContain(".artboard { transition: none; }");
   });
@@ -472,7 +465,7 @@ describe("text, preview, and inspector discoverability", () => {
     expect(source).toContain('agentReview.status === "accepted" ? "Applied—not saved"');
     expect(source).toContain("summary.textContent = `${operation.label} · ${operation.operationId}`");
     expect(source).toContain("description.textContent = value");
-    expect(source).toContain("queueMicrotask(() => agentAcceptButton.focus())");
+    // Focus and initial comparison visibility are exercised in real-browser review tests.
     expect(styles).toContain(".agent-operation > summary:focus-visible");
   });
 
@@ -544,7 +537,7 @@ describe("text, preview, and inspector discoverability", () => {
     expect(groups.map((group) => group.open)).toEqual(before);
     const values = INSPECTOR_SUMMARY_IDS.map((id) => window.document.getElementById(id)?.textContent);
     expect(values).toEqual(selectionCount > 1
-      ? [`${selectionCount} layers`, `${selectionCount} selected`, "Fill Mixed · stroke inherited", "Unavailable", "Opacity 1 · stroke default"]
-      : ["text", "Select 2+", "Fill inherited · stroke inherited", "BLEEPED · 96", "Opacity 1 · stroke default"]);
+      ? [`${selectionCount} layers`, `${selectionCount} selected`, "Fill Mixed · stroke inherited", "Unavailable", "Position · size · rotation"]
+      : ["text", "Select 2+", "Fill inherited · stroke inherited", "BLEEPED · 96", "Position · size · rotation"]);
   });
 });

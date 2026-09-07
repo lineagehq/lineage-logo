@@ -101,7 +101,7 @@ describe("v1 Unicode text bounds", () => {
       Object.values(record).forEach(visit);
     };
     visit(PUBLIC_PROPOSAL_SCHEMA);
-    expect(fields).toHaveLength(8); // Three producer fields, intent, two fragments, rename and paint.
+    expect(fields).toHaveLength(9); // Three producer fields, intent, two fragments, rename, paint and text.
     for (const field of fields) {
       expect(field["x-maxUtf16CodeUnits"]).toBe(field.maxLength);
       expect(field.description).toContain("lineage-logo validate");
