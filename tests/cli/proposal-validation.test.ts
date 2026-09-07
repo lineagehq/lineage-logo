@@ -29,7 +29,7 @@ describe("public proposal local contract", () => {
     const schema = await invoke(["schema"]);
     expect(schema.result.schema).toEqual(PUBLIC_PROPOSAL_SCHEMA);
     expect(schema.result.schema.additionalProperties).toBe(false);
-    expect(new Set(PROPOSAL_EXAMPLES.map((p) => p.operations[0].type)).size).toBe(6);
+    expect(new Set(PROPOSAL_EXAMPLES.map((p) => p.operations[0].type)).size).toBe(8);
     for (const example of PROPOSAL_EXAMPLES) {
       expect(validateLocalProposal(JSON.stringify(example))).toEqual(example);
       const { file } = await files(example);
@@ -94,4 +94,49 @@ describe("public proposal local contract", () => {
     expect(run.result.error).toMatchObject({ code: "locked_target", operationId: "paint", field: "operations[0].target" });
     expect(JSON.stringify(run.result)).not.toContain("TOKEN_CANARY");
   });
+});
+
+it("derives artifact content before submission and rejects inconsistent selectors before discovery", async () => {
+  const template = { ...PROPOSAL_EXAMPLES[0], operations: [{ type: 'addLayer', operationId: 'add', parent: null, placement: 'last' }] };
+  const { dir, file, artifact } = await files(template);
+  const source = '<svg xmlns="http://www.w3.org/2000/svg"><g id="brand"><circle r="12"/></g></svg>';
+  await writeFile(artifact, source);
+  const result = await invoke(['submit', '--proposal', file, '--artifact', artifact, '--group-id', 'brand'], { status: 'reverted', transactionId: template.transactionId });
+  expect(result.submitAndWait).toHaveBeenCalledOnce();
+  expect(result.submitAndWait.mock.calls[0][0].operations[0].svg).toContain('<circle r="12">');
+  for (const [svg, id] of [[source, ''], [source, 'absent'], [source.replace('</svg>', '<g id="brand"/></svg>'), 'brand'], [source.replace('<circle', '<circle onclick="TOKEN_CANARY()"'), 'brand']]) {
+    await writeFile(artifact, svg);
+    const invalid = await invoke(['submit', '--proposal', file, '--artifact', artifact, '--group-id', id]);
+    expect(invalid.code).toBe(EXIT.usage); expect(invalid.resolveInstance).not.toHaveBeenCalled(); expect(invalid.submitAndWait).not.toHaveBeenCalled();
+    expect(JSON.stringify(invalid.result)).not.toContain('TOKEN_CANARY');
+  }
+  expect(await readdir(dir)).toEqual(['artifact.svg', 'proposal.json']);
+  expect(await readFile(file, 'utf8')).toBe(JSON.stringify(template));
+});
+
+it('rejects an artifact group inside a nested SVG viewport before discovery or delivery', async () => {
+  const template = { ...PROPOSAL_EXAMPLES[0], operations: [{ type: 'addLayer', operationId: 'add', parent: null, placement: 'last' }] };
+  const { dir, file, artifact } = await files(template);
+  const source = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><svg width="50" height="50" viewBox="0 0 100 100"><g id="brand"><rect width="100" height="100"/></g></svg></svg>';
+  await writeFile(artifact, source);
+  for (const command of ['validate', 'submit']) {
+    const result = await invoke([command, '--proposal', file, '--artifact', artifact, '--group-id', 'brand']);
+    expect(result.code).toBe(EXIT.usage); expect(result.result.error.code).toBe('invalid_svg');
+    expect(result.resolveInstance).not.toHaveBeenCalled(); expect(result.submitAndWait).not.toHaveBeenCalled();
+  }
+  expect(await readFile(artifact, 'utf8')).toBe(source);
+  expect(await readFile(file, 'utf8')).toBe(JSON.stringify(template));
+  expect(await readdir(dir)).toEqual(['artifact.svg', 'proposal.json']);
+});
+
+it('rejects mask reparenting that would inherit group paint before discovery and explains the repair', async () => {
+  const template = { ...PROPOSAL_EXAMPLES[0], operations: [{ type: 'addLayer', operationId: 'add', parent: null, placement: 'last' }] };
+  const { dir, file, artifact } = await files(template);
+  const source = '<svg xmlns="http://www.w3.org/2000/svg"><defs><mask id="cut"><rect width="40" height="40"/></mask></defs><g id="brand" fill="white"><rect width="40" height="40" mask="url(#cut)"/></g></svg>';
+  await writeFile(artifact, source);
+  const result = await invoke(['submit', '--proposal', file, '--artifact', artifact, '--group-id', 'brand']);
+  expect(result.code).toBe(EXIT.usage); expect(result.result.error.code).toBe('reference_damage');
+  expect(result.result.error.nextAction).toContain('move inherited group presentation onto artwork children');
+  expect(result.resolveInstance).not.toHaveBeenCalled(); expect(result.submitAndWait).not.toHaveBeenCalled();
+  expect(await readFile(artifact, 'utf8')).toBe(source); expect(await readdir(dir)).toEqual(['artifact.svg', 'proposal.json']);
 });

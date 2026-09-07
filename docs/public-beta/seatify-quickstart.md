@@ -43,11 +43,11 @@ The result contains an editor ID, session ID, base revision, and layer IDs. It d
 }
 ```
 
-Save it as `proposal.json`, then submit it with the starter SVG as the clean artifact input:
+Save it as `proposal.json`, then submit the paint-only proposal (no artifact is needed):
 
 ```bash
 cd /tmp/lineage-logo-seatify-walkthrough/install
-npx lineage-logo submit --workspace /tmp/lineage-logo-seatify-walkthrough/seatify-workspace --artifact /tmp/lineage-logo-seatify-walkthrough/seatify-workspace/concepts/seatify-constellation.svg --proposal proposal.json --json
+npx lineage-logo submit --workspace /tmp/lineage-logo-seatify-walkthrough/seatify-workspace --proposal proposal.json --json
 ```
 
 The command refuses an ambiguous or stale editor context, malformed proposal, unsafe SVG, and any proposal containing an unexpected field such as `sourcePath`. It waits for a person to review the proposal. The person must explicitly choose **Accept all** in the editor. In this beta, that established action atomically accepts and durably saves the iteration; it counts only when the CLI returns an `iterations/...svg` path and digest.
@@ -66,3 +66,5 @@ conflict or stale context, fetch fresh context and create a new proposal; never
 reuse or edit a prior transaction ID.
 
 Re-running `example seatify` is safe only while its exact starter files remain intact. It refuses a workspace with other files rather than merging, replacing, or deleting anything.
+
+For artifact-derived group construction and narrow text/move corrections, see [structural proposals](agent-proposals.md).

@@ -298,7 +298,8 @@ describe("public beta cohort operating kit", () => {
     expect(quickstart).toContain('walkthrough_root="/tmp/lineage-logo-seatify-walkthrough"');
     expect(quickstart).toContain('--workspace "$walkthrough_root/seatify-workspace"');
     expect(quickstart).toContain("--workspace /tmp/lineage-logo-seatify-walkthrough/seatify-workspace");
-    expect(quickstart).toContain("--artifact /tmp/lineage-logo-seatify-walkthrough/seatify-workspace/concepts/seatify-constellation.svg");
+    expect(quickstart).toContain("--proposal proposal.json --json");
+    expect(quickstart).toContain("no artifact is needed");
     expect(quickstart).toContain("The install project and Seatify workspace are separate directories");
   });
 });

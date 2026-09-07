@@ -1,3 +1,4 @@
+import { validateSvgTextEdit } from "./svg-text.js";
 export const AGENT_PROTOCOL_VERSION = 1 as const;
 export { AGENT_MAX_PAYLOAD_BYTES, CLEAN_AGENT_SVG_REJECTION_CORPUS, validateCleanAgentSvg } from "./agent-svg-validator.js";
 import { AGENT_MAX_PAYLOAD_BYTES } from "./agent-svg-validator.js";
@@ -63,8 +64,23 @@ export interface SelectFocusOperation extends AgentOperationBase {
   scope?: LayerRef | null;
 }
 
+/** Versioned narrow edits; translation uses the target parent's SVG coordinates. */
+export interface TranslateLayerOperation extends AgentOperationBase {
+  type: "translateLayer";
+  operationVersion: 1;
+  target: LayerRef;
+  dx: number;
+  dy: number;
+}
+export interface SetTextOperation extends AgentOperationBase {
+  type: "setText";
+  operationVersion: 1;
+  target: LayerRef;
+  value: string;
+}
+
 export type AgentOperation = AddLayerOperation | ReplaceLayerOperation | RenameLayerOperation
-  | ReorderLayerOperation | SetPaintOperation | SelectFocusOperation;
+  | ReorderLayerOperation | SetPaintOperation | SelectFocusOperation | TranslateLayerOperation | SetTextOperation;
 
 export interface AgentTransactionV1 {
   protocolVersion: typeof AGENT_PROTOCOL_VERSION;
@@ -222,6 +238,8 @@ function parseOperation(value: unknown, index: number, earlierIds: Set<string>):
     renameLayer: { allowed: ["type", "operationId", "target", "name"], required: ["type", "operationId", "target", "name"] },
     reorderLayer: { allowed: ["type", "operationId", "target", "placement"], required: ["type", "operationId", "target", "placement"] },
     setPaint: { allowed: ["type", "operationId", "target", "property", "value"], required: ["type", "operationId", "target", "property", "value"] },
+    translateLayer: { allowed: ["type", "operationId", "operationVersion", "target", "dx", "dy"], required: ["type", "operationId", "operationVersion", "target", "dx", "dy"] },
+    setText: { allowed: ["type", "operationId", "operationVersion", "target", "value"], required: ["type", "operationId", "operationVersion", "target", "value"] },
     selectFocus: { allowed: ["type", "operationId", "targets", "primary", "scope"], required: ["type", "operationId", "targets"] },
   };
   if (typeof type !== "string" || !definitions[type]) fail("unknown_operation", `Unknown operation ${String(type)}`, `${path}.type`);
@@ -242,6 +260,16 @@ function parseOperation(value: unknown, index: number, earlierIds: Set<string>):
     result = { type, operationId, parent: input.parent === null ? null : ref(input.parent, `${path}.parent`), placement: checkedPlacement(input.placement, `${path}.placement`, true), svg: boundedText(input.svg, `${path}.svg`, AGENT_MAX_PAYLOAD_BYTES) } as AddLayerOperation;
   } else if (type === "replaceLayer") {
     result = { type, operationId, target: ref(input.target, `${path}.target`), svg: boundedText(input.svg, `${path}.svg`, AGENT_MAX_PAYLOAD_BYTES) };
+  } else if (type === "translateLayer" || type === "setText") {
+    if (input.operationVersion !== 1) fail("unsupported_version", "Unsupported narrow operation version", `${path}.operationVersion`);
+    const target = ref(input.target, `${path}.target`);
+    if (type === "translateLayer") {
+      for (const field of ["dx", "dy"]) if (typeof input[field] !== "number" || !Number.isFinite(input[field]) || Math.abs(input[field] as number) > 1_000_000_000) fail("invalid_payload", "Translation must be bounded finite SVG units", `${path}.${field}`);
+      result = { type, operationId, operationVersion: 1, target, dx: input.dx as number, dy: input.dy as number };
+    } else {
+      if (typeof input.value !== "string" || !validateSvgTextEdit({ property: "content", value: input.value }).valid) fail("invalid_payload", "Text must be bounded plain content", `${path}.value`);
+      result = { type, operationId, operationVersion: 1, target, value: input.value };
+    }
   } else if (type === "renameLayer") {
     if (input.name !== null && (typeof input.name !== "string" || input.name.length > 512)) fail("invalid_payload", `${path}.name must be null or at most 512 characters`, `${path}.name`);
     result = { type, operationId, target: ref(input.target, `${path}.target`), name: input.name as string | null };
