@@ -27,6 +27,7 @@ export function safeError(detail: Partial<AgentTransactionError>, fallback = "in
     invalid_paint: "Use a supported color, none, currentColor or a local resource reference.",
     locked_target: "Choose an unlocked target or ask the reviewer to unlock it, then refresh context.",
     invalid_reference: "Use a current session key or the ID of an earlier operation.",
+    reference_damage: "Keep local references intact. For artifact extraction, put resources inside the selected group with verified appearance, or move inherited group presentation onto artwork children.",
   };
   return { code, ...(operationId ? { operationId } : {}), ...(field ? { field } : {}), nextAction: guidance[code] ?? "Inspect lineage-logo schema, correct the indicated proposal field and run lineage-logo validate again." };
 }

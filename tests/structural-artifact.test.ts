@@ -72,3 +72,48 @@ describe("artifact structural handoff", () => {
     for (const operation of [{ ...move, operationVersion: 2 }, { ...move, dx: 1e10 }, { ...text, value: '<tag>' }, { ...text, value: 'x'.repeat(2049) }]) expect(() => tx([operation as AgentOperation])).toThrow();
   });
 });
+
+describe('narrow move CSS authority', () => {
+  it.each([
+    ['inline', '<g data-lineage-key="mark" style="transform:translate(10px, 0)"/>'],
+    ['stylesheet', '<style>.moved { transform:translate(10px, 0) }</style><g class="moved" data-lineage-key="mark"/>'],
+    ['ancestor selector', '<style>.parent .moved { transform:translate(10px, 0) }</style><g class="parent"><g class="moved" data-lineage-key="mark"/></g>'],
+    ['nested rule', '<style>@media screen { .moved { transform:translate(10px, 0) } }</style><g class="moved" data-lineage-key="mark"/>'],
+    ['inherited declaration', '<g style="transform:scale(2)"><g data-lineage-key="mark" style="transform:inherit"/></g>'],
+  ])('rejects %s CSS-controlled movement and discards preceding text edits', (_name, markup) => {
+    const window = new Window();
+    const canonical = new window.DOMParser().parseFromString(`<svg xmlns="http://www.w3.org/2000/svg"><text data-lineage-key="text">Manual</text>${markup}</svg>`, "image/svg+xml").documentElement as unknown as SVGSVGElement;
+    const before = canonical.outerHTML;
+    const staged = evaluateAgentTransaction(canonical, tx([text, move]), context);
+    expect(staged.result).toMatchObject({ status: 'rejected', error: { code: 'invalid_payload', operationId: 'move', message: expect.stringContaining('Convert it to an SVG transform attribute') } });
+    expect(staged.candidate).toBeUndefined(); expect(canonical.outerHTML).toBe(before);
+  });
+  it('preserves ancestor CSS and unrelated stylesheet rules when translating in parent coordinates', () => {
+    const canonical = root();
+    canonical.querySelector('[data-lineage-key="parent"]')!.setAttribute('style', 'transform:scale(2)');
+    const style = canonical.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'style');
+    style.textContent = '.other { transform:scale(3) }'; canonical.prepend(style);
+    const staged = evaluateAgentTransaction(canonical, tx([move]), context);
+    expect(staged.result.status).toBe('staged');
+    expect(staged.candidate?.querySelector('[data-lineage-key="parent"]')?.getAttribute('style')).toBe('transform:scale(2)');
+    expect(staged.candidate?.querySelector('[data-lineage-key="mark"]')?.getAttribute('transform')).toBe('matrix(1,0,0,1,4,-2) rotate(20)');
+  });
+});
+
+describe('external resource presentation context', () => {
+  const masked = '<svg xmlns="http://www.w3.org/2000/svg"><defs><mask id="cut"><rect width="40" height="40"/></mask></defs><g id="logo" fill="white"><rect width="40" height="40" mask="url(#cut)"/></g></svg>';
+  it('rejects reparenting a root mask beneath inherited group paint', () => {
+    expect(() => extractArtifactGroup(masked, 'logo')).toThrow(/External resources would inherit/);
+    // A bounded guard does not guess which descendants override each property.
+    expect(() => extractArtifactGroup(masked.replace('<rect width="40" height="40"/>', '<rect width="40" height="40" fill="black"/>'), 'logo')).toThrow(/External resources would inherit/);
+  });
+  it('accepts explicit self-contained resource context and presentation on artwork children', () => {
+    const selfContained = '<svg xmlns="http://www.w3.org/2000/svg"><g id="logo" fill="white"><defs><mask id="cut"><rect width="40" height="40" fill="black"/></mask></defs><rect width="40" height="40" mask="url(#cut)"/></g></svg>';
+    expect(extractArtifactGroup(selfContained, 'logo')).toContain('fill="black"');
+    const onArtwork = masked.replace('id="logo" fill="white"', 'id="logo"').replace('mask="url(#cut)"', 'fill="white" mask="url(#cut)"');
+    expect(extractArtifactGroup(onArtwork, 'logo')).toContain('fill="white" mask="url(#cut)"');
+  });
+  it('does not treat non-inherited stop-color as inherited group paint', () => {
+    expect(() => extractArtifactGroup(masked.replace('fill="white"', 'stop-color="white"'), 'logo')).not.toThrow();
+  });
+});

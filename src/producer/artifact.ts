@@ -36,10 +36,10 @@ export function extractArtifactGroup(source: string, groupId: string): string {
   if (!matches.length) fail("missing_target");
   if (matches.length !== 1) fail("ambiguous_target");
   const selected = matches[0];
-  if (selected.name !== "g") fail("invalid_svg");
+  if (selected.name !== "g" || selected.parent !== nodes[0]) fail("invalid_svg");
   // Ancestor presentation/transform state cannot be silently dropped. Select a
   // self-contained root group instead when the artifact needs inherited context.
-  for (let parent = selected.parent; parent; parent = parent.parent) {
+  for (let parent: Node | undefined = selected.parent; parent; parent = parent.parent) {
     if (parent.name !== "svg" || Object.keys(parent.attributes).some((key) => !["xmlns", "xmlns:xlink", "width", "height", "viewBox", "version"].includes(key))) fail("invalid_svg");
   }
   const included = new Set(descendants(selected));
@@ -53,7 +53,7 @@ export function extractArtifactGroup(source: string, groupId: string): string {
     if (included.has(resource)) continue;
     // Resource references must come from defs; importing arbitrary outside
     // artwork would silently lose its inherited transform/presentation context.
-    if (resource.parent?.name !== "defs" || Object.keys(resource.parent.attributes).some((key) => !["xmlns", "xmlns:xlink", "id"].includes(key))) fail("reference_damage");
+    if (resource.parent?.name !== "defs" || resource.parent.parent !== nodes[0] || Object.keys(resource.parent.attributes).some((key) => !["xmlns", "xmlns:xlink", "id"].includes(key))) fail("reference_damage");
     if (descendants(resource).some((node) => included.has(node))) fail("reference_damage");
     resources.push(resource);
     descendants(resource).forEach((node) => included.add(node));
@@ -61,6 +61,21 @@ export function extractArtifactGroup(source: string, groupId: string): string {
   }
   const ids = [...included].map((node) => node.attributes.id).filter(Boolean);
   if (new Set(ids).size !== ids.length) fail("ambiguous_target");
+  // Unlike stop-color, these presentation properties inherit into resource
+  // descendants. Moving a root resource under a painted group could change a
+  // mask from black to white, or otherwise change its rendering. Keep this
+  // bounded extraction fail-closed rather than inventing default resource paint.
+  const inheritedPresentation = new Set([
+    "color", "fill", "fill-opacity", "fill-rule", "clip-rule", "stroke", "stroke-opacity", "stroke-width",
+    "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-dasharray", "stroke-dashoffset",
+    "font", "font-family", "font-size", "font-size-adjust", "font-stretch", "font-style", "font-variant", "font-weight",
+    "letter-spacing", "word-spacing", "text-anchor", "text-decoration", "direction", "writing-mode",
+    "visibility", "pointer-events", "cursor", "paint-order", "marker-start", "marker-mid", "marker-end",
+    "shape-rendering", "text-rendering", "image-rendering", "color-rendering", "color-interpolation", "color-interpolation-filters",
+  ]);
+  if (resources.length && Object.keys(selected.attributes).some((name) => inheritedPresentation.has(name))) {
+    throw new AgentProtocolError({ code: "reference_damage", message: "External resources would inherit the group’s presentation. Put resources inside the artifact group with verified appearance, or move group presentation onto artwork children before submitting.", path: "artifact" });
+  }
   const group: Node = { ...selected, attributes: { ...selected.attributes, xmlns: "http://www.w3.org/2000/svg", "xmlns:xlink": "http://www.w3.org/1999/xlink" }, children: [...(resources.length ? [{ name: "defs", attributes: {}, children: resources } satisfies Node] : []), ...selected.children] };
   return serialize(group);
 }

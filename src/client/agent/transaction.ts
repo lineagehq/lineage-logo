@@ -1,3 +1,4 @@
+import { hasCssControlledTransform } from "../canvas/css-transform";
 import { validateCleanAgentSvg } from "../../shared/agent-protocol";
 import { formatMatrix } from "../canvas/transform";
 import { validateSvgTextEdit } from "../../shared/svg-text";
@@ -302,6 +303,7 @@ export function evaluateAgentTransaction(
             proposed: name || "Unnamed", context: `${nodeSummary(target)} · session ${key}`,
           });
         } else if (operation.type === "translateLayer") {
+          if (hasCssControlledTransform(target, candidate)) fail("invalid_payload", "CSS controls this layer’s transform. Convert it to an SVG transform attribute before submitting a move.", operationId);
           const current = target.getAttribute("transform") ?? "";
           try {
             const translation = formatMatrix({ a: 1, b: 0, c: 0, d: 1, e: operation.dx, f: operation.dy });
