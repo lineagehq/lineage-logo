@@ -423,6 +423,7 @@ async function runSubmit(args: ParsedArguments, io: CliIo, dependencies: CliDepe
   output(io, args.json, {
     schemaVersion: 1, command: "submit", ok: mapped.exitCode === 0, status: mapped.status, message: mapped.message,
     ...(mapped.exitCode !== 0 ? { error: outcomeError(outcome) } : {}),
+    ...(outcome.status === "reverted" && outcome.revisionRequest !== undefined ? { revisionRequest: outcome.revisionRequest } : {}),
     ...(mapped.exitCode === 0 ? { artifact: { path: accepted!.durablePath, digest: accepted!.digest, ...(args.options.has("include-svg") ? { svg: accepted!.svg } : {}) } } : {}),
   });
   return mapped.exitCode;

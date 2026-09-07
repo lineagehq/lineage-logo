@@ -6,6 +6,7 @@ const headers = { Authorization: "Bearer lineage-logo-e2e-agent-token" };
 for (const width of [1280, 760]) test(`geometry and text comparison returns revision feedback at ${width}px`, async ({ page, request }) => {
   await page.setViewportSize({ width, height: 800 });
   await page.goto("/");
+  if (await page.locator("#toggle-left-sidebar").getAttribute("aria-expanded") === "false") await page.locator("#toggle-left-sidebar").click();
   const publication = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/agent/document" && response.ok());
   await page.locator('[data-path="concepts/seatify-constellation.svg"]').click();
   await publication;
@@ -24,7 +25,7 @@ for (const width of [1280, 760]) test(`geometry and text comparison returns revi
   await expect(comparison).toBeVisible();
   await expect(comparison.locator("img")).toHaveCount(8);
   await expect.poll(() => comparison.locator("img").evaluateAll((images) => images.every((image) => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
-  const sources = await comparison.locator("img").evaluateAll((images) => [0, 4].map((index) => decodeURIComponent((images[index] as HTMLImageElement).src.split(",")[1])));
+  const sources = await comparison.locator("img").evaluateAll(async (images) => Promise.all([0, 4].map(async (index) => (await fetch((images[index] as HTMLImageElement).src)).text())));
   expect(sources[0]).not.toContain("Seatify revised"); expect(sources[1]).toContain("Seatify revised");
   expect(sources[0].match(/viewBox="([^"]+)"/)?.[1]).toBe(sources[1].match(/viewBox="([^"]+)"/)?.[1]);
   await comparison.getByLabel("Comparison background").selectOption("#1f2937");
