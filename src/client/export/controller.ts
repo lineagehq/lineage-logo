@@ -22,12 +22,19 @@ export class AssetExportController {
       <label>PNG background <select name="background"><option value="transparent">Transparent</option><option value="white">White</option><option value="black">Black</option></select></label>
       <p>Small images are PNG, not ICO. PNG preserves aspect ratio with empty space around wide or tall artwork.</p>
       <button type="button" name="download">Download export</button><p role="status" aria-live="polite"></p><button value="close">Close</button></form>`;
+    this.dialog.removeAttribute("aria-label");
     this.dialog.setAttribute("aria-labelledby", "asset-export-title");
     const form = this.dialog.querySelector("form")!;
     const control = (name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement;
     const status = this.dialog.querySelector<HTMLElement>('[role="status"]')!;
     const select = control("target") as HTMLSelectElement;
-    for (const id of eligiblePreviewTargetIds(context.svg)) select.add(new Option(`#${id}`, id));
+    const artwork = new DOMParser().parseFromString(context.svg, "image/svg+xml");
+    for (const id of eligiblePreviewTargetIds(context.svg)) {
+      const layer = Array.from(artwork.querySelectorAll("[id]")).find(node => node.id === id);
+      const title = Array.from(layer?.children ?? []).find(node => node.localName === "title")?.textContent?.trim();
+      const label = layer?.getAttribute("aria-label")?.trim() || title;
+      select.add(new Option(label ? `${label} (#${id})` : `#${id}`, id));
+    }
     let busy = false;
     const run = async (action: () => Promise<void>) => {
       if (busy) return; busy = true;
@@ -60,6 +67,8 @@ export class AssetExportController {
   }
   private showFailure(error: unknown, invoker: HTMLElement): void {
     this.dialog.replaceChildren();
+    this.dialog.removeAttribute("aria-labelledby");
+    this.dialog.setAttribute("aria-label", "Export unavailable");
     const message = document.createElement("p"); message.textContent = error instanceof Error ? error.message : "Open a logo before exporting.";
     const close = document.createElement("button"); close.textContent = "Close"; close.onclick = () => this.dialog.close();
     this.dialog.append(message, close); this.dialog.onclose = () => invoker.focus(); this.dialog.showModal(); close.focus();
