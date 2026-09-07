@@ -1,0 +1,49 @@
+name: Extended quality evidence
+
+on:
+  schedule:
+    - cron: '17 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  full-corpus:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e:corpus
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: full-corpus-diagnostics
+          path: test-results/release-diagnostics.json
+          if-no-files-found: error
+
+  performance-measurement:
+    name: Performance measurement (not B0 acceptance)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx tsx scripts/ux-performance-gate.ts --measure-only --output performance-measurement.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: performance-measurement
+          path: performance-measurement.json
+          if-no-files-found: error

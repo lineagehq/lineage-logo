@@ -458,6 +458,20 @@ export function parseNumericTransformValue(
   return { value: field === "rotation" ? normalizeRotationDegrees(value) : value };
 }
 
+/** Runtime roles expose named canvas geometry without altering saved SVG semantics. */
+export function ensureLayerAccessibilityRole(node: SVGGraphicsElement): void {
+  // Authored selectors may depend on role attributes. Keep their artwork semantics
+  // intact; the separate layer list remains the accessible editing interface.
+  if (node.ownerSVGElement?.querySelector("style")) return;
+  const named = Boolean(node.getAttribute("aria-label")?.trim() || node.getAttribute("aria-labelledby")?.trim());
+  if (!named && node.hasAttribute("data-lineage-added-role")) {
+    node.removeAttribute("role"); node.removeAttribute("data-lineage-added-role");
+  } else if (named && !node.hasAttribute("role")) {
+    node.setAttribute("role", node.localName === "g" ? "group" : "img");
+    node.setAttribute("data-lineage-added-role", "true");
+  }
+}
+
 export function serializeSvg(root: SVGSVGElement | undefined, stripEditorState: boolean): string {
   if (!root) return "";
   const clone = root.cloneNode(true) as SVGSVGElement;
@@ -483,9 +497,10 @@ export function serializeSvg(root: SVGSVGElement | undefined, stripEditorState: 
 
   if (stripEditorState) {
     for (const metadata of Array.from(clone.querySelectorAll("metadata#lineage-logo-edit"))) metadata.remove();
-    if (clone.hasAttribute("data-lineage-added-role")) clone.removeAttribute("role");
     if (clone.hasAttribute("data-lineage-added-label")) clone.removeAttribute("aria-label");
     for (const element of [clone, ...Array.from(clone.querySelectorAll("*"))]) {
+      if (element.hasAttribute("data-lineage-original-role")) element.setAttribute("role", element.getAttribute("data-lineage-original-role")!);
+      else if (element.hasAttribute("data-lineage-added-role")) element.removeAttribute("role");
       for (const attribute of Array.from(element.attributes)) {
         if (/^data-(?:lineage|agent|review|transport)-/.test(attribute.name)) {
           element.removeAttribute(attribute.name);
@@ -978,7 +993,8 @@ export function ungroupAvailability(
   if (!node || node.localName !== "g") return { allowed: false, reason: "Select one neutral group to ungroup." };
   if (isLocked(node)) return { allowed: false, reason: "Unlock this group and its ancestors before ungrouping." };
   const sourceAttributes = Array.from(node.attributes).filter((attribute) =>
-    !attribute.name.startsWith("data-lineage-") && attribute.name !== "aria-label",
+    !attribute.name.startsWith("data-lineage-") && attribute.name !== "aria-label"
+      && !(attribute.name === "role" && node.hasAttribute("data-lineage-added-role")),
   );
   if (sourceAttributes.length > 0) {
     return { allowed: false, reason: `Ungroup is disabled because this group has source attribute ${sourceAttributes[0].name}.` };
@@ -1966,6 +1982,7 @@ export class SvgEditor {
     if (!node || (node.getAttribute("aria-label") ?? "") === trimmed) return;
     this.#mutate(() => {
       renameLayer(node, trimmed);
+      ensureLayerAccessibilityRole(node);
       this.#setSelectionUi(node);
       this.#notifySelectionContext();
     });
@@ -2263,11 +2280,19 @@ export class SvgEditor {
   }
 
   #assignKeys(root: SVGSVGElement): void {
+    // The editing surface contains keyboard-operable handles, so it cannot be
+    // an atomic image in the accessibility tree. Preserve authored export roles.
+    if (!root.querySelector("style") && (!root.hasAttribute("role") || root.getAttribute("role") === "img")) {
+      if (root.hasAttribute("role") && !root.hasAttribute("data-lineage-added-role")) root.setAttribute("data-lineage-original-role", root.getAttribute("role")!);
+      else root.setAttribute("data-lineage-added-role", "true");
+      root.setAttribute("role", "group");
+    }
     const nodes = Array.from(root.querySelectorAll<SVGGraphicsElement>(EDITABLE_SELECTOR))
       .filter((node) => isSelectableNode(node, root));
     const usedKeys = new Set(nodes.map((node) => node.dataset.lineageKey).filter(Boolean));
     for (const node of nodes) {
       if (!isSelectableNode(node, root)) continue;
+      ensureLayerAccessibilityRole(node);
       if (!node.dataset.lineageKey) {
         let key: string;
         do {

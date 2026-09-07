@@ -1,0 +1,14 @@
+import {describe,it,expect} from 'vitest';
+import {assessPerformance,summarize} from '../scripts/ux-performance-metrics';
+function receipt() {
+  const results: Record<string, any> = Object.fromEntries(['100','500','1000'].map(size => [size,{startupMs:50,...Object.fromEntries(['open','selection','filtering','preview'].map(metric => [metric,summarize(Array(30).fill(10))])),dragRuns:Array.from({length:5},()=>Array(30).fill(10)),dragFrames:summarize(Array(150).fill(10))}]));
+  return {schemaVersion:2,commit:'a'.repeat(40),harnessSha256:'b'.repeat(64),fixtures:Object.fromEntries(['100','500','1000'].map(n=>[n,'c'.repeat(64)])),method:{version:2,warmups:2,repetitions:30,dragRuns:5},environment:{platform:'darwin',release:'25',cpu:'M5',cpuCount:18,memoryBytes:100,node:'22',browser:'151',playwright:'1.62.1',viewport:{width:1440,height:1000},reducedMotion:'reduce',headless:true,server:'Vite'},results,heap:{samplesBytes:Array(20).fill(1000)}};
+}
+describe('D3 performance evidence',()=>{
+  it('retains outliers and computes true even median and nearest-rank p95',()=>{expect(summarize([1,2,3,100])).toMatchObject({medianMs:2.5,p95Ms:100,samplesMs:[1,2,3,100]}); expect(()=>summarize([NaN])).toThrow();});
+  it('passes matched complete timing evidence at inclusive 20% boundary',()=>{const a=receipt(),b=receipt();a.results['500'].selection=summarize(Array(30).fill(12));expect(assessPerformance(a,b).status).toBe('pass');});
+  it('fails regressions from raw samples even when cached p95 claims a pass',()=>{const a=receipt(),b=receipt();a.results['100'].selection={...summarize(Array(30).fill(20)),p95Ms:1};expect(assessPerformance(a,b).status).toBe('fail');});
+  it('fails an absolute budget even with unchanged baseline',()=>{const a=receipt();a.results['500'].selection=summarize(Array(30).fill(101));expect(assessPerformance(a,a).reasons).toContain('500/selection p95 exceeds 100ms.');});
+  it('rejects historical B0 sampler, missing baseline, mismatched environments and harnesses',()=>{expect(assessPerformance(receipt()).status).toBe('incomparable');const b=receipt();b.schemaVersion=1;expect(assessPerformance(receipt(),b).status).toBe('incomparable');const c=receipt();c.environment.browser='152';expect(assessPerformance(receipt(),c).status).toBe('incomparable');c.environment.browser='151';c.harnessSha256='d'.repeat(64);expect(assessPerformance(receipt(),c).status).toBe('incomparable');});
+  it('rejects incomplete counts, forged drag concatenation and absent heap evidence',()=>{const a=receipt();a.results['100'].selection.samplesMs.pop();expect(assessPerformance(a,receipt()).status).toBe('incomparable');const b=receipt();b.results['500'].dragRuns[0][0]=99;expect(assessPerformance(b,receipt()).status).toBe('incomparable');const c=receipt();c.heap.samplesBytes.pop();expect(assessPerformance(c,receipt()).status).toBe('incomparable');});
+});
