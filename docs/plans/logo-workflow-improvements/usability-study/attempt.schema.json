@@ -1,0 +1,1271 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "study_kind",
+    "candidate_manifest_sha256",
+    "participant_slot",
+    "attempt_id",
+    "attempt_status",
+    "environment",
+    "milestones",
+    "checks",
+    "product_blocker",
+    "data_loss",
+    "wrong_target_edit",
+    "artifacts",
+    "supersedes_attempt_id",
+    "blocker_fix_commit"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "study_kind": {
+      "const": "local_candidate"
+    },
+    "candidate_manifest_sha256": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "participant_slot": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{32}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "attempt_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{32}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "attempt_status": {
+      "enum": [
+        "incomplete",
+        "completed",
+        "failed",
+        "invalid"
+      ]
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "os",
+        "node_version",
+        "browser_version",
+        "viewport_width",
+        "viewport_height",
+        "zoom_percent"
+      ],
+      "properties": {
+        "os": {
+          "enum": [
+            null,
+            "macos",
+            "linux",
+            "windows"
+          ]
+        },
+        "node_version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "browser_version": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(Chromium|Firefox|WebKit|Safari) [0-9]+(\\.[0-9]+){0,3}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "viewport_width": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "viewport_height": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "zoom_percent": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 500
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "milestones": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "create_import",
+        "review_reject",
+        "review_accept",
+        "select_recolor_align",
+        "edit_tagline",
+        "preserving_followup",
+        "save_restart_reopen",
+        "export_mark_wordmark"
+      ],
+      "properties": {
+        "create_import": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "unaided_seconds",
+            "retries",
+            "selection_retries",
+            "help_uses",
+            "assistance",
+            "friction"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "not_attempted",
+                "pass",
+                "fail",
+                "incomplete"
+              ]
+            },
+            "unaided_seconds": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1800
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "selection_retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "help_uses": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "assistance": {
+              "enum": [
+                "none",
+                "coaching",
+                "control_takeover",
+                "environment_repair"
+              ]
+            },
+            "friction": {
+              "enum": [
+                "none",
+                "discovery",
+                "selection",
+                "state_comprehension",
+                "agent_handoff",
+                "review",
+                "saving",
+                "reopening",
+                "export",
+                "environment",
+                "time_limit",
+                "retry_limit",
+                "product_blocker"
+              ]
+            }
+          }
+        },
+        "review_reject": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "unaided_seconds",
+            "retries",
+            "selection_retries",
+            "help_uses",
+            "assistance",
+            "friction"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "not_attempted",
+                "pass",
+                "fail",
+                "incomplete"
+              ]
+            },
+            "unaided_seconds": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1800
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "selection_retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "help_uses": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "assistance": {
+              "enum": [
+                "none",
+                "coaching",
+                "control_takeover",
+                "environment_repair"
+              ]
+            },
+            "friction": {
+              "enum": [
+                "none",
+                "discovery",
+                "selection",
+                "state_comprehension",
+                "agent_handoff",
+                "review",
+                "saving",
+                "reopening",
+                "export",
+                "environment",
+                "time_limit",
+                "retry_limit",
+                "product_blocker"
+              ]
+            }
+          }
+        },
+        "review_accept": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "unaided_seconds",
+            "retries",
+            "selection_retries",
+            "help_uses",
+            "assistance",
+            "friction"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "not_attempted",
+                "pass",
+                "fail",
+                "incomplete"
+              ]
+            },
+            "unaided_seconds": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1800
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "selection_retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "help_uses": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "assistance": {
+              "enum": [
+                "none",
+                "coaching",
+                "control_takeover",
+                "environment_repair"
+              ]
+            },
+            "friction": {
+              "enum": [
+                "none",
+                "discovery",
+                "selection",
+                "state_comprehension",
+                "agent_handoff",
+                "review",
+                "saving",
+                "reopening",
+                "export",
+                "environment",
+                "time_limit",
+                "retry_limit",
+                "product_blocker"
+              ]
+            }
+          }
+        },
+        "select_recolor_align": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "unaided_seconds",
+            "retries",
+            "selection_retries",
+            "help_uses",
+            "assistance",
+            "friction"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "not_attempted",
+                "pass",
+                "fail",
+                "incomplete"
+              ]
+            },
+            "unaided_seconds": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1800
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "selection_retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "help_uses": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "assistance": {
+              "enum": [
+                "none",
+                "coaching",
+                "control_takeover",
+                "environment_repair"
+              ]
+            },
+            "friction": {
+              "enum": [
+                "none",
+                "discovery",
+                "selection",
+                "state_comprehension",
+                "agent_handoff",
+                "review",
+                "saving",
+                "reopening",
+                "export",
+                "environment",
+                "time_limit",
+                "retry_limit",
+                "product_blocker"
+              ]
+            }
+          }
+        },
+        "edit_tagline": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "unaided_seconds",
+            "retries",
+            "selection_retries",
+            "help_uses",
+            "assistance",
+            "friction"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "not_attempted",
+                "pass",
+                "fail",
+                "incomplete"
+              ]
+            },
+            "unaided_seconds": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1800
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "selection_retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "help_uses": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "assistance": {
+              "enum": [
+                "none",
+                "coaching",
+                "control_takeover",
+                "environment_repair"
+              ]
+            },
+            "friction": {
+              "enum": [
+                "none",
+                "discovery",
+                "selection",
+                "state_comprehension",
+                "agent_handoff",
+                "review",
+                "saving",
+                "reopening",
+                "export",
+                "environment",
+                "time_limit",
+                "retry_limit",
+                "product_blocker"
+              ]
+            }
+          }
+        },
+        "preserving_followup": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "unaided_seconds",
+            "retries",
+            "selection_retries",
+            "help_uses",
+            "assistance",
+            "friction"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "not_attempted",
+                "pass",
+                "fail",
+                "incomplete"
+              ]
+            },
+            "unaided_seconds": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1800
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "selection_retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "help_uses": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "assistance": {
+              "enum": [
+                "none",
+                "coaching",
+                "control_takeover",
+                "environment_repair"
+              ]
+            },
+            "friction": {
+              "enum": [
+                "none",
+                "discovery",
+                "selection",
+                "state_comprehension",
+                "agent_handoff",
+                "review",
+                "saving",
+                "reopening",
+                "export",
+                "environment",
+                "time_limit",
+                "retry_limit",
+                "product_blocker"
+              ]
+            }
+          }
+        },
+        "save_restart_reopen": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "unaided_seconds",
+            "retries",
+            "selection_retries",
+            "help_uses",
+            "assistance",
+            "friction"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "not_attempted",
+                "pass",
+                "fail",
+                "incomplete"
+              ]
+            },
+            "unaided_seconds": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1800
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "selection_retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "help_uses": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "assistance": {
+              "enum": [
+                "none",
+                "coaching",
+                "control_takeover",
+                "environment_repair"
+              ]
+            },
+            "friction": {
+              "enum": [
+                "none",
+                "discovery",
+                "selection",
+                "state_comprehension",
+                "agent_handoff",
+                "review",
+                "saving",
+                "reopening",
+                "export",
+                "environment",
+                "time_limit",
+                "retry_limit",
+                "product_blocker"
+              ]
+            }
+          }
+        },
+        "export_mark_wordmark": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "unaided_seconds",
+            "retries",
+            "selection_retries",
+            "help_uses",
+            "assistance",
+            "friction"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "not_attempted",
+                "pass",
+                "fail",
+                "incomplete"
+              ]
+            },
+            "unaided_seconds": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1800
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "selection_retries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "help_uses": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "assistance": {
+              "enum": [
+                "none",
+                "coaching",
+                "control_takeover",
+                "environment_repair"
+              ]
+            },
+            "friction": {
+              "enum": [
+                "none",
+                "discovery",
+                "selection",
+                "state_comprehension",
+                "agent_handoff",
+                "review",
+                "saving",
+                "reopening",
+                "export",
+                "environment",
+                "time_limit",
+                "retry_limit",
+                "product_blocker"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_binding",
+        "independence",
+        "original_unchanged",
+        "rejection_non_mutating",
+        "durable_receipt_matches",
+        "manual_edits_preserved",
+        "correct_targets",
+        "restart_content_matches",
+        "export_subsets_valid",
+        "export_non_mutating",
+        "pending_identified",
+        "accepted_identified",
+        "saved_identified",
+        "results_located"
+      ],
+      "properties": {
+        "candidate_binding": {
+          "enum": [
+            "not_checked",
+            "pass",
+            "fail"
+          ]
+        },
+        "independence": {
+          "enum": [
+            "not_checked",
+            "pass",
+            "fail"
+          ]
+        },
+        "original_unchanged": {
+          "enum": [
+            "not_checked",
+            "pass",
+            "fail"
+          ]
+        },
+        "rejection_non_mutating": {
+          "enum": [
+            "not_checked",
+            "pass",
+            "fail"
+          ]
+        },
+        "durable_receipt_matches": {
+          "enum": [
+            "not_checked",
+            "pass",
+            "fail"
+          ]
+        },
+        "manual_edits_preserved": {
+          "enum": [
+            "not_checked",
+            "pass",
+            "fail"
+          ]
+        },
+        "correct_targets": {
+          "enum": [
+            "not_checked",
+            "pass",
+            "fail"
+          ]
+        },
+        "restart_content_matches": {
+          "enum": [
+            "not_checked",
+            "pass",
+            "fail"
+          ]
+        },
+        "export_subsets_valid": {
+          "enum": [
+            "not_checked",
+            "pass",
+            "fail"
+          ]
+        },
+        "export_non_mutating": {
+          "enum": [
+            "not_checked",
+            "pass",
+            "fail"
+          ]
+        },
+        "pending_identified": {
+          "enum": [
+            "not_checked",
+            "pass",
+            "fail"
+          ]
+        },
+        "accepted_identified": {
+          "enum": [
+            "not_checked",
+            "pass",
+            "fail"
+          ]
+        },
+        "saved_identified": {
+          "enum": [
+            "not_checked",
+            "pass",
+            "fail"
+          ]
+        },
+        "results_located": {
+          "enum": [
+            "not_checked",
+            "pass",
+            "fail"
+          ]
+        }
+      }
+    },
+    "product_blocker": {
+      "type": "boolean"
+    },
+    "data_loss": {
+      "type": "boolean"
+    },
+    "wrong_target_edit": {
+      "type": "boolean"
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "original_sha256",
+        "accepted_sha256",
+        "pre_followup_sha256",
+        "final_saved_sha256",
+        "durable_receipt_sha256",
+        "export_mark_sha256",
+        "export_wordmark_sha256"
+      ],
+      "properties": {
+        "original_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "accepted_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pre_followup_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "final_saved_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "durable_receipt_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "export_mark_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "export_wordmark_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "supersedes_attempt_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{32}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "blocker_fix_commit": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "U1 local candidate attempt, controlled observation format; valid shape does not establish a counting result",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "attempt_status": {
+            "const": "completed"
+          }
+        },
+        "type": "object"
+      },
+      "then": {
+        "properties": {
+          "candidate_manifest_sha256": {
+            "type": "string"
+          },
+          "participant_slot": {
+            "type": "string"
+          },
+          "attempt_id": {
+            "type": "string"
+          },
+          "checks": {
+            "properties": {
+              "candidate_binding": {
+                "const": "pass"
+              },
+              "independence": {
+                "const": "pass"
+              },
+              "original_unchanged": {
+                "const": "pass"
+              },
+              "rejection_non_mutating": {
+                "const": "pass"
+              },
+              "durable_receipt_matches": {
+                "const": "pass"
+              },
+              "manual_edits_preserved": {
+                "const": "pass"
+              },
+              "correct_targets": {
+                "const": "pass"
+              },
+              "restart_content_matches": {
+                "const": "pass"
+              },
+              "export_subsets_valid": {
+                "const": "pass"
+              },
+              "export_non_mutating": {
+                "const": "pass"
+              },
+              "pending_identified": {
+                "const": "pass"
+              },
+              "accepted_identified": {
+                "const": "pass"
+              },
+              "saved_identified": {
+                "const": "pass"
+              },
+              "results_located": {
+                "const": "pass"
+              }
+            },
+            "type": "object"
+          },
+          "artifacts": {
+            "properties": {
+              "original_sha256": {
+                "type": "string"
+              },
+              "accepted_sha256": {
+                "type": "string"
+              },
+              "pre_followup_sha256": {
+                "type": "string"
+              },
+              "final_saved_sha256": {
+                "type": "string"
+              },
+              "durable_receipt_sha256": {
+                "type": "string"
+              },
+              "export_mark_sha256": {
+                "type": "string"
+              },
+              "export_wordmark_sha256": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          },
+          "environment": {
+            "properties": {
+              "os": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "node_version": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "browser_version": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "viewport_width": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "viewport_height": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "zoom_percent": {
+                "not": {
+                  "type": "null"
+                }
+              }
+            },
+            "type": "object"
+          },
+          "milestones": {
+            "properties": {
+              "create_import": {
+                "properties": {
+                  "status": {
+                    "const": "pass"
+                  },
+                  "unaided_seconds": {
+                    "type": "integer"
+                  },
+                  "assistance": {
+                    "const": "none"
+                  }
+                },
+                "type": "object"
+              },
+              "review_reject": {
+                "properties": {
+                  "status": {
+                    "const": "pass"
+                  },
+                  "unaided_seconds": {
+                    "type": "integer"
+                  },
+                  "assistance": {
+                    "const": "none"
+                  }
+                },
+                "type": "object"
+              },
+              "review_accept": {
+                "properties": {
+                  "status": {
+                    "const": "pass"
+                  },
+                  "unaided_seconds": {
+                    "type": "integer"
+                  },
+                  "assistance": {
+                    "const": "none"
+                  }
+                },
+                "type": "object"
+              },
+              "select_recolor_align": {
+                "properties": {
+                  "status": {
+                    "const": "pass"
+                  },
+                  "unaided_seconds": {
+                    "type": "integer"
+                  },
+                  "assistance": {
+                    "const": "none"
+                  }
+                },
+                "type": "object"
+              },
+              "edit_tagline": {
+                "properties": {
+                  "status": {
+                    "const": "pass"
+                  },
+                  "unaided_seconds": {
+                    "type": "integer"
+                  },
+                  "assistance": {
+                    "const": "none"
+                  }
+                },
+                "type": "object"
+              },
+              "preserving_followup": {
+                "properties": {
+                  "status": {
+                    "const": "pass"
+                  },
+                  "unaided_seconds": {
+                    "type": "integer"
+                  },
+                  "assistance": {
+                    "const": "none"
+                  }
+                },
+                "type": "object"
+              },
+              "save_restart_reopen": {
+                "properties": {
+                  "status": {
+                    "const": "pass"
+                  },
+                  "unaided_seconds": {
+                    "type": "integer"
+                  },
+                  "assistance": {
+                    "const": "none"
+                  }
+                },
+                "type": "object"
+              },
+              "export_mark_wordmark": {
+                "properties": {
+                  "status": {
+                    "const": "pass"
+                  },
+                  "unaided_seconds": {
+                    "type": "integer"
+                  },
+                  "assistance": {
+                    "const": "none"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          },
+          "product_blocker": {
+            "const": false
+          },
+          "data_loss": {
+            "const": false
+          },
+          "wrong_target_edit": {
+            "const": false
+          }
+        },
+        "type": "object"
+      }
+    }
+  ]
+}

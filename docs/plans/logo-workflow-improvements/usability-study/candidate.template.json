@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "study_kind": "local_candidate",
+  "status": "not_ready",
+  "commit": null,
+  "package_version": null,
+  "package_sha256": null,
+  "g4_receipt_sha256": null,
+  "shipped_instructions_sha256": null,
+  "task_prompts_sha256": null,
+  "attempt_schema_sha256": null,
+  "fixture": {
+    "repository_path": "tests/fixtures/ux-audit/seatify-44.svg",
+    "sha256": "0ce112d615c992b7e079527da731d98e55a3f176983172ebe25d9caaa21757f3"
+  },
+  "proposal_artifact_sha256": null,
+  "corrected_proposal_artifact_sha256": null,
+  "agent_brief_sha256": null,
+  "followup_brief_sha256": null,
+  "producer_behavior_sha256": null,
+  "producer_public_delivery_mode": null,
+  "non_counting_rehearsal_passed": false,
+  "user_arranged_participants_confirmed": false,
+  "user_approved_local_handling_confirmed": false,
+  "validator_name_version": null
+}

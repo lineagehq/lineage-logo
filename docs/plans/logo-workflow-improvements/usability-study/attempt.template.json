@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "study_kind": "local_candidate",
+  "candidate_manifest_sha256": null,
+  "participant_slot": null,
+  "attempt_id": null,
+  "attempt_status": "incomplete",
+  "environment": {
+    "os": null,
+    "node_version": null,
+    "browser_version": null,
+    "viewport_width": null,
+    "viewport_height": null,
+    "zoom_percent": null
+  },
+  "milestones": {
+    "create_import": {
+      "status": "not_attempted",
+      "unaided_seconds": null,
+      "retries": 0,
+      "selection_retries": 0,
+      "help_uses": 0,
+      "assistance": "none",
+      "friction": "none"
+    },
+    "review_reject": {
+      "status": "not_attempted",
+      "unaided_seconds": null,
+      "retries": 0,
+      "selection_retries": 0,
+      "help_uses": 0,
+      "assistance": "none",
+      "friction": "none"
+    },
+    "review_accept": {
+      "status": "not_attempted",
+      "unaided_seconds": null,
+      "retries": 0,
+      "selection_retries": 0,
+      "help_uses": 0,
+      "assistance": "none",
+      "friction": "none"
+    },
+    "select_recolor_align": {
+      "status": "not_attempted",
+      "unaided_seconds": null,
+      "retries": 0,
+      "selection_retries": 0,
+      "help_uses": 0,
+      "assistance": "none",
+      "friction": "none"
+    },
+    "edit_tagline": {
+      "status": "not_attempted",
+      "unaided_seconds": null,
+      "retries": 0,
+      "selection_retries": 0,
+      "help_uses": 0,
+      "assistance": "none",
+      "friction": "none"
+    },
+    "preserving_followup": {
+      "status": "not_attempted",
+      "unaided_seconds": null,
+      "retries": 0,
+      "selection_retries": 0,
+      "help_uses": 0,
+      "assistance": "none",
+      "friction": "none"
+    },
+    "save_restart_reopen": {
+      "status": "not_attempted",
+      "unaided_seconds": null,
+      "retries": 0,
+      "selection_retries": 0,
+      "help_uses": 0,
+      "assistance": "none",
+      "friction": "none"
+    },
+    "export_mark_wordmark": {
+      "status": "not_attempted",
+      "unaided_seconds": null,
+      "retries": 0,
+      "selection_retries": 0,
+      "help_uses": 0,
+      "assistance": "none",
+      "friction": "none"
+    }
+  },
+  "checks": {
+    "candidate_binding": "not_checked",
+    "independence": "not_checked",
+    "original_unchanged": "not_checked",
+    "rejection_non_mutating": "not_checked",
+    "durable_receipt_matches": "not_checked",
+    "manual_edits_preserved": "not_checked",
+    "correct_targets": "not_checked",
+    "restart_content_matches": "not_checked",
+    "export_subsets_valid": "not_checked",
+    "export_non_mutating": "not_checked",
+    "pending_identified": "not_checked",
+    "accepted_identified": "not_checked",
+    "saved_identified": "not_checked",
+    "results_located": "not_checked"
+  },
+  "product_blocker": false,
+  "data_loss": false,
+  "wrong_target_edit": false,
+  "artifacts": {
+    "original_sha256": null,
+    "accepted_sha256": null,
+    "pre_followup_sha256": null,
+    "final_saved_sha256": null,
+    "durable_receipt_sha256": null,
+    "export_mark_sha256": null,
+    "export_wordmark_sha256": null
+  },
+  "supersedes_attempt_id": null,
+  "blocker_fix_commit": null
+}
