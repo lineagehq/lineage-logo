@@ -1,0 +1,56 @@
+{
+  "node": "C4",
+  "status": "local-acceptance-passed-final-ci-pending",
+  "pr": "https://github.com/lineagehq/lineage-logo/pull/35",
+  "implementationHead": "86471c264247356d41eec5e354dc21253598ac82",
+  "testSynchronizationHead": "ac29a316",
+  "local": {
+    "unitIntegration": 735,
+    "typecheck": "passed",
+    "build": "passed",
+    "macAffectedBrowser": 7,
+    "linuxFull": {
+      "passed": 107,
+      "failed": 2,
+      "failure": "Both exact-DOM assertions ran after server rejection but before browser cleared review highlight; fixed by awaiting UI reverted and polling unchanged exact DOM."
+    },
+    "linuxFinalAffected": {
+      "scenarios": 10,
+      "result": "passed"
+    },
+    "integratedC5Mac": {
+      "head": "a95be43a6add0473d57e55ac91ff5b3a61d132c2",
+      "scenarios": 110,
+      "result": "passed"
+    },
+    "installedProductionCsp": "8 blob comparison images loaded; CLI exact revision request checked"
+  },
+  "review": {
+    "native": "Local CLI/model incompatibility; documented focused-review fallback.",
+    "roles": [
+      "correctness",
+      "tests",
+      "contracts-types",
+      "silent-failures",
+      "comments-docs"
+    ],
+    "result": "No high-confidence issues; correctness followup86471c2 and tests followupac29a316 found no candidates."
+  },
+  "liveBrowser": {
+    "url": "http://lineage-logo.localhost:43125",
+    "fixture": "examples/seatify-constellation.svg",
+    "integration": "C5 candidate a95be43 includes same C4 runtime",
+    "image": "c4/installed-comparison.png",
+    "revisionRequest": "Keep the original table color; adjust only the halo.",
+    "cliReturnedExactReason": true,
+    "observations": [
+      "Initial focus now reveals review summary and accepted/proposed comparison.",
+      "Accepted artwork stays on canvas before decision.",
+      "Shared frame exposes changed table fill."
+    ]
+  },
+  "limitations": [
+    "Final PR checks and postmerge main checks pending.",
+    "This is scripted and agent-operated evidence, not independent U1 participants."
+  ]
+}
