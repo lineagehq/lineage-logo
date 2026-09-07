@@ -97,6 +97,7 @@ const server = createServer(async (request, response) => {
     if (await agentTransport.route(request, response, url)) return;
     if (request.method === "GET" && url.pathname === "/api/workspace") {
       sendJson(response, 200, {
+        workspaceId: workspaceIdentity.workspaceId,
         rootName: path.basename(workspaceRoot),
         files: await listSvgFiles(workspaceRoot),
         nextIterationPath: await getNextIterationPath(workspaceRoot),

@@ -3,13 +3,13 @@ import { SnapshotError, SNAPSHOT_MAX_BYTES, SNAPSHOT_TIMEOUT_MS, SNAPSHOT_ERROR_
 import { readAgentConnectionContext, resolveAgentConnectionContext, type AgentConnectionContext } from "./connection-context.js";
 import {
   AGENT_MAX_PAYLOAD_BYTES,
-  isAgentErrorCode, validateCleanAgentSvg,
+  isAgentErrorCode, parseRevisionRequest, validateCleanAgentSvg,
   type AgentAcceptedArtifact, type AgentDocumentManifest, type AgentTransactionStatus, type AgentTransactionV1,
 } from "../shared/agent-protocol.js";
 
 export type AgentProducerOutcome =
   | { status: "accepted"; transactionId: string; artifact?: AgentAcceptedArtifact }
-  | { status: "reverted" | "stale" | "disconnected"; transactionId: string }
+  | { status: "reverted" | "stale" | "disconnected"; transactionId: string; revisionRequest?: string }
   | { status: "rejected"; transactionId: string; error?: AgentTransactionStatus["result"] }
   | { status: "unavailable" | "timeout" | "conflict"; transactionId: string; message: string };
 
@@ -112,12 +112,14 @@ function parseArtifact(value: unknown, transaction: AgentTransactionV1, requireD
 
 function parseStatus(value: unknown, transaction: AgentTransactionV1, requireDurable = false): AgentTransactionStatus {
   const input = object(value, "Transaction status");
-  exact(input, ["transactionId", "status", "result", "artifact"], ["transactionId", "status"], "Transaction status");
+  exact(input, ["transactionId", "status", "result", "artifact", "revisionRequest"], ["transactionId", "status"], "Transaction status");
   if (input.transactionId !== transaction.transactionId || typeof input.status !== "string"
     || !["queued", "delivered", "pending_review", "accepted", "reverted", "rejected", "stale", "disconnected"].includes(input.status)) {
     throw new Error("Transaction status identity or state is malformed.");
   }
   const result = input.result === undefined ? undefined : parseResult(input.result, transaction);
+  const revisionRequest = input.revisionRequest === undefined ? undefined : parseRevisionRequest(input.revisionRequest);
+  if (revisionRequest !== undefined && input.status !== "reverted") throw new Error("Revision request requires a reverted decision.");
   const artifact = input.artifact === undefined ? undefined : parseArtifact(input.artifact, transaction, requireDurable);
   if (input.status === "accepted" && isMutating(transaction) && !artifact) throw new Error("Accepted mutation has no transaction-bound artifact receipt.");
   if (input.status !== "accepted" && artifact) throw new Error("A non-accepted status cannot include an artifact receipt.");
@@ -131,6 +133,7 @@ function parseStatus(value: unknown, transaction: AgentTransactionV1, requireDur
     status: input.status as AgentTransactionStatus["status"],
     ...(result ? { result } : {}),
     ...(artifact ? { artifact } : {}),
+    ...(revisionRequest !== undefined ? { revisionRequest } : {}),
   };
 }
 
@@ -230,7 +233,7 @@ export class AgentProducerClient {
       try { state = parseStatus(await statusResponse.json(), transaction, Boolean(context.binding)); }
       catch { return { status: "conflict", transactionId: transaction.transactionId, message: "Transaction status is malformed." }; }
       if (state.status === "accepted") return { status: "accepted", transactionId: transaction.transactionId, ...(state.artifact ? { artifact: state.artifact } : {}) };
-      if (state.status === "reverted" || state.status === "stale") return { status: state.status, transactionId: transaction.transactionId };
+      if (state.status === "reverted" || state.status === "stale") return { status: state.status, transactionId: transaction.transactionId, ...(state.revisionRequest !== undefined ? { revisionRequest: state.revisionRequest } : {}) };
       if (state.status === "rejected") return { status: "rejected", transactionId: transaction.transactionId, error: state.result };
       await new Promise((resolve) => setTimeout(resolve, this.#options.pollIntervalMs ?? 100));
     }

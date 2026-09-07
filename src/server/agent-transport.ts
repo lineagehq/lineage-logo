@@ -1,7 +1,7 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
-  AGENT_ERROR_CODES, AGENT_MAX_ACKNOWLEDGEMENT_BYTES, AGENT_MAX_PAYLOAD_BYTES, AGENT_MAX_SOURCE_PATH_CHARACTERS, AgentProtocolError, parseAgentTransaction, validateCleanAgentSvg,
+  AGENT_ERROR_CODES, AGENT_MAX_ACKNOWLEDGEMENT_BYTES, AGENT_MAX_PAYLOAD_BYTES, AGENT_MAX_SOURCE_PATH_CHARACTERS, AgentProtocolError, parseRevisionRequest, parseAgentTransaction, validateCleanAgentSvg,
   type AgentAcceptedArtifact, type AgentAcknowledgement, type AgentDocumentManifest, type AgentErrorCode, type AgentTerminalDecision, type AgentTransactionResult, type AgentTransactionStatus,
   type AgentTransactionV1,
 } from "../shared/agent-protocol.js";
@@ -491,7 +491,7 @@ export class AgentTransport {
   #parseAcknowledgement(value: unknown, transaction: AgentTransactionV1): AgentAcknowledgement {
     const transactionId = transaction.transactionId;
     const operationIds = new Set(transaction.operations.map((operation) => operation.operationId));
-    const input = exactObject(value, ["transactionId", "status", "error", "impact", "artifact"], ["transactionId", "status"], "Acknowledgement");
+    const input = exactObject(value, ["transactionId", "status", "error", "impact", "artifact", "revisionRequest"], ["transactionId", "status"], "Acknowledgement");
     if (input.transactionId !== transactionId || typeof input.status !== "string") throw new HttpError(400, "Acknowledgement is invalid.");
     if (input.status === "accepted") {
       if (Object.keys(input).length !== 3) throw new HttpError(400, "Accepted decision requires an artifact receipt.");
@@ -506,8 +506,11 @@ export class AgentTransport {
       return { transactionId, status: "accepted", artifact: artifact as unknown as AgentAcceptedArtifact };
     }
     if (input.status === "reverted") {
-      if (Object.keys(input).length !== 2) throw new HttpError(400, "Reverted decision contains unknown fields.");
-      return { transactionId, status: "reverted" };
+      if (Object.keys(input).some((key) => !["transactionId", "status", "revisionRequest"].includes(key))) throw new HttpError(400, "Reverted decision contains unknown fields.");
+      let revisionRequest: string | undefined;
+      try { if (input.revisionRequest !== undefined) revisionRequest = parseRevisionRequest(input.revisionRequest); }
+      catch { throw new HttpError(400, "Revision request must contain 1–1000 characters of plain text."); }
+      return { transactionId, status: "reverted", ...(revisionRequest !== undefined ? { revisionRequest } : {}) };
     }
     if (input.status === "rejected") {
       if (Object.keys(input).length !== 3) throw new HttpError(400, "Rejected acknowledgement has invalid fields.");
@@ -549,6 +552,10 @@ export class AgentTransport {
     if (acknowledgement.status === "accepted" || acknowledgement.status === "reverted") {
       const decision = acknowledgement as AgentTerminalDecision;
       if (entry.state.status === decision.status) {
+        if (decision.status === "reverted" && entry.state.revisionRequest !== decision.revisionRequest) {
+          sendJson(response, 409, { ...entry.state, error: "Revision request conflicts with the recorded decision." });
+          return;
+        }
         if (decision.status === "accepted" && (!entry.state.artifact
           || entry.state.artifact.sourcePath !== decision.artifact.sourcePath
           || entry.state.artifact.revision !== decision.artifact.revision
@@ -589,6 +596,7 @@ export class AgentTransport {
       entry.state = {
         ...entry.state,
         status: decision.status,
+        ...(decision.status === "reverted" && decision.revisionRequest !== undefined ? { revisionRequest: decision.revisionRequest } : {}),
         ...(artifact ? { artifact } : {}),
       };
       this.#pruneEvent(entry);
