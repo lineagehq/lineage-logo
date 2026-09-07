@@ -55,6 +55,14 @@ test('installed named versions preserve history and exported SVG/PNG artifacts r
       if(target==='mark'){expect(svg).toContain('id="paint"');expect(svg).toContain('id="cut"');expect(svg).toContain('id="star"');expect(svg).not.toContain('Approved brand');}
       if(target==='wordmark'){expect(svg).toContain('Approved brand');expect(svg).not.toContain('id="mark"');}
     }
+    await dialog.getByRole('combobox',{name:'Artwork',exact:true}).selectOption('mark');
+    await dialog.getByRole('combobox',{name:'Format',exact:true}).selectOption('png');
+    await dialog.getByRole('combobox',{name:'PNG size',exact:false}).selectOption('64');
+    const markPng=PNG.sync.read(await download(page,path.join(root,'mark-resources.png')));
+    const rgba=Array.from({length:64*64},(_,i)=>Array.from(markPng.data.subarray(i*4,i*4+4)));
+    expect(rgba.filter(([r,g,b,a])=>a===255&&b>r&&b>100).length).toBeGreaterThan(100);
+    expect(rgba.filter(([r,g,b,a])=>a===255&&r===255&&g===255&&b===255).length).toBeGreaterThan(1);
+    expect(rgba.filter(([, , ,a])=>a===0).length).toBeGreaterThan(100);
     await dialog.getByRole('button',{name:'Close',exact:true}).click();await expect(page.getByRole('button',{name:'Save version / export',exact:true})).toBeFocused();
     await expect(page.locator('.file-button[aria-current="true"]')).toHaveAttribute('data-path','concepts/resources.svg');await expect(page.locator('#lifecycle-state')).toHaveAttribute('data-state','dirty');expect(await page.locator('.layer-button[aria-pressed="true"]').textContent()).toBe(selection);
     await page.getByRole('button',{name:'Undo',exact:true}).click();await expect(page.locator('#artboard #words')).toHaveText('Original brand');await page.getByRole('button',{name:'Redo',exact:true}).click();await expect(page.locator('#artboard #words')).toHaveText('Approved brand');
