@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
+import { parse } from "yaml";
 import { describe, expect, it } from "vitest";
-import { isValidPackageVersion, parsePackResult, safeDiagnostic, validatePackedFiles } from "../../scripts/release-check";
+import { candidateReceipt, isValidPackageVersion, parsePackResult, safeDiagnostic, validatePackedFiles } from "../../scripts/release-check";
 
 describe("public release package enforcement", () => {
   it("accepts only the public package surface", () => {
@@ -76,12 +77,12 @@ describe("public release package enforcement", () => {
 
   it("keeps the Chromium CI job scoped to its installed browser", () => {
     const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
-    expect(workflow).toContain("run: npm run test:e2e -- --project=chromium");
+    expect(parse(workflow).jobs["browser-qa"].steps.some((step: { run?: string }) => step.run === "npm run test:e2e -- --project=chromium")).toBe(true);
   });
 
   it("gives the critical-browser matrix enough installation margin", () => {
     const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
-    expect(workflow).toMatch(/critical-browsers:[\s\S]*?timeout-minutes: 15/);
+    expect(parse(workflow).jobs["critical-browsers"]["timeout-minutes"]).toBeGreaterThanOrEqual(15);
   });
 
   it("ships structured beta intake without inviting confidential reports", () => {
@@ -95,4 +96,11 @@ describe("public release package enforcement", () => {
     }
     expect(config).toContain("blank_issues_enabled: false");
   });
+});
+
+it("binds the nonpublishing receipt to actual tarball bytes", () => {
+  const receipt = candidateReceipt(Buffer.from("abc"), "0.1.0-beta.3");
+  expect(receipt).toMatchObject({ algorithm: "sha256", sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", bytes: 3, published: false });
+  expect(candidateReceipt(Buffer.from("abd"), "0.1.0-beta.3").sha256).not.toBe(receipt.sha256);
+  expect(() => candidateReceipt(Buffer.from("abc"), "bad\nversion")).toThrow();
 });

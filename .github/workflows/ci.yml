@@ -68,7 +68,7 @@ jobs:
 
   critical-browsers:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -122,4 +122,30 @@ jobs:
         run: npm ci
 
       - name: Pack, clean-install, reinstall same artifact, and inspect public CLI
-        run: npx tsx scripts/release-check.ts
+        run: npx tsx scripts/release-check.ts --candidate-receipt
+
+      - name: Record tested candidate digest
+        uses: actions/upload-artifact@v7
+        with:
+          name: candidate-${{ matrix.os }}
+          path: candidate-artifact.json
+          if-no-files-found: error
+
+  newer-lts:
+    name: Node 24.20.0 compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.20.0
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npx tsx scripts/release-check.ts --candidate-receipt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: candidate-node24
+          path: candidate-artifact.json
+          if-no-files-found: error
