@@ -6,7 +6,7 @@
 flowchart LR
   A["G1 · Save and preview trust ✓"] --> B["G2 · Manual editing and recovery ✓"]
   B --> C["G3 · Agent creation and review ✓"]
-  C --> D["D1 · Named versions and exports ✓"]
+  B --> D["D1 · Named versions and exports ✓"]
   C --> Q["D2 · Browser, accessibility and CI ✓"]
   D --> Q
   C --> P["D3 · Matched performance gate ✓"]
