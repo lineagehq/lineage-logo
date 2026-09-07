@@ -1,5 +1,23 @@
 import { expect, test, type Page } from "@playwright/test";
 const sourcePath = "concepts/ux-wide.svg";
+type Manifest = { sessionId: string; sourcePath: string; revision: number; layers: Array<{ name: string; sessionKey: string }> };
+function trackEditedPublication(page: Page) {
+  let published: Manifest | undefined;
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/api/agent/document' && request.method() === 'POST') published = request.postDataJSON() as Manifest;
+  });
+  return async () => {
+    let manifest: Manifest | undefined;
+    await expect.poll(async () => {
+      const response = await page.request.get('/api/agent/document', { headers: { Authorization: 'Bearer lineage-logo-e2e-agent-token' } });
+      if (!response.ok() || !published || published.sourcePath !== sourcePath || published.revision <= 0) return false;
+      manifest = await response.json();
+      return manifest!.sessionId === published.sessionId && manifest!.sourcePath === published.sourcePath && manifest!.revision === published.revision;
+    }).toBe(true);
+    return manifest!;
+  };
+}
+
 async function open(page: Page) {
   await page.goto("/");
   await page.locator(`[data-path="${sourcePath}"]`).click();
@@ -80,11 +98,11 @@ test("pending agent review retains authority over manual recovery after reload",
     expect(dialog.type()).toBe('beforeunload');
     await dialog.accept();
   });
+  const publication = trackEditedPublication(page);
   await open(page);const before=await source(page);await recolor(page,"#ee5500");
   const headers={Authorization:"Bearer lineage-logo-e2e-agent-token"};
-  await expect.poll(async()=>{const response=await page.request.get("http://127.0.0.1:43117/api/agent/document",{headers});return response.ok()?(await response.json()).revision:-1;}).toBeGreaterThan(0);
-  const manifest=await(await page.request.get("http://127.0.0.1:43117/api/agent/document",{headers})).json();
-  const proposal={protocolVersion:1,transactionId:`manual-precedence-${Date.now()}`,producer:{kind:"fixture"},document:{sessionId:manifest.sessionId,sourcePath:manifest.sourcePath,baseRevision:manifest.revision},operations:[{type:"renameLayer",operationId:"rename",target:{sessionKey:manifest.layers.find((layer:{name:string})=>layer.name==="mark").sessionKey},name:"Pending mark"}]};
+  const manifest = await publication();
+  const proposal={protocolVersion:1,transactionId:`manual-precedence-${Date.now()}`,producer:{kind:"fixture"},document:{sessionId:manifest.sessionId,sourcePath:manifest.sourcePath,baseRevision:manifest.revision},operations:[{type:"renameLayer",operationId:"rename",target:{sessionKey:manifest.layers.find((layer:{name:string})=>layer.name==="mark")!.sessionKey},name:"Pending mark"}]};
   expect((await page.request.post("http://127.0.0.1:43117/api/agent/transactions",{headers,data:proposal})).status()).toBe(202);
   await expect(page.locator("#agent-review-status")).toBeVisible();
   await expect(page.locator("#agent-review-status")).toHaveText(/^pending$/i);
@@ -195,26 +213,13 @@ test("failed deletion of an expired draft permits keyboard exit and normal savin
 });
 
 test('agent acceptance preserves a different recovery record written by another tab', async ({ page, context }) => {
-  type Manifest = { sessionId: string; sourcePath: string; revision: number; layers: Array<{name: string; sessionKey: string}> };
-  let published: Manifest | undefined;
-  // The server may still hold the previous tab's manifest while this tab claims
-  // its lease. Bind the fixture to a publication from this actual page.
-  page.on('request', request => {
-    if (new URL(request.url()).pathname === '/api/agent/document' && request.method() === 'POST') {
-      published = request.postDataJSON() as Manifest;
-    }
-  });
+  // Bind to this page while the preceding tab's editor lease is released.
+  const publication = trackEditedPublication(page);
   await open(page);
   const before = await source(page);
   await recolor(page, '#ee5500');
   const headers = { Authorization: 'Bearer lineage-logo-e2e-agent-token' };
-  let manifest: Manifest;
-  await expect.poll(async () => {
-    const response = await page.request.get('/api/agent/document', { headers });
-    if (!response.ok() || !published || published.sourcePath !== sourcePath || published.revision <= 0) return false;
-    manifest = await response.json();
-    return manifest.sessionId === published.sessionId && manifest.sourcePath === published.sourcePath && manifest.revision === published.revision;
-  }).toBe(true);
+  const manifest = await publication();
   const proposal = { protocolVersion: 1, transactionId: `draft-other-tab-${Date.now()}`, producer: { kind: 'fixture' },
     document: { sessionId: manifest!.sessionId, sourcePath: manifest!.sourcePath, baseRevision: manifest!.revision },
     operations: [{ type: 'renameLayer', operationId: 'rename', target: { sessionKey: manifest!.layers.find(layer => layer.name === 'mark')!.sessionKey }, name: 'Accepted mark' }] };
