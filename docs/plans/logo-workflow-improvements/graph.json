@@ -96,7 +96,7 @@
         "B1"
       ],
       "lane": "manual",
-      "status": "pr_open",
+      "status": "merged",
       "acceptanceContract": "plan.md#b2--stable-selection-layers-and-inspector",
       "receipt": "evidence/b2.json"
     },
@@ -109,7 +109,7 @@
       "lane": "manual",
       "status": "pr_open",
       "acceptanceContract": "plan.md#b3--recover-manual-work-safely",
-      "receipt": null,
+      "receipt": "evidence/b3.json",
       "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/32"
     },
     {
@@ -120,9 +120,9 @@
         "B3"
       ],
       "lane": "gate",
-      "status": "pending",
+      "status": "active",
       "acceptanceContract": "plan.md#tranche-acceptance-gates",
-      "receipt": null
+      "receipt": "evidence/manual-tranche.json"
     },
     {
       "id": "C2",
@@ -145,9 +145,10 @@
         "B1"
       ],
       "lane": "agent",
-      "status": "active",
+      "status": "pr_open",
       "acceptanceContract": "plan.md#c3--structural-artifact-submission-and-narrow-corrections",
-      "receipt": null
+      "receipt": null,
+      "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/34"
     },
     {
       "id": "C4",

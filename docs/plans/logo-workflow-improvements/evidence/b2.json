@@ -1,6 +1,6 @@
 {
   "node": "B2",
-  "status": "local-acceptance-and-focused-review-passed",
+  "status": "merged",
   "base": "c410d08aab724877908fcf9efa687b3b5edec9b3",
   "implementationHead": "c24ecce",
   "nativeZoomTestHead": "feab4e2",
@@ -73,14 +73,25 @@
     "integration": "b2_tests_review: no findings against c410d08 at52083c6; no weakened assertions"
   },
   "limitations": [
-    "Final receipt-head PR CI remains required before merge.",
-    "No full combined macOS browser suite or independent participant results are claimed.",
-    "This node does not alone complete G2."
+    "This node does not alone complete G2 or independent participant validation."
   ],
   "ci": {
     "initialHead": "52083c6c952e9717ed9eee47d180189d3fb43b82",
     "workflowRun": 34067963202,
     "result": "browser-qa failed: 87 passed, 1 failed (44-layer desktop journey); other five CI jobs and CodeQL passed",
     "followup": "Found eager image-complete assertion in that journey; changed to await the same successful decode condition. Exact failure detail is unavailable in deliberately sanitized CI diagnostics. New-head local and CI verification required."
+  },
+  "mergeCommit": "a774e5599ab3a66a243c66561c346209ab9c1ac7",
+  "finalCi": {
+    "head": "7d5e7cc7824c60db16d5e263c94cc5943c4fd3bc",
+    "workflowRun": 34068332021,
+    "codeqlRun": 34068331072,
+    "allChecks": "passed"
+  },
+  "mainCi": {
+    "head": "a774e5599ab3a66a243c66561c346209ab9c1ac7",
+    "workflowRun": 34068572343,
+    "codeqlRun": 34068572297,
+    "allChecks": "passed"
   }
 }

@@ -87,7 +87,7 @@ button { font: inherit; }
 .file-button:hover, .layer-button:hover { background: #ebe9e2; }
 .file-button.selected, .layer-button.selected { color: #fff; background: #22211f; }
 .file-glyph { color: #cb6748; font-size: 18px; line-height: 1; }
-.stage-panel { display: grid; grid-template-rows: 48px auto minmax(0, 1fr) 30px; min-width: 0; min-height: 0; height: 100%; overflow: hidden; background: #deddd8; }
+.stage-panel { display: grid; grid-template-rows: 48px auto minmax(0, 1fr) minmax(30px, auto); min-width: 0; min-height: 0; height: 100%; overflow: hidden; background: #deddd8; }
 .toolbar { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 6px; overflow-x: auto; padding: 0 12px; background: #f7f6f2; border-bottom: 1px solid #d8d6cf; scrollbar-width: thin; }
 .toolbar-group { display: flex; flex: none; align-items: center; gap: 5px; }
 .toolbar button { height: 28px; min-width: 30px; padding: 0 9px; border: 1px solid #d3d0c8; border-radius: 6px; color: #55534e; background: #fff; cursor: pointer; white-space: nowrap; }
@@ -323,7 +323,7 @@ button { font: inherit; }
 }
 
 @media (max-width: 1400px) {
-  .stage-panel { grid-template-rows: 82px auto minmax(0, 1fr) 30px; }
+  .stage-panel { grid-template-rows: 82px auto minmax(0, 1fr) minmax(30px, auto); }
   .toolbar { min-width: 0; align-content: center; flex-wrap: wrap; gap: 6px; overflow: hidden; padding-block: 6px; }
   .toolbar-group { width: 100%; justify-content: flex-start; }
 }
@@ -371,6 +371,9 @@ button { font: inherit; }
   }
 }
 
+.statusbar { flex-wrap: wrap; gap: 4px 12px; }
+#manual-draft-status:not([hidden]) { flex-basis: 100%; padding-top: 5px; color: #56482f; line-height: 1.4; }
+#manual-draft-dialog .unsaved-actions { flex-wrap: wrap; }
 /* Resize handles stay at the panel edge and are reachable without a pointer. */
 .sidebar { position: relative; }
 .panel-resize { position: absolute; z-index: 5; top: 0; bottom: 0; width: 6px; padding: 0; border: 0; background: transparent; cursor: col-resize; touch-action: none; }

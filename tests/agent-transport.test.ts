@@ -320,10 +320,10 @@ describe("real HTTP agent transport", () => {
     const base = await harness({ editorReleaseMs: 10 });
     const first = { sessionId: "first", sourcePath: "first.svg", revision: 0, layers: [] };
     const second = { sessionId: "second", sourcePath: "second.svg", revision: 0, layers: [] };
+    const events = await openEvents(base);
     expect((await fetch(`${base}/api/agent/document`, {
       method: "POST", headers: browserHeaders, body: JSON.stringify(first),
     })).status).toBe(200);
-    const events = await openEvents(base);
     const secondHeaders = {
       Origin: origin,
       "Content-Type": "application/json",
@@ -338,12 +338,21 @@ describe("real HTTP agent transport", () => {
     });
 
     events.controller.abort();
-    await new Promise((resolve) => setTimeout(resolve, 30));
-    expect((await fetch(`${base}/api/agent/document`, {
-      method: "POST", headers: secondHeaders, body: JSON.stringify(second),
-    })).status).toBe(200);
-    const documentResponse = await fetch(`${base}/api/agent/document`, { headers: { Authorization: `Bearer ${token}` } });
-    await expect(documentResponse.json()).resolves.toEqual(second);
+    // Wait for the actual ownership transfer, then keep the second stream
+    // open while asserting its manifest. An orphan expires after only 10ms.
+    const secondController = new AbortController();
+    try {
+      await expect.poll(async () => {
+        const response = await fetch(`${base}/api/agent/events`, { headers: secondHeaders, signal: secondController.signal });
+        if (!response.ok) await response.body?.cancel();
+        return response.status;
+      }, { timeout: 2_000 }).toBe(200);
+      expect((await fetch(`${base}/api/agent/document`, {
+        method: "POST", headers: secondHeaders, body: JSON.stringify(second),
+      })).status).toBe(200);
+      const documentResponse = await fetch(`${base}/api/agent/document`, { headers: { Authorization: `Bearer ${token}` } });
+      await expect(documentResponse.json()).resolves.toEqual(second);
+    } finally { secondController.abort(); }
   });
 
   it("expires an orphan manifest lease that never opened an event stream", async () => {
