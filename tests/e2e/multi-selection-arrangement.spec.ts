@@ -675,15 +675,16 @@ for (const action of alignments) {
     const bottom = Math.max(...distributionLabels.map(label => before[label].bottom));
     await expect(page.locator(`#${action.id}`)).toBeEnabled(); await page.locator(`#${action.id}`).click();
     const after = await geometry(page, labels);
+    // Six-decimal transform serialization plus browser CTM precision stays below 0.0005 document units.
     for (const label of distributionLabels) {
       const box = after[label];
-      if (action.direction === "left") expect(box.left).toBeCloseTo(left, 5);
-      if (action.direction === "center") expect((box.left + box.right) / 2).toBeCloseTo((left + right) / 2, 5);
-      if (action.direction === "right") expect(box.right).toBeCloseTo(right, 5);
-      if (action.direction === "top") expect(box.top).toBeCloseTo(top, 5);
-      if (action.direction === "middle") expect((box.top + box.bottom) / 2).toBeCloseTo((top + bottom) / 2, 5);
-      if (action.direction === "bottom") expect(box.bottom).toBeCloseTo(bottom, 5);
-      expect(box.width).toBeCloseTo(before[label].width, 5); expect(box.height).toBeCloseTo(before[label].height, 5);
+      if (action.direction === "left") expect(box.left).toBeCloseTo(left, 3);
+      if (action.direction === "center") expect((box.left + box.right) / 2).toBeCloseTo((left + right) / 2, 3);
+      if (action.direction === "right") expect(box.right).toBeCloseTo(right, 3);
+      if (action.direction === "top") expect(box.top).toBeCloseTo(top, 3);
+      if (action.direction === "middle") expect((box.top + box.bottom) / 2).toBeCloseTo((top + bottom) / 2, 3);
+      if (action.direction === "bottom") expect(box.bottom).toBeCloseTo(bottom, 3);
+      expect(box.width).toBeCloseTo(before[label].width, 3); expect(box.height).toBeCloseTo(before[label].height, 3);
     }
     expectGeometry({ [unrelatedLabel]: after[unrelatedLabel] }, { [unrelatedLabel]: before[unrelatedLabel] });
     await exactOneCheckpoint(page, before, after, beforeIdentity, await identity(page), () => geometry(page, labels));
