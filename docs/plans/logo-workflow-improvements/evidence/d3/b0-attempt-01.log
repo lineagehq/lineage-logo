@@ -1,0 +1,4 @@
+Measured 100 layers
+Measured 500 layers
+Measured 1000 layers
+{"output":"/Users/neonwatty/Desktop/lineage-logo-performance/docs/plans/logo-workflow-improvements/evidence/d3/b0-attempt-01.json","commit":"fbfa870c0f7fb174c58fbb34e3fa0531e8971770","gate":{"status":"measured","reasons":["Measurement-only run; no acceptance claim."]}}
