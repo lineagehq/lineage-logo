@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { AgentProducerClient, type AgentProducerOutcome } from "../producer/agent-client.js";
 import { AgentProtocolError, bindPublicAgentProposal, validateCleanAgentSvg, type AgentTransactionV1 } from "../shared/agent-protocol.js";
 import { SnapshotError } from "../shared/agent-snapshot.js";
+import { deriveArtifactProposal } from "../producer/artifact.js";
 import { PUBLIC_PROPOSAL_SCHEMA } from "./proposal-schema.js";
 import { safeError, validateLocalProposal, type SafeCliError } from "./proposal-validation.js";
 import { bootstrapSeatifyExample, SeatifyBootstrapError } from "./seatify-example.js";
@@ -81,9 +82,10 @@ const HELP = `Usage: lineage-logo <command> [options]
 
 Commands:
   launch --workspace <path> [--port <port>] [--no-open] [--json]
-  submit --artifact <path> --proposal <path> [--workspace <path> | --instance <uuid>] [--json] [--include-svg]
+  submit --proposal <path> [--artifact <path> --group-id <id>] [--workspace <path> | --instance <uuid>] [--json] [--include-svg]
+  submit --artifact <path> --proposal <path>  (legacy artifact validation only)
   schema [--json]
-  validate --proposal <path> [--artifact <path>] [--json]
+  validate --proposal <path> [--artifact <path> --group-id <id>] [--json]
   doctor [--workspace <path> | --instance <uuid>] [--json]
   snapshot [--workspace <path> | --instance <uuid>] [--json]  Explicit local live SVG handoff
   context [--workspace <path> | --instance <uuid>] [--json]
@@ -118,7 +120,7 @@ function parse(argv: string[]): ParsedArguments {
       options.set(name, true);
       continue;
     }
-    if (!["workspace", "instance", "artifact", "proposal", "port", "legacy-context"].includes(name) || argv[index + 1] === undefined) {
+    if (!["workspace", "instance", "artifact", "group-id", "proposal", "port", "legacy-context"].includes(name) || argv[index + 1] === undefined) {
       throw new CliFailure(EXIT.usage, "invalid", "Unsupported or incomplete option.");
     }
     if (options.has(name)) throw new CliFailure(EXIT.usage, "invalid", `Duplicate option --${name}.`);
@@ -146,9 +148,9 @@ function validateCommandOptions(args: ParsedArguments): void {
   const global = new Set(["json", "quiet", "help", "version"]);
   const commandOptions: Record<CommandName, Set<string>> = {
     schema: new Set(),
-    validate: new Set(["proposal", "artifact"]),
+    validate: new Set(["proposal", "artifact", "group-id"]),
     launch: new Set(["workspace", "port", "no-open", "development"]),
-    submit: new Set(["artifact", "proposal", "workspace", "instance", "legacy-context", "include-svg"]),
+    submit: new Set(["artifact", "group-id", "proposal", "workspace", "instance", "legacy-context", "include-svg"]),
     doctor: new Set(["workspace", "instance", "legacy-context"]),
     context: new Set(["workspace", "instance", "legacy-context"]),
     snapshot: new Set(["workspace", "instance"]),
@@ -375,29 +377,35 @@ async function readValidatedProposal(args: ParsedArguments) {
   let payload: string;
   try { payload = await readFile(requireValue(args, "proposal"), "utf8"); }
   catch { throw new CliFailure(EXIT.usage, "invalid", "Proposal is not readable.", safeError({}, "unreadable_proposal")); }
-  try { return validateLocalProposal(payload); }
+  const artifact = value(args, "artifact");
+  const groupId = value(args, "group-id");
+  if (groupId !== undefined && (!groupId || !artifact)) throw new CliFailure(EXIT.usage, "invalid", "Artifact mode requires --artifact with --group-id.", safeError({ code: "invalid_payload" }));
+  let source: string | undefined;
+  if (artifact) {
+    try { source = await readFile(artifact, "utf8"); }
+    catch { throw new CliFailure(EXIT.usage, "invalid", "Artifact is not readable.", safeError({}, "unreadable_artifact")); }
+  }
+  try {
+    if (source !== undefined) {
+      if (groupId) payload = deriveArtifactProposal(payload, source, groupId);
+      else {
+        // Compatibility: legacy validation-only artifact.
+        try { validateCleanAgentSvg(source); }
+        catch { throw new AgentProtocolError({ code: "unsafe_svg", message: "Artifact is not safe SVG." }); }
+      }
+    }
+    return validateLocalProposal(payload);
+  }
   catch (error) { throw new CliFailure(EXIT.usage, "invalid", "Proposal is not a valid transaction.", safeError(error instanceof AgentProtocolError ? error.detail : {})); }
-}
-
-async function validateArtifact(artifactPath: string): Promise<void> {
-  let svg: string;
-  try { svg = await readFile(artifactPath, "utf8"); }
-  catch { throw new CliFailure(EXIT.usage, "invalid", "Artifact is not readable.", safeError({}, "unreadable_artifact")); }
-  try { validateCleanAgentSvg(svg); }
-  catch { throw new CliFailure(EXIT.usage, "invalid", "Artifact is not a safe SVG.", safeError({ code: "unsafe_svg" })); }
 }
 
 async function runValidate(args: ParsedArguments, io: CliIo): Promise<number> {
   const proposal = await readValidatedProposal(args);
-  const artifact = value(args, "artifact");
-  if (artifact) await validateArtifact(artifact);
   output(io, args.json, { schemaVersion: 1, command: "validate", ok: true, status: "ok", message: "Local validation passed. Live targets, locks, revision and no-op checks still require editor review.", operationCount: proposal.operations.length });
   return EXIT.success;
 }
 
 async function runSubmit(args: ParsedArguments, io: CliIo, dependencies: CliDependencies): Promise<number> {
-  const artifactPath = requireValue(args, "artifact");
-  await validateArtifact(artifactPath);
   const proposal = await readValidatedProposal(args);
   const instance = await resolveSelected(dependencies.resolveInstance ?? defaultResolver, selector(args));
   let transaction: AgentTransactionV1;

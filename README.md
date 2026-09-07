@@ -320,3 +320,5 @@ Run the full validation suite with:
 ```bash
 npm run check
 ```
+
+See [structural proposals and preserving follow-ups](docs/public-beta/agent-proposals.md) for artifact-derived groups, local resource closure and narrow text/move operations.
