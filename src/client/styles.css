@@ -24,8 +24,8 @@ button { font: inherit; }
 .brand-mark { display: grid; place-items: center; width: 28px; height: 28px; color: white; background: #161616; border-radius: 8px; }
 .workspace-name { color: #72716c; font-size: 13px; }
 .shell {
-  --left-panel-width: 230px;
-  --right-panel-width: 292px;
+  --left-panel-width: var(--left-preferred-width, 230px);
+  --right-panel-width: var(--right-preferred-width, 292px);
   --rail-width: 40px;
   --sidebar-motion-duration: 260ms;
   --sidebar-motion-easing: cubic-bezier(0.22, 1, 0.36, 1);
@@ -329,7 +329,7 @@ button { font: inherit; }
 }
 
 @media (max-width: 1100px) {
-  .shell { --left-panel-width: 210px; --right-panel-width: 260px; }
+  .shell { --left-panel-width: var(--left-preferred-width, 210px); --right-panel-width: var(--right-preferred-width, 260px); }
   .shell[data-left-collapsed="true"] { --left-panel-width: var(--rail-width); }
   .shell[data-right-collapsed="true"] { --right-panel-width: var(--rail-width); }
   .artboard { width: min(60vh, 560px); }
@@ -374,3 +374,27 @@ button { font: inherit; }
 .statusbar { flex-wrap: wrap; gap: 4px 12px; }
 #manual-draft-status:not([hidden]) { flex-basis: 100%; padding-top: 5px; color: #56482f; line-height: 1.4; }
 #manual-draft-dialog .unsaved-actions { flex-wrap: wrap; }
+/* Resize handles stay at the panel edge and are reachable without a pointer. */
+.sidebar { position: relative; }
+.panel-resize { position: absolute; z-index: 5; top: 0; bottom: 0; width: 6px; padding: 0; border: 0; background: transparent; cursor: col-resize; touch-action: none; }
+.panel-resize-left { right: 0; }
+.panel-resize-right { left: 0; }
+.panel-resize:hover, .panel-resize:focus-visible { background: #246bfd; outline: none; }
+.shell[data-left-collapsed="true"] .panel-resize-left,
+.shell[data-right-collapsed="true"] .panel-resize-right { display: none; }
+.shell[data-resizing="true"] { transition: none; user-select: none; }
+.layer-button { padding: 5px 6px; min-height: 28px; gap: 5px; }
+.layer-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.layer-type { flex: none; }
+.layer-button:focus-visible { outline: 2px solid #246bfd; outline-offset: -2px; }
+.layer-name-tooltip { position: fixed; z-index: 20; bottom: 36px; right: 48px; max-width: min(420px, calc(100vw - 96px)); padding: 8px 10px; border: 1px solid #d3d0c8; border-radius: 6px; background: #fff; color: #22211f; box-shadow: 0 3px 12px rgb(0 0 0 / 18%); white-space: normal; overflow-wrap: anywhere; pointer-events: none; }
+@media (max-width: 800px) {
+  .file-sidebar .sidebar-content { width: var(--left-preferred-width, 230px); }
+  .review-sidebar .sidebar-content { width: var(--right-preferred-width, 292px); }
+  .panel-resize-left { right: auto; left: calc(var(--rail-width) + var(--left-preferred-width, 230px) - 6px); }
+  .panel-resize-right { left: auto; right: calc(var(--rail-width) + var(--right-preferred-width, 292px) - 6px); }
+}
+
+.geometry-help { margin: 0; color: #69665f; font-size: 11px; line-height: 1.45; }
+.toolbar-group { min-width: 0; max-width: 100%; overflow-x: auto; scrollbar-width: thin; }
+.toolbar-group > button, .toolbar-divider { flex: none; }

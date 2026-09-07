@@ -85,9 +85,9 @@
         "G1"
       ],
       "lane": "manual",
-      "status": "active",
+      "status": "merged",
       "acceptanceContract": "plan.md#b1--complete-atomic-bulk-editing",
-      "receipt": null
+      "receipt": "evidence/b1.json"
     },
     {
       "id": "B2",
@@ -96,9 +96,9 @@
         "B1"
       ],
       "lane": "manual",
-      "status": "pending",
+      "status": "merged",
       "acceptanceContract": "plan.md#b2--stable-selection-layers-and-inspector",
-      "receipt": null
+      "receipt": "evidence/b2.json"
     },
     {
       "id": "B3",
@@ -107,9 +107,10 @@
         "G1"
       ],
       "lane": "manual",
-      "status": "active",
+      "status": "pr_open",
       "acceptanceContract": "plan.md#b3--recover-manual-work-safely",
-      "receipt": null
+      "receipt": "evidence/b3.json",
+      "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/32"
     },
     {
       "id": "G2",
@@ -119,7 +120,7 @@
         "B3"
       ],
       "lane": "gate",
-      "status": "pending",
+      "status": "active",
       "acceptanceContract": "plan.md#tranche-acceptance-gates",
       "receipt": null
     },
@@ -132,9 +133,9 @@
         "Q1"
       ],
       "lane": "agent",
-      "status": "active",
+      "status": "merged",
       "acceptanceContract": "plan.md#c2--explicit-current-document-handoff",
-      "receipt": null
+      "receipt": "evidence/c2.json"
     },
     {
       "id": "C3",
@@ -144,7 +145,7 @@
         "B1"
       ],
       "lane": "agent",
-      "status": "pending",
+      "status": "active",
       "acceptanceContract": "plan.md#c3--structural-artifact-submission-and-narrow-corrections",
       "receipt": null
     },
