@@ -83,10 +83,13 @@ test("pending agent review retains authority over manual recovery after reload",
   const proposal={protocolVersion:1,transactionId:`manual-precedence-${Date.now()}`,producer:{kind:"fixture"},document:{sessionId:manifest.sessionId,sourcePath:manifest.sourcePath,baseRevision:manifest.revision},operations:[{type:"renameLayer",operationId:"rename",target:{sessionKey:manifest.layers.find((layer:{name:string})=>layer.name==="mark").sessionKey},name:"Pending mark"}]};
   expect((await page.request.post("http://127.0.0.1:43117/api/agent/transactions",{headers,data:proposal})).status()).toBe(202);
   await expect(page.locator("#agent-review-status")).toHaveText(/^pending$/i);
-  const recoveryResponse = page.waitForResponse(response => new URL(response.url()).pathname === "/api/agent/recovery" && response.status() === 200);
+  const recoveryStatuses: number[] = [];
+  page.on('response', response => {
+    if (new URL(response.url()).pathname === '/api/agent/recovery') recoveryStatuses.push(response.status());
+  });
   await page.reload();
-  const recovery = await recoveryResponse;
-  expect(recovery.status(), await recovery.text()).toBe(200);
+  await expect.poll(async () => ({ responses: recoveryStatuses, status: await page.locator('#status').textContent() }))
+    .toMatchObject({ responses: expect.arrayContaining([200]) });
   await expect(page.locator("#agent-review")).toBeVisible();
   await expect(page.locator("#agent-review-status")).toHaveText(/^pending$/i);
   await expect(page.locator("#manual-draft-dialog")).not.toBeVisible();
