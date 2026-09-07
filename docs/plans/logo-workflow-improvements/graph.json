@@ -196,9 +196,10 @@
         "A2"
       ],
       "lane": "finishing",
-      "status": "active",
+      "status": "merged",
       "acceptanceContract": "plan.md#d1--named-versions-and-useful-asset-export",
-      "receipt": null
+      "receipt": "evidence/d1.json",
+      "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/37"
     },
     {
       "id": "D2",
@@ -209,9 +210,10 @@
         "Q1"
       ],
       "lane": "quality",
-      "status": "pending",
+      "status": "active",
       "acceptanceContract": "plan.md#d2--enforce-the-broader-quality-gates",
-      "receipt": null
+      "receipt": null,
+      "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/38"
     },
     {
       "id": "D3",
@@ -221,7 +223,7 @@
         "D1"
       ],
       "lane": "quality",
-      "status": "pending",
+      "status": "active",
       "acceptanceContract": "plan.md#d3--measure-and-address-interaction-performance",
       "receipt": null
     },
