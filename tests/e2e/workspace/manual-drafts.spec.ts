@@ -95,12 +95,7 @@ test("pending agent review retains authority over manual recovery after reload",
   const beforeReload = await page.evaluate(() => performance.timeOrigin);
   await page.reload();
   await expect.poll(() => page.evaluate(() => performance.timeOrigin)).not.toBe(beforeReload);
-  await expect.poll(async () => JSON.stringify({
-    recovered: recoveryStatuses.includes(200), responses: recoveryStatuses,
-    status: await page.locator('#status').textContent(),
-    active: await page.locator('.file-button[aria-current="true"]').getAttribute('data-path'),
-    stored: await page.evaluate(() => ({ pending: Boolean(sessionStorage.getItem('lineage.pending-agent-review.v1')), workspace: sessionStorage.getItem('lineage.workspace-session.v1') })),
-  }))).toContain('"recovered":true');
+  await expect.poll(() => recoveryStatuses).toContain(200);
   await expect(page.locator("#agent-review")).toBeVisible();
   await expect(page.locator("#agent-review-status")).toBeVisible();
   await expect(page.locator("#agent-review-status")).toHaveText(/^pending$/i);
