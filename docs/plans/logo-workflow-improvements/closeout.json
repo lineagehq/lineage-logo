@@ -120,7 +120,7 @@
     },
     {
       "id": "D2",
-      "status": "active",
+      "status": "merged",
       "acceptanceContract": "plan.md#d2--enforce-the-broader-quality-gates",
       "receipt": "evidence/d2.json",
       "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/38"
@@ -162,10 +162,16 @@
     "evidence/g4-final-local.json"
   ],
   "remaining": [
-    "Reliable real assistive-technology observation",
     "Final PR/main CI and extended workflow checks",
     "G4 final manifest acceptance",
     "Three independent U1 participants on same G4 candidate"
   ],
-  "engineeringTestCandidate": "3363c949da68cda475ca7889fcedfe6d5e836c43"
+  "engineeringTestCandidate": "3363c949da68cda475ca7889fcedfe6d5e836c43",
+  "scopeAmendments": [
+    {
+      "date": "2026-09-07",
+      "userInstruction": "Lets shelve the \"voice over\" stuff for now - we don't need it.",
+      "effect": "Defer real assistive-technology observation; it is not a D2/G4 merge or completion gate for this execution. Keep the result unverified. Automated accessibility and independent U1 requirements remain."
+    }
+  ]
 }

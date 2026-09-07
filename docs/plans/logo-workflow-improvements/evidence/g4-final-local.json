@@ -48,9 +48,13 @@
     "nativeReview": "Unavailable: installed CLI cannot use configured model; independent focused fallback recorded."
   },
   "remaining": [
-    "Real assistive-technology observation required by D2",
     "Qualifying PR merges and postmerge main/extended checks",
     "Final G4 acceptance",
     "Three actual independent U1 participant results"
-  ]
+  ],
+  "scopeAmendment": {
+    "date": "2026-09-07",
+    "userInstruction": "Lets shelve the \"voice over\" stuff for now - we don't need it.",
+    "effect": "Defer real assistive-technology observation; it is not a D2/G4 merge or completion gate for this execution. Keep the result unverified. Automated accessibility and independent U1 requirements remain."
+  }
 }

@@ -1,6 +1,6 @@
 {
   "node": "D2",
-  "status": "in-validation",
+  "status": "merged-postmerge-validation",
   "runtimeHead": "62b20a551d484b2b13820e1e4cca9c486a5cd113",
   "pr": "https://github.com/lineagehq/lineage-logo/pull/38",
   "local": {
@@ -65,13 +65,19 @@
   "assistiveTechnology": {
     "tool": "VoiceOver10 on macOS26.4.1",
     "status": "unverified",
-    "reason": "Activation and keyboard dialog path observed, but no reliable spoken output; initial off state confirmed afterward. User observation requested. No automated AX substitution."
+    "reason": "Activation and keyboard dialog path observed, but no reliable spoken output; initial off state confirmed afterward. User observation requested. No automated AX substitution.",
+    "scope": "Deferred by user on 2026-09-07; not an acceptance gate in this execution."
   },
   "limitations": [
-    "Real assistive-technology observation required before D2 acceptance.",
-    "Qualifying merge and postmerge gates pending.",
+    "Postmerge main and extended workflow checks pending.",
     "Extended workflow dispatch follows availability on main.",
     "No native Safari, blanket WCAG, publication, or independent participant claim."
   ],
-  "finalTestHead": "e76bdea54feff6e857495421ef24637b90eb694a"
+  "finalTestHead": "e76bdea54feff6e857495421ef24637b90eb694a",
+  "mergeCommit": "4ec82ea7528674e707755e2f15a4608e182dc58f",
+  "scopeAmendment": {
+    "date": "2026-09-07",
+    "userInstruction": "Lets shelve the \"voice over\" stuff for now - we don't need it.",
+    "effect": "Defer real assistive-technology observation; it is not a D2/G4 merge or completion gate for this execution. Keep the result unverified. Automated accessibility and independent U1 requirements remain."
+  }
 }
