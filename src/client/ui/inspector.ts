@@ -29,7 +29,7 @@ export function inspectorSummaries(context: SelectionContext): Record<InspectorS
       ? `${(selected.textContent ?? "").slice(0, 22) || "Empty"} · ${selected.getAttribute("font-size") ?? "default size"}`
       : "Unavailable",
     "geometry-summary": selected
-      ? `Opacity ${ownValue("opacity", "1")} · stroke ${ownValue("stroke-width", "default")}`
+      ? "Position · size · rotation"
       : "Unavailable",
   };
 }

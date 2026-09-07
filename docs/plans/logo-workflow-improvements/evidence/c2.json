@@ -1,6 +1,6 @@
 {
   "node": "C2",
-  "status": "local-acceptance-and-focused-review-passed",
+  "status": "merged",
   "base": "780bc9ba4fa51d2200738bf3d25e125eb3df04dd",
   "testedHead": "87c2835819f34831ad1b5cfc3ad6272921d45c58",
   "local": {
@@ -56,8 +56,16 @@
   },
   "pr": "https://github.com/lineagehq/lineage-logo/pull/30",
   "ci": {
-    "integratedRun": 34067367476,
-    "codeqlRun": 34067365229,
-    "status": "Check final head before merging; no CI success inferred from local tests."
+    "testedHead": "f28f42dcf8873d0764cc3aee13547e9aca48721a",
+    "allChecks": "passed",
+    "workflowRun": 34067558168,
+    "codeqlRun": 34067556771
+  },
+  "mergeCommit": "c410d08aab724877908fcf9efa687b3b5edec9b3",
+  "mainCi": {
+    "head": "c410d08aab724877908fcf9efa687b3b5edec9b3",
+    "workflowRun": 34067861051,
+    "codeqlRun": 34067863838,
+    "allChecks": "passed"
   }
 }
