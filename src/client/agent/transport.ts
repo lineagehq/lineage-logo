@@ -1,7 +1,7 @@
 import type {
   AgentAcceptedArtifact, AgentDocumentManifest, AgentTerminalDecision, AgentTransactionResult, AgentTransactionStatus, AgentTransactionV1,
 } from "../../shared/agent-protocol";
-import { isAgentErrorCode, parseAgentTransaction, validateCleanAgentSvg } from "../../shared/agent-protocol";
+import { isAgentErrorCode, parseRevisionRequest, parseAgentTransaction, validateCleanAgentSvg } from "../../shared/agent-protocol";
 import { SnapshotError, parseSnapshotRequest, parseSnapshotProjection, type AgentSnapshotRequest, type AgentSnapshotProjection, type AgentSnapshotReply } from "../../shared/agent-snapshot";
 import type { StagedAgentTransaction } from "./transaction";
 
@@ -84,10 +84,12 @@ function decisionState(value: unknown, transactionId: string): (AgentTransaction
   try {
     if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
     const input = value as Record<string, unknown>;
-    if (Object.keys(input).some((key) => !["transactionId", "status", "result", "artifact", "error"].includes(key))
+    if (Object.keys(input).some((key) => !["transactionId", "status", "result", "artifact", "error", "revisionRequest"].includes(key))
       || input.transactionId !== transactionId || typeof input.status !== "string"
       || !["accepted", "reverted", "rejected", "stale", "pending_review"].includes(input.status)
       || (input.error !== undefined && typeof input.error !== "string")) return undefined;
+    const revisionRequest = input.revisionRequest === undefined ? undefined : parseRevisionRequest(input.revisionRequest);
+    if (revisionRequest !== undefined && input.status !== "reverted") return undefined;
     let result: AgentTransactionResult | undefined;
     if (input.result !== undefined) {
       if (!input.result || typeof input.result !== "object" || Array.isArray(input.result)) return undefined;
@@ -130,7 +132,7 @@ function decisionState(value: unknown, transactionId: string): (AgentTransaction
     if (input.status === "pending_review" && result?.status !== "staged") return undefined;
     if ((input.status === "rejected" || input.status === "stale") && result?.status !== "rejected") return undefined;
     if (input.status === "reverted" && result?.status !== "staged") return undefined;
-    return { transactionId, status: input.status as AgentTransactionStatus["status"], ...(result ? { result } : {}), ...(artifact ? { artifact } : {}), ...(typeof input.error === "string" ? { error: input.error } : {}) };
+    return { transactionId, status: input.status as AgentTransactionStatus["status"], ...(revisionRequest !== undefined ? { revisionRequest } : {}), ...(result ? { result } : {}), ...(artifact ? { artifact } : {}), ...(typeof input.error === "string" ? { error: input.error } : {}) };
   } catch { return undefined; }
 }
 
@@ -240,10 +242,10 @@ export class AgentCanvasTransport {
     this.#serverInstanceId = serverInstanceId;
   }
 
-  async decide(transactionId: string, status: AgentTerminalDecision["status"], artifact?: AgentAcceptedArtifact): Promise<AgentTransactionStatus> {
+  async decide(transactionId: string, status: AgentTerminalDecision["status"], artifact?: AgentAcceptedArtifact, revisionRequest?: string): Promise<AgentTransactionStatus> {
     const decision: AgentTerminalDecision = status === "accepted"
       ? { transactionId, status, artifact: artifact ?? (() => { throw new Error("Accepted decisions require an artifact receipt."); })() }
-      : { transactionId, status };
+      : { transactionId, status, ...(revisionRequest !== undefined ? { revisionRequest: parseRevisionRequest(revisionRequest) } : {}) };
     let lastError: unknown;
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
@@ -264,6 +266,7 @@ export class AgentCanvasTransport {
           || state.artifact.revision !== artifact.revision || state.artifact.svg !== artifact.svg)) {
           throw new AgentDecisionError("Accepted artifact receipt does not match the applied candidate.", false, state);
         }
+        if (status === "reverted" && state.revisionRequest !== revisionRequest) throw new AgentDecisionError("Revision request receipt does not match the decision.", false, state);
         return state;
       } catch (error) {
         if (error instanceof AgentDecisionError && !error.retryable) throw error;
