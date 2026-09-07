@@ -118,7 +118,8 @@ test("critical comparison rejects exactly, reconnects and accepts a saved propos
   await page.getByLabel("Revision request", { exact: true }).fill("Keep the existing words");
   await page.getByRole("button", { name: "Reject and request revision", exact: true }).click();
   await expect.poll(async () => (await (await page.request.get(`/api/agent/transactions/${rejected}`, { headers })).json()).status).toBe("reverted");
-  expect(await page.locator("#artboard svg").first().innerHTML()).toBe(before);
+  await expect(page.locator(".agent-visual-review")).not.toBeVisible();
+  await expect.poll(() => page.locator("#artboard svg").first().innerHTML()).toBe(before);
   await context.setOffline(true);
   await page.reload().catch(() => {});
   await context.setOffline(false);
