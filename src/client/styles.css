@@ -398,3 +398,16 @@ button { font: inherit; }
 .geometry-help { margin: 0; color: #69665f; font-size: 11px; line-height: 1.45; }
 .toolbar-group { min-width: 0; max-width: 100%; overflow-x: auto; scrollbar-width: thin; }
 .toolbar-group > button, .toolbar-divider { flex: none; }
+
+.agent-visual-review { border-top: 1px solid #ddd8ce; padding-top: 10px; }
+.agent-visual-review h3 { margin: 0 0 6px; font-size: 13px; }
+.agent-visual-review p { font-size: 11px; line-height: 1.4; }
+.agent-visual-review label { display: block; margin: 8px 0; font-size: 12px; }
+.agent-visual-review textarea { width: 100%; box-sizing: border-box; resize: vertical; }
+.agent-visual-review > button { max-width: 100%; white-space: normal; }
+.agent-comparison-images { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.agent-comparison-images figure { margin: 0; min-width: 0; }
+.agent-comparison-images figcaption { font-size: 12px; font-weight: 600; margin: 6px 0; }
+.agent-comparison-images img { display: block; max-width: 100%; background: var(--comparison-background); margin-bottom: 6px; }
+.agent-comparison-images img:first-of-type { width: 100%; height: auto; aspect-ratio: 1; }
+.agent-review-actions { flex-wrap: wrap; }
