@@ -1,8 +1,8 @@
 {
   "node": "B3",
-  "status": "integrated-review-passed-browser-validation-running",
-  "base": "c410d08aab724877908fcf9efa687b3b5edec9b3",
-  "testedHead": "14fdef62e0258ef2e77df1ccc89579d3ac471a0a",
+  "status": "local-acceptance-and-focused-review-passed",
+  "base": "a774e5599ab3a66a243c66561c346209ab9c1ac7",
+  "testedHead": "494b34e256523649c1b9c552e7f9761dc14c6231",
   "local": {
     "mac": {
       "unitIntegration": 661,
@@ -41,6 +41,31 @@
       "macBrowserScenarios": 93,
       "macUnitIntegration": 689,
       "linuxBrowser": "92 passed, cross-tab acceptance test timed out; fixture now requires pending status and binds to this page publication before submitting"
+    },
+    "finalCombined": {
+      "head": "494b34e256523649c1b9c552e7f9761dc14c6231",
+      "mac": {
+        "unitIntegration": 707,
+        "typecheck": "passed",
+        "productionBuild": "passed",
+        "affectedBrowserScenarios": 16,
+        "precedingFullBrowser": {
+          "head": "20951d29cfcb30c6809cd016d811ac7ddab1dd2a",
+          "scenarios": 106,
+          "result": "passed; subsequent changes affect only test synchronization"
+        }
+      },
+      "linux": {
+        "browserScenarios": 106,
+        "result": "passed",
+        "precedingCheck": {
+          "head": "20951d29cfcb30c6809cd016d811ac7ddab1dd2a",
+          "unitIntegration": 707,
+          "typecheck": "passed",
+          "productionBuild": "passed"
+        },
+        "recoveryRepetitions": 20
+      }
     }
   },
   "assertions": [
@@ -68,16 +93,31 @@
       "Fresh b3_retirement_validator reproduced unrelated immutable draft retirement; normal durable agent settlement now suppresses incidental persistence and retires only exact owned record. Real cross-tab regression preserves a different draft.",
       "Fresh b3_restore_validator reproduced failed replacement write leaving restored draft unowned; restore now claims original token before replacement, allowing Discard to retire it.",
       "Earlier independently reproduced file-switch Discard, failed Save-and-switch retirement, and blocked expired-draft exit defects have passing browser regressions."
-    ]
+    ],
+    "finalIntegration": {
+      "correctness": "b3_integration_review: no findings at20951d2 against a774e55",
+      "tests": "b2_tests_review: no findings at20951d2 and final494b34e synchronization follow-up"
+    }
   },
   "pr": "https://github.com/lineagehq/lineage-logo/pull/32",
   "ci": {
-    "currentHead": "15818f5",
-    "workflowRun": 34068135697,
-    "status": "running"
+    "status": "final receipt-head checks pending"
   },
   "limitations": [
-    "Full combined browser validation and exact final-head CI remain required.",
-    "No independent participant results are claimed."
-  ]
+    "Final receipt-head CI and merge/main checks required.",
+    "No independent participant results claimed."
+  ],
+  "testSynchronization": {
+    "observedFailures": [
+      "Old fixture polled any positive server revision, then could read prior-tab or expired document; visible status exposed stale proposal and undefined manifest.",
+      "Hidden initial Pending label allowed a text-only assertion to proceed before review arrival.",
+      "Saved state became visible before asynchronously refreshed file list selected the continuation."
+    ],
+    "repairs": [
+      "Bind both fixtures to a manifest actually published by this page and matching server session/source/revision.",
+      "Require visible pending review before reload or cross-tab write; explicitly accept beforeunload and prove navigation.",
+      "Wait for visible iterations selection before reading saved bytes."
+    ],
+    "result": "Both recovery scenarios passed10 repetitions each; full final Linux106 and affected Mac16 pass. Earlier passing retries were not treated as diagnosis."
+  }
 }
