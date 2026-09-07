@@ -1,3 +1,4 @@
+import { PanelResizeController } from "./ui/panel-resize";
 import "./styles.css";
 import { captureAgentSnapshot } from "./agent/snapshot";
 import { SnapshotError } from "../shared/agent-snapshot";
@@ -145,6 +146,8 @@ app.innerHTML = `
         </div>
         <div class="toolbar-group" aria-label="Preview background">
           <button type="button" id="save-iteration" class="primary-action" disabled>Save iteration</button>
+          <button type="button" id="canvas-selection-mode" title="Switch between selecting logical groups and exact objects">Select: groups</button>
+          <button type="button" id="canvas-snapping" aria-pressed="false" title="Toggle alignment snapping; configure targets in preferences">Snap: off</button>
           <button type="button" class="background-button active" data-background="checker" aria-pressed="true" title="Transparency checkerboard behind artwork">Grid</button>
           <button type="button" class="background-button" data-background="light" aria-pressed="false">Light</button>
           <button type="button" class="background-button" data-background="dark" aria-pressed="false">Dark</button>
@@ -277,6 +280,8 @@ app.innerHTML = `
               <small id="stroke-state" class="paint-state"></small>
               <small id="stroke-error" class="field-error" aria-live="polite"></small>
             </label>
+            <label>Stroke width<input id="stroke-width" type="number" min="0" step="0.5" /></label>
+            <label>Opacity<input id="opacity" type="number" min="0" max="1" step="0.05" /></label>
             </div>
           </details>
           <details class="inspector-group" id="text-group">
@@ -294,14 +299,13 @@ app.innerHTML = `
           <details class="inspector-group" id="geometry-group">
             <summary>Geometry <span id="geometry-summary" class="group-summary"></span></summary>
             <div class="field-grid">
-            <label>Stroke width<input id="stroke-width" type="number" min="0" step="0.5" /></label>
-            <label>Opacity<input id="opacity" type="number" min="0" max="1" step="0.05" /></label>
+            <p class="geometry-help wide-field">Position and size use the selection’s rotated frame in document units. Rotation is its absolute angle, not an added turn.</p>
             <p id="geometry-mode" class="geometry-mode wide-field" aria-live="polite"></p>
-            <label>Oriented frame X<input id="position-x" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
-            <label>Oriented frame Y<input id="position-y" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
-            <label>Oriented frame width<input id="position-width" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
-            <label>Oriented frame height<input id="position-height" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
-            <label>Absolute frame rotation °<input id="rotation" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
+            <label>X<input id="position-x" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
+            <label>Y<input id="position-y" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
+            <label>Width<input id="position-width" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
+            <label>Height<input id="position-height" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
+            <label>Rotation °<input id="rotation" type="text" inputmode="decimal" aria-describedby="geometry-mode geometry-error" /></label>
             <label class="preference-check geometry-aspect-lock"><input id="aspect-lock" type="checkbox" checked /> Lock aspect ratio</label>
             <input id="scale" type="hidden" value="100" aria-hidden="true" />
           </div>
@@ -444,6 +448,7 @@ const layout = new CanvasLayoutController({
   storage: safeLayoutStorage(() => localStorage),
   onPreferenceChange: () => persistWorkspaceSession(),
 });
+new PanelResizeController(getElement("canvas-shell"), safeLayoutStorage(() => localStorage));
 const unsavedDialog = new UnsavedDialogController({
   dialog: getInput("unsaved-dialog"),
   message: getElement("unsaved-message"),
@@ -1611,6 +1616,15 @@ function appendLayer(element: SVGGraphicsElement, index: number, depth: number, 
     type.textContent = element.localName;
     const label = document.createElement("span");
     label.textContent = getSelectionLabel(element, root);
+    label.className = "layer-name";
+    button.title = label.textContent;
+    const fullName = document.createElement("span");
+    fullName.className = "layer-name-tooltip";
+    fullName.textContent = label.textContent;
+    fullName.hidden = true;
+    fullName.setAttribute("aria-hidden", "true");
+    button.addEventListener("focus", () => { fullName.hidden = false; });
+    button.addEventListener("blur", () => { fullName.hidden = true; });
     button.append(type, label);
     button.addEventListener("click", (event) => {
       if (agentPreviewActive) focusReviewLayer(key);
@@ -1626,7 +1640,7 @@ function appendLayer(element: SVGGraphicsElement, index: number, depth: number, 
     visibility.disabled = Boolean(agentSession?.pending) || agentPreviewActive;
     visibility.addEventListener("click", () => editor.toggleVisibility(element));
     row.classList.toggle("hidden-layer", hidden);
-    row.append(disclosure, button, visibility);
+    row.append(disclosure, button, visibility, fullName);
     layerList.append(row);
 
     if (!collapsed) children.forEach((child, childIndex) => appendLayer(child, childIndex, depth + 1, root));
@@ -1754,6 +1768,9 @@ const preferencesDialog = new PreferencesDialogController({
 });
 
 function renderSelectionPreferences(): void {
+  getElement("canvas-selection-mode").textContent = `Select: ${selectionPreferences.clickDepth === "exact" ? "objects" : "groups"}`;
+  getElement("canvas-snapping").textContent = `Snap: ${selectionPreferences.alignmentSnappingEnabled ? "on" : "off"}`;
+  getElement("canvas-snapping").setAttribute("aria-pressed", String(selectionPreferences.alignmentSnappingEnabled));
   preciseModifierPreference.value = selectionPreferences.preciseModifier;
   marqueeModePreference.value = selectionPreferences.marqueeMode;
   clickDepthPreference.value = selectionPreferences.clickDepth;
@@ -1829,6 +1846,8 @@ getElement("restore-selection-preferences").addEventListener("click", () => {
   preciseModifierPreference.focus();
   setStatus("Restored default selection preferences");
 });
+getElement("canvas-selection-mode").addEventListener("click", () => applySelectionPreferences({ ...selectionPreferences, clickDepth: selectionPreferences.clickDepth === "exact" ? "logical" : "exact" }));
+getElement("canvas-snapping").addEventListener("click", () => applySelectionPreferences({ ...selectionPreferences, alignmentSnappingEnabled: !selectionPreferences.alignmentSnappingEnabled }));
 renderSelectionPreferences();
 
 function openShortcutHelp(event?: Event): void {
