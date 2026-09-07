@@ -652,6 +652,28 @@ describe("real HTTP agent transport", () => {
     events.controller.abort();
   }, 30_000);
 
+  it("returns bounded revision feedback to producers and preserves terminal decision identity", async () => {
+    const base = await harness();
+    const events = await openEvents(base);
+    await submit(base, payload("feedback-http"));
+    await events.next();
+    await acknowledge(base, "feedback-http", staged("feedback-http"));
+    for (const revisionRequest of ["", " ", "x".repeat(1001), "bad\u0000reason", { markup: "no" }]) {
+      expect((await acknowledge(base, "feedback-http", { transactionId: "feedback-http", status: "reverted", revisionRequest })).status).toBe(400);
+    }
+    const revisionRequest = '<img src=x onerror=alert(1)> Move the mark left & keep the text.';
+    const canvas = new AgentCanvasTransport({ onTransaction: () => undefined, connect: false, editorId, fetch: browserFetch(base) });
+    await expect(canvas.decide("feedback-http", "reverted", undefined, revisionRequest)).resolves.toMatchObject({ status: "reverted", revisionRequest });
+    await expect(canvas.decide("feedback-http", "reverted", undefined, revisionRequest)).resolves.toMatchObject({ status: "reverted", revisionRequest });
+    expect((await acknowledge(base, "feedback-http", { transactionId: "feedback-http", status: "reverted", revisionRequest: "Changed reason" })).status).toBe(409);
+    const state = await fetch(`${base}/api/agent/transactions/feedback-http`, { headers: producerHeaders });
+    expect(await state.json()).toMatchObject({ status: "reverted", revisionRequest });
+    // An exact redelivery is the old decision. A changed proposal must have a fresh ID.
+    expect((await submit(base, payload("feedback-http", "Revised"))).status).toBe(409);
+    expect((await submit(base, payload("feedback-new", "Revised"))).status).toBe(202);
+    events.controller.abort();
+  });
+
   it("converges reverted decisions without applying a transaction", async () => {
     const base = await harness();
     const events = await openEvents(base);

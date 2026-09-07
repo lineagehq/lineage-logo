@@ -1,8 +1,8 @@
 {
   "node": "G2",
-  "status": "local-acceptance-passed-final-ci-pending",
+  "status": "merged-acceptance-passed",
   "base": "a774e5599ab3a66a243c66561c346209ab9c1ac7",
-  "testedHead": "494b34e256523649c1b9c552e7f9761dc14c6231",
+  "testedHead": "919cbc5a1a28120b5aef1d8e64c96b64710a6954",
   "dependencies": [
     "evidence/trust-tranche.json",
     "evidence/b1.json",
@@ -51,8 +51,25 @@
   },
   "review": "Fresh correctness and tests roles found no remaining issues in complete B3/G2 diff; B3 receipt records all five initial roles and independently validated fixes.",
   "limitations": [
-    "G2 remains active until final PR and postmerge CI pass.",
-    "WebKit is not a claim of native Safari verification.",
-    "Independent U1 participant work remains pending."
-  ]
+    "Independent U1 participant work remains pending.",
+    "WebKit checks are not native Safari verification."
+  ],
+  "mergeCommit": "f3cfc014fd94768b3d946a08c7216d7fe4d9d2e9",
+  "ci": {
+    "pr": 34071329069,
+    "codeql": 34071327340,
+    "main": 34071614658,
+    "mainCodeql": 34071615001,
+    "result": "all passed"
+  },
+  "finalLocal": {
+    "head": "919cbc5a1a28120b5aef1d8e64c96b64710a6954",
+    "unitIntegration": 730,
+    "macBrowser": 107,
+    "linuxBrowser": 107,
+    "typecheck": "passed",
+    "build": "passed",
+    "g2RepeatedLinux": 10
+  },
+  "finalSynchronization": "CI failure reproduced as old filename captured before file-list refresh; both G2 saves now await selected iterations path before recording it. Same source/receipt/reload assertions retained."
 }

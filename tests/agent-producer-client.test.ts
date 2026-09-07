@@ -17,6 +17,17 @@ const stagedResult = {
 };
 
 describe("public agent producer client", () => {
+  it("returns revision feedback as plain data and refuses malformed feedback", async () => {
+    for (const revisionRequest of ['<script>alert(1)</script> Keep the original words.', "x".repeat(1001), " "]) {
+      const request = vi.fn<typeof fetch>()
+        .mockResolvedValueOnce(json({ transactionId: transaction.transactionId, status: "queued" }, 202))
+        .mockResolvedValueOnce(json({ transactionId: transaction.transactionId, status: "reverted", result: stagedResult, revisionRequest }));
+      const outcome = await new AgentProducerClient({ context, fetch: request, pollIntervalMs: 1 }).submitAndWait(transaction);
+      expect(outcome).toMatchObject(revisionRequest.startsWith("<") ? { status: "reverted", revisionRequest } : { status: "conflict" });
+    }
+  });
+
+
   it("sends immutable instance and workspace binding headers on every request", async () => {
     const request = vi.fn<typeof fetch>().mockResolvedValue(json({ sessionId: "session", sourcePath: "concept.svg", revision: 4, layers: [] }));
     const binding = { instanceId: "22222222-2222-4222-8222-222222222222", workspaceId: "a".repeat(64) };
