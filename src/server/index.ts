@@ -1,3 +1,4 @@
+import { LOGO_IMPORT_MAX_BYTES } from "../shared/logo-creation.js";
 import { createWorkspaceLogo } from "./logo-creation.js";
 import { prepareAgentHandoff } from "./agent-handoff.js";
 import { AgentProducerClient } from "../producer/agent-client.js";
@@ -103,7 +104,9 @@ const server = createServer(async (request, response) => {
   try {
     if (request.method === "POST" && url.pathname === "/api/concepts") {
       validateRequestOrigin(request);
-      const body = await readJsonBody(request, 5 * 1024 * 1024 + 16 * 1024);
+      // JSON may encode each source byte as a six-byte Unicode escape.
+      // createWorkspaceLogo still enforces the decoded 5 MiB SVG limit.
+      const body = await readJsonBody(request, LOGO_IMPORT_MAX_BYTES * 6 + 16 * 1024);
       sendJson(response, 201, { file: await createWorkspaceLogo(workspaceRoot, body) });
       return;
     }

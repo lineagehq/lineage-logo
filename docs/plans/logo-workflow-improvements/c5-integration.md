@@ -22,7 +22,7 @@ Add these origin-checked routes before generic agent transport routing (which ha
 ```ts
 if (request.method === "POST" && url.pathname === "/api/concepts") {
   validateRequestOrigin(request);
-  const body = await readJsonBody(request, 5 * 1024 * 1024 + 16 * 1024);
+  const body = await readJsonBody(request, LOGO_IMPORT_MAX_BYTES * 6 + 16 * 1024);
   const file = await createWorkspaceLogo(workspaceRoot, body);
   sendJson(response, 201, { file });
   return;

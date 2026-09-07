@@ -95,6 +95,11 @@ test("packed empty-workspace UI creates, safely imports and hands off current ed
     await dialog.getByRole("button", { name: "Import SVG", exact: true }).click();
     await expect(page.locator("#artboard #wordmark")).toHaveText("Starting brand");
     const originalPath = path.join(workspace, "concepts/my-logo-2.svg"); expect(await readFile(originalPath, "utf8")).toBe(imported);
+    // A supported SVG can exceed 5 MiB on the wire after JSON escaping.
+    const escapedImport = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><desc>' + "\n".repeat(3 * 1024 * 1024) + '</desc><rect width="10" height="10"/></svg>';
+    const expanded = await page.request.post(first.url + "/api/concepts", { headers: { Origin: first.url }, data: { name: "escaped-import", svg: escapedImport } });
+    expect(expanded.status()).toBe(201);
+    expect(await readFile(path.join(workspace, "concepts/escaped-import.svg"), "utf8")).toBe(escapedImport);
     const initial = await handoff(page, path.join(root, "initial.json"), "Add a blue circular mark, preserving the wordmark.");
     expect(initial.sourcePath).toBe("concepts/my-logo-2.svg");
     const artifact = path.join(root, "artifact.svg"), proposal = path.join(root, "proposal.json");
