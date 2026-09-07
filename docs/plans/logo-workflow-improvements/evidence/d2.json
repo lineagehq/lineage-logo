@@ -1,6 +1,6 @@
 {
   "node": "D2",
-  "status": "merged-postmerge-validation",
+  "status": "merged-verified",
   "runtimeHead": "62b20a551d484b2b13820e1e4cca9c486a5cd113",
   "pr": "https://github.com/lineagehq/lineage-logo/pull/38",
   "local": {
@@ -69,8 +69,7 @@
     "scope": "Deferred by user on 2026-09-07; not an acceptance gate in this execution."
   },
   "limitations": [
-    "Postmerge main and extended workflow checks pending.",
-    "Extended workflow dispatch follows availability on main.",
+    "Real assistive-technology observation deferred by user; unverified.",
     "No native Safari, blanket WCAG, publication, or independent participant claim."
   ],
   "finalTestHead": "e76bdea54feff6e857495421ef24637b90eb694a",
@@ -79,5 +78,16 @@
     "date": "2026-09-07",
     "userInstruction": "Lets shelve the \"voice over\" stuff for now - we don't need it.",
     "effect": "Defer real assistive-technology observation; it is not a D2/G4 merge or completion gate for this execution. Keep the result unverified. Automated accessibility and independent U1 requirements remain."
+  },
+  "postmerge": {
+    "qualityMergeCommit": "4ec82ea7528674e707755e2f15a4608e182dc58f",
+    "qualityMainCi": "https://github.com/lineagehq/lineage-logo/actions/runs/34123492036",
+    "qualityMainCodeql": "https://github.com/lineagehq/lineage-logo/actions/runs/34123492010",
+    "integratedMergeCommit": "94e82f0a20f0cce3e23f06a66f669e55cf0a88db",
+    "mainCi": "https://github.com/lineagehq/lineage-logo/actions/runs/34124582852",
+    "mainCodeql": "https://github.com/lineagehq/lineage-logo/actions/runs/34124582726",
+    "extended": "https://github.com/lineagehq/lineage-logo/actions/runs/34124585618",
+    "allPassed": true,
+    "workflowRepairEvidence": "g4.json"
   }
 }

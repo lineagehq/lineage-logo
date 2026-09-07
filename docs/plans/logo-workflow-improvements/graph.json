@@ -210,7 +210,7 @@
         "Q1"
       ],
       "lane": "quality",
-      "status": "active",
+      "status": "merged",
       "acceptanceContract": "plan.md#d2--enforce-the-broader-quality-gates",
       "receipt": "evidence/d2.json",
       "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/38"
@@ -223,9 +223,9 @@
         "D1"
       ],
       "lane": "quality",
-      "status": "active",
+      "status": "merged",
       "acceptanceContract": "plan.md#d3--measure-and-address-interaction-performance",
-      "receipt": null
+      "receipt": "evidence/d3/README.md"
     },
     {
       "id": "G4",
@@ -235,9 +235,9 @@
         "D3"
       ],
       "lane": "gate",
-      "status": "pending",
+      "status": "verified",
       "acceptanceContract": "plan.md#tranche-acceptance-gates",
-      "receipt": null
+      "receipt": "evidence/g4.json"
     },
     {
       "id": "U1",
