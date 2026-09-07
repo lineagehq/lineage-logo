@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "node": "G4",
+  "status": "verified",
+  "candidateMergeCommit": "d669ebef20bdf8bbd3a1705094a22be3b6809d7a",
+  "packageSha256": "857691da68e411d3380903c187fc37ad2bccb8227cae36d9d75720b908d62f6b",
+  "published": false,
+  "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/42",
+  "ci": {
+    "main": "https://github.com/lineagehq/lineage-logo/actions/runs/34151906121",
+    "codeql": "https://github.com/lineagehq/lineage-logo/actions/runs/34151906206",
+    "extended": "https://github.com/lineagehq/lineage-logo/actions/runs/34151995212",
+    "allExpectedJobsPassed": true,
+    "unitPassed": 783,
+    "unitOnlySkipped": 1,
+    "browserDependentCaseSeparatelyPassed": 1,
+    "chromiumPassed": 128,
+    "firefoxPassed": 3,
+    "webkitPassed": 3,
+    "fullCorpusPassed": 15,
+    "browserFailures": 0,
+    "browserSkipped": 0
+  },
+  "performance": {
+    "receipt": "performance.json",
+    "sha256": "2ce04ddcf7feb0badff818a97a65c7bf3b8ebfec462cc9a03a5ceeb0905f6062",
+    "gate": "pass",
+    "independentHeapReview": "README.md"
+  },
+  "packageReceipts": {
+    "candidate-macos-latest.json": "26d57d11efb4e86c99c38a7babf982248a4dfa26a119f6e3c7caca8ec7439329",
+    "candidate-node24.json": "e4f3acc443eb2534b8023a6d171e2fcbda1c9012a51b7021837c372c0a6853da",
+    "candidate-ubuntu-latest.json": "48493e37af3c8ce48e4f7fd945099fb3630c97176b713066c3b126d6c33ed4e6",
+    "package-local-macos.json": "304b4b424e62bbd5e8b03a0e9cfb292da239a7217b370d3adf9218867fe30134"
+  },
+  "installedRehearsals": [
+    "../rehearsal-evidence/attempt-06.json",
+    "../rehearsal-evidence/attempt-07.json"
+  ],
+  "limitations": [
+    "Three independent U1 participants remain pending.",
+    "Real assistive technology observation remains deferred and unverified.",
+    "This tarball is not registry beta.4; version alone is not candidate identity.",
+    "Headless development-build performance is not a production or leak-free guarantee."
+  ]
+}

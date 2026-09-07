@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "kind": "non-counting-maintainer-rehearsal",
+  "status": "failed",
+  "package_version": "0.1.0-beta.4",
+  "package_sha256": "0adc32402cd59d2ca0b588707a21dfb16024325a7d57563bad452e4c25190361",
+  "milestones": [
+    "create_import",
+    "review_reject",
+    "review_accept"
+  ],
+  "participant_results": 0,
+  "initial_handoff_digest": "54ace59614b40af80c9b7535efbecbc3e4d74ed06722ddb1a3352744be96cacd"
+}
