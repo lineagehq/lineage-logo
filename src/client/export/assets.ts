@@ -48,18 +48,38 @@ export function buildSvgAsset(source: string, request: AssetRequest = {}, option
     }
   }
   const hasFont = options.hasFont ?? browserHasFont;
-  for (const text of Array.from(target.querySelectorAll("text,tspan")).concat(target.localName === "text" ? [target] : [])) {
-    let owner: Element | null = text;
-    let family = "";
-    while (owner && !family) { family = (owner as SVGElement).style?.fontFamily || owner.getAttribute("font-family") || ""; owner = owner.parentElement; }
-    const first = (family || "serif").split(",")[0].trim().replace(/^['"]|['"]$/g, "");
-    if (!hasFont(first)) throw new Error(`Font “${first}” is unavailable locally. Install it or choose an available font before export. Text is not outlined.`);
-  }
+  const validateFonts = (scope: Element) => {
+    for (const text of Array.from(scope.querySelectorAll("text,tspan")).concat(scope.localName === "text" ? [scope] : [])) {
+      let owner: Element | null = text;
+      let family = "";
+      while (owner && !family) { family = (owner as SVGElement).style?.fontFamily || owner.getAttribute("font-family") || ""; owner = owner.parentElement; }
+      const first = (family || "serif").split(",")[0].trim().replace(/^['"]|['"]$/g, "");
+      if (!hasFont(first)) throw new Error(`Font “${first}” is unavailable locally. Install it or choose an available font before export. Text is not outlined.`);
+    }
+  };
   if (request.targetId) {
     const result = createSvgPreview(source, `#${request.targetId}`, options.measure);
     if (result.fallback) throw new Error(result.status.replace("Whole SVG fallback:", "Cannot export target:"));
-    return result.svg;
+    const isolated = new DOMParser().parseFromString(result.svg, "image/svg+xml").documentElement;
+    // Referenced text in retained defs is part of the asset, too.
+    validateFonts(isolated);
+    const originalFrame = root.getAttribute("viewBox")?.trim().split(/[\s,]+/).map(Number);
+    if (!originalFrame || originalFrame.length !== 4 || originalFrame.some(value => !Number.isFinite(value)) || originalFrame[2] <= 0 || originalFrame[3] <= 0) {
+      throw new Error("Subset export requires a positive finite viewBox to preserve the original coordinate system.");
+    }
+    // Crop with an outer frame while keeping percentage geometry and user-space
+    // resources relative to their original viewport inside it.
+    const cropped = isolated.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "svg");
+    cropped.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    cropped.setAttribute("viewBox", isolated.getAttribute("viewBox")!);
+    cropped.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    isolated.setAttribute("viewBox", originalFrame.join(" "));
+    for (const [name, value] of [["x", originalFrame[0]], ["y", originalFrame[1]], ["width", originalFrame[2]], ["height", originalFrame[3]]] as const) isolated.setAttribute(name, String(value));
+    isolated.setAttribute("overflow", "visible");
+    cropped.append(isolated);
+    return cropped.outerHTML;
   }
+  validateFonts(root);
   const viewBox = root.getAttribute("viewBox")?.trim().split(/[\s,]+/).map(Number);
   if (!viewBox || viewBox.length !== 4 || viewBox.some(value => !Number.isFinite(value)) || viewBox[2] <= 0 || viewBox[3] <= 0) throw new Error("Full-logo export requires a positive finite viewBox. Set the document bounds first.");
   if (!options.measure && !measureArtworkBounds(source)) throw new Error("The document has no measurable visible artwork to export.");
