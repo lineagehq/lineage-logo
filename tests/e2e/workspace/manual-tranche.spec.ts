@@ -31,6 +31,7 @@ async function assertReferences(page: Page, svg: string) {
 async function saveReopen(page: Page, sourcePath: string, original: string) {
   await page.locator('#save-iteration').click();
   await expect(page.locator('#lifecycle-state')).toHaveAttribute('data-state', 'saved');
+  await expect(page.locator('.file-button[aria-current="true"]')).toHaveAttribute('data-path', /^iterations\//);
   const savedPath = (await page.locator('.file-button[aria-current="true"]').getAttribute('data-path'))!;
   expect(savedPath).toMatch(/^iterations\//);
   const saved = await bytes(page, savedPath);
@@ -167,6 +168,7 @@ test('G2 narrow 44-layer keyboard task preserves correction through recovery and
   await expect(page.locator('#artboard #seat-north-back')).toHaveAttribute('fill', '#d14468');
   await enter(page, page.locator('#save-iteration'));
   await expect(page.locator('#lifecycle-state')).toHaveAttribute('data-state', 'saved');
+  await expect(page.locator('.file-button[aria-current="true"]')).toHaveAttribute('data-path', /^iterations\//);
   const savedPath = (await page.locator('.file-button[aria-current="true"]').getAttribute('data-path'))!;
   const saved = await bytes(page, savedPath);
   await assertReferences(page, saved);
