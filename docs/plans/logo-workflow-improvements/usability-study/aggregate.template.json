@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "study_kind": "local_candidate",
+  "status": "pending",
+  "candidate_manifest_sha256": null,
+  "g4_valid_for_candidate": false,
+  "user_attests_three_distinct_independent_people": false,
+  "counting_receipts": [
+    {
+      "participant_slot": null,
+      "attempt_id": null,
+      "receipt_sha256": null
+    },
+    {
+      "participant_slot": null,
+      "attempt_id": null,
+      "receipt_sha256": null
+    },
+    {
+      "participant_slot": null,
+      "attempt_id": null,
+      "receipt_sha256": null
+    }
+  ],
+  "unsuccessful_receipt_sha256": [],
+  "blocker_fix_commits": [],
+  "unresolved_u1_blockers": true,
+  "limitation": "Local candidate study only; not published-registry cohort evidence. Identifiers alone do not prove distinct people."
+}

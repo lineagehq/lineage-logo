@@ -1,0 +1,83 @@
+{
+  "node": "D2",
+  "status": "merged-postmerge-validation",
+  "runtimeHead": "62b20a551d484b2b13820e1e4cca9c486a5cd113",
+  "pr": "https://github.com/lineagehq/lineage-logo/pull/38",
+  "local": {
+    "check": {
+      "unitIntegrationPassed": 782,
+      "browserDependentUnitCase": "Gated in unit-only runs; explicitly passed separately and wired after Chromium installation in CI.",
+      "typecheck": "passed",
+      "build": "passed"
+    },
+    "fullMac": {
+      "head": "7443250f77daef1950015f4fc3e732420718cdfb",
+      "passed": 126,
+      "laterRuntimeFix": "612d4a2 preserves styled SVG roles; fresh204 editor/serialization tests, independent actualapp rendering and two axe journeys passed."
+    },
+    "fullLinux": {
+      "head": "62b20a551d484b2b13820e1e4cca9c486a5cd113",
+      "passed": 125,
+      "failed": 1,
+      "failure": "Critical rejection test asserted exact DOM before browser removed review highlight. Five targeted runs reproduced it.",
+      "repair": "e76bdea waits review hidden and polls identical exact DOM; five Linux repetitions passed. No production changes. Final PR Chromium and critical browser CI passed."
+    },
+    "fullCorpus": {
+      "passed": 15
+    },
+    "axe": {
+      "scenarios": 2,
+      "states": 8,
+      "seriousCriticalFindings": 0,
+      "excludedControls": false
+    }
+  },
+  "ci": {
+    "run": 34075338507,
+    "codeql": 34075335992,
+    "status": "all seven CI job instances and both CodeQL analyses passed",
+    "packageReceipts": [
+      "d2-packages/candidate-node24.json",
+      "d2-packages/candidate-macos-latest.json",
+      "d2-packages/candidate-ubuntu-latest.json"
+    ],
+    "githubTestMergeRevision": "00f189356663082215501b0bc28f80030022475b",
+    "sameArtifactAcrossPlatforms": true,
+    "head": "e76bdea54feff6e857495421ef24637b90eb694a",
+    "priorPassedRun": 34074798330
+  },
+  "review": {
+    "roles": [
+      "correctness",
+      "tests",
+      "contracts-types",
+      "silent-failures",
+      "comments-docs"
+    ],
+    "native": "CLI/model mismatch; focused independent fallback.",
+    "acceptedDefectsRepaired": [
+      "Runtime roles changing authored CSS appearance",
+      "Open timing accepting a restored old document"
+    ],
+    "freshValidation": "Actual application/Chromium reproductions and repaired controls passed.",
+    "finalTestsReview": "No high-confidence issues at62b20a5."
+  },
+  "assistiveTechnology": {
+    "tool": "VoiceOver10 on macOS26.4.1",
+    "status": "unverified",
+    "reason": "Activation and keyboard dialog path observed, but no reliable spoken output; initial off state confirmed afterward. User observation requested. No automated AX substitution.",
+    "scope": "Deferred by user on 2026-09-07; not an acceptance gate in this execution."
+  },
+  "limitations": [
+    "Postmerge main and extended workflow checks pending.",
+    "Extended workflow dispatch follows availability on main.",
+    "No native Safari, blanket WCAG, publication, or independent participant claim."
+  ],
+  "finalTestHead": "e76bdea54feff6e857495421ef24637b90eb694a",
+  "mergeCommit": "4ec82ea7528674e707755e2f15a4608e182dc58f",
+  "scopeAmendment": {
+    "date": "2026-09-07",
+    "userInstruction": "Lets shelve the \"voice over\" stuff for now - we don't need it.",
+    "effect": "Defer real assistive-technology observation; it is not a D2/G4 merge or completion gate for this execution. Keep the result unverified. Automated accessibility and independent U1 requirements remain."
+  }
+}
