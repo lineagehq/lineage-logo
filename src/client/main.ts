@@ -1,3 +1,4 @@
+import { GuidedCreationController } from "./ui/guided-creation";
 import { PanelResizeController } from "./ui/panel-resize";
 import "./styles.css";
 import { AgentVisualReview } from "./agent/visual-review";
@@ -121,6 +122,11 @@ app.innerHTML = `
   <header class="topbar">
     <div class="brand"><span class="brand-mark">L</span><span>Lineage Logo</span></div>
     <div class="workspace-name" id="workspace-name">Connecting…</div>
+    <nav class="creation-actions" aria-label="Logo workflow">
+      <button type="button" id="create-logo">Create a logo</button>
+      <button type="button" id="import-logo">Import SVG</button>
+      <button type="button" id="prepare-handoff">Prepare agent handoff</button>
+    </nav>
   </header>
   <main class="shell" id="canvas-shell">
     <aside class="sidebar file-sidebar" aria-label="Workspace files">
@@ -168,8 +174,8 @@ app.innerHTML = `
         </div>
         <div class="empty-state" id="empty-state">
           <span class="empty-icon">◇</span>
-          <strong>Choose an SVG to inspect</strong>
-          <span>Concepts and iterations appear in the workspace panel.</span>
+          <strong>Create a logo or import an SVG</strong>
+          <span>Start with the buttons above, or choose existing artwork from the workspace panel.</span>
         </div>
         <div id="document-viewport" class="document-viewport" hidden>
           <div id="artboard" class="artboard" hidden></div>
@@ -693,7 +699,9 @@ function agentLayers(svg: SVGSVGElement): AgentDocumentManifest["layers"] {
     }));
 }
 
+const editorId = crypto.randomUUID();
 const agentTransport = new AgentCanvasTransport({
+  editorId,
   connect: false,
   onSnapshot: (request) => {
     const root = editor.svgNode;
@@ -804,6 +812,26 @@ const agentTransport = new AgentCanvasTransport({
     } else setStatus(message);
   },
 });
+
+const guidedCreation = new GuidedCreationController({
+  host: document.body,
+  current: () => {
+    if (!editor.svgNode || !agentSession || agentSession.pending || editor.hasProvisionalEdits) return undefined;
+    return { editorId, ...agentSession.context, selectedLayerIds: editor.selectedNodes.map(node => node.dataset.lineageKey!).filter(Boolean) };
+  },
+  openCreated: async file => {
+    try {
+      const workspace = await fetchWorkspace();
+      commitWorkspaceSnapshot(workspace);
+      const button = fileButtons.get(file.path);
+      if (!button) throw new Error("The new logo was created but could not be found. Refresh the workspace.");
+      await requestFileSwitch(file, button);
+    } catch (error) { setStatus(error instanceof Error ? error.message : "The new logo could not be opened. Refresh the workspace."); }
+  },
+});
+getElement("create-logo").addEventListener("click", () => guidedCreation.openCreate("create"));
+getElement("import-logo").addEventListener("click", () => guidedCreation.openCreate("import"));
+getElement("prepare-handoff").addEventListener("click", () => guidedCreation.openHandoff());
 
 const agentVisualReview = new AgentVisualReview(getElement("agent-visual-review"), async (reason) => {
   if (!agentSession?.pending || agentSession.pending.provisional || agentSession.recoveryRequired) {
