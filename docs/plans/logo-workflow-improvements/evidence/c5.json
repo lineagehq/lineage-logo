@@ -1,6 +1,6 @@
 {
   "node": "C5",
-  "status": "local-acceptance-passed-final-ci-pending",
+  "status": "merged-and-main-verified",
   "pr": "https://github.com/lineagehq/lineage-logo/pull/36",
   "runtimeHead": "5310b54e2be5505499736713b60477fac13d6421",
   "journeyHead": "bc14f8700eeb77349a431ec3f027a5636ea096dc",
@@ -53,8 +53,15 @@
     "url": "http://lineage-logo.localhost:43125"
   },
   "limitations": [
-    "Final PR and main CI gates pending.",
-    "G3 remains active until C4/C5 main gates pass.",
-    "No independent U1 participant results claimed."
-  ]
+    "Scripted and agent-operated evidence; no independent U1 participant results claimed."
+  ],
+  "finalHead": "04d633d85cea0b992ce004e5dceaa3b6171c6757",
+  "mergeCommit": "bfaf798813639bfb429c04ab45d1146c975eb9cc",
+  "ci": {
+    "pr": 34072417177,
+    "prCodeql": 34072415646,
+    "main": 34072711276,
+    "mainCodeql": 34072711582,
+    "allPassed": true
+  }
 }
