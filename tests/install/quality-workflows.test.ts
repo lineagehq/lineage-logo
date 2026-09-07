@@ -36,3 +36,12 @@ test("extended corpus and measurements are dispatched and scheduled without publ
   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
   expect(pkg.scripts["test:e2e:corpus"]).toBe("LINEAGE_LOGO_FULL_CORPUS=1 playwright test tests/e2e/release/svg-corpus.spec.ts --project=chromium");
 });
+
+// The failure-only reporter removes its receipt after a successful run. Uploading
+// unconditionally therefore turns a passing corpus run into a failing workflow.
+test("corpus uploads match failure-only diagnostics retention", () => {
+  const upload = extended.jobs["full-corpus"].steps.find((step: { uses?: string }) => step.uses?.startsWith("actions/upload-artifact@"));
+  expect(upload.if).toBe("failure()");
+  expect(upload.with.path).toBe("test-results/release-diagnostics.json");
+  expect(upload.with["if-no-files-found"]).toBe("error");
+});

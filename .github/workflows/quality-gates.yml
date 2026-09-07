@@ -21,8 +21,9 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e:corpus
+      # Successful runs deliberately remove diagnostics; retain metadata only on failure.
       - uses: actions/upload-artifact@v7
-        if: always()
+        if: failure()
         with:
           name: full-corpus-diagnostics
           path: test-results/release-diagnostics.json

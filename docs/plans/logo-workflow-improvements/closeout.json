@@ -120,7 +120,7 @@
     },
     {
       "id": "D2",
-      "status": "merged",
+      "status": "active",
       "acceptanceContract": "plan.md#d2--enforce-the-broader-quality-gates",
       "receipt": "evidence/d2.json",
       "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/38"
