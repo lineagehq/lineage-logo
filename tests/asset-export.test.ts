@@ -25,6 +25,19 @@ describe("asset export", () => {
   it("keeps white paint and wide/tall viewBoxes", () => {
     for (const box of ["0 0 1000 20", "0 0 20 1000"]) expect(buildSvgAsset(wrap('<rect fill="white" width="20" height="20"/>').replace("0 0 100 50", box), {}, options)).toContain(`viewBox="${box}"`);
   });
+  it("validates retained use-referenced text rather than only direct target descendants", () => {
+    const source = wrap('<defs><text id="letters" y="30" font-family="Absent">Brand</text></defs><use id="mark" href="#letters"/>');
+    expect(() => buildSvgAsset(source, { targetId: "mark" }, { ...options, hasFont: () => false })).toThrow(/unavailable locally/);
+  });
+  it("retains the percentage reference viewport inside the crop", () => {
+    const source = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect id="mark" x="25%" y="25%" width="50%" height="50%" fill="red"/></svg>';
+    const result = buildSvgAsset(source, { targetId: "mark" }, { ...options, measure: () => ({x:100,y:100,width:200,height:200}) });
+    const root = new DOMParser().parseFromString(result,"image/svg+xml").documentElement;
+    expect(root.getAttribute("viewBox")).toBe("84 84 232 232");
+    expect(root.querySelector("svg")?.getAttribute("viewBox")).toBe("0 0 400 400");
+    expect(root.querySelector("svg")?.getAttribute("width")).toBe("400");
+    expect(root.querySelector("#mark")?.getAttribute("width")).toBe("50%");
+  });
   it("rejects invalid PNG dimensions before decoding", async () => {
     for (const size of [0, -1, 4097, 1.5, NaN]) await expect(renderPngAsset(wrap(""), { size, background: "transparent" })).rejects.toThrow(/size/);
   });
