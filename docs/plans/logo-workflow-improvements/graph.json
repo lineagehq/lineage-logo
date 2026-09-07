@@ -159,7 +159,7 @@
         "A2"
       ],
       "lane": "agent",
-      "status": "pr_open",
+      "status": "merged",
       "acceptanceContract": "plan.md#c4--visual-review-and-request-revision-feedback",
       "receipt": null
     },
@@ -171,7 +171,7 @@
         "B2"
       ],
       "lane": "agent",
-      "status": "active",
+      "status": "pr_open",
       "acceptanceContract": "plan.md#c5--guided-creationimport-and-agent-entry",
       "receipt": null
     },
@@ -184,7 +184,7 @@
         "C5"
       ],
       "lane": "gate",
-      "status": "pending",
+      "status": "active",
       "acceptanceContract": "plan.md#tranche-acceptance-gates",
       "receipt": null
     },
