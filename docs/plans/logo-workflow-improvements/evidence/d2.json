@@ -15,7 +15,13 @@
       "passed": 126,
       "laterRuntimeFix": "612d4a2 preserves styled SVG roles; fresh204 editor/serialization tests, independent actualapp rendering and two axe journeys passed."
     },
-    "fullLinux": "running at62b20a5",
+    "fullLinux": {
+      "head": "62b20a551d484b2b13820e1e4cca9c486a5cd113",
+      "passed": 125,
+      "failed": 1,
+      "failure": "Critical rejection test asserted exact DOM before browser removed review highlight. Five targeted runs reproduced it.",
+      "repair": "e76bdea waits review hidden and polls identical exact DOM; five Linux repetitions passed. No production changes. Final PR Chromium and critical browser CI passed."
+    },
     "fullCorpus": {
       "passed": 15
     },
@@ -27,16 +33,18 @@
     }
   },
   "ci": {
-    "run": 34074798330,
-    "codeql": 34074796852,
-    "status": "browser QA pending; all other expected jobs passed",
+    "run": 34075338507,
+    "codeql": 34075335992,
+    "status": "all seven CI job instances and both CodeQL analyses passed",
     "packageReceipts": [
       "d2-packages/candidate-node24.json",
       "d2-packages/candidate-macos-latest.json",
       "d2-packages/candidate-ubuntu-latest.json"
     ],
-    "githubTestMergeRevision": "156ab80957cbdc9447a922438cc912063c00719c",
-    "sameArtifactAcrossPlatforms": true
+    "githubTestMergeRevision": "00f189356663082215501b0bc28f80030022475b",
+    "sameArtifactAcrossPlatforms": true,
+    "head": "e76bdea54feff6e857495421ef24637b90eb694a",
+    "priorPassedRun": 34074798330
   },
   "review": {
     "roles": [
@@ -61,8 +69,9 @@
   },
   "limitations": [
     "Real assistive-technology observation required before D2 acceptance.",
-    "Final Linux/CI and postmerge gates pending.",
+    "Qualifying merge and postmerge gates pending.",
     "Extended workflow dispatch follows availability on main.",
     "No native Safari, blanket WCAG, publication, or independent participant claim."
-  ]
+  ],
+  "finalTestHead": "e76bdea54feff6e857495421ef24637b90eb694a"
 }

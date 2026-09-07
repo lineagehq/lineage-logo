@@ -57,5 +57,12 @@
     "This receipt covers the installed cross-feature portion only, not all G4 criteria.",
     "Actual assistive technology and three independent participant results are not represented.",
     "CI, final integration and main-merge validation are owned by the root task."
-  ]
+  ],
+  "linux": {
+    "head": "e891525",
+    "passed": 1,
+    "durationSeconds": 39.2,
+    "source": "Exact git archive with full source revision supplied to the receipt helper; non-root Playwright1.62.1 Linux image.",
+    "initialAttempt": "Archive lacked .git for receipt metadata; helper now accepts the runner-supplied archive revision. No app behavior changed."
+  }
 }
