@@ -122,22 +122,22 @@
       "id": "D2",
       "status": "active",
       "acceptanceContract": "plan.md#d2--enforce-the-broader-quality-gates",
-      "receipt": null,
+      "receipt": "evidence/d2.json",
       "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/38"
     },
     {
       "id": "D3",
       "status": "active",
       "acceptanceContract": "plan.md#d3--measure-and-address-interaction-performance",
-      "receipt": null,
-      "pullRequest": null
+      "receipt": "evidence/d3/README.md",
+      "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/39"
     },
     {
       "id": "G4",
       "status": "pending",
       "acceptanceContract": "plan.md#tranche-acceptance-gates",
-      "receipt": null,
-      "pullRequest": null
+      "receipt": "evidence/g4-final-local.json",
+      "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/39"
     },
     {
       "id": "U1",
@@ -158,13 +158,14 @@
     "evidence/d2.json",
     "evidence/d3/README.md",
     "evidence/g4-installed.json",
-    "closeout.md"
+    "closeout.md",
+    "evidence/g4-final-local.json"
   ],
   "remaining": [
-    "Final live agent fault coverage",
     "Reliable real assistive-technology observation",
     "Final PR/main CI and extended workflow checks",
     "G4 final manifest acceptance",
     "Three independent U1 participants on same G4 candidate"
-  ]
+  ],
+  "engineeringTestCandidate": "3363c949da68cda475ca7889fcedfe6d5e836c43"
 }

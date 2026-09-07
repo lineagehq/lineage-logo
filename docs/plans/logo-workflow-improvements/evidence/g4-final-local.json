@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "status": "local-engineering-checks-passed-acceptance-pending",
+  "candidate": "3363c949da68cda475ca7889fcedfe6d5e836c43",
+  "packageSha256": "efb1a6d0dc2dd7fe68db7a50dcbbdcd11b8474bd25bc0605f78a17f52fa6a8cf",
+  "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/39",
+  "localChecks": {
+    "unit": {
+      "passed": 782,
+      "skipped": 1,
+      "skipBoundary": "Browser-dependent performance-open regression runs explicitly in browser CI."
+    },
+    "typecheck": "passed",
+    "build": "passed",
+    "browserMacOS": {
+      "passed": 129,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 269966
+    },
+    "browserLinux": {
+      "passed": 129,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 253257,
+      "image": "mcr.microsoft.com/playwright:v1.62.1-noble",
+      "source": "Exact candidate git archive; matching LINEAGE_LOGO_G4_SOURCE_REVISION supplied by caller."
+    }
+  },
+  "liveFaultCoverage": {
+    "test": "tests/e2e/release/final-faults.spec.ts",
+    "passed": 3,
+    "cases": [
+      "Stale and locked proposals are refused without changing files.",
+      "HTTP 503 before server durable write exhausts automatic retries; explicit retry creates exactly one saved artifact and preserves undo/redo. This is an HTTP failure injection, not an OS filesystem fault.",
+      "Offline reload restores pending review and manual edit; rejection preserves its reason and the manual base."
+    ]
+  },
+  "review": {
+    "independentRoles": [
+      "correctness",
+      "tests",
+      "contracts/types",
+      "documentation",
+      "silent failures"
+    ],
+    "outcome": "No remaining blocking findings reported. Correctness, tests and silent-failure reviews include final fault tests.",
+    "nativeReview": "Unavailable: installed CLI cannot use configured model; independent focused fallback recorded."
+  },
+  "remaining": [
+    "Real assistive-technology observation required by D2",
+    "Qualifying PR merges and postmerge main/extended checks",
+    "Final G4 acceptance",
+    "Three actual independent U1 participant results"
+  ]
+}
