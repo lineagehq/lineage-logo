@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "study_kind": "local_candidate",
+  "status": "not_ready",
+  "commit": "99aed82cb4c24d4ee5a73358f5733d3431df1aaa",
+  "package_version": "0.1.0-beta.4",
+  "package_sha256": "0adc32402cd59d2ca0b588707a21dfb16024325a7d57563bad452e4c25190361",
+  "g4_receipt_sha256": "316d839610a0a6585f43ce38e68514df1d0f49eea4fbedeb0ecccbf48ad13890",
+  "shipped_instructions_sha256": null,
+  "task_prompts_sha256": "d784bd005b4ddcef258e21557c1b66dbc0647df5e5cd11e722408d2a31e812c0",
+  "attempt_schema_sha256": "a84ae5ae7c7ab621d29c171465fd6535fe2d9b040183557681bc3473b1f8ba79",
+  "fixture": {
+    "repository_path": "tests/fixtures/ux-audit/seatify-44.svg",
+    "sha256": "0ce112d615c992b7e079527da731d98e55a3f176983172ebe25d9caaa21757f3"
+  },
+  "proposal_artifact_sha256": "7b1b5bac050bdca498ba4e8348ad2864a05df00b0545124aa42193d7167a738c",
+  "corrected_proposal_artifact_sha256": "077806c31fb200d2e1ea7e1c15e8e4b3426f21a54f63977562941060060fb730",
+  "agent_brief_sha256": "1e57932b6e08cb17f2c3f0d825e0c45440a7b138cbbb258e31d435d8837288e8",
+  "followup_brief_sha256": "987dfca0c470bf6ef0a079211bf5e987fd712b9b443c5b3c9a46b5bf8cc1cf51",
+  "producer_behavior_sha256": "d8462a7357ed33213e7603f4311fd429c3862cbbc109188c8c0eb5d10883d61e",
+  "producer_public_delivery_mode": "installed CLI submit from user-downloaded current handoff",
+  "non_counting_rehearsal_passed": false,
+  "user_arranged_participants_confirmed": false,
+  "user_approved_local_handling_confirmed": false,
+  "validator_name_version": null
+}
