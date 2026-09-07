@@ -31,6 +31,8 @@ test('installed named versions preserve history and exported SVG/PNG artifacts r
     await writeFile(path.join(workspace,'concepts/resources.svg'),resourceSvg);
     for(const [name,width,height] of [['wide',400,100],['tall',100,400]] as const) await writeFile(path.join(workspace,`concepts/${name}.svg`),`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><rect id="white-mark" aria-label="White mark" width="${width}" height="${height}" fill="white"/></svg>`);
     await writeFile(path.join(workspace,'concepts/missing-font.svg'),'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="10" y="50" font-family="LineageMissingFont987654">Text</text></svg>');
+    await writeFile(path.join(workspace,'concepts/percentage.svg'),'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect id="percent-mark" x="25%" y="25%" width="50%" height="50%" fill="red"/></svg>');
+    await writeFile(path.join(workspace,'concepts/referenced-font.svg'),'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><text id="letters" x="10" y="50">Text</text></defs><use id="font-mark" href="#letters" font-family="LineageMissingFont987654"/></svg>');
     await exec('npm',['pack','--json','--pack-destination',pack],{maxBuffer:10*1024*1024});
     await writeFile(path.join(consumer,'package.json'),'{"private":true}');
     await exec('npm',['install','--ignore-scripts','--no-audit','--no-fund',path.join(pack,(await readdir(pack)).find(name=>name.endsWith('.tgz'))!)],{cwd:consumer});
@@ -83,6 +85,20 @@ test('installed named versions preserve history and exported SVG/PNG artifacts r
       }
       await dialog.getByRole('button',{name:'Close',exact:true}).click();await expect(reopened.locator('#lifecycle-state')).not.toHaveAttribute('data-state','dirty');
     }
+    if(await reopened.locator('#toggle-left-sidebar').getAttribute('aria-expanded')==='false')await reopened.locator('#toggle-left-sidebar').click();
+    await reopened.locator('[data-path="concepts/percentage.svg"]').click();
+    await reopened.getByRole('button',{name:'Save version / export',exact:true}).click();dialog=reopened.getByRole('dialog',{name:'Save a named version or export'});
+    await dialog.getByRole('combobox',{name:'Artwork',exact:true}).selectOption('percent-mark');
+    const percentSvg=(await download(reopened,path.join(root,'percentage-subset.svg'))).toString();validate(percentSvg);
+    await dialog.getByRole('combobox',{name:'Format',exact:true}).selectOption('png');
+    await dialog.getByRole('combobox',{name:'PNG size',exact:false}).selectOption('64');
+    const percentPng=PNG.sync.read(await download(reopened,path.join(root,'percentage-subset.png')));
+    const percentPixel=(x:number,y:number)=>Array.from(percentPng.data.subarray((y*64+x)*4,(y*64+x)*4+4));
+    expect(percentPixel(32,32)).toEqual([255,0,0,255]);expect(percentPixel(6,6)).toEqual([255,0,0,255]);expect(percentPixel(57,57)).toEqual([255,0,0,255]);expect(percentPixel(0,0)).toEqual([0,0,0,0]);expect(percentPixel(63,63)).toEqual([0,0,0,0]);
+    await dialog.getByRole('button',{name:'Close',exact:true}).click();
+    if(await reopened.locator('#toggle-left-sidebar').getAttribute('aria-expanded')==='false')await reopened.locator('#toggle-left-sidebar').click();
+    await reopened.locator('[data-path="concepts/referenced-font.svg"]').click();await reopened.getByRole('button',{name:'Save version / export',exact:true}).click();dialog=reopened.getByRole('dialog',{name:'Save a named version or export'});
+    await dialog.getByRole('combobox',{name:'Artwork',exact:true}).selectOption('font-mark');await dialog.getByRole('button',{name:'Download export',exact:true}).click();await expect(dialog.getByRole('status')).toContainText('unavailable locally');await dialog.getByRole('button',{name:'Close',exact:true}).click();
     if(await reopened.locator('#toggle-left-sidebar').getAttribute('aria-expanded')==='false')await reopened.locator('#toggle-left-sidebar').click();await reopened.locator('[data-path="concepts/missing-font.svg"]').click();await reopened.getByRole('button',{name:'Save version / export',exact:true}).click();await reopened.getByRole('button',{name:'Download export',exact:true}).click();await expect(reopened.getByRole('dialog').getByRole('status')).toContainText('unavailable locally');
   } finally { await context.close();await Promise.allSettled(children.map(stop));await rm(root,{recursive:true,force:true}); }
 });

@@ -1,6 +1,6 @@
 {
   "node": "C4",
-  "status": "local-acceptance-passed-final-ci-pending",
+  "status": "merged-and-main-verified",
   "pr": "https://github.com/lineagehq/lineage-logo/pull/35",
   "implementationHead": "86471c264247356d41eec5e354dc21253598ac82",
   "testSynchronizationHead": "ac29a316",
@@ -50,7 +50,15 @@
     ]
   },
   "limitations": [
-    "Final PR checks and postmerge main checks pending.",
-    "This is scripted and agent-operated evidence, not independent U1 participants."
-  ]
+    "Scripted and agent-operated evidence; no independent U1 participant results claimed."
+  ],
+  "finalHead": "9a1c5dc98bf1cc25d9e450e8842b905111fdbe1b",
+  "mergeCommit": "3db979c4567576112722154f91a0e3f529ca89b3",
+  "ci": {
+    "pr": 34072040803,
+    "prCodeql": 34072038764,
+    "main": 34072376505,
+    "mainCodeql": 34072376272,
+    "allPassed": true
+  }
 }

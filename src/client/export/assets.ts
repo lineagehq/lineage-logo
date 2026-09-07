@@ -49,13 +49,26 @@ export function buildSvgAsset(source: string, request: AssetRequest = {}, option
   }
   const hasFont = options.hasFont ?? browserHasFont;
   const validateFonts = (scope: Element) => {
-    for (const text of Array.from(scope.querySelectorAll("text,tspan")).concat(scope.localName === "text" ? [scope] : [])) {
-      let owner: Element | null = text;
-      let family = "";
-      while (owner && !family) { family = (owner as SVGElement).style?.fontFamily || owner.getAttribute("font-family") || ""; owner = owner.parentElement; }
-      const first = (family || "serif").split(",")[0].trim().replace(/^['"]|['"]$/g, "");
-      if (!hasFont(first)) throw new Error(`Font “${first}” is unavailable locally. Install it or choose an available font before export. Text is not outlined.`);
-    }
+    const resources = new Map(Array.from(scope.querySelectorAll("[id]")).map(node => [node.id, node]));
+    // A use instance inherits from the use element, not the original defs ancestors.
+    const visit = (node: Element, inherited: string, references: Set<Element>): void => {
+      const declared = (node as SVGElement).style?.fontFamily || node.getAttribute("font-family") || "";
+      const family = !declared || /^(inherit|unset)$/i.test(declared) ? inherited : /^initial$/i.test(declared) ? "serif" : declared;
+      if (node.localName === "text" || node.localName === "tspan") {
+        const first = family.split(",")[0].trim().replace(/^['"]|['"]$/g, "");
+        if (!hasFont(first)) throw new Error(`Font “${first}” is unavailable locally. Install it or choose an available font before export. Text is not outlined.`);
+      }
+      if (node.localName === "use") {
+        const href = node.getAttribute("href") || node.getAttributeNS("http://www.w3.org/1999/xlink", "href") || "";
+        const referenced = resources.get(href.slice(1));
+        if (referenced) {
+          if (references.has(referenced)) throw new Error("Export cannot resolve cyclic use references. Remove the reference cycle before export.");
+          visit(referenced, family, new Set([...references, referenced]));
+        }
+      }
+      for (const child of Array.from(node.children)) visit(child, family, references);
+    };
+    visit(scope, "serif", new Set());
   };
   if (request.targetId) {
     const result = createSvgPreview(source, `#${request.targetId}`, options.measure);
