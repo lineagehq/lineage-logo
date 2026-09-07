@@ -1,0 +1,11 @@
+# Alignment candidate technical qualification
+
+Candidate: merged `d669ebef20bdf8bbd3a1705094a22be3b6809d7a` ([PR 42](https://github.com/lineagehq/lineage-logo/pull/42)). This is an unpublished local tarball with package version beta.4 and SHA-256 `857691da68e411d3380903c187fc37ad2bccb8227cae36d9d75720b908d62f6b`. It differs from registry beta.4. All four retained package receipts agree, including Node 22 macOS/Ubuntu and Node 24.
+
+Local validation: 783 unit passes, one browser-dependent unit case separately covered, typecheck/build, 134 browser passes with zero failures/skips, and clean install/reinstall. Two installed rehearsals on the exact tarball passed all eight technical milestones; see attempts 06 and 07. Focused correctness, tests, silent-failure, contracts and docs reviews found no high-confidence issues. Native review was unavailable because the installed CLI rejected its configured model; it is not counted as a pass.
+
+`performance.json` retains every sample on the merged commit. Harness, fixtures, method and environment exactly match the retained D3 B0 remeasurement. All 15 B0 comparisons and all five 500-layer absolute budgets pass. Largest B0-relative p95 increase: 14.87% (1000-layer filtering). The 500-layer p95 values are open 71.7ms, selection 16.5ms, filtering 15.7ms, preview 72.5ms and drag 9.1ms.
+
+Independent review recomputed timing summaries and heap trends. Heap grew 382804 bytes over 20 cycles, compared with B0’s 374544 and the prior candidate’s 386648 bytes. Last-ten slope was 3119.88 bytes/cycle, below B0’s 10340.02 and the prior candidate’s 5242.64. This supports the bounded observed trend, not absence of all leaks. The 100-layer open p95 increased 22.97% versus the prior candidate, but only 1.87% versus the approved B0 reference; no claim of unchanged metrics is made. No competing local browser/build/test ran during measurement; the host was not CPU-isolated. These are development-build headless Chromium observations.
+
+CI identities and final status are bound in `g4-alignment.json`. The older G4 receipt remains immutable historical evidence. This refreshed qualification changes neither the three-person U1 requirement nor the user’s VoiceOver deferral. Candidate readiness still requires actual user-arranged participants and agreed local handling; automated rehearsals are non-counting.

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "study_kind": "local_candidate",
+  "status": "not_ready",
+  "commit": "d669ebef20bdf8bbd3a1705094a22be3b6809d7a",
+  "package_version": "0.1.0-beta.4",
+  "package_sha256": "857691da68e411d3380903c187fc37ad2bccb8227cae36d9d75720b908d62f6b",
+  "g4_receipt_sha256": "6d9db49a593b07eab3fdb734830a4ec59c6d6e27793bf488be86e3815e4dacbf",
+  "shipped_instructions_sha256": "8aa9d7b3f66263f55e5327ca927dbccf721dc3ef15f41362e07585ce4ede93e0",
+  "task_prompts_sha256": "d784bd005b4ddcef258e21557c1b66dbc0647df5e5cd11e722408d2a31e812c0",
+  "attempt_schema_sha256": "a84ae5ae7c7ab621d29c171465fd6535fe2d9b040183557681bc3473b1f8ba79",
+  "fixture": {
+    "repository_path": "tests/fixtures/ux-audit/seatify-44.svg",
+    "sha256": "0ce112d615c992b7e079527da731d98e55a3f176983172ebe25d9caaa21757f3"
+  },
+  "proposal_artifact_sha256": "7b1b5bac050bdca498ba4e8348ad2864a05df00b0545124aa42193d7167a738c",
+  "corrected_proposal_artifact_sha256": "077806c31fb200d2e1ea7e1c15e8e4b3426f21a54f63977562941060060fb730",
+  "agent_brief_sha256": "1e57932b6e08cb17f2c3f0d825e0c45440a7b138cbbb258e31d435d8837288e8",
+  "followup_brief_sha256": "987dfca0c470bf6ef0a079211bf5e987fd712b9b443c5b3c9a46b5bf8cc1cf51",
+  "producer_behavior_sha256": "c8c7b4f360735eec29139f45e0d112a8b8b045f89b0614f58df70055aa821124",
+  "producer_public_delivery_mode": "installed CLI submit from user-downloaded current handoff",
+  "non_counting_rehearsal_passed": true,
+  "user_arranged_participants_confirmed": false,
+  "user_approved_local_handling_confirmed": false,
+  "validator_name_version": "Ajv 8.20.0 (draft-07)"
+}
