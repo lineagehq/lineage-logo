@@ -80,7 +80,9 @@ test("packed empty-workspace journey revises agent construction and preserves ma
     await exec("npm", ["pack", "--json", "--pack-destination", pack], { maxBuffer: 10 * 1024 * 1024 });
     const tarball = (await readdir(pack)).find(name => name.endsWith(".tgz"))!;
     const packageSha256 = createHash("sha256").update(await readFile(path.join(pack, tarball))).digest("hex");
-    const candidateHead = (await exec("git", ["rev-parse", "HEAD"])).stdout.trim();
+    // Archive-based runners supply the revision whose exact git archive they unpacked.
+    const candidateHead = process.env.LINEAGE_LOGO_G4_SOURCE_REVISION ?? (await exec("git", ["rev-parse", "HEAD"])).stdout.trim();
+    expect(candidateHead).toMatch(/^[a-f0-9]{40}$/);
     expect(packageSha256).toMatch(/^[a-f0-9]{64}$/);
     await writeFile(path.join(consumer, "package.json"), '{"private":true}');
     await exec("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund", path.join(pack, tarball)], { cwd: consumer });
