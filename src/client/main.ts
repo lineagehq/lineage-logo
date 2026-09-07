@@ -1,3 +1,4 @@
+import { AssetExportController } from "./export/controller";
 import { GuidedCreationController } from "./ui/guided-creation";
 import { PanelResizeController } from "./ui/panel-resize";
 import "./styles.css";
@@ -126,6 +127,7 @@ app.innerHTML = `
       <button type="button" id="create-logo">Create a logo</button>
       <button type="button" id="import-logo">Import SVG</button>
       <button type="button" id="prepare-handoff">Prepare agent handoff</button>
+      <button type="button" id="save-version-export">Save version / export</button>
     </nav>
   </header>
   <main class="shell" id="canvas-shell">
@@ -2040,6 +2042,27 @@ zoomSelectionButton.addEventListener("click", fitSelection);
 undoButton.addEventListener("click", () => editor.undo());
 redoButton.addEventListener("click", () => editor.redo());
 resetEditsButton.addEventListener("click", () => editor.reset());
+const exportButton = getInput<HTMLButtonElement>("save-version-export");
+const assetExport = new AssetExportController({
+  current: () => {
+    if (!currentFile || !editor.svgNode) throw new Error("Open a logo before saving a named version or exporting.");
+    if (saveAuthority.saving || agentSession?.pending || editor.hasProvisionalEdits || offeredManualDraft || offeredAgentDraft || checkingManualRecovery || agentSession?.recoveryRequired) {
+      throw new Error("Finish the current save or recovery, and accept or revert any pending proposal before exporting.");
+    }
+    return { svg: editor.serializeClean(), sourcePath: currentFile.path };
+  },
+  namedVersion: async (name, context) => {
+    const response = await fetch("/api/named-versions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, ...context }) });
+    const result = await response.json() as { error?: string; file?: SvgFileEntry };
+    if (!response.ok || !result.file) throw new Error(result.error ?? "The named version could not be saved.");
+    // Refresh choices only. The named copy does not replace the active baseline.
+    try { commitWorkspaceSnapshot(await fetchWorkspace()); }
+    catch { setStatus(`Saved ${result.file.path}. Refresh the workspace to see the new file.`); }
+    return { path: result.file.path };
+  },
+});
+exportButton.addEventListener("click", () => assetExport.open(exportButton));
+
 saveButton.addEventListener("click", () => void saveIteration());
 
 const preciseModifierPreference = getInput<HTMLSelectElement>("preference-precise-modifier");
