@@ -44,7 +44,7 @@ async function handoff(page: Page, destination: string, intent: string, target =
   return result;
 }
 
-test("packed empty-workspace UI creates, safely imports and hands off current edits through two reviewed CLI proposals", async ({ browser }) => {
+test("packed empty-workspace journey revises agent construction and preserves manual corrections through restart", async ({ browser }) => {
   test.setTimeout(150_000);
   const root = await mkdtemp(path.join(tmpdir(), "lineage-guided-installed-"));
   const workspace = path.join(root, "workspace"), consumer = path.join(root, "consumer"), pack = path.join(root, "pack");
@@ -114,7 +114,19 @@ test("packed empty-workspace UI creates, safely imports and hands off current ed
       expect(createHash("sha256").update(saved).digest("hex")).toBe(receipt.artifact.digest);
       return { receipt, saved };
     };
-    const constructed = await submit(initial, "guided-construct", [{ type: "addLayer", operationId: "add-mark", parent: null, placement: "last" }], true);
+    await writeFile(proposal, JSON.stringify({ protocolVersion: 1, transactionId: "guided-first-draft", producer: { kind: "test" }, document: { sessionId: initial.snapshot.sessionId, baseRevision: initial.snapshot.baseRevision }, operations: [{ type: "addLayer", operationId: "add-mark", parent: null, placement: "last" }] }));
+    const rejected = start(bin, ["submit", "--instance", initial.snapshot.instanceId, "--proposal", proposal, "--artifact", artifact, "--group-id", "proposed-logo", "--json", "--quiet"], env); running.push(rejected);
+    const revisionReason = "Use a smaller circular mark and preserve the wordmark.";
+    await page.getByRole("textbox", { name: "Revision request", exact: true }).fill(revisionReason);
+    await page.getByRole("button", { name: "Reject and request revision", exact: true }).click();
+    await expect.poll(() => rejected.child.exitCode).not.toBeNull();
+    expect(JSON.parse(rejected.output()).revisionRequest).toBe(revisionReason);
+    await expect(page.locator("#agent-review-status")).toHaveText("reverted");
+    await expect(page.locator("#artboard #brand-circle")).toHaveCount(0);
+    expect(await readFile(originalPath, "utf8")).toBe(imported);
+    const revised = await handoff(page, path.join(root, "revised.json"), revisionReason);
+    await writeFile(artifact, (await readFile(artifact, "utf8")).replace('r="60"', 'r="45"'));
+    const constructed = await submit(revised, "guided-construct", [{ type: "addLayer", operationId: "add-mark", parent: null, placement: "last" }], true);
     expect(constructed.saved).toContain('id="brand-paint"'); expect(constructed.saved).toContain("Starting brand");
     await page.locator(".layer-button").filter({ hasText: "Brand wordmark" }).click();
     if (await page.locator("#text-group").getAttribute("open") === null) await page.locator("#text-group summary").click();
