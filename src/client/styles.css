@@ -436,3 +436,11 @@ button { font: inherit; }
 .guided-creation-field { display: grid; gap: .4rem; margin-block: 1rem; }
 .guided-creation-field input, .guided-creation-field select, .guided-creation-field textarea { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; padding: 8px; border: 1px solid #d3d0c8; border-radius: 6px; color: #34332f; background: #fff; }
 .guided-creation-dialog button { margin: .25rem; }
+
+/* Supporting labels remain readable on the canvas and panel surfaces. */
+.file-section h2, .empty-state, .empty-state span:last-child, .empty-copy,
+.statusbar, .preview-target, .preview-status, .inspector-hint { color: #59564f; }
+
+.name-field, .field-grid label, #agent-review-title { color: #59564f; }
+.layer-button.secondary-selected .layer-type { color: #744330; }
+#workspace-panel:focus-visible { outline: 2px solid #246bfd; outline-offset: -2px; }

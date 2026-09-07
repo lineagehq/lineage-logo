@@ -135,7 +135,7 @@ app.innerHTML = `
       <div class="sidebar-rail">
         <button type="button" id="toggle-left-sidebar" class="sidebar-toggle" aria-controls="workspace-panel" title="Toggle workspace panel ([)"><span aria-hidden="true">‹</span><span class="rail-label">Files</span></button>
       </div>
-      <div class="sidebar-content" id="workspace-panel">
+      <div class="sidebar-content" id="workspace-panel" tabindex="0" aria-label="Workspace files">
         <div class="panel-heading"><span>Workspace</span><span id="file-count">0</span></div>
         <div id="file-list" class="file-list"></div>
       </div>
