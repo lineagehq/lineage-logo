@@ -76,6 +76,7 @@ for (const width of [1280, 760]) {
     await expect.poll(() => small.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
     await page.locator('#save-iteration').click();
     await expect(page.locator('#status')).toContainText('Saved');
+    await expect(page.locator('.file-button[aria-current="true"]')).toHaveAttribute('data-path', /^iterations\//);
     const savedPath = await page.locator('.file-button[aria-current="true"]').getAttribute('data-path');
     expect(savedPath).toMatch(/^iterations\//);
     const saved = await (await page.request.get(`/api/svg?path=${encodeURIComponent(savedPath!)}`)).text();

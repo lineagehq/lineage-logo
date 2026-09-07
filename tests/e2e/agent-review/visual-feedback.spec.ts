@@ -23,6 +23,8 @@ for (const width of [1280, 760]) test(`geometry and text comparison returns revi
   expect((await request.post(`${api}/api/agent/transactions`, { headers, data: transaction })).status()).toBe(202);
   const comparison = page.locator(".agent-visual-review");
   await expect(comparison).toBeVisible();
+  await expect(page.locator("#agent-review")).toBeFocused();
+  await expect(comparison.locator("img").first()).toBeInViewport();
   await expect(comparison.locator("img")).toHaveCount(8);
   await expect.poll(() => comparison.locator("img").evaluateAll((images) => images.every((image) => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true);
   const sources = await comparison.locator("img").evaluateAll(async (images) => Promise.all([0, 4].map(async (index) => (await fetch((images[index] as HTMLImageElement).src)).text())));

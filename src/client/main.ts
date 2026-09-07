@@ -750,7 +750,7 @@ const agentTransport = new AgentCanvasTransport({
       agentReviewConsequence.textContent = "Accept and save creates one undoable saved continuation. Revert leaves the document unchanged.";
       renderAgentReview();
       setStatus(`Agent transaction ${transaction.transactionId} is staged for review`);
-      if (!pendingBeforeStage) queueMicrotask(() => agentAcceptButton.focus());
+      if (!pendingBeforeStage) queueMicrotask(() => { agentReviewPanel.focus(); agentReviewPanel.scrollIntoView({ block: "start" }); });
     } else if (staged?.result.status === "rejected") {
       agentReview = outcomeReview(staged.result.error.code === "stale_document" ? "stale" : "failed", transaction.transactionId, staged.result.error.message);
       renderAgentReview();
@@ -1776,7 +1776,7 @@ function restoreRecoveredPending(recovered: Extract<AgentRecoveryState, { state:
   agentReviewConsequence.textContent = "Accept and save creates one undoable saved continuation. Revert leaves the document unchanged.";
   renderAgentReview();
   setStatus(`Agent transaction ${transaction.transactionId} was restored for review`);
-  queueMicrotask(() => agentAcceptButton.focus());
+  queueMicrotask(() => { agentReviewPanel.focus(); agentReviewPanel.scrollIntoView({ block: "start" }); });
 }
 
 function reconcileRecoveredTerminal(recovered: Extract<AgentRecoveryState, { state: unknown }>): void {
