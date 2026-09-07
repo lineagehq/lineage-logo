@@ -809,7 +809,7 @@ describe("multi-selection alignment", () => {
     const node = (id: string) => root.querySelector(`#${id}`) as unknown as SVGGraphicsElement;
     expect(alignmentAvailability([node("a"), node("b")], root).allowed).toBe(true);
     expect(alignmentAvailability([node("a")], root).allowed).toBe(false);
-    expect(alignmentAvailability([node("a"), node("inside")], root).reason).toContain("same parent");
+    expect(alignmentAvailability([node("a"), node("inside")], root).allowed).toBe(true);
     expect(alignmentAvailability([node("a"), node("b")], root, (candidate) => candidate === node("a")).reason).toContain("Unlock");
   });
 });

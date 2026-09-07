@@ -870,13 +870,17 @@ export function alignmentAvailability(
   isLocked: (node: SVGGraphicsElement) => boolean = () => false,
 ): OperationAvailability {
   const unique = Array.from(new Set(nodes));
-  if (unique.length < 2) return { allowed: false, reason: "Select at least two sibling layers to align." };
+  if (unique.length < 2) return { allowed: false, reason: "Select at least two layers to align." };
   if (unique.some((node) => !isSelectableNode(node, root))) {
     return { allowed: false, reason: "Alignment requires supported editable layers." };
   }
   const parent = unique[0].parentElement;
   if (!parent || unique.some((node) => node.parentElement !== parent)) {
-    return { allowed: false, reason: "Alignment requires selected layers with the same parent." };
+    const movement = translationAvailability(unique, root, isLocked);
+    if (!movement.allowed) return movement;
+    try { unique.forEach((node) => rootBox(node, root)); }
+    catch (error) { return { allowed: false, reason: error instanceof Error ? error.message : "The selected visual bounds are unavailable." }; }
+    return { allowed: true, reason: "Align selected layers in document coordinates across their parents." };
   }
   if (unique.some(isLocked)) return { allowed: false, reason: "Unlock the selected layers and their ancestors before aligning." };
   return { allowed: true, reason: "Align the selection to its shared bounding box." };
@@ -2201,7 +2205,35 @@ export class SvgEditor {
       this.#callbacks.onStatus(availability.reason);
       return;
     }
-    const boxes = this.#selectedNodes.map((node) => {
+    const selected = [...this.#selectedNodes];
+    const crossParent = selected.some((node) => node.parentElement !== selected[0].parentElement);
+    if (this.#agentMutationBlocked) { this.#callbacks.onStatus("Finish the pending Agent review before aligning layers."); return; }
+    if (crossParent) {
+      const before = this.#snapshot();
+      const gestures: SelectionTranslationGesture[] = [];
+      try {
+        const offsets = alignmentOffsets(selected.map((node) => rootBox(node, root)), direction);
+        const targets = translationTargets(selected, root);
+        offsets.forEach((offset, index) => {
+          if (Math.abs(offset.dx) < 1e-9 && Math.abs(offset.dy) < 1e-9) return;
+          const gesture = new SelectionTranslationGesture([targets[index]]);
+          gestures.push(gesture);
+          gesture.move(offset.dx, offset.dy);
+        });
+        const changed = gestures.map((gesture) => gesture.complete()).some(Boolean);
+        if (!changed) { this.#callbacks.onStatus(`Selection is already aligned ${direction}`); return; }
+        this.#setSelection(selected, this.selectedNode);
+        this.#history.checkpoint(before);
+        this.#notifyDocumentChange();
+        this.#notifyHistory();
+        this.#callbacks.onStatus(`Aligned ${selected.length} layers ${direction}`);
+      } catch (error) {
+        gestures.forEach((gesture) => gesture.cancel());
+        this.#callbacks.onStatus(error instanceof Error ? error.message : "The selected layers could not be aligned.");
+      }
+      return;
+    }
+    const boxes = selected.map((node) => {
       const element = SVG(node) as SvgElement;
       return element.bbox().transform(element.matrixify());
     });
@@ -2210,7 +2242,6 @@ export class SvgEditor {
       this.#callbacks.onStatus(`Selection is already aligned ${direction}`);
       return;
     }
-    const selected = [...this.#selectedNodes];
     const primary = this.selectedNode;
     this.#mutate(() => {
       applyAlignmentOffsets(selected, offsets);

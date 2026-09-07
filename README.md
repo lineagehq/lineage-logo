@@ -261,6 +261,8 @@ with `<style>` elements and groups with source attributes stay intact and show
 why the unsafe operation is unavailable.
 With two or more sibling layers selected, use Left, Center, Right, Top, Middle,
 or Bottom to align their geometric bounding boxes within their shared parent.
+For selections spanning different parents, alignment uses document coordinates
+and preserves each layer’s parent, orientation and size.
 Alignment preserves hierarchy and source attributes, and each action can be
 undone, redone, or cleared with Reset edits. With three or more eligible layers,
 use Distribute H/V to space visual centers evenly or Space H/V to equalize edge
