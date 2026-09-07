@@ -30,7 +30,7 @@ async function freePort() {
 async function handoff(page: Page, destination: string, intent: string, target = "Whole document"): Promise<AgentHandoff> {
   await page.getByRole("button", { name: "Prepare agent handoff", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Prepare an agent handoff", exact: true });
-  await dialog.getByLabel("Target", { exact: true }).selectOption({ label: target });
+  await dialog.getByRole("combobox", { name: "Target", exact: true }).selectOption({ label: target });
   await dialog.getByLabel("What should change?", { exact: true }).fill(intent);
   await dialog.getByRole("button", { name: "Prepare current handoff", exact: true }).click();
   await expect(dialog.getByRole("status")).toContainText("Includes current unsaved artwork");
@@ -50,6 +50,7 @@ test("packed empty-workspace UI creates, safely imports and hands off current ed
   const workspace = path.join(root, "workspace"), consumer = path.join(root, "consumer"), pack = path.join(root, "pack");
   const running: Running[] = [];
   const context = await browser.newContext({ acceptDownloads: true });
+  context.setDefaultTimeout(15_000);
   const env = { ...process.env, LINEAGE_LOGO_REGISTRY_DIR: path.join(root, "registry") };
   try {
     await Promise.all([workspace, consumer, pack].map(directory => mkdir(directory)));
@@ -121,7 +122,7 @@ test("packed empty-workspace UI creates, safely imports and hands off current ed
     expect(final.saved).toContain("Manual correction"); expect(final.saved).toContain("#2255aa");
     await page.close(); await stop(first.server);
     const restarted = await launch(); const reopened = await context.newPage(); await reopened.goto(restarted.url);
-    await reopened.locator("#file-select").selectOption(final.receipt.artifact.path);
+    await reopened.locator(".file-button").filter({ hasText: path.basename(final.receipt.artifact.path, ".svg") }).click();
     await expect(reopened.locator("#artboard #wordmark")).toHaveText("Manual correction");
     await expect(reopened.locator("#artboard #wordmark")).toHaveAttribute("fill", "#2255aa");
     expect(await readFile(originalPath, "utf8")).toBe(imported); expect(await readFile(blankPath, "utf8")).toBe(blank);

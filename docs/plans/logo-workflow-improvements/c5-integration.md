@@ -17,7 +17,7 @@ const handoffProducer = new AgentProducerClient({
 
 This object calls the existing server's public snapshot challenge/response contract; it does not create or register another server or reveal credentials.
 
-Add routes after transport routing, before static routing:
+Add these origin-checked routes before generic agent transport routing (which handles all other `/api/agent/*` paths), and before static routing:
 
 ```ts
 if (request.method === "POST" && url.pathname === "/api/concepts") {
