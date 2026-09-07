@@ -1,6 +1,8 @@
 import { AssetExportController } from "./export/controller";
+import { GuidedCreationController } from "./ui/guided-creation";
 import { PanelResizeController } from "./ui/panel-resize";
 import "./styles.css";
+import { AgentVisualReview } from "./agent/visual-review";
 import { readManualDraft, writeManualDraft, discardManualDraft, manualDraftReasonMessage, type ManualDraftAuthority, type ManualDraftRead, type ManualDraftIdentity } from "./manual-draft-store";
 import { recoverAfterTabClose } from "./agent/recovery-retry";
 import { captureAgentSnapshot } from "./agent/snapshot";
@@ -121,7 +123,12 @@ app.innerHTML = `
   <header class="topbar">
     <div class="brand"><span class="brand-mark">L</span><span>Lineage Logo</span></div>
     <div class="workspace-name" id="workspace-name">Connecting…</div>
-    <button type="button" id="save-version-export">Save version / export</button>
+    <nav class="creation-actions" aria-label="Logo workflow">
+      <button type="button" id="create-logo">Create a logo</button>
+      <button type="button" id="import-logo">Import SVG</button>
+      <button type="button" id="prepare-handoff">Prepare agent handoff</button>
+      <button type="button" id="save-version-export">Save version / export</button>
+    </nav>
   </header>
   <main class="shell" id="canvas-shell">
     <aside class="sidebar file-sidebar" aria-label="Workspace files">
@@ -169,8 +176,8 @@ app.innerHTML = `
         </div>
         <div class="empty-state" id="empty-state">
           <span class="empty-icon">◇</span>
-          <strong>Choose an SVG to inspect</strong>
-          <span>Concepts and iterations appear in the workspace panel.</span>
+          <strong>Create a logo or import an SVG</strong>
+          <span>Start with the buttons above, or choose existing artwork from the workspace panel.</span>
         </div>
         <div id="document-viewport" class="document-viewport" hidden>
           <div id="artboard" class="artboard" hidden></div>
@@ -197,13 +204,14 @@ app.innerHTML = `
           <p id="agent-review-context" class="agent-review-context"></p>
           <p id="agent-review-risk" class="agent-review-risk"></p>
           <button type="button" id="agent-preview-toggle" class="agent-preview-toggle" aria-pressed="false">Show proposed preview</button>
+          <div id="agent-visual-review" hidden></div>
           <div id="agent-operation-list" class="agent-operation-list" aria-label="Computed operation evidence"></div>
           <ul id="agent-impact-list" class="agent-impact-list" aria-label="Layers changed by agent"></ul>
           <div class="agent-review-actions">
             <button type="button" id="agent-revert">Revert</button>
-            <button type="button" id="agent-accept" class="primary-action">Accept all</button>
+            <button type="button" id="agent-accept" class="primary-action">Accept and save</button>
           </div>
-          <p id="agent-review-consequence" class="agent-review-consequence">Accept creates one undoable edit. Revert leaves the document unchanged.</p>
+          <p id="agent-review-consequence" class="agent-review-consequence">Accept and save creates one undoable saved continuation. Revert leaves the document unchanged.</p>
         </div>
       </section>
       <section>
@@ -693,7 +701,9 @@ function agentLayers(svg: SVGSVGElement): AgentDocumentManifest["layers"] {
     }));
 }
 
+const editorId = crypto.randomUUID();
 const agentTransport = new AgentCanvasTransport({
+  editorId,
   connect: false,
   onSnapshot: (request) => {
     const root = editor.svgNode;
@@ -747,10 +757,10 @@ const agentTransport = new AgentCanvasTransport({
       reviewImpactKeys = new Set(agentReview.layers.map((layer) => layer.sessionKey));
       editor.setAgentReviewHighlights(reviewImpactKeys);
       setReviewPreview(false);
-      agentReviewConsequence.textContent = "Accept creates one undoable edit. Revert leaves the document unchanged.";
+      agentReviewConsequence.textContent = "Accept and save creates one undoable saved continuation. Revert leaves the document unchanged.";
       renderAgentReview();
       setStatus(`Agent transaction ${transaction.transactionId} is staged for review`);
-      if (!pendingBeforeStage) queueMicrotask(() => agentAcceptButton.focus());
+      if (!pendingBeforeStage) queueMicrotask(() => { agentReviewPanel.focus(); agentReviewPanel.scrollIntoView({ block: "start" }); });
     } else if (staged?.result.status === "rejected") {
       agentReview = outcomeReview(staged.result.error.code === "stale_document" ? "stale" : "failed", transaction.transactionId, staged.result.error.message);
       renderAgentReview();
@@ -790,7 +800,7 @@ const agentTransport = new AgentCanvasTransport({
         : outcomeReview("disconnected", agentReview?.transactionId);
       renderAgentReview();
       setLifecycleState("disconnected", "Disconnected", agentSession?.pending
-        ? "The proposal is isolated. Reconnect, then Accept all or Revert."
+        ? "The proposal is isolated. Reconnect, then Accept and save or Revert."
         : "Restart the local editor, then try again.");
     } else if (agentReview?.status === "disconnected" && agentSession?.pending && !agentSession.recoveryRequired) {
       agentReview = buildPendingReview(agentSession.pending.transaction, agentSession.pending.staged, editor.selectionContext.lockedKeys);
@@ -803,6 +813,34 @@ const agentTransport = new AgentCanvasTransport({
       setStatus(dirty ? "Unsaved manual corrections" : `Saved ${currentFile.path}`);
     } else setStatus(message);
   },
+});
+
+const guidedCreation = new GuidedCreationController({
+  host: document.body,
+  current: () => {
+    if (!editor.svgNode || !agentSession || agentSession.pending || editor.hasProvisionalEdits) return undefined;
+    return { editorId, ...agentSession.context, selectedLayerIds: editor.selectedNodes.map(node => node.dataset.lineageKey!).filter(Boolean) };
+  },
+  openCreated: async file => {
+    try {
+      const workspace = await fetchWorkspace();
+      commitWorkspaceSnapshot(workspace);
+      const button = fileButtons.get(file.path);
+      if (!button) throw new Error("The new logo was created but could not be found. Refresh the workspace.");
+      await requestFileSwitch(file, button);
+    } catch (error) { setStatus(error instanceof Error ? error.message : "The new logo could not be opened. Refresh the workspace."); }
+  },
+});
+getElement("create-logo").addEventListener("click", () => guidedCreation.openCreate("create"));
+getElement("import-logo").addEventListener("click", () => guidedCreation.openCreate("import"));
+getElement("prepare-handoff").addEventListener("click", () => guidedCreation.openHandoff());
+
+const agentVisualReview = new AgentVisualReview(getElement("agent-visual-review"), async (reason) => {
+  if (!agentSession?.pending || agentSession.pending.provisional || agentSession.recoveryRequired) {
+    throw new Error("This proposal is no longer available for a revision request. Reconcile the current review first.");
+  }
+  agentReviewReturnFocus = getElement("toggle-right-sidebar");
+  await decideAgentReview("reverted", reason);
 });
 
 async function reconcileStreamTerminal({ transactionId, status }: { transactionId: string; status: "accepted" | "reverted" | "rejected" | "stale" }): Promise<void> {
@@ -843,6 +881,8 @@ async function reconcileStreamTerminal({ transactionId, status }: { transactionI
 
 function renderAgentReview(): void {
   if (!agentReview) {
+    agentVisualReview.restoreFocus(getElement("toggle-right-sidebar"));
+    agentVisualReview.update(undefined);
     agentReviewPanel.hidden = true;
     return;
   }
@@ -900,9 +940,20 @@ function renderAgentReview(): void {
     agentImpactList.append(item);
   }
   const pending = Boolean(agentSession?.pending);
+  const proposal = agentSession?.pending;
+  if (proposal) {
+    // The controller retains the original accepted image for this transaction,
+    // including while provisional acceptance is waiting for a durable save.
+    agentVisualReview.update({ transactionId: proposal.transaction.transactionId,
+      acceptedSvg: editor.serializeClean(), proposedSvg: serializeSvg(proposal.staged.candidate, true) });
+  } else {
+    agentVisualReview.restoreFocus(getElement("toggle-right-sidebar"));
+    agentVisualReview.update(undefined);
+  }
   layout.setPendingReview(pending);
   const recoveryRequired = agentSession?.recoveryRequired === true;
   const appliedNotSaved = Boolean(agentSession?.pending?.provisional);
+  agentVisualReview.setBusy(agentDecisionInFlight || recoveryRequired || appliedNotSaved);
   if (appliedNotSaved) agentReviewStatus.textContent = "Applied—not saved";
   else if (agentReview.status === "accepted") agentReviewStatus.textContent = "Saved";
   agentPreviewToggle.hidden = !pending;
@@ -912,7 +963,7 @@ function renderAgentReview(): void {
   agentReviewLock.hidden = !pending;
   agentAcceptButton.disabled = agentDecisionInFlight;
   agentRevertButton.disabled = agentDecisionInFlight;
-  agentAcceptButton.textContent = appliedNotSaved ? "Retry save" : "Accept all";
+  agentAcceptButton.textContent = appliedNotSaved ? "Retry save" : "Accept and save";
   agentRevertButton.textContent = recoveryRequired ? "Restore previous document" : appliedNotSaved ? "Undo applied changes" : "Revert";
   for (const button of fileButtons.values()) {
     button.disabled = pending;
@@ -1006,9 +1057,12 @@ function finishAgentReview(status: "accepted" | "reverted", artifact?: AgentAcce
 
 agentPreviewToggle.addEventListener("click", () => setReviewPreview(!agentPreviewActive));
 
-async function decideAgentReview(status: "accepted" | "reverted"): Promise<void> {
+async function decideAgentReview(status: "accepted" | "reverted", revisionRequest?: string): Promise<void> {
   const pending = agentSession?.pending;
-  if (!pending || agentDecisionInFlight) return;
+  if (!pending || agentDecisionInFlight) {
+    if (revisionRequest !== undefined) throw new Error("The proposal changed or another decision is still in progress.");
+    return;
+  }
   agentDecisionInFlight = true;
   agentReviewConsequence.textContent = status === "accepted"
     ? "Applying the proposal and capturing its clean accepted revision…"
@@ -1038,7 +1092,7 @@ async function decideAgentReview(status: "accepted" | "reverted"): Promise<void>
         finishAgentReview("accepted", decision.artifact);
       } finally { settlingDurableAgentSave = false; }
     } else {
-      await agentTransport.decide(pending.transaction.transactionId, status);
+      await agentTransport.decide(pending.transaction.transactionId, status, undefined, revisionRequest);
       const completed = pending.provisional
         ? agentSession?.rollbackAccept(pending.transaction.transactionId)
         : agentSession?.revert();
@@ -1088,6 +1142,7 @@ async function decideAgentReview(status: "accepted" | "reverted"): Promise<void>
     } else {
       setLifecycleState("conflict", "Conflict", "The proposal could not be completed. Revert it or retry after resolving the reported issue.");
     }
+    if (revisionRequest !== undefined) throw error;
   } finally {
     agentDecisionInFlight = false;
     renderAgentReview();
@@ -1748,10 +1803,10 @@ function restoreRecoveredPending(recovered: Extract<AgentRecoveryState, { state:
   reviewImpactKeys = new Set(agentReview.layers.map((layer) => layer.sessionKey));
   editor.setAgentReviewHighlights(reviewImpactKeys);
   setReviewPreview(false);
-  agentReviewConsequence.textContent = "Accept creates one undoable edit. Revert leaves the document unchanged.";
+  agentReviewConsequence.textContent = "Accept and save creates one undoable saved continuation. Revert leaves the document unchanged.";
   renderAgentReview();
   setStatus(`Agent transaction ${transaction.transactionId} was restored for review`);
-  queueMicrotask(() => agentAcceptButton.focus());
+  queueMicrotask(() => { agentReviewPanel.focus(); agentReviewPanel.scrollIntoView({ block: "start" }); });
 }
 
 function reconcileRecoveredTerminal(recovered: Extract<AgentRecoveryState, { state: unknown }>): void {

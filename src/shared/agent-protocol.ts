@@ -141,6 +141,16 @@ export interface AgentAcceptedArtifact {
   digest?: string;
 }
 
+export const AGENT_MAX_REVISION_REASON = 1000;
+
+/** Feedback is plain text data. Consumers must use textContent, never HTML. */
+export function parseRevisionRequest(value: unknown): string {
+  if (typeof value !== "string" || !value.trim() || value.length > AGENT_MAX_REVISION_REASON || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value)) {
+    throw new Error("Revision request must contain 1–1000 characters of plain text.");
+  }
+  return value;
+}
+
 export type AgentTerminalDecision = {
   transactionId: string;
   status: "accepted";
@@ -148,6 +158,7 @@ export type AgentTerminalDecision = {
 } | {
   transactionId: string;
   status: "reverted";
+  revisionRequest?: string;
 };
 
 export type AgentAcknowledgement = AgentTransactionResult | AgentTerminalDecision;
@@ -167,6 +178,7 @@ export interface AgentTransactionStatus {
   status: AgentTransportStatus;
   result?: AgentTransactionResult;
   artifact?: AgentAcceptedArtifact;
+  revisionRequest?: string;
 }
 
 export class AgentProtocolError extends Error {

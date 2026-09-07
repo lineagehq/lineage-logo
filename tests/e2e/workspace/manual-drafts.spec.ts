@@ -85,8 +85,9 @@ test("an edit made during Save migrates into recovery for the saved continuation
   let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});let started!:()=>void;const waiting=new Promise<void>(resolve=>{started=resolve;});
   await page.route("**/api/iterations",async route=>{const response=await route.fetch();started();await gate;await route.fulfill({response});});
   await page.locator("#save-iteration").click();await waiting;await recolor(page,"#22aa55");release();
-  await expect(page.locator("#status")).toContainText("newer corrections remain unsaved");
   await expect(page.locator(".file-button[aria-current='true']")).toHaveAttribute("data-path",/^iterations\//);
+  await expect(page.locator("#lifecycle-state")).toHaveAttribute("data-state", "dirty");
+  await expect(page.locator("#save-iteration")).toBeEnabled();
   const continuation=await page.locator(".file-button[aria-current='true']").getAttribute("data-path");
   const saved=await (await page.request.get(`/api/svg?path=${encodeURIComponent(continuation!)}`)).text();expect(saved).toContain("#ee5500");expect(saved).not.toContain("#22aa55");
   await page.reload();await expect(page.locator("#manual-draft-dialog")).toBeVisible();await page.locator("#manual-draft-restore").click();

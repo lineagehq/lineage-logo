@@ -1,4 +1,8 @@
 import { saveNamedVersion } from "./named-versions.js";
+import { LOGO_IMPORT_MAX_BYTES } from "../shared/logo-creation.js";
+import { createWorkspaceLogo } from "./logo-creation.js";
+import { prepareAgentHandoff } from "./agent-handoff.js";
+import { AgentProducerClient } from "../producer/agent-client.js";
 import { createReadStream } from "node:fs";
 import { randomBytes, randomUUID } from "node:crypto";
 import { stat } from "node:fs/promises";
@@ -87,6 +91,10 @@ const agentTransport = new AgentTransport({
   token: agentToken, editorOrigin, identity,
   allowUnboundProducer: process.env.LINEAGE_LOGO_E2E_ALLOW_UNBOUND_AGENT === "1",
 });
+const handoffProducer = new AgentProducerClient({
+  context: { protocolVersion: 1, apiOrigin: identity.apiOrigin, token: agentToken, pid: process.pid },
+  binding: { instanceId, workspaceId: workspaceIdentity.workspaceId },
+});
 let registered: RegisteredAgentInstance | undefined;
 let heartbeat: ReturnType<typeof setInterval> | undefined;
 
@@ -95,6 +103,21 @@ const server = createServer(async (request, response) => {
   const url = new URL(request.url ?? "/", `http://${HOST}:${PORT}`);
 
   try {
+    if (request.method === "POST" && url.pathname === "/api/concepts") {
+      validateRequestOrigin(request);
+      // JSON may encode each source byte as a six-byte Unicode escape.
+      // createWorkspaceLogo still enforces the decoded 5 MiB SVG limit.
+      const body = await readJsonBody(request, LOGO_IMPORT_MAX_BYTES * 6 + 16 * 1024);
+      sendJson(response, 201, { file: await createWorkspaceLogo(workspaceRoot, body) });
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/api/agent/handoff") {
+      validateRequestOrigin(request);
+      const body = await readJsonBody(request, 1024 * 1024);
+      response.setHeader("Cache-Control", "no-store");
+      sendJson(response, 200, await prepareAgentHandoff(body, handoffProducer));
+      return;
+    }
     if (await agentTransport.route(request, response, url)) return;
     if (request.method === "GET" && url.pathname === "/api/workspace") {
       sendJson(response, 200, {
