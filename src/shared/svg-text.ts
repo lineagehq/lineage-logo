@@ -20,6 +20,26 @@ const TEXT_LIMITS = {
 
 const CSS_NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i;
 
+/** Preserve the existing family-list grammar with constant-state scanning. */
+function isLocalFontFamilyList(value: string): boolean {
+  let inName = false;
+  let beforeComma = false;
+  let afterComma = false;
+  let first = true;
+  for (const character of value) {
+    const nameCharacter = /^[\p{L}\p{N} _,'".-]$/u.test(character);
+    const whitespace = /^\s$/u.test(character);
+    const nextName: boolean = nameCharacter && (first || inName || afterComma);
+    const nextBeforeComma: boolean = whitespace && (inName || beforeComma);
+    const nextAfterComma: boolean = (character === "," && (inName || beforeComma)) || (whitespace && afterComma);
+    inName = nextName;
+    beforeComma = nextBeforeComma;
+    afterComma = nextAfterComma;
+    first = false;
+  }
+  return inName;
+}
+
 export function validateSvgTextEdit(edit: SvgTextEdit): SvgTextValidation {
   const value = edit.value.trim();
   if (edit.property === "content") {
@@ -45,7 +65,7 @@ export function validateSvgTextEdit(edit: SvgTextEdit): SvgTextValidation {
   }
   if (edit.property === "font-family") {
     if (!value || value.length > TEXT_LIMITS.family || /(?:url\s*\(|@import|[;{}<>\\])/i.test(value)
-      || !/^[\p{L}\p{N} _,'".-]+(?:\s*,\s*[\p{L}\p{N} _,'".-]+)*$/u.test(value)) {
+      || !isLocalFontFamilyList(value)) {
       return { valid: false, error: "Use a bounded local font-family list without URLs, CSS, or external font rules." };
     }
     return { valid: true, normalized: value };
