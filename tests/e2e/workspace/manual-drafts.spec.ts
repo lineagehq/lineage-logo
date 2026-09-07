@@ -76,6 +76,10 @@ test("an edit made during Save migrates into recovery for the saved continuation
 });
 
 test("pending agent review retains authority over manual recovery after reload", async ({ page }) => {
+  page.on('dialog', async dialog => {
+    expect(dialog.type()).toBe('beforeunload');
+    await dialog.accept();
+  });
   await open(page);const before=await source(page);await recolor(page,"#ee5500");
   const headers={Authorization:"Bearer lineage-logo-e2e-agent-token"};
   await expect.poll(async()=>{const response=await page.request.get("http://127.0.0.1:43117/api/agent/document",{headers});return response.ok()?(await response.json()).revision:-1;}).toBeGreaterThan(0);
@@ -87,7 +91,9 @@ test("pending agent review retains authority over manual recovery after reload",
   page.on('response', response => {
     if (new URL(response.url()).pathname === '/api/agent/recovery') recoveryStatuses.push(response.status());
   });
+  const beforeReload = await page.evaluate(() => performance.timeOrigin);
   await page.reload();
+  await expect.poll(() => page.evaluate(() => performance.timeOrigin)).not.toBe(beforeReload);
   await expect.poll(async () => ({ responses: recoveryStatuses, status: await page.locator('#status').textContent() }))
     .toMatchObject({ responses: expect.arrayContaining([200]) });
   await expect(page.locator("#agent-review")).toBeVisible();
