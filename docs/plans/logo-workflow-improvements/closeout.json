@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "planVersion": 1,
+  "status": "in-progress",
+  "standingApproval": "Approve plan v1 and execute, including merging qualifying PRs.",
+  "runtimeCandidate": "62b20a551d484b2b13820e1e4cca9c486a5cd113",
+  "packageSha256": "efb1a6d0dc2dd7fe68db7a50dcbbdcd11b8474bd25bc0605f78a17f52fa6a8cf",
+  "nodes": [
+    {
+      "id": "B0",
+      "status": "verified",
+      "acceptanceContract": "plan.md#b0--capture-the-baseline-and-freeze-contracts",
+      "receipt": "evidence/baseline.json",
+      "pullRequest": null
+    },
+    {
+      "id": "Q1",
+      "status": "merged",
+      "acceptanceContract": "plan.md#q1--build-useful-safe-qa-evidence",
+      "receipt": "evidence/q1/receipt.json",
+      "pullRequest": null
+    },
+    {
+      "id": "A1",
+      "status": "merged",
+      "acceptanceContract": "plan.md#a1--save-continuity-and-consistent-document-state",
+      "receipt": "evidence/trust-tranche.json",
+      "pullRequest": null
+    },
+    {
+      "id": "A2",
+      "status": "merged",
+      "acceptanceContract": "plan.md#a2--accurate-document-bounds-and-preview-surfaces",
+      "receipt": "evidence/trust-tranche.json",
+      "pullRequest": null
+    },
+    {
+      "id": "C1",
+      "status": "merged",
+      "acceptanceContract": "plan.md#c1--discoverable-agent-schema-and-recoverable-errors",
+      "receipt": "evidence/c1.json",
+      "pullRequest": null
+    },
+    {
+      "id": "G1",
+      "status": "verified",
+      "acceptanceContract": "plan.md#tranche-acceptance-gates",
+      "receipt": "evidence/trust-tranche.json",
+      "pullRequest": null
+    },
+    {
+      "id": "B1",
+      "status": "merged",
+      "acceptanceContract": "plan.md#b1--complete-atomic-bulk-editing",
+      "receipt": "evidence/b1.json",
+      "pullRequest": null
+    },
+    {
+      "id": "B2",
+      "status": "merged",
+      "acceptanceContract": "plan.md#b2--stable-selection-layers-and-inspector",
+      "receipt": "evidence/b2.json",
+      "pullRequest": null
+    },
+    {
+      "id": "B3",
+      "status": "merged",
+      "acceptanceContract": "plan.md#b3--recover-manual-work-safely",
+      "receipt": "evidence/b3.json",
+      "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/32"
+    },
+    {
+      "id": "G2",
+      "status": "verified",
+      "acceptanceContract": "plan.md#tranche-acceptance-gates",
+      "receipt": "evidence/manual-tranche.json",
+      "pullRequest": null
+    },
+    {
+      "id": "C2",
+      "status": "merged",
+      "acceptanceContract": "plan.md#c2--explicit-current-document-handoff",
+      "receipt": "evidence/c2.json",
+      "pullRequest": null
+    },
+    {
+      "id": "C3",
+      "status": "merged",
+      "acceptanceContract": "plan.md#c3--structural-artifact-submission-and-narrow-corrections",
+      "receipt": "evidence/c3.json",
+      "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/34"
+    },
+    {
+      "id": "C4",
+      "status": "merged",
+      "acceptanceContract": "plan.md#c4--visual-review-and-request-revision-feedback",
+      "receipt": "evidence/c4.json",
+      "pullRequest": null
+    },
+    {
+      "id": "C5",
+      "status": "merged",
+      "acceptanceContract": "plan.md#c5--guided-creationimport-and-agent-entry",
+      "receipt": "evidence/c5.json",
+      "pullRequest": null
+    },
+    {
+      "id": "G3",
+      "status": "verified",
+      "acceptanceContract": "plan.md#tranche-acceptance-gates",
+      "receipt": "evidence/agent-tranche.json",
+      "pullRequest": null
+    },
+    {
+      "id": "D1",
+      "status": "merged",
+      "acceptanceContract": "plan.md#d1--named-versions-and-useful-asset-export",
+      "receipt": "evidence/d1.json",
+      "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/37"
+    },
+    {
+      "id": "D2",
+      "status": "active",
+      "acceptanceContract": "plan.md#d2--enforce-the-broader-quality-gates",
+      "receipt": null,
+      "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/38"
+    },
+    {
+      "id": "D3",
+      "status": "active",
+      "acceptanceContract": "plan.md#d3--measure-and-address-interaction-performance",
+      "receipt": null,
+      "pullRequest": null
+    },
+    {
+      "id": "G4",
+      "status": "pending",
+      "acceptanceContract": "plan.md#tranche-acceptance-gates",
+      "receipt": null,
+      "pullRequest": null
+    },
+    {
+      "id": "U1",
+      "status": "pending",
+      "acceptanceContract": "plan.md#u1--independent-usability-validation",
+      "receipt": null,
+      "pullRequest": null
+    },
+    {
+      "id": "DONE",
+      "status": "pending",
+      "acceptanceContract": "plan.md#tranche-acceptance-gates",
+      "receipt": null,
+      "pullRequest": null
+    }
+  ],
+  "additionalEvidence": [
+    "evidence/d2.json",
+    "evidence/d3/README.md",
+    "evidence/g4-installed.json",
+    "closeout.md"
+  ],
+  "remaining": [
+    "Final live agent fault coverage and Linux confirmation",
+    "Reliable real assistive-technology observation",
+    "Final PR/main CI and extended workflow checks",
+    "G4 final manifest acceptance",
+    "Three independent U1 participants on same G4 candidate"
+  ]
+}
