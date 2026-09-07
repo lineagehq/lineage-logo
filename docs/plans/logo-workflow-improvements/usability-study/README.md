@@ -59,7 +59,7 @@ node producer.mjs corrected fresh-handoff.json new-corrected-proposal.json /abso
 node producer.mjs followup latest-handoff.json new-followup-proposal.json /absolute/path/to/node_modules/.bin/lineage-logo
 ```
 
-Each output proposal path must be new. These commands stage review; the producer never accepts or drives the UI. Operators may fulfill the requested stage only, and must not choose participant actions or coach. The briefs in `assets/` are participant-facing task specifications.
+Each output proposal path must be new. Draft and corrected structural submissions require the unchanged starting fixture digest; intervening participant edits must not be replaced with the fixed study asset. These commands stage review; the producer never accepts or drives the UI. Operators may fulfill the requested stage only, and must not choose participant actions or coach. The briefs in `assets/` are participant-facing task specifications.
 
 `rehearse.mjs` is a programmatic, non-counting maintainer check and requires the repository’s installed development dependencies and Chromium. It installs exact registry beta.4 by default, verifies its tarball digest, operates the installed UI/CLI, checks XML/geometry/exports and records a new receipt file. An explicit `STUDY_TARBALL` plus `STUDY_PACKAGE_SHA256` selects an unpublished local candidate; such evidence is labelled separately. Do not run it as a participant or infer comprehension/timings from it.
 

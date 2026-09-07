@@ -17,7 +17,7 @@
   "corrected_proposal_artifact_sha256": "077806c31fb200d2e1ea7e1c15e8e4b3426f21a54f63977562941060060fb730",
   "agent_brief_sha256": "1e57932b6e08cb17f2c3f0d825e0c45440a7b138cbbb258e31d435d8837288e8",
   "followup_brief_sha256": "987dfca0c470bf6ef0a079211bf5e987fd712b9b443c5b3c9a46b5bf8cc1cf51",
-  "producer_behavior_sha256": "d8462a7357ed33213e7603f4311fd429c3862cbbc109188c8c0eb5d10883d61e",
+  "producer_behavior_sha256": "c8c7b4f360735eec29139f45e0d112a8b8b045f89b0614f58df70055aa821124",
   "producer_public_delivery_mode": "installed CLI submit from user-downloaded current handoff",
   "non_counting_rehearsal_passed": false,
   "user_arranged_participants_confirmed": false,

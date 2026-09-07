@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "kind": "non-counting-maintainer-rehearsal",
+  "status": "passed",
+  "package_version": "0.1.0-beta.4",
+  "package_sha256": "857691da68e411d3380903c187fc37ad2bccb8227cae36d9d75720b908d62f6b",
+  "milestones": [
+    "create_import",
+    "review_reject",
+    "review_accept",
+    "select_recolor_align",
+    "edit_tagline",
+    "preserving_followup",
+    "save_restart_reopen",
+    "export_mark_wordmark"
+  ],
+  "participant_results": 0,
+  "package_source": "unpublished-local-candidate",
+  "initial_handoff_digest": "54ace59614b40af80c9b7535efbecbc3e4d74ed06722ddb1a3352744be96cacd",
+  "environment": {
+    "os": "darwin",
+    "kernel": "25.4.0",
+    "node": "v22.22.3",
+    "browser": "151.0.7922.34",
+    "viewport": "1440x1000",
+    "zoom_percent": 100
+  },
+  "artifacts": {
+    "original_sha256": "0ce112d615c992b7e079527da731d98e55a3f176983172ebe25d9caaa21757f3",
+    "accepted_sha256": "184a1f677463efc9b233105ffd19f4e8a87aee187e99b114ce6ea1e3c6f737e1",
+    "final_saved_sha256": "15a837340b1f977a9c45812439714d719e0752063156c0f5b11da8f1c388af83",
+    "exports": {
+      "mark": "3e2de2d0150bdc3370f7eb00545b178a12b21ede0980e271df135c35be9e03dd",
+      "wordmark": "52737afc592bf3380c03f62b1c016ea3784ed9fa931a4d938a41fdeebabfc62d"
+    }
+  },
+  "scope": "Programmatic maintainer rehearsal through installed public CLI and UI. Not human usability, unaided completion, state comprehension or assistive-technology evidence."
+}

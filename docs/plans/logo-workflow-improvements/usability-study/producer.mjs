@@ -8,6 +8,8 @@ export function prepareProposal(stage, handoff, transactionId = randomUUID()) {
   if (!['draft', 'corrected', 'followup'].includes(stage) || handoff?.kind !== 'lineage-logo-agent-handoff' || handoff.schemaVersion !== 1) throw new Error('Invalid study stage or handoff.');
   const snapshot = handoff.snapshot;
   if (!snapshot || !Array.isArray(snapshot.layers) || typeof snapshot.svg !== 'string' || createHash('sha256').update(snapshot.svg).digest('hex') !== snapshot.digest) throw new Error('Invalid handoff snapshot digest.');
+  // Structural assets replace the initial artwork; never overwrite intervening edits.
+  if (stage !== 'followup' && snapshot.digest !== '54ace59614b40af80c9b7535efbecbc3e4d74ed06722ddb1a3352744be96cacd') throw new Error('Structural study proposals require the unchanged starting fixture.');
   const targetId = stage === 'followup' ? 'seat-orbit' : 'constellation-logo';
   const matches = snapshot.layers.filter(layer => layer.svgId === targetId);
   if (matches.length !== 1 || matches[0].locked || matches[0].hidden) throw new Error('Expected one available study target.');
