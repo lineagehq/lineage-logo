@@ -29,6 +29,14 @@ describe("asset export", () => {
     const source = wrap('<defs><text id="letters" y="30" font-family="Absent">Brand</text></defs><use id="mark" href="#letters"/>');
     expect(() => buildSvgAsset(source, { targetId: "mark" }, { ...options, hasFont: () => false })).toThrow(/unavailable locally/);
   });
+  it("validates font inheritance through nested use instances and respects text overrides", () => {
+    const source = wrap('<defs><text id="letters" y="30">Brand</text><g id="nested"><use href="#letters"/></g></defs><use id="mark" href="#nested" font-family="Absent"/>');
+    const fonts = { ...options, hasFont: (family: string) => family !== "Absent" };
+    for (const request of [{}, { targetId: "mark" }]) {
+      expect(() => buildSvgAsset(source, request, fonts)).toThrow(/unavailable locally/);
+      expect(() => buildSvgAsset(source.replace('id="letters"', 'id="letters" font-family="serif"'), request, fonts)).not.toThrow();
+    }
+  });
   it("retains the percentage reference viewport inside the crop", () => {
     const source = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect id="mark" x="25%" y="25%" width="50%" height="50%" fill="red"/></svg>';
     const result = buildSvgAsset(source, { targetId: "mark" }, { ...options, measure: () => ({x:100,y:100,width:200,height:200}) });

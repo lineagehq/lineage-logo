@@ -32,7 +32,7 @@ test('installed named versions preserve history and exported SVG/PNG artifacts r
     for(const [name,width,height] of [['wide',400,100],['tall',100,400]] as const) await writeFile(path.join(workspace,`concepts/${name}.svg`),`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}"><rect id="white-mark" aria-label="White mark" width="${width}" height="${height}" fill="white"/></svg>`);
     await writeFile(path.join(workspace,'concepts/missing-font.svg'),'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text x="10" y="50" font-family="LineageMissingFont987654">Text</text></svg>');
     await writeFile(path.join(workspace,'concepts/percentage.svg'),'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"><rect id="percent-mark" x="25%" y="25%" width="50%" height="50%" fill="red"/></svg>');
-    await writeFile(path.join(workspace,'concepts/referenced-font.svg'),'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><text id="letters" x="10" y="50" font-family="LineageMissingFont987654">Text</text></defs><use id="font-mark" href="#letters"/></svg>');
+    await writeFile(path.join(workspace,'concepts/referenced-font.svg'),'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><text id="letters" x="10" y="50">Text</text></defs><use id="font-mark" href="#letters" font-family="LineageMissingFont987654"/></svg>');
     await exec('npm',['pack','--json','--pack-destination',pack],{maxBuffer:10*1024*1024});
     await writeFile(path.join(consumer,'package.json'),'{"private":true}');
     await exec('npm',['install','--ignore-scripts','--no-audit','--no-fund',path.join(pack,(await readdir(pack)).find(name=>name.endsWith('.tgz'))!)],{cwd:consumer});
