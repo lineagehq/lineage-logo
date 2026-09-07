@@ -69,6 +69,11 @@ test("packed empty-workspace UI creates, safely imports and hands off current ed
     };
     const first = await launch(); const page = await context.newPage(); await page.goto(first.url);
     expect(await readdir(workspace)).toEqual([]);
+    for (const endpoint of ["/api/concepts", "/api/agent/handoff"]) {
+      const refused = await page.request.post(first.url + endpoint, { headers: { Origin: "https://unrelated.example" }, data: { name: "must-not-create" } });
+      expect(refused.status()).toBe(403);
+    }
+    expect(await readdir(workspace)).toEqual([]);
     await page.getByRole("button", { name: "Create a logo", exact: true }).click();
     await page.getByRole("dialog", { name: "Create a logo", exact: true }).getByRole("button", { name: "Cancel", exact: true }).click();
     expect(await readdir(workspace)).toEqual([]);
