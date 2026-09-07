@@ -127,6 +127,8 @@ different starting API port.
 
 ## Public beta CLI
 
+The `0.1.0-beta.4` candidate includes the integrated agent, manual editing, recovery and export improvements. See the [beta.4 release notes](docs/public-beta/release-notes-beta.4.md). Publication status is established by npm metadata and the release workflow, not this source document.
+
 The public executable is `lineage-logo`. As of 2026-09-03 UTC,
 `lineage-logo@0.1.0-beta.2` was published under npm's `beta` dist-tag with signed
 SLSA provenance, `latest` pointed to `0.1.0-beta.1`, and hosted publication plus
