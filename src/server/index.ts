@@ -1,3 +1,4 @@
+import { saveNamedVersion } from "./named-versions.js";
 import { LOGO_IMPORT_MAX_BYTES } from "../shared/logo-creation.js";
 import { createWorkspaceLogo } from "./logo-creation.js";
 import { prepareAgentHandoff } from "./agent-handoff.js";
@@ -135,6 +136,14 @@ const server = createServer(async (request, response) => {
         "Cache-Control": "no-store",
       });
       response.end(svg);
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/named-versions") {
+      validateRequestOrigin(request);
+      const body = await readJsonBody(request, 5 * 1024 * 1024 * 6 + 16 * 1024) as { sourcePath?: unknown; name?: unknown; svg?: unknown };
+      if (typeof body.sourcePath !== "string" || typeof body.svg !== "string") throw new Error("Named version requires sourcePath and svg strings.");
+      sendJson(response, 201, { file: await saveNamedVersion(workspaceRoot, body.sourcePath, body.name, body.svg) });
       return;
     }
 

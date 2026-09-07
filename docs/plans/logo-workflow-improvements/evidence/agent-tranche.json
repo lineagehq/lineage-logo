@@ -1,0 +1,18 @@
+{
+  "node": "G3",
+  "status": "verified",
+  "mergeCommit": "bfaf798813639bfb429c04ab45d1146c975eb9cc",
+  "dependencies": [
+    "manual-tranche.json",
+    "c4.json",
+    "c5.json"
+  ],
+  "journey": "Installed create/import, revision-bound structural proposal, visual compare/reject with exact feedback, fresh corrected proposal, accept/save, manual text correction, narrow agent followup, restart exact saved SVG and originals unchanged.",
+  "test": "tests/e2e/guided-creation-installed.spec.ts",
+  "mainCi": 34072711276,
+  "mainCodeql": 34072711582,
+  "allPassed": true,
+  "limitations": [
+    "U1 independent participants remain pending."
+  ]
+}

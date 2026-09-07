@@ -147,7 +147,7 @@
       "lane": "agent",
       "status": "merged",
       "acceptanceContract": "plan.md#c3--structural-artifact-submission-and-narrow-corrections",
-      "receipt": null,
+      "receipt": "evidence/c3.json",
       "pullRequest": "https://github.com/lineagehq/lineage-logo/pull/34"
     },
     {
@@ -161,7 +161,7 @@
       "lane": "agent",
       "status": "merged",
       "acceptanceContract": "plan.md#c4--visual-review-and-request-revision-feedback",
-      "receipt": null
+      "receipt": "evidence/c4.json"
     },
     {
       "id": "C5",
@@ -171,9 +171,9 @@
         "B2"
       ],
       "lane": "agent",
-      "status": "pr_open",
+      "status": "merged",
       "acceptanceContract": "plan.md#c5--guided-creationimport-and-agent-entry",
-      "receipt": null
+      "receipt": "evidence/c5.json"
     },
     {
       "id": "G3",
@@ -184,9 +184,9 @@
         "C5"
       ],
       "lane": "gate",
-      "status": "active",
+      "status": "verified",
       "acceptanceContract": "plan.md#tranche-acceptance-gates",
-      "receipt": null
+      "receipt": "evidence/agent-tranche.json"
     },
     {
       "id": "D1",

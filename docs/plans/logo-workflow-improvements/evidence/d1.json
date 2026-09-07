@@ -1,0 +1,38 @@
+{
+  "node": "D1",
+  "status": "local-acceptance-passed-ci-pending",
+  "runtimeHead": "06caa3bf48cef50c515beef89dd85bc32e1fb47f",
+  "installedTest": "tests/e2e/installed-exports.spec.ts",
+  "local": {
+    "unitIntegration": 770,
+    "typecheck": "passed",
+    "build": "passed",
+    "macInstalled": "passed",
+    "linuxFull": {
+      "head": "31b764930d386229ac6b48a30e8fe66d3ff01479",
+      "passed": 111,
+      "laterExportFixes": "final CI pending"
+    }
+  },
+  "review": {
+    "roles": [
+      "correctness",
+      "tests",
+      "contracts-types",
+      "silent-failures",
+      "comments-docs"
+    ],
+    "native": "CLI/model mismatch; independent focused fallback",
+    "fixedCandidates": [
+      "percentage subset viewport",
+      "referenced text missing font",
+      "use instance inherited font"
+    ],
+    "freshBrowserValidation": "All repairs verified with production functions; available/override controls succeed; percentage pixels match absolute controls."
+  },
+  "limitations": [
+    "Final candidate CI and postmerge main checks pending.",
+    "D2 broader accessibility/platform and D3 performance gates remain pending.",
+    "No U1 participant results claimed."
+  ]
+}
