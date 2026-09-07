@@ -460,6 +460,9 @@ export function parseNumericTransformValue(
 
 /** Runtime roles expose named canvas geometry without altering saved SVG semantics. */
 export function ensureLayerAccessibilityRole(node: SVGGraphicsElement): void {
+  // Authored selectors may depend on role attributes. Keep their artwork semantics
+  // intact; the separate layer list remains the accessible editing interface.
+  if (node.ownerSVGElement?.querySelector("style")) return;
   const named = Boolean(node.getAttribute("aria-label")?.trim() || node.getAttribute("aria-labelledby")?.trim());
   if (!named && node.hasAttribute("data-lineage-added-role")) {
     node.removeAttribute("role"); node.removeAttribute("data-lineage-added-role");
@@ -2279,7 +2282,7 @@ export class SvgEditor {
   #assignKeys(root: SVGSVGElement): void {
     // The editing surface contains keyboard-operable handles, so it cannot be
     // an atomic image in the accessibility tree. Preserve authored export roles.
-    if (!root.hasAttribute("role") || root.getAttribute("role") === "img") {
+    if (!root.querySelector("style") && (!root.hasAttribute("role") || root.getAttribute("role") === "img")) {
       if (root.hasAttribute("role") && !root.hasAttribute("data-lineage-added-role")) root.setAttribute("data-lineage-original-role", root.getAttribute("role")!);
       else root.setAttribute("data-lineage-added-role", "true");
       root.setAttribute("role", "group");

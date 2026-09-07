@@ -17,3 +17,9 @@ it('restores an authored root image role when serializing an interactive canvas 
  const saved=serializeSvg(root,true);expect(saved).toContain('role="img"');expect(saved).not.toContain('data-lineage-');
  expect(root.getAttribute('role')).toBe('group');
 });
+
+it('leaves authored stylesheet role selectors unaffected by canvas accessibility metadata',()=>{
+ const root=new DOMParser().parseFromString('<svg xmlns="http://www.w3.org/2000/svg"><style>rect[role="img"] { fill:red }</style><rect aria-label="Mark" fill="blue"/></svg>','image/svg+xml').documentElement as unknown as SVGSVGElement;
+ const before=root.outerHTML;ensureLayerAccessibilityRole(root.querySelector('rect')!);
+ expect(root.querySelector('rect')?.hasAttribute('role')).toBe(false);expect(serializeSvg(root,true)).toBe(before);
+});
