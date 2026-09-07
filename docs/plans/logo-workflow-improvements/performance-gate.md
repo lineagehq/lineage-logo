@@ -37,3 +37,11 @@ No measurements or performance improvement claims are supplied by this implement
 ## Harness implementation verification
 
 At the preparation stage on base `04d633d85cea0b992ce004e5dceaa3b6171c6757`, repository type checking passed and all six focused `tests/ux-performance-metrics.test.ts` tests passed. They exercise inclusive budget boundaries, retained outliers, recomputation from raw samples, absolute budgets, incomplete evidence, and environment/harness incompatibility. No browser or benchmark was run during preparation; the exclusive measurement lease and integrated candidate remain pending.
+
+### Open-sampler regression repair
+
+The timed open now clears the isolated origin's session and local storage before app initialization, reloads before every repetition, and confirms an empty artboard with disabled layer search before starting the clock. The timed function refuses an already loaded document. Its completion predicate therefore observes a new document load rather than stale geometry from restoration. Setup and reload remain outside the discrete interval; startup remains separately recorded. The sampler helper is included in the harness hash, so before/after comparison requires historical remeasurement with this exact repaired harness.
+
+`tests/ux-performance-open.test.ts` runs the real repository app on two ephemeral ports. It first proves a loaded 100-layer document is restored by ordinary reload, verifies that the sampler rejects that stale starting state, and then holds each of two SVG fetches for 1600ms after the repaired empty setup. Neither measurement resolves while the response is held; both include at least 1500ms and end with all 100 rects loaded. Repository type checking and all seven focused open/comparison tests passed. This is a correctness regression test, not a benchmark result or a budget change.
+
+The browser regression is explicitly opt-in so unit-only CI does not unexpectedly require a browser installation. Run `LINEAGE_LOGO_PERFORMANCE_OPEN_REGRESSION=1 npx vitest run tests/ux-performance-open.test.ts tests/ux-performance-metrics.test.ts` after installing Chromium, under a browser-test lease. The ordinary unit run still executes the six pure comparison tests and reports the browser regression as skipped.
