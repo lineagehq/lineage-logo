@@ -38,7 +38,8 @@ for (const width of [1280, 760]) test(`geometry and text comparison returns revi
   await expect.poll(async () => (await (await request.get(`${api}/api/agent/transactions/${transactionId}`, { headers })).json()).status).toBe("reverted");
   const outcome = await (await request.get(`${api}/api/agent/transactions/${transactionId}`, { headers })).json();
   expect(outcome.revisionRequest).toBe(reason);
-  expect(await page.locator("#artboard svg").first().innerHTML()).toBe(before);
+  await expect(page.locator("#agent-review-status")).toHaveText("reverted");
+  await expect.poll(() => page.locator("#artboard svg").first().innerHTML()).toBe(before);
   expect((await request.post(`${api}/api/agent/transactions`, { headers, data: { ...transaction, operations: [operations[0]] } })).status()).toBe(409);
   const fresh = await (await request.get(`${api}/api/agent/document`, { headers })).json();
   expect((await request.post(`${api}/api/agent/transactions`, { headers, data: { ...transaction, transactionId: `${transactionId}-revised`, document: { sessionId: fresh.sessionId, sourcePath: fresh.sourcePath, baseRevision: fresh.revision }, operations: [{ ...operations[0], dx: 10 }] } })).status()).toBe(202);
