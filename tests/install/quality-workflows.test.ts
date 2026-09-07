@@ -16,6 +16,10 @@ test("PR and main retain every existing job and newer LTS is explicit", () => {
   expect(runs(ci.jobs.verify)).toContain("npm audit --omit=dev --audit-level=high");
   expect(runs(ci.jobs["clean-install"])).toContain("npx tsx scripts/release-check.ts --candidate-receipt");
   expect(runs(ci.jobs["browser-qa"])).toContain("npm run test:e2e -- --project=chromium");
+  const browserRuns = runs(ci.jobs["browser-qa"]);
+  const delayedOpen = "LINEAGE_LOGO_PERFORMANCE_OPEN_REGRESSION=1 npx vitest run --config vitest.config.ts tests/ux-performance-open.test.ts";
+  expect(browserRuns).toContain(delayedOpen);
+  expect(browserRuns.indexOf(delayedOpen)).toBeGreaterThan(browserRuns.indexOf("npx playwright install --with-deps chromium"));
 });
 
 test("extended corpus and measurements are dispatched and scheduled without publishing privileges", () => {
