@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { assessPerformance, summarize } from './ux-performance-metrics';
+import { disablePerformanceRestoration, prepareEmptyPerformanceOpen, measurePerformanceOpen } from './ux-performance-open';
 import { chromium } from '@playwright/test';
 import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -32,7 +33,7 @@ const targetCommit = git('rev-parse', 'HEAD');
 const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 const fixtures: Record<string, string> = {};
 for (const n of [100,500,1000]) fixtures[String(n)] = hash(await readFile(path.join(harnessRoot, `tests/fixtures/ux-audit/layers-${n}.svg`)));
-const harnessSha256 = hash((await readFile(fileURLToPath(import.meta.url))) + (await readFile(path.join(harnessRoot, 'scripts/ux-performance-metrics.ts'))).toString());
+const harnessSha256 = hash((await readFile(fileURLToPath(import.meta.url))) + (await readFile(path.join(harnessRoot, 'scripts/ux-performance-metrics.ts'))).toString() + (await readFile(path.join(harnessRoot, 'scripts/ux-performance-open.ts'))).toString());
 const port = (name: string, fallback: number) => {
   const value = process.env[name] === undefined ? fallback : Number(process.env[name]);
   if (!Number.isInteger(value) || value < 1024 || value > 65535) throw new Error('Invalid performance port.');
@@ -134,6 +135,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, reducedMotion: 'reduce' });
   // tsx preserves nested function names through this helper when serializing callbacks.
   await page.addInitScript('globalThis.__name = (target) => target');
+  await disablePerformanceRestoration(page);
   page.setDefaultTimeout(15000);
   page.on('dialog', dialog => void dialog.accept());
   const results: Record<string, any> = {};
@@ -145,14 +147,8 @@ try {
     await page.locator(`[data-path="concepts/layers-${n}.svg"]`).waitFor();
     const startupMs = performance.now()-startupStart;
     for (let i = 0; i < 32; i++) {
-      if (i) { await page.reload(); await page.locator(`[data-path="concepts/layers-${n}.svg"]`).waitFor(); }
-      const elapsed = await page.evaluate(async (count) => {
-        const start = performance.now();
-        (document.querySelector(`[data-path="concepts/layers-${count}.svg"]`) as HTMLButtonElement).click();
-        while (document.querySelectorAll('#artboard svg rect').length !== count || (document.querySelector('#layer-search') as HTMLInputElement).disabled) { if (performance.now()-start > 15000) throw new Error('Open did not become interactive'); await new Promise(requestAnimationFrame); }
-        await new Promise(requestAnimationFrame); await new Promise(requestAnimationFrame);
-        return performance.now()-start;
-      }, n);
+      await prepareEmptyPerformanceOpen(page, n);
+      const elapsed = await measurePerformanceOpen(page, n);
       if (i >= 2) open.push(elapsed);
     }
     for (let i = 0; i < 32; i++) {
@@ -235,7 +231,7 @@ try {
   const receipt = {
     schemaVersion: 2, measuredAt: new Date().toISOString(), commit: targetCommit, harnessSha256, fixtures,
     environment: { platform: platform(), release: release(), cpu: cpus()[0]?.model, cpuCount: cpus().length, memoryBytes: totalmem(), node: process.version, browser: browser.version(), playwright: JSON.parse(await readFile(path.join(harnessRoot,'node_modules/@playwright/test/package.json'),'utf8')).version, viewport: {width:1440,height:1000}, reducedMotion:'reduce', headless:true, server:'Vite development server + repository API', origin },
-    method: { version: 2, warmups:2, repetitions:30, dragRuns:5, startup:'Navigation to workspace file locator ready; includes driver round trips.', discrete:'Browser performance.now before DOM action to two requestAnimationFrame callbacks after observable DOM update. Rendering opportunities, not pixel-paint guarantee.', drag:'Five independent cancellable rAF samplers; 30 driver-paced pointer moves; initial partial interval omitted.', heap:'20 open 500-layer/edit/switch to empty-document cycles in one live renderer; explicit garbage collection then Runtime.getHeapUsage usedSize. Closing means unloading document, not destroying renderer.', limits:['Development build and headless Chromium; production performance is separate.','Host is not CPU-isolated; record all outliers and independently repeat any apparent regression.','Twenty heap samples support trend investigation but cannot prove absence of all leaks.'] },
+    method: { version: 2, warmups:2, repetitions:30, dragRuns:5, startup:'Navigation to workspace file locator ready; includes driver round trips.', open:'Storage cleared before app startup, fresh reload confirmed empty with disabled search; timed click waits for newly loaded SVG rects and enabled search plus two animation frames.', discrete:'Browser performance.now before DOM action to two requestAnimationFrame callbacks after observable DOM update. Rendering opportunities, not pixel-paint guarantee.', drag:'Five independent cancellable rAF samplers; 30 driver-paced pointer moves; initial partial interval omitted.', heap:'20 open 500-layer/edit/switch to empty-document cycles in one live renderer; explicit garbage collection then Runtime.getHeapUsage usedSize. Closing means unloading document, not destroying renderer.', limits:['Development build and headless Chromium; production performance is separate.','Host is not CPU-isolated; record all outliers and independently repeat any apparent regression.','Twenty heap samples support trend investigation but cannot prove absence of all leaks.'] },
     results, heap: { samplesBytes: heapSamples, cycles:20, firstBytes:heapSamples[0], lastBytes:heapSamples.at(-1), deltaBytes:heapSamples.at(-1)!-heapSamples[0] },
   };
   const gate = measureOnly ? { status:'measured', reasons:['Measurement-only run; no acceptance claim.'] } : assessPerformance(receipt, baseline);
