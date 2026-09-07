@@ -86,6 +86,7 @@ test("pending agent review retains authority over manual recovery after reload",
   const manifest=await(await page.request.get("http://127.0.0.1:43117/api/agent/document",{headers})).json();
   const proposal={protocolVersion:1,transactionId:`manual-precedence-${Date.now()}`,producer:{kind:"fixture"},document:{sessionId:manifest.sessionId,sourcePath:manifest.sourcePath,baseRevision:manifest.revision},operations:[{type:"renameLayer",operationId:"rename",target:{sessionKey:manifest.layers.find((layer:{name:string})=>layer.name==="mark").sessionKey},name:"Pending mark"}]};
   expect((await page.request.post("http://127.0.0.1:43117/api/agent/transactions",{headers,data:proposal})).status()).toBe(202);
+  await expect(page.locator("#agent-review-status")).toBeVisible();
   await expect(page.locator("#agent-review-status")).toHaveText(/^pending$/i);
   const recoveryStatuses: number[] = [];
   page.on('response', response => {
@@ -101,6 +102,7 @@ test("pending agent review retains authority over manual recovery after reload",
     stored: await page.evaluate(() => ({ pending: Boolean(sessionStorage.getItem('lineage.pending-agent-review.v1')), workspace: sessionStorage.getItem('lineage.workspace-session.v1') })),
   }))).toContain('"recovered":true');
   await expect(page.locator("#agent-review")).toBeVisible();
+  await expect(page.locator("#agent-review-status")).toBeVisible();
   await expect(page.locator("#agent-review-status")).toHaveText(/^pending$/i);
   await expect(page.locator("#manual-draft-dialog")).not.toBeVisible();
   await expect(page.locator("#agent-revert")).toBeEnabled();
@@ -222,6 +224,7 @@ test('agent acceptance preserves a different recovery record written by another 
     document: { sessionId: manifest!.sessionId, sourcePath: manifest!.sourcePath, baseRevision: manifest!.revision },
     operations: [{ type: 'renameLayer', operationId: 'rename', target: { sessionKey: manifest!.layers.find(layer => layer.name === 'mark')!.sessionKey }, name: 'Accepted mark' }] };
   expect((await page.request.post('/api/agent/transactions', { headers, data: proposal })).status()).toBe(202);
+  await expect(page.locator('#agent-review-status')).toBeVisible();
   await expect(page.locator('#agent-review-status')).toHaveText(/^pending$/i);
   // A storage-only second tab models another editor's completed write without
   // competing for this editor's live agent connection. Use the real draft store.
