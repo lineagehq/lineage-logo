@@ -103,4 +103,7 @@ it("binds the nonpublishing receipt to actual tarball bytes", () => {
   expect(receipt).toMatchObject({ algorithm: "sha256", sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", bytes: 3, published: false });
   expect(candidateReceipt(Buffer.from("abd"), "0.1.0-beta.3").sha256).not.toBe(receipt.sha256);
   expect(() => candidateReceipt(Buffer.from("abc"), "bad\nversion")).toThrow();
+  expect(() => candidateReceipt(Buffer.alloc(0), "1.0.0")).toThrow();
+  expect(() => candidateReceipt(Buffer.from("abc"), "1.0.0", "not-a-commit")).toThrow();
+  expect(candidateReceipt(Buffer.from("abc"), "1.0.0", "a".repeat(40)).sourceRevision).toBe("a".repeat(40));
 });

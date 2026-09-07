@@ -1,7 +1,9 @@
 import { expect, type Page } from "@playwright/test";
 export const headers = { Authorization: "Bearer lineage-logo-e2e-agent-token" };
 export const layer = (page: Page, name: string) => page.locator(".layer-button").filter({ has: page.locator(".layer-type + span", { hasText: new RegExp(`^${name}$`) }) });
+const publications = new WeakMap<Page, { sessionId: string; sourcePath: string; revision: number }>();
 export async function openSeatify(page: Page) {
+  page.on("request", request => { if (new URL(request.url()).pathname === "/api/agent/document" && request.method() === "POST") publications.set(page, request.postDataJSON()); });
   await page.goto("/");
   await page.locator('[data-path="concepts/seatify-constellation.svg"]').click();
   await expect(page.locator(".layer-button")).toHaveCount(44);
@@ -12,7 +14,8 @@ export async function proposeTitle(page: Page, suffix: string) {
     const response = await page.request.get("/api/agent/document", { headers });
     if (!response.ok()) return false;
     publication = await response.json();
-    return publication?.sourcePath === await page.locator(".file-button[aria-current='true']").getAttribute("data-path") && publication.layers.some(item => item.name === "Seatify title");
+    const posted = publications.get(page);
+    return !!posted && publication?.sessionId === posted.sessionId && publication.revision === posted.revision && publication?.sourcePath === await page.locator(".file-button[aria-current='true']").getAttribute("data-path") && publication.layers.some(item => item.name === "Seatify title");
   }).toBe(true);
   const manifest = publication!;
   const transactionId = `quality-${suffix}-${Date.now()}`;

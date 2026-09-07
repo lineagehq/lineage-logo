@@ -55,9 +55,11 @@ async function command(commandName: string, args: string[], cwd: string, env = p
   });
 }
 
-export function candidateReceipt(bytes: Uint8Array, version: string) {
+export function candidateReceipt(bytes: Uint8Array, version: string, sourceRevision?: string) {
+  if (bytes.byteLength === 0 || bytes.byteLength > 64 * 1024 * 1024) throw new Error("Candidate artifact exceeds the 64 MiB bound");
+  if (sourceRevision !== undefined && !/^[a-f0-9]{40}$/.test(sourceRevision)) throw new Error("Invalid candidate revision");
   if (!isValidPackageVersion(version) || version !== version.trim()) throw new Error("Invalid candidate version");
-  return { schemaVersion: 1, algorithm: "sha256", sha256: createHash("sha256").update(bytes).digest("hex"), bytes: bytes.byteLength, version, node: process.version, platform: process.platform, published: false };
+  return { schemaVersion: 1, algorithm: "sha256", sha256: createHash("sha256").update(bytes).digest("hex"), bytes: bytes.byteLength, version, sourceRevision, node: process.version, platform: process.platform, published: false };
 }
 
 async function main(): Promise<void> {
@@ -110,7 +112,10 @@ async function main(): Promise<void> {
     phase = "reinstalled package validation";
     const manifest = JSON.parse(await readFile(path.join(installRoot, "node_modules", "lineage-logo", "package.json"), "utf8")) as { version?: unknown };
     if (manifest.version !== version.stdout.trim()) throw new Error("reinstalled package version mismatch");
-    const candidate = candidateReceipt(await readFile(tarball), version.stdout.trim());
+    const sourceRevision = await command("git", ["rev-parse", "HEAD"], repositoryRoot);
+    if (sourceRevision.code !== 0) throw new Error("Candidate source revision unavailable");
+    if ((await lstat(tarball)).size > 64 * 1024 * 1024) throw new Error("Candidate artifact exceeds the 64 MiB bound");
+    const candidate = candidateReceipt(await readFile(tarball), version.stdout.trim(), sourceRevision.stdout.trim());
     if (process.argv.includes("--candidate-receipt")) {
       await writeFile(path.join(repositoryRoot, "candidate-artifact.json"), `${JSON.stringify(candidate, null, 2)}\n`);
     }

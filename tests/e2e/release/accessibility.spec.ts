@@ -5,7 +5,7 @@ import { layer, openSeatify, proposeTitle } from "./journey-helpers";
 async function audit(page: Page, state: string) {
   const result = await new AxeBuilder({ page }).analyze();
   const failures = result.violations.filter(item => item.impact === "serious" || item.impact === "critical");
-  expect(failures.map(item => ({ rule: item.id, impact: item.impact, targets: item.nodes.map(node => node.target) })), `Axe serious/critical findings in ${state}`).toEqual([]);
+  expect.soft(failures.map(item => ({ rule: item.id, impact: item.impact, targets: item.nodes.map(node => ({target: node.target, summary: node.failureSummary})) })), `Axe serious/critical findings in ${state}`).toEqual([]);
 }
 
 test("empty, editing, multi-selection and recovery expose accessible controls", async ({ page }) => {

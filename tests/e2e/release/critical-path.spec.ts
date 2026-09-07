@@ -95,6 +95,7 @@ test("critical pointer geometry, text and paint survive save and reopen", async 
   await expect.poll(transforms).not.toBe(beforeRotation);
   await layer(page, "Seatify title").click();
   await page.locator("#fill").fill("#a43366"); await page.locator("#fill").press("Enter");
+  await page.locator("#text-group > summary").click();
   await page.locator("#text-content").fill("Seatify accessible"); await page.locator("#text-content").press("Enter");
   const committedTransform = await transforms();
   await page.locator("#save-iteration").click();
