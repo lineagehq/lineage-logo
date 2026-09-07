@@ -664,19 +664,31 @@ test("multi-selection arrangement already-even distribution is an exact transfor
   expect(await controls(page)).toEqual(beforeControls);
 });
 
-test("multi-selection arrangement rejects mixed-parent alignment without partial mutation", async ({ page }) => {
-  await selectDistributionTargets(page);
-  const before = await geometry(page, distributionLabels);
-  const beforeIdentity = await identity(page);
-  const beforeControls = await controls(page);
-  for (const id of arrangementIds.slice(0, 6)) {
-    await expect(page.locator(`#${id}`)).toBeDisabled();
-    await expect(page.locator(`#${id}`)).toHaveAttribute("title", /same parent/i);
-  }
-  expectGeometry(await geometry(page, distributionLabels), before);
-  expect(await identity(page)).toEqual(beforeIdentity);
-  expect(await controls(page)).toEqual(beforeControls);
-});
+for (const action of alignments) {
+  test(`cross-parent ${action.direction} alignment preserves geometry and one undo step`, async ({ page }) => {
+    await selectDistributionTargets(page); await openAlignmentGroup(page);
+    const labels = [...distributionLabels, unrelatedLabel];
+    const before = await geometry(page, labels), beforeIdentity = await identity(page);
+    const left = Math.min(...distributionLabels.map(label => before[label].left));
+    const right = Math.max(...distributionLabels.map(label => before[label].right));
+    const top = Math.min(...distributionLabels.map(label => before[label].top));
+    const bottom = Math.max(...distributionLabels.map(label => before[label].bottom));
+    await expect(page.locator(`#${action.id}`)).toBeEnabled(); await page.locator(`#${action.id}`).click();
+    const after = await geometry(page, labels);
+    for (const label of distributionLabels) {
+      const box = after[label];
+      if (action.direction === "left") expect(box.left).toBeCloseTo(left, 5);
+      if (action.direction === "center") expect((box.left + box.right) / 2).toBeCloseTo((left + right) / 2, 5);
+      if (action.direction === "right") expect(box.right).toBeCloseTo(right, 5);
+      if (action.direction === "top") expect(box.top).toBeCloseTo(top, 5);
+      if (action.direction === "middle") expect((box.top + box.bottom) / 2).toBeCloseTo((top + bottom) / 2, 5);
+      if (action.direction === "bottom") expect(box.bottom).toBeCloseTo(bottom, 5);
+      expect(box.width).toBeCloseTo(before[label].width, 5); expect(box.height).toBeCloseTo(before[label].height, 5);
+    }
+    expectGeometry({ [unrelatedLabel]: after[unrelatedLabel] }, { [unrelatedLabel]: before[unrelatedLabel] });
+    await exactOneCheckpoint(page, before, after, beforeIdentity, await identity(page), () => geometry(page, labels));
+  });
+}
 
 test("multi-selection arrangement rejects locked and hidden members all-or-nothing", async ({ page }) => {
   await layerButton(page, "East north seat").click();
@@ -686,7 +698,7 @@ test("multi-selection arrangement rejects locked and hidden members all-or-nothi
   let beforeIdentity = await identity(page);
   for (const id of arrangementIds.slice(0, 6)) {
     await expect(page.locator(`#${id}`)).toBeDisabled();
-    await expect(page.locator(`#${id}`)).toHaveAttribute("title", /same parent/i);
+    await expect(page.locator(`#${id}`)).toHaveAttribute("title", /unlock/i);
   }
   for (const id of arrangementIds.slice(6)) {
     await expect(page.locator(`#${id}`)).toBeDisabled();
@@ -703,7 +715,7 @@ test("multi-selection arrangement rejects locked and hidden members all-or-nothi
   beforeIdentity = await identity(page);
   for (const id of arrangementIds.slice(0, 6)) {
     await expect(page.locator(`#${id}`)).toBeDisabled();
-    await expect(page.locator(`#${id}`)).toHaveAttribute("title", /same parent/i);
+    await expect(page.locator(`#${id}`)).toHaveAttribute("title", /show every selected layer/i);
   }
   for (const id of arrangementIds.slice(6)) {
     await expect(page.locator(`#${id}`)).toBeDisabled();

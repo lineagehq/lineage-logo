@@ -1698,7 +1698,7 @@ describe("marquee and precise selection interactions", () => {
     expect(root.querySelectorAll("[data-lineage-selection-halos] .lineage-selection-halo")).toHaveLength(3);
     expect(root.querySelectorAll(".svg_select_shape")).toHaveLength(1);
     expect(editor.operationState().group.allowed).toBe(false);
-    expect(editor.operationState().align.allowed).toBe(false);
+    expect(editor.operationState().align.allowed).toBe(true);
   });
 
   it("previews live marquee matches with selection halos without committing selection or history", () => {
