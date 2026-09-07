@@ -95,7 +95,7 @@ test("packed empty-workspace UI creates, safely imports and hands off current ed
     await writeFile(artifact, '<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="brand-paint"><stop stop-color="#2244aa"/><stop offset="1" stop-color="#44aacc"/></linearGradient></defs><g id="proposed-logo" aria-label="Brand mark"><circle id="brand-circle" cx="150" cy="150" r="60" fill="url(#brand-paint)"/></g></svg>');
     const submit = async (binding: AgentHandoff, transactionId: string, operations: unknown[], withArtifact: boolean) => {
       await writeFile(proposal, JSON.stringify({ protocolVersion: 1, transactionId, producer: { kind: "test" }, document: { sessionId: binding.snapshot.sessionId, baseRevision: binding.snapshot.baseRevision }, operations }));
-      const command = start(bin, ["submit", "--workspace", workspace, "--instance", binding.snapshot.instanceId, "--proposal", proposal, ...(withArtifact ? ["--artifact", artifact, "--group-id", "proposed-logo"] : []), "--json", "--quiet"], env); running.push(command);
+      const command = start(bin, ["submit", "--instance", binding.snapshot.instanceId, "--proposal", proposal, ...(withArtifact ? ["--artifact", artifact, "--group-id", "proposed-logo"] : []), "--json", "--quiet"], env); running.push(command);
       await expect(page.locator("#agent-accept")).toBeVisible(); await page.locator("#agent-accept").click();
       await expect.poll(() => command.child.exitCode, { timeout: 20000 }).toBe(0);
       const receipt = JSON.parse(command.output());

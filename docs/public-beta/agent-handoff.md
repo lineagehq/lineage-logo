@@ -45,7 +45,7 @@ Your local agent can create an SVG artifact with a named group and locally refer
 Replace both document values with the current handoff values. Submit through the public CLI, selecting the exact instance from the handoff when more than one editor is running:
 
 ```sh
-lineage-logo submit --workspace ./my-logo --instance INSTANCE_FROM_HANDOFF \
+lineage-logo submit --instance INSTANCE_FROM_HANDOFF \
   --artifact ./proposed-logo.svg --group-id proposed-logo \
   --proposal ./proposal.json --json --quiet
 ```
@@ -68,4 +68,4 @@ Now make a manual correction with the inspector—for example, edit a text layer
 }
 ```
 
-Submit with `--proposal`, `--workspace` and `--instance`, omitting `--artifact` and `--group-id`. After accepting, verify that the manual correction survived. Stop and relaunch the editor, reopen the returned continuation, and confirm the corrected artwork is present. This is the same first-run sequence exercised by the installed-package acceptance test; it is not evidence from an independent human participant.
+Submit with `--proposal` and `--instance` (or `--workspace` when exactly one editor owns that workspace), omitting `--artifact` and `--group-id`. After accepting, verify that the manual correction survived. Stop and relaunch the editor, reopen the returned continuation, and confirm the corrected artwork is present. This is the same first-run sequence exercised by the installed-package acceptance test; it is not evidence from an independent human participant.
