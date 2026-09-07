@@ -1,0 +1,68 @@
+{
+  "node": "D2",
+  "status": "in-validation",
+  "runtimeHead": "62b20a551d484b2b13820e1e4cca9c486a5cd113",
+  "pr": "https://github.com/lineagehq/lineage-logo/pull/38",
+  "local": {
+    "check": {
+      "unitIntegrationPassed": 782,
+      "browserDependentUnitCase": "Gated in unit-only runs; explicitly passed separately and wired after Chromium installation in CI.",
+      "typecheck": "passed",
+      "build": "passed"
+    },
+    "fullMac": {
+      "head": "7443250f77daef1950015f4fc3e732420718cdfb",
+      "passed": 126,
+      "laterRuntimeFix": "612d4a2 preserves styled SVG roles; fresh204 editor/serialization tests, independent actualapp rendering and two axe journeys passed."
+    },
+    "fullLinux": "running at62b20a5",
+    "fullCorpus": {
+      "passed": 15
+    },
+    "axe": {
+      "scenarios": 2,
+      "states": 8,
+      "seriousCriticalFindings": 0,
+      "excludedControls": false
+    }
+  },
+  "ci": {
+    "run": 34074798330,
+    "codeql": 34074796852,
+    "status": "browser QA pending; all other expected jobs passed",
+    "packageReceipts": [
+      "d2-packages/candidate-node24.json",
+      "d2-packages/candidate-macos-latest.json",
+      "d2-packages/candidate-ubuntu-latest.json"
+    ],
+    "githubTestMergeRevision": "156ab80957cbdc9447a922438cc912063c00719c",
+    "sameArtifactAcrossPlatforms": true
+  },
+  "review": {
+    "roles": [
+      "correctness",
+      "tests",
+      "contracts-types",
+      "silent-failures",
+      "comments-docs"
+    ],
+    "native": "CLI/model mismatch; focused independent fallback.",
+    "acceptedDefectsRepaired": [
+      "Runtime roles changing authored CSS appearance",
+      "Open timing accepting a restored old document"
+    ],
+    "freshValidation": "Actual application/Chromium reproductions and repaired controls passed.",
+    "finalTestsReview": "No high-confidence issues at62b20a5."
+  },
+  "assistiveTechnology": {
+    "tool": "VoiceOver10 on macOS26.4.1",
+    "status": "unverified",
+    "reason": "Activation and keyboard dialog path observed, but no reliable spoken output; initial off state confirmed afterward. User observation requested. No automated AX substitution."
+  },
+  "limitations": [
+    "Real assistive-technology observation required before D2 acceptance.",
+    "Final Linux/CI and postmerge gates pending.",
+    "Extended workflow dispatch follows availability on main.",
+    "No native Safari, blanket WCAG, publication, or independent participant claim."
+  ]
+}
