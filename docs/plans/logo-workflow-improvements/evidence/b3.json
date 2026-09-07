@@ -1,8 +1,8 @@
 {
   "node": "B3",
-  "status": "local-acceptance-passed-review-pending",
-  "base": "a596c6a30a48292e935f4b5cf1bb04e9159a9dcb",
-  "testedHead": "981f442",
+  "status": "integrated-review-passed-browser-validation-running",
+  "base": "c410d08aab724877908fcf9efa687b3b5edec9b3",
+  "testedHead": "14fdef62e0258ef2e77df1ccc89579d3ac471a0a",
   "local": {
     "mac": {
       "unitIntegration": 661,
@@ -17,6 +17,30 @@
       "browserScenarios": 83,
       "typecheck": "passed",
       "productionBuild": "passed"
+    },
+    "combined": {
+      "mac": {
+        "unitIntegration": 707,
+        "typecheck": "passed",
+        "productionBuild": "passed"
+      },
+      "linux": {
+        "unitIntegration": 707,
+        "typecheck": "passed",
+        "productionBuild": "passed",
+        "browser": "Full run deliberately stopped during VM resource contention; serialized replacement required"
+      },
+      "focusedLinuxBrowser": {
+        "head": "14fdef62",
+        "scenarios": 14,
+        "result": "passed"
+      }
+    },
+    "priorB1Integration": {
+      "head": "d43b8368ab65f868a269b5b72acec3e5fa3e7a09",
+      "macBrowserScenarios": 93,
+      "macUnitIntegration": 689,
+      "linuxBrowser": "92 passed, cross-tab acceptance test timed out; fixture now requires pending status and binds to this page publication before submitting"
     }
   },
   "assertions": [
@@ -32,9 +56,28 @@
     "tests/manual-draft-store.test.ts"
   ],
   "review": {
-    "completedWork": "Independent correctness and silent-failure candidates were reproduced, fixed, and covered by real browser regressions.",
-    "remaining": "Tests, contracts/types, comments/docs and post-fix review remain pending after worker usage limit."
+    "native": "Installed CLI/current-model mismatch prevented native review; focused review used independently available diff under documented skill fallback.",
+    "roles": {
+      "correctness": "b3_correctness_review plus fresh b3_integration_review: no remaining candidates at14fdef62 against c410d08; integration reviewer ran70 focused unit tests",
+      "tests": "b3_tests_review: no findings after exact lease test synchronization fix atd43b836;39 focused tests",
+      "silent-failures": "b3_failures_review: restored-record ownership candidate independently reproduced then fixed",
+      "contracts-types": "b3_contracts_review: no findings",
+      "comments-docs": "b3_docs_review: no findings"
+    },
+    "validatedFixes": [
+      "Fresh b3_retirement_validator reproduced unrelated immutable draft retirement; normal durable agent settlement now suppresses incidental persistence and retires only exact owned record. Real cross-tab regression preserves a different draft.",
+      "Fresh b3_restore_validator reproduced failed replacement write leaving restored draft unowned; restore now claims original token before replacement, allowing Discard to retire it.",
+      "Earlier independently reproduced file-switch Discard, failed Save-and-switch retirement, and blocked expired-draft exit defects have passing browser regressions."
+    ]
   },
-  "pr": null,
-  "ci": null
+  "pr": "https://github.com/lineagehq/lineage-logo/pull/32",
+  "ci": {
+    "currentHead": "15818f5",
+    "workflowRun": 34068135697,
+    "status": "running"
+  },
+  "limitations": [
+    "Full combined browser validation and exact final-head CI remain required.",
+    "No independent participant results are claimed."
+  ]
 }
