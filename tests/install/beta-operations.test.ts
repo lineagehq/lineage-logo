@@ -11,6 +11,7 @@ const triage = readFileSync("docs/public-beta/triage.md", "utf8");
 const invitation = readFileSync("docs/public-beta/invitation.md", "utf8");
 const quickstart = readFileSync("docs/public-beta/seatify-quickstart.md", "utf8");
 const readme = readFileSync("README.md", "utf8");
+const technicalReference = readFileSync("docs/technical-reference.md", "utf8");
 const betaReadme = readFileSync("docs/public-beta/README.md", "utf8");
 const exampleReceipt = JSON.parse(readFileSync("docs/public-beta/walkthrough-receipt.example.json", "utf8"));
 const attestationSchema = JSON.parse(readFileSync("docs/public-beta/distinct-user-attestation.schema.json", "utf8"));
@@ -102,7 +103,8 @@ function selectIssueCode(signals: string[]) {
 
 describe("public beta cohort operating kit", () => {
   it("keeps immutable beta.3 release copy durable and registry-authoritative", () => {
-    for (const document of [readme, betaReadme]) {
+    expect(readme).toContain("](docs/technical-reference.md)");
+    for (const document of [technicalReference, betaReadme]) {
       expect(document).toContain("As of 2026-09-03 UTC");
       expect(document).toContain("`lineage-logo@0.1.0-beta.2`");
       expect(document).toMatch(/signed\s+SLSA provenance/);
