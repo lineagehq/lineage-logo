@@ -1,6 +1,17 @@
 # Lineage Logo
 
-An experimental visual correction canvas for AI-generated SVG logos.
+No need to regenerate your entire logo for small changes. Fine-tune shape, size, color, and spacing - by hand or with your agent.
+
+A local SVG editor for polishing a design you already like. Move, resize, rotate, and recolor individual layers, then save a new iteration for you or your agent to continue from.
+
+[View the landing page and two demos](https://lineagehq.github.io/lineage-logo/) · [Make manual tweaks](https://github.com/neonwatty/logo-designer-skill/blob/main/docs/manual-tweaks.md) · [Agent integration](docs/agent-canvas.md)
+
+```bash
+npx lineage-logo@0.1.0-beta.4 launch --workspace /absolute/path/to/logos
+```
+
+Requires Node.js 22+ on macOS or Linux. Replace the path with your logo workspace. Put an existing SVG inside its `concepts/` subfolder first. The launcher prints a descriptive `lineage-logo.localhost` address. Keep the terminal running while you edit.
+
 
 ## Examples
 
