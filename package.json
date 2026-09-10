@@ -1,7 +1,7 @@
 {
   "name": "lineage-logo",
   "version": "0.1.0-beta.4",
-  "description": "A local, human-in-the-loop SVG logo correction canvas.",
+  "description": "A shared visual canvas where you and your agent create and fine-tune SVG logos together.",
   "license": "MIT",
   "repository": {
     "type": "git",

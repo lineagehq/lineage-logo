@@ -1,10 +1,14 @@
 # Lineage Logo
 
-No need to regenerate your entire logo for small changes. Fine-tune shape, size, color, and spacing - by hand or with your agent.
+A shared visual canvas where you and your agent create and fine-tune SVG logos together.
 
-A local SVG editor for polishing a design you already like. Move, resize, rotate, and recolor individual layers, then save a new iteration for you or your agent to continue from.
+Found a logo you like? Fine-tune shape, size, color, and spacing together with your agent - without constantly regenerating the whole logo.
+
+Make precise edits by hand, review and accept your agent’s proposed changes, and save editable SVG versions that either of you can continue from. The canvas runs locally with your logo files.
 
 [View the landing page and two demos](https://lineagehq.github.io/lineage-logo/) · [Make manual tweaks](https://github.com/neonwatty/logo-designer-skill/blob/main/docs/manual-tweaks.md) · [Agent integration](docs/agent-canvas.md)
+
+## Get started
 
 ```bash
 npx lineage-logo@0.1.0-beta.4 launch --workspace /absolute/path/to/logos
@@ -12,15 +16,34 @@ npx lineage-logo@0.1.0-beta.4 launch --workspace /absolute/path/to/logos
 
 Requires Node.js 22+ on macOS or Linux. Replace the path with your logo workspace. Put an existing SVG inside its `concepts/` subfolder first. The launcher prints a descriptive `lineage-logo.localhost` address. Keep the terminal running while you edit.
 
+## What you can do
+
+Create and refine logos in a shared visual workflow:
+
+- Start with an agent-generated SVG or open an existing logo workspace
+- Review, accept, or revert agent-proposed changes
+- Select logical SVG groups or individual elements
+- Move, resize, rotate, duplicate, hide, and delete selections
+- Adjust fill, stroke, stroke width, and opacity
+- Undo and redo edits
+- Inspect the result at favicon sizes
+- Save your changes as the next numbered SVG iteration
+
+The detailed scope and acceptance criteria are in the [MVP document](https://github.com/lineagehq/lineage-logo/blob/main/docs/MVP.md).
+
+## Public beta
+
+Lineage Logo runs locally and supports manual editing, reviewed agent proposals,
+saved SVG versions, and SVG/PNG export. See the [beta release notes](docs/public-beta/release-notes-beta.4.md)
+for release details and the [support guide](SUPPORT.md) for feedback and questions.
 
 ## Examples
 
-- [`examples/seatify-constellation.svg`](examples/seatify-constellation.svg) — the canonical 44-layer Seatify constellation test fixture, built from six abstract seats arranged around a circular table. Unit tests read this file directly; browser QA uses only a byte-identical temporary workspace copy.
+- [`examples/seatify-constellation.svg`](examples/seatify-constellation.svg) - the canonical 44-layer Seatify constellation test fixture, built from six abstract seats arranged around a circular table. Unit tests read this file directly; browser QA uses only a byte-identical temporary workspace copy.
 
-The project explores a hybrid workflow: AI generates structured SVG concepts,
-a person makes precise visual corrections in a browser, and the corrected SVG
-returns to the AI iteration loop without being converted into a proprietary
-canvas format.
+Humans and agents work on the same SVG: generate a concept, make manual edits,
+review proposed changes, and continue from the saved result. No proprietary
+canvas format or conversion step is required.
 
 ## Agent transaction protocol
 
@@ -97,28 +120,6 @@ imports editor internals or bypasses review.
 After an accepted producer handoff persists its numbered continuation, the open
 canvas refreshes the workspace list and next-save target without reopening or
 changing the current document, history, selection, or dirty state.
-
-## MVP
-
-The first release focuses on a deliberately small editing surface:
-
-- Open an SVG from a local logo workspace
-- Select logical SVG groups or individual elements
-- Move, resize, rotate, duplicate, hide, and delete selections
-- Adjust fill, stroke, stroke width, and opacity
-- Undo and redo edits
-- Inspect the result at favicon sizes
-- Save the correction as the next numbered SVG iteration
-
-The detailed scope and acceptance criteria are in the [MVP document](https://github.com/lineagehq/lineage-logo/blob/main/docs/MVP.md).
-
-## Status
-
-The current prototype lists SVG concepts and iterations, renders the selected
-file inline, exposes its editable layer structure, and previews favicon sizes.
-It supports direct move, resize, and rotate corrections; appearance and numeric
-controls; duplicate, hide, and delete actions; undo and redo; and safe saves to
-the next numbered SVG iteration.
 
 ## Development
 
