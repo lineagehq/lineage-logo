@@ -2,17 +2,9 @@
 
 A shared visual canvas where you and your agent create and fine-tune SVG logos together.
 
-Found a logo you like? Fine-tune shape, size, color, and spacing together with your agent - without constantly regenerating the whole logo.
-
-Make precise edits by hand, review and accept your agent’s proposed changes, and save editable SVG versions that either of you can continue from. The canvas runs locally with your logo files.
-
-## See it in action
-
-Move and resize layers, change colors, adjust spacing, and review an agent’s finishing touches. This condensed demo shows manual edits followed by an agent polish. Select the preview to watch with captions.
+Lock in the big picture design of your logo using [the logo design skill](https://github.com/neonwatty/logo-designer-skill), and bring it into the Lineage Logo studio to fine tune shapes, sizes, colors, spacing, etc., manaually or with your agent.
 
 [![Fine-tune logo layers and review agent polish](site/assets/polishing/audio-readme.gif)](https://lineagehq.github.io/lineage-logo/#polish)
-
-Move, resize, rotate, recolor, align, and edit text. Undo changes, check the logo at favicon sizes, and export SVG or PNG. Saving creates a new numbered SVG iteration, leaving your original file intact.
 
 ## Get started
 
@@ -35,5 +27,3 @@ Replace the path with your workspace. Open the `lineage-logo.localhost` address 
 - [Development and technical reference](docs/technical-reference.md)
 - [Public beta release notes](docs/public-beta/release-notes-beta.4.md)
 - [Support and feedback](SUPPORT.md)
-
-Lineage Logo is in public beta. [Report a bug or suggest an improvement](https://github.com/lineagehq/lineage-logo/issues).
