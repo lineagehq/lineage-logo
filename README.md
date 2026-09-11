@@ -6,6 +6,14 @@ Found a logo you like? Fine-tune shape, size, color, and spacing together with y
 
 Make precise edits by hand, review and accept your agent’s proposed changes, and save editable SVG versions that either of you can continue from. The canvas runs locally with your logo files.
 
+## See it in action
+
+Move and resize layers, change colors, adjust spacing, and review an agent’s finishing touches. This condensed demo shows manual edits followed by an agent polish. Select the preview to watch with captions.
+
+[![Fine-tune logo layers and review agent polish](site/assets/polishing/audio-readme.gif)](https://lineagehq.github.io/lineage-logo/#polish)
+
+Move, resize, rotate, recolor, align, and edit text. Undo changes, check the logo at favicon sizes, and export SVG or PNG. Saving creates a new numbered SVG iteration, leaving your original file intact.
+
 ## Get started
 
 Requires Node.js 22+ on macOS or Linux.
@@ -19,16 +27,6 @@ npx lineage-logo@0.1.0-beta.4 launch --workspace /absolute/path/to/logos
 Replace the path with your workspace. Open the `lineage-logo.localhost` address printed by the launcher and keep the terminal running while you edit.
 
 [Try the included example](docs/public-beta/seatify-quickstart.md) · [Connect your agent](docs/public-beta/agent-proposals.md)
-
-## See it in action
-
-Move and resize layers, change colors, adjust spacing, and review an agent’s finishing touches. These condensed demos show manual edits followed by an agent polish. Select either preview to watch with captions.
-
-| Bleep Roundel | Audio Cut |
-| :---: | :---: |
-| [![Bleep Roundel demo: fine-tune logo shape, size, color, and positioning](site/assets/polishing/roundel-readme.gif)](https://lineagehq.github.io/lineage-logo/#polish) | [![Audio Cut demo: fine-tune logo layers and review agent polish](site/assets/polishing/audio-readme.gif)](https://lineagehq.github.io/lineage-logo/#polish) |
-
-Move, resize, rotate, recolor, align, and edit text. Undo changes, check the logo at favicon sizes, and export SVG or PNG. Saving creates a new numbered SVG iteration, leaving your original file intact.
 
 ## Learn more
 
