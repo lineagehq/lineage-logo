@@ -8,9 +8,7 @@ Make precise edits by hand, review and accept your agent’s proposed changes, a
 
 ## See it in action
 
-Move and resize layers, change colors, adjust spacing, and review an agent’s finishing touches. These condensed demos show manual edits followed by an agent polish. Select either preview to watch with captions.
-
-[![Fine-tune logo shape, size, color, and positioning](site/assets/polishing/roundel-readme.gif)](https://lineagehq.github.io/lineage-logo/#polish)
+Move and resize layers, change colors, adjust spacing, and review an agent’s finishing touches. This condensed demo shows manual edits followed by an agent polish. Select the preview to watch with captions.
 
 [![Fine-tune logo layers and review agent polish](site/assets/polishing/audio-readme.gif)](https://lineagehq.github.io/lineage-logo/#polish)
 
