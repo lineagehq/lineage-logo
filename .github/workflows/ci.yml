@@ -13,7 +13,40 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.paths.outputs.app }}
+      docs: ${{ steps.paths.outputs.docs }}
+      site: ${{ steps.paths.outputs.site }}
+      packaging: ${{ steps.paths.outputs.packaging }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Classify complete change set
+        id: paths
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/ci/changes.mjs
+      - run: node --test scripts/ci/changes.test.mjs
+      - run: python3 scripts/ci/content.test.py
+
+  content:
+    needs: changes
+    if: needs.changes.outputs.docs == 'true' || needs.changes.outputs.site == 'true' || needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 scripts/ci/content.py
+      - name: Check packaged documentation without building
+        if: needs.changes.outputs.packaging == 'true' || needs.changes.outputs.app == 'true'
+        run: npm pack --dry-run --ignore-scripts --json | python3 scripts/ci/package-content.py
+
   verify:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -36,6 +69,8 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
 
   browser-qa:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -70,6 +105,8 @@ jobs:
           retention-days: 7
 
   critical-browsers:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -105,6 +142,8 @@ jobs:
           retention-days: 7
 
   clean-install:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
@@ -135,6 +174,8 @@ jobs:
           if-no-files-found: error
 
   newer-lts:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     name: Node 24.20.0 compatibility
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -152,3 +193,19 @@ jobs:
           name: candidate-node24
           path: candidate-artifact.json
           if-no-files-found: error
+
+  ci-passed:
+    name: CI passed
+    if: always()
+    needs: [changes, content, verify, browser-qa, critical-browsers, clean-install, newer-lts]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Require selected checks to succeed
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { passed } from './scripts/ci/gate.mjs';
+          if (!passed(JSON.parse(process.env.NEEDS_JSON))) process.exit(1);
+          NODE

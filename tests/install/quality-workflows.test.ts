@@ -9,7 +9,7 @@ const runs = (job: { steps: Array<{ run?: string }> }): string[] => job.steps.fl
 test("PR and main retain every existing job and newer LTS is explicit", () => {
   expect(Object.keys(ci.on).sort()).toEqual(["pull_request", "push"]);
   expect(ci.on.push.branches).toEqual(["main"]);
-  expect(Object.keys(ci.jobs).sort()).toEqual(["browser-qa", "clean-install", "critical-browsers", "newer-lts", "verify"]);
+  expect(Object.keys(ci.jobs).sort()).toEqual(["browser-qa", "changes", "ci-passed", "clean-install", "content", "critical-browsers", "newer-lts", "verify"]);
   expect(ci.jobs["clean-install"].strategy.matrix.os).toEqual(["ubuntu-latest", "macos-latest"]);
   expect(ci.jobs["critical-browsers"].strategy.matrix.browser).toEqual(["firefox", "webkit"]);
   expect(ci.jobs["newer-lts"].steps.find((step: { uses?: string }) => step.uses?.startsWith("actions/setup-node")).with["node-version"]).toBe("24.20.0");
@@ -44,4 +44,14 @@ test("corpus uploads match failure-only diagnostics retention", () => {
   expect(upload.if).toBe("failure()");
   expect(upload.with.path).toBe("test-results/release-diagnostics.json");
   expect(upload.with["if-no-files-found"]).toBe("error");
+});
+
+
+test("routing gates expensive jobs and aggregate waits for every selected check", () => {
+  for (const name of ["verify", "browser-qa", "critical-browsers", "clean-install", "newer-lts"]) {
+    expect(ci.jobs[name].needs).toBe("changes");
+    expect(ci.jobs[name].if).toBe("needs.changes.outputs.app == 'true'");
+  }
+  expect(ci.jobs["ci-passed"].if).toBe("always()");
+  expect([...ci.jobs["ci-passed"].needs].sort()).toEqual(Object.keys(ci.jobs).filter(name => name !== "ci-passed").sort());
 });
