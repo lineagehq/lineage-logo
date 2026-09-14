@@ -28,6 +28,7 @@ Replace the path with your workspace. Open the `lineage-logo.localhost` address 
 
 ## Learn more
 
+- [How to edit an AI-generated SVG logo without starting over](https://neonwatty.com/posts/edit-ai-generated-svg-logo/)
 - [Manual editing walkthrough](https://github.com/neonwatty/logo-designer-skill/blob/main/docs/manual-tweaks.md)
 - [Agent integration](docs/agent-canvas.md)
 - [Development and technical reference](docs/technical-reference.md)
