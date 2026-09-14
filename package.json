@@ -1,7 +1,18 @@
 {
   "name": "lineage-logo",
   "version": "0.1.0-beta.4",
-  "description": "A shared visual canvas where you and your agent create and fine-tune SVG logos together.",
+  "description": "A local SVG logo editor for fine-tuning designs by hand or with AI agents.",
+  "keywords": [
+    "svg",
+    "svg-editor",
+    "logo",
+    "logo-editor",
+    "vector-graphics",
+    "ai-agent",
+    "codex",
+    "claude-code",
+    "local-first"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
