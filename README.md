@@ -1,8 +1,14 @@
-# Lineage Logo
+# Lineage Logo - fine-tune your SVG without starting over
 
-A shared visual canvas where you and your agent create and fine-tune SVG logos together.
+A local SVG logo editor for fine-tuning designs by hand or with your agent.
 
-Lock in the big picture design of your logo using [the logo design skill](https://github.com/neonwatty/logo-designer-skill), and bring it into the Lineage Logo studio to fine tune shapes, sizes, colors, spacing, etc., manaually or with your agent.
+No need to regenerate your entire logo for small changes. Move, resize, rotate,
+and recolor individual layers, then save a new iteration for you or your agent
+to continue from.
+
+Need a starting design? Use the [Logo Designer Skill](https://github.com/neonwatty/logo-designer-skill)
+to explore SVG concepts, then bring the design you like into Lineage Logo for
+precise adjustments.
 
 [![Fine-tune logo layers and review agent polish](site/assets/polishing/audio-readme.gif)](https://lineagehq.github.io/lineage-logo/#polish)
 
