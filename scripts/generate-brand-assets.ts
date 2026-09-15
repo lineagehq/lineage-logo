@@ -39,16 +39,15 @@ async function captureIcon(output: string, size: number, inset: number, backgrou
 
 function socialCard(width: number, height: number): string {
   const scale = width / 1200;
-  return `<main style="width:100%;height:100%;padding:${54 * scale}px ${70 * scale}px ${56 * scale}px;background:#F7F2E8;color:#20201D;font-family:Arial,Helvetica,sans-serif;display:flex;flex-direction:column">
-    <header style="display:flex;align-items:center;gap:${18 * scale}px;padding-bottom:${34 * scale}px;border-bottom:${1 * scale}px solid #D9D1C3">
-      <img src="${markUrl}" alt="" style="width:${62 * scale}px;height:${62 * scale}px">
-      <strong style="font-size:${30 * scale}px;letter-spacing:-${1.1 * scale}px">Lineage Logo</strong>
+  return `<main style="width:100%;height:100%;padding:${48 * scale}px ${70 * scale}px ${52 * scale}px;background:#F7F2E8;color:#20201D;font-family:Arial,Helvetica,sans-serif;display:flex;flex-direction:column">
+    <header style="display:flex;align-items:center;gap:${20 * scale}px;padding-bottom:${30 * scale}px;border-bottom:${1 * scale}px solid #D9D1C3">
+      <img src="${markUrl}" alt="" style="width:${78 * scale}px;height:${78 * scale}px">
+      <strong style="font-size:${34 * scale}px;letter-spacing:-${1.3 * scale}px">Lineage Logo</strong>
     </header>
     <section style="display:flex;flex:1;flex-direction:column;justify-content:center">
-      <div style="margin-bottom:${15 * scale}px;color:#686359;font-size:${15 * scale}px;font-weight:700;letter-spacing:${2.4 * scale}px">LOCAL-FIRST SVG LOGO EDITOR</div>
-      <div style="font-size:${76 * scale}px;font-weight:700;line-height:.98;letter-spacing:-${4.6 * scale}px">Keep the logo.<br>Fine-tune the details.</div>
+      <div style="font-size:${66 * scale}px;font-weight:700;line-height:.96;letter-spacing:-${3.6 * scale}px">Fine-tune every detail<br>of your logo - by hand<br>or with your agent.</div>
+      <div style="margin-top:${28 * scale}px;color:#686359;font-size:${24 * scale}px">A precision SVG editor for last-mile tweaks - made for humans and agents.</div>
     </section>
-    <footer style="color:#686359;font-size:${22 * scale}px">Precise visual edits—by hand or with your agent.</footer>
   </main>`;
 }
 
