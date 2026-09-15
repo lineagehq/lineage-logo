@@ -184,16 +184,19 @@ describe("manual stable trusted-publish workflow", () => {
     }
   });
 
-  it("retries postpublish verification and always attempts exact-version registry QA after a successful publish", () => {
+  it("waits for registry visibility before dispatching exact-version registry QA", () => {
     const workflow = read(workflowPath);
     const postpublish = job(workflow, "postpublish");
     const handoff = job(workflow, "registry_qa_handoff");
-    expect(postpublish).toContain("for attempt in 1 2 3 4 5");
-    expect(postpublish).toContain("sleep $((attempt * 5))");
+    expect(postpublish).toContain("timeout-minutes: 12");
+    expect(postpublish).toContain("for attempt in $(seq 1 20)");
+    expect(postpublish).toContain("sleep 30");
     expect(workflow).toContain("dist_tags_before: ${{ steps.dist_tags_before.outputs.dist_tags_before }}");
     expect(postpublish).toContain("DIST_TAGS_BEFORE: ${{ needs.publish.outputs.dist_tags_before }}");
     expect(postpublish).toContain("Only the latest dist-tag may change");
-    expect(handoff).toContain("always() && needs.publish.result == 'success'");
+    expect(handoff).toContain(
+      "always() && needs.publish.result == 'success' && needs.postpublish.result == 'success'",
+    );
     expect(handoff).toContain(
       'gh workflow run registry-qa.yml --repo lineagehq/lineage-logo --ref main -f "package_version=${PACKAGE_VERSION}"',
     );
