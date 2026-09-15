@@ -32,5 +32,5 @@ Replace the path with your workspace. Open the `lineage-logo.localhost` address 
 - [Manual editing walkthrough](https://github.com/neonwatty/logo-designer-skill/blob/main/docs/manual-tweaks.md)
 - [Agent integration](docs/agent-canvas.md)
 - [Development and technical reference](docs/technical-reference.md)
-- [0.1.0 release notes](https://github.com/lineagehq/lineage-logo/releases/tag/v0.1.0)
+- [Latest release notes](https://github.com/lineagehq/lineage-logo/releases/latest)
 - [Support and feedback](SUPPORT.md)
