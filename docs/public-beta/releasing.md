@@ -70,10 +70,11 @@ including `beta`, must remain byte-for-byte unchanged; addition, removal, or
 replacement fails the postpublish invariant.
 
 After a successful publish, exact-version and latest-tag visibility are checked
-with a bounded retry. A separate always/conditional handoff job attempts to
-dispatch **Public registry QA** to the fixed `lineagehq/lineage-logo` repository
-on `--ref main` with the exact immutable version whenever publishing
-succeeded—even if those later diagnostics fail. The explicit repository target
+for up to ten minutes because npm can accept a publish while it is still being
+processed for public access. A separate conditional handoff job dispatches
+**Public registry QA** to the fixed `lineagehq/lineage-logo` repository on
+`--ref main` with the exact immutable version only after that registry visibility
+check succeeds. The explicit repository target
 keeps this dispatch executable on the handoff job's fresh runner, which has no
 checkout from which GitHub CLI could infer a repository. This
 asynchronous `gh workflow run` call only attempts to start the separate

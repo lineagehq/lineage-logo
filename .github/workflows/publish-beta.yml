@@ -232,7 +232,7 @@ jobs:
     name: Retry exact published-version and tag verification
     needs: [preflight, publish]
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 12
     permissions:
       contents: read
     steps:
@@ -247,9 +247,9 @@ jobs:
           DIST_TAGS_BEFORE: ${{ needs.publish.outputs.dist_tags_before }}
         run: |
           set -euo pipefail
-          for attempt in 1 2 3 4 5; do
-            if test "$(npm view "lineage-logo@${PACKAGE_VERSION}" version)" = "$PACKAGE_VERSION" \
-              && test "$(npm view lineage-logo@latest version)" = "$PACKAGE_VERSION" \
+          for attempt in $(seq 1 20); do
+            if test "$(npm view "lineage-logo@${PACKAGE_VERSION}" version 2>/dev/null)" = "$PACKAGE_VERSION" \
+              && test "$(npm view lineage-logo@latest version 2>/dev/null)" = "$PACKAGE_VERSION" \
               && npm view lineage-logo dist-tags --json > "$RUNNER_TEMP/dist-tags-after.json" 2>/dev/null \
               && node --input-type=module - "$DIST_TAGS_BEFORE" "$RUNNER_TEMP/dist-tags-after.json" "$PACKAGE_VERSION" <<'NODE'
           import { readFileSync } from "node:fs";
@@ -269,7 +269,7 @@ jobs:
             then
               exit 0
             fi
-            if [ "$attempt" -lt 5 ]; then sleep $((attempt * 5)); fi
+            if [ "$attempt" -lt 20 ]; then sleep 30; fi
           done
           echo "exact published version, latest tag, or non-latest tag invariants were not observable after bounded retry" >&2
           exit 1
@@ -277,7 +277,7 @@ jobs:
   registry_qa_handoff:
     name: Dispatch immutable public registry QA after publication
     needs: [preflight, publish, postpublish]
-    if: ${{ always() && needs.publish.result == 'success' }}
+    if: ${{ always() && needs.publish.result == 'success' && needs.postpublish.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     permissions:
