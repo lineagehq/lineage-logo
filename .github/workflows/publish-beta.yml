@@ -1,22 +1,22 @@
-name: Publish beta
+name: Publish release
 
 on:
   workflow_dispatch:
     inputs:
       package_version:
-        description: Exact new beta semantic version from package.json (for example, 0.1.0-beta.2)
+        description: Exact new stable semantic version from package.json (for example, 0.1.0)
         required: true
         type: string
 
 permissions: {}
 
 concurrency:
-  group: publish-beta
+  group: publish-release
   cancel-in-progress: false
 
 jobs:
   preflight:
-    name: Verify current main and exact unpublished beta version
+    name: Verify current main and exact unpublished stable version
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -37,7 +37,7 @@ jobs:
           test "$GITHUB_REF" = "refs/heads/main"
           git fetch --no-tags origin main
           test "$GITHUB_SHA" = "$(git rev-parse origin/main)"
-      - name: Require one exact new beta version and prove its absence
+      - name: Require one exact new stable version and prove its absence
         id: version
         env:
           PACKAGE_VERSION: ${{ inputs.package_version }}
@@ -47,8 +47,8 @@ jobs:
           import { readFileSync } from "node:fs";
           const version = process.env.PACKAGE_VERSION;
           const packageVersion = JSON.parse(readFileSync("package.json", "utf8")).version;
-          if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-beta\.(0|[1-9]\d*)$/.test(version ?? "") || packageVersion !== version) {
-            throw new Error("package_version must exactly match package.json as one beta semantic version");
+          if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version ?? "") || packageVersion !== version) {
+            throw new Error("package_version must exactly match package.json as one stable semantic version");
           }
           NODE
           set +e
@@ -140,7 +140,7 @@ jobs:
       - name: Preserve the exact verified candidate
         uses: actions/upload-artifact@v7
         with:
-          name: publish-beta-candidate-${{ needs.preflight.outputs.package_version }}
+          name: publish-release-candidate-${{ needs.preflight.outputs.package_version }}
           path: ${{ steps.candidate.outputs.tarball_name }}
           if-no-files-found: error
           retention-days: 1
@@ -173,13 +173,13 @@ jobs:
           const pkg = JSON.parse(readFileSync("package.json", "utf8"));
           const expectedRepository = "git+https://github.com/lineagehq/lineage-logo.git";
           if (process.env.GITHUB_REPOSITORY !== "lineagehq/lineage-logo"
-            || process.env.GITHUB_WORKFLOW !== "Publish beta"
+            || process.env.GITHUB_WORKFLOW !== "Publish release"
             || process.env.GITHUB_WORKFLOW_REF !== "lineagehq/lineage-logo/.github/workflows/publish-beta.yml@refs/heads/main"
             || pkg.name !== "lineage-logo"
             || pkg.repository?.type !== "git"
             || pkg.repository?.url !== expectedRepository
             || pkg.publishConfig?.access !== "public"
-            || pkg.publishConfig?.tag !== "beta"
+            || pkg.publishConfig?.tag !== "latest"
             || Object.prototype.hasOwnProperty.call(pkg.publishConfig ?? {}, "registry")) {
             throw new Error("trusted-publisher identity or public package contract mismatch");
           }
@@ -187,13 +187,13 @@ jobs:
       - name: Download the exact verified candidate
         uses: actions/download-artifact@v7
         with:
-          name: publish-beta-candidate-${{ needs.preflight.outputs.package_version }}
-          path: ${{ runner.temp }}/publish-beta-candidate
+          name: publish-release-candidate-${{ needs.preflight.outputs.package_version }}
+          path: ${{ runner.temp }}/publish-release-candidate
       - name: Verify downloaded candidate path and digest
         id: verified_candidate
         run: |
           set -euo pipefail
-          TARBALL_PATH="$RUNNER_TEMP/publish-beta-candidate/${{ needs.candidate.outputs.tarball_name }}"
+          TARBALL_PATH="$RUNNER_TEMP/publish-release-candidate/${{ needs.candidate.outputs.tarball_name }}"
           test -f "$TARBALL_PATH"
           ACTUAL_SHA512="$(sha512sum "$TARBALL_PATH" | awk '{print $1}')"
           test "$ACTUAL_SHA512" = "${{ needs.candidate.outputs.tarball_sha512 }}"
@@ -220,13 +220,13 @@ jobs:
           NODE
           )"
           echo "dist_tags_before=$DIST_TAGS_BEFORE" >> "$GITHUB_OUTPUT"
-      - name: Publish only the beta tag from the exact verified tarball
+      - name: Publish only the latest tag from the exact verified tarball
         env:
           TARBALL_PATH: ${{ steps.verified_candidate.outputs.tarball_path }}
         run: |
           git fetch --no-tags origin main
           test "$GITHUB_SHA" = "$(git rev-parse origin/main)"
-          npm publish "$TARBALL_PATH" --tag beta --provenance
+          npm publish "$TARBALL_PATH" --tag latest --provenance
 
   postpublish:
     name: Retry exact published-version and tag verification
@@ -249,7 +249,7 @@ jobs:
           set -euo pipefail
           for attempt in 1 2 3 4 5; do
             if test "$(npm view "lineage-logo@${PACKAGE_VERSION}" version)" = "$PACKAGE_VERSION" \
-              && test "$(npm view lineage-logo@beta version)" = "$PACKAGE_VERSION" \
+              && test "$(npm view lineage-logo@latest version)" = "$PACKAGE_VERSION" \
               && npm view lineage-logo dist-tags --json > "$RUNNER_TEMP/dist-tags-after.json" 2>/dev/null \
               && node --input-type=module - "$DIST_TAGS_BEFORE" "$RUNNER_TEMP/dist-tags-after.json" "$PACKAGE_VERSION" <<'NODE'
           import { readFileSync } from "node:fs";
@@ -259,10 +259,10 @@ jobs:
           if (!before || !after || Array.isArray(before) || Array.isArray(after)) {
             throw new Error("npm dist-tag snapshots were not maps");
           }
-          if (after.beta !== version) throw new Error("beta dist-tag did not point to the exact published version");
+          if (after.latest !== version) throw new Error("latest dist-tag did not point to the exact published version");
           for (const tag of new Set([...Object.keys(before), ...Object.keys(after)])) {
-            if (tag !== "beta" && before[tag] !== after[tag]) {
-              throw new Error(`Only the beta dist-tag may change; ${tag} changed unexpectedly`);
+            if (tag !== "latest" && before[tag] !== after[tag]) {
+              throw new Error(`Only the latest dist-tag may change; ${tag} changed unexpectedly`);
             }
           }
           NODE
@@ -271,7 +271,7 @@ jobs:
             fi
             if [ "$attempt" -lt 5 ]; then sleep $((attempt * 5)); fi
           done
-          echo "exact published version, beta tag, or non-beta tag invariants were not observable after bounded retry" >&2
+          echo "exact published version, latest tag, or non-latest tag invariants were not observable after bounded retry" >&2
           exit 1
 
   registry_qa_handoff:
