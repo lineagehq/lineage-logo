@@ -1,6 +1,6 @@
 {
   "name": "lineage-logo",
-  "version": "0.1.0-beta.4",
+  "version": "0.1.0",
   "description": "A local SVG logo editor for fine-tuning designs by hand or with AI agents.",
   "keywords": [
     "svg",
@@ -24,7 +24,7 @@
   },
   "publishConfig": {
     "access": "public",
-    "tag": "beta"
+    "tag": "latest"
   },
   "type": "module",
   "bin": {
