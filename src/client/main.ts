@@ -49,11 +49,11 @@ import {
   type SelectionPreferences,
 } from "./selection-preferences";
 
+const brandIconSvg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><mask id='lineage-brand-cutout'><rect width='512' height='512' fill='white'/><path d='M166 146V294C166 327 193 354 226 354H326' fill='none' stroke='black' stroke-width='58' stroke-linecap='round' stroke-linejoin='round'/></mask></defs><path d='M117 70H281C361 70 426 135 426 215V296C426 377 361 442 280 442H178C109 442 54 387 54 318V133C54 98 82 70 117 70Z' fill='#20201D' mask='url(#lineage-brand-cutout)'/></svg>";
+
 const favicon = document.createElement("link");
 favicon.rel = "icon";
-favicon.href = URL.createObjectURL(new Blob([
-  "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='#161616'/><path d='M9 7v18h14v-4H14V7z' fill='white'/></svg>",
-], { type: "image/svg+xml" }));
+favicon.href = URL.createObjectURL(new Blob([brandIconSvg], { type: "image/svg+xml" }));
 document.head.append(favicon);
 
 interface SvgFileEntry {
@@ -121,7 +121,7 @@ if (!app) throw new Error("App root is missing.");
 
 app.innerHTML = `
   <header class="topbar">
-    <div class="brand"><span class="brand-mark">L</span><span>Lineage Logo</span></div>
+    <div class="brand"><span class="brand-mark" aria-hidden="true">${brandIconSvg}</span><span>Lineage Logo</span></div>
     <div class="workspace-name" id="workspace-name">Connecting…</div>
     <nav class="creation-actions" aria-label="Logo workflow">
       <button type="button" id="create-logo">Create a logo</button>

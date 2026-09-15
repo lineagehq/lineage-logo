@@ -7,6 +7,8 @@ a:hover { color: #5b4de0; }
 a:focus-visible, video:focus-visible { outline: 3px solid #5b4de0; outline-offset: 5px; }
 nav { display: flex; align-items: center; gap: 28px; padding: 26px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
 nav strong { margin-right: auto; font-size: 17px; letter-spacing: -.035em; }
+.site-brand { display: flex; align-items: center; gap: 10px; }
+.site-brand img { display: block; width: 25px; height: 25px; }
 nav a { text-decoration: none; }
 header { padding: 64px 0 60px; max-width: 760px; }
 .eyebrow { margin: 0 0 14px; color: var(--muted); font-size: 10px; font-weight: 750; text-transform: uppercase; letter-spacing: .13em; }

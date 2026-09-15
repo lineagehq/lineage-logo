@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">Lineage Logo</title>
+  <desc id="description">A charcoal logo containing a bold L-shaped path in negative space.</desc>
+  <defs>
+    <mask id="lineage-cutout">
+      <rect width="512" height="512" fill="#FFFFFF"/>
+      <path d="M166 146V294C166 327 193 354 226 354H326" fill="none" stroke="#000000" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <path d="M117 70H281C361 70 426 135 426 215V296C426 377 361 442 280 442H178C109 442 54 387 54 318V133C54 98 82 70 117 70Z" fill="#20201D" mask="url(#lineage-cutout)"/>
+</svg>
