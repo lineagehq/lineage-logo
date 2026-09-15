@@ -94,6 +94,16 @@ local API when available and automatically selects the next available API or
 editor port when either default is occupied. Pass `--port 4273` to request a
 different starting API port.
 
+The canonical product mark is `site/favicon.svg`. After changing it, regenerate
+the favicon PNGs, Apple touch icon, social cards, and GitHub avatar with:
+
+```bash
+npm run brand:generate
+```
+
+The generator uses the repository's Playwright Chromium installation and writes
+the committed derivatives under `site/` and `site/assets/brand/`.
+
 ## Public beta CLI
 
 The `0.1.0-beta.4` candidate includes the integrated agent, manual editing, recovery and export improvements. See the [beta.4 release notes](../docs/public-beta/release-notes-beta.4.md). Publication status is established by npm metadata and the release workflow, not this source document.

@@ -1,6 +1,7 @@
 import { AssetExportController } from "./export/controller";
 import { GuidedCreationController } from "./ui/guided-creation";
 import { PanelResizeController } from "./ui/panel-resize";
+import brandIconSvg from "../../site/favicon.svg?raw";
 import "./styles.css";
 import { AgentVisualReview } from "./agent/visual-review";
 import { readManualDraft, writeManualDraft, discardManualDraft, manualDraftReasonMessage, type ManualDraftAuthority, type ManualDraftRead, type ManualDraftIdentity } from "./manual-draft-store";
@@ -48,8 +49,6 @@ import {
   safeSelectionPreferencesStorage,
   type SelectionPreferences,
 } from "./selection-preferences";
-
-const brandIconSvg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><mask id='lineage-brand-cutout'><rect width='512' height='512' fill='white'/><path d='M166 146V294C166 327 193 354 226 354H326' fill='none' stroke='black' stroke-width='58' stroke-linecap='round' stroke-linejoin='round'/></mask></defs><path d='M117 70H281C361 70 426 135 426 215V296C426 377 361 442 280 442H178C109 442 54 387 54 318V133C54 98 82 70 117 70Z' fill='#20201D' mask='url(#lineage-brand-cutout)'/></svg>";
 
 const favicon = document.createElement("link");
 favicon.rel = "icon";

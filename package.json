@@ -40,6 +40,7 @@
     "docs/public-beta/**"
   ],
   "scripts": {
+    "brand:generate": "tsx scripts/generate-brand-assets.ts",
     "build": "vite build && tsc -p tsconfig.cli.json",
     "agent:submit": "tsx scripts/logo-designer-adapter.ts",
     "check": "npm run typecheck && npm run test && npm run build",
