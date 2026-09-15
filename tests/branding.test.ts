@@ -6,7 +6,8 @@ describe("Lineage Logo branding", () => {
     const source = readFileSync("src/client/main.ts", "utf8");
     const styles = readFileSync("src/client/styles.css", "utf8");
 
-    expect(source).toContain("lineage-brand-cutout");
+    expect(source).toContain('import brandIconSvg from "../../site/favicon.svg?raw";');
+    expect(source).not.toContain("const brandIconSvg =");
     expect(source).toContain("new Blob([brandIconSvg]");
     expect(source).toContain('${brandIconSvg}</span><span>Lineage Logo</span>');
     expect(source).not.toContain("#CB6748");
