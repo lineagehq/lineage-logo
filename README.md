@@ -10,7 +10,7 @@ Need a starting design? Use the [Logo Designer Skill](https://github.com/neonwat
 to explore SVG concepts, then bring the design you like into Lineage Logo for
 precise adjustments.
 
-[![Fine-tune logo layers and review agent polish](site/assets/polishing/audio-readme.gif)](https://lineagehq.github.io/lineage-logo/#polish)
+[![Fine-tune logo layers and review agent polish](site/assets/polishing/audio-readme.gif)](https://lineage-logo.neonwatty.com/#polish)
 
 ## Get started
 
